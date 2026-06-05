@@ -1,3 +1,4 @@
+<<<<<<< Updated upstream
 # User Stories — AutoWash Pro
 
 This file organizes user stories into epics and includes acceptance criteria and suggested estimates (story points). Source: SRS (Topic.md).
@@ -53,3 +54,16 @@ Acceptance: LPR webhook endpoint records events and matches to customer if possi
 - Sprint 2: US-011, US-012 (Booking create/reschedule/cancel)
 - Sprint 3: US-020, US-021 (Points awarding & redemption)
 - Sprint 4: US-030, US-031 (Admin & Manager dashboards)
+=======
+# User Stories
+
+This file contains user stories derived from the SRS. Prioritize backlog items before sprint planning.
+
+## Sample User Stories
+- As a Customer, I want to register with my phone so I can book washes.
+- As a Customer, I want to add my vehicle so bookings are associated with a plate.
+- As a Customer, I want to book a wash in advance according to my tier-based window.
+- As an Admin, I want to create loyalty tiers so I can manage perks and accrual rates.
+
+(Expand with acceptance criteria and story points in product-backlog.md)
+>>>>>>> Stashed changes
