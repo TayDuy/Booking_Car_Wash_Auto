@@ -1,10 +1,16 @@
-package com.autowash.backend.config;
+package com.autowash.pro.config;
 
-import com.autowash.backend.security.JwtAuthenticationFilter;
+import com.autowash.pro.security.CustomUserDetailsService;
+import com.autowash.pro.security.JwtAuthenticationFilter;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.MediaType;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -14,40 +20,93 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
+import java.util.Map;
+
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity
 public class SecurityConfig {
 
+    private final CustomUserDetailsService userDetailsService;
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
-    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
+    public SecurityConfig(CustomUserDetailsService userDetailsService,
+                          JwtAuthenticationFilter jwtAuthenticationFilter) {
+        this.userDetailsService = userDetailsService;
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
     }
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        http
-            .csrf(AbstractHttpConfigurer::disable) // Tắt CSRF vì ta dùng JWT (Stateless)
-            .sessionManagement(session ->
-                session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // Không dùng session
-            .authorizeHttpRequests(authorize -> authorize
-                .requestMatchers("/api/auth/**").permitAll() // Cho phép truy cập tự do API đăng nhập/đăng ký
-                .anyRequest().authenticated() // Các API khác bắt buộc phải có JWT token
-            )
-            .addFilterBefore(jwtAuthenticationFilter,
-                UsernamePasswordAuthenticationFilter.class); // Thêm JWT filter vào chuỗi bảo mật
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
 
-        return http.build();
+    @Bean
+    public DaoAuthenticationProvider authenticationProvider() {
+        DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
+        provider.setUserDetailsService(userDetailsService);
+        provider.setPasswordEncoder(passwordEncoder());
+        return provider;
     }
 
     @Bean
     public AuthenticationManager authenticationManager(
-            AuthenticationConfiguration config) throws Exception {
-        return config.getAuthenticationManager(); // Cung cấp AuthenticationManager cho AuthServiceImpl
+            AuthenticationConfiguration authenticationConfiguration) throws Exception {
+        return authenticationConfiguration.getAuthenticationManager();
     }
 
     @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder(); // Mã hóa mật khẩu bằng BCrypt
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        http
+                // Tắt CSRF vì dùng JWT (stateless)
+                .csrf(AbstractHttpConfigurer::disable)
+
+                // Stateless session — không lưu session phía server
+                .sessionManagement(session ->
+                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+
+                // Xử lý lỗi 401 / 403
+                .exceptionHandling(ex -> ex
+                        .authenticationEntryPoint((request, response, authException) -> {
+                            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+                            response.getWriter().write(
+                                    new ObjectMapper().writeValueAsString(
+                                            Map.of("status", 401, "message", "Bạn chưa đăng nhập")));
+                        })
+                        .accessDeniedHandler((request, response, accessDeniedException) -> {
+                            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+                            response.getWriter().write(
+                                    new ObjectMapper().writeValueAsString(
+                                            Map.of("status", 403, "message", "Bạn không có quyền truy cập")));
+                        })
+                )
+
+                // Phân quyền endpoint
+                .authorizeHttpRequests(auth -> auth
+                        // Public endpoints
+                        .requestMatchers(
+                                "/api/v1/auth/login",
+                                "/api/v1/auth/register",
+                                "/swagger-ui/**",
+                                "/v3/api-docs/**"
+                        ).permitAll()
+
+                        // Admin only
+                        .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
+
+                        // Staff + Admin
+                        .requestMatchers("/api/v1/staff/**").hasAnyRole("STAFF", "ADMIN")
+
+                        // Authenticated users
+                        .anyRequest().authenticated()
+                )
+
+                .authenticationProvider(authenticationProvider())
+                .addFilterBefore(jwtAuthenticationFilter,
+                        UsernamePasswordAuthenticationFilter.class);
+
+        return http.build();
     }
 }

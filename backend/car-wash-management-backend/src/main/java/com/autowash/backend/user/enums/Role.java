@@ -1,6 +1,7 @@
-package com.autowash.backend.user.enums;
+package com.autowash.pro.user.enums;
 
 public enum Role {
-    USER,
+    CUSTOMER,
+    STAFF,
     ADMIN
 }

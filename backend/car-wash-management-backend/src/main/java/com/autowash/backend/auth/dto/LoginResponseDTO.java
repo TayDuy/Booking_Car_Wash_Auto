@@ -1,56 +1,42 @@
-package com.autowash.backend.auth.dto;
+package com.autowash.pro.auth.dto;
 
 public class LoginResponseDTO {
-    private String token;
-    private String username;
+
+    private String accessToken;
+    private String tokenType = "Bearer";
+    private Long userId;
+    private String email;
+    private String fullName;
     private String role;
 
+    // Constructor
     public LoginResponseDTO() {}
 
-    public LoginResponseDTO(String token, String username, String role) {
-        this.token = token;
-        this.username = username;
+    public LoginResponseDTO(String accessToken, Long userId,
+                            String email, String fullName, String role) {
+        this.accessToken = accessToken;
+        this.userId = userId;
+        this.email = email;
+        this.fullName = fullName;
         this.role = role;
     }
 
-    public String getToken() { return token; }
-    public void setToken(String token) { this.token = token; }
+    // Getters & Setters
+    public String getAccessToken() { return accessToken; }
+    public void setAccessToken(String accessToken) { this.accessToken = accessToken; }
 
-    public String getUsername() { return username; }
-    public void setUsername(String username) { this.username = username; }
+    public String getTokenType() { return tokenType; }
+    public void setTokenType(String tokenType) { this.tokenType = tokenType; }
+
+    public Long getUserId() { return userId; }
+    public void setUserId(Long userId) { this.userId = userId; }
+
+    public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email; }
+
+    public String getFullName() { return fullName; }
+    public void setFullName(String fullName) { this.fullName = fullName; }
 
     public String getRole() { return role; }
     public void setRole(String role) { this.role = role; }
-
-    // Builder pattern
-    public static LoginResponseDTOBuilder builder() {
-        return new LoginResponseDTOBuilder();
-    }
-
-    public static class LoginResponseDTOBuilder {
-        private String token;
-        private String username;
-        private String role;
-
-        LoginResponseDTOBuilder() {}
-
-        public LoginResponseDTOBuilder token(String token) {
-            this.token = token;
-            return this;
-        }
-
-        public LoginResponseDTOBuilder username(String username) {
-            this.username = username;
-            return this;
-        }
-
-        public LoginResponseDTOBuilder role(String role) {
-            this.role = role;
-            return this;
-        }
-
-        public LoginResponseDTO build() {
-            return new LoginResponseDTO(token, username, role);
-        }
-    }
 }
