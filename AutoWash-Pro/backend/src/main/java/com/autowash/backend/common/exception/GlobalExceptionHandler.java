@@ -52,11 +52,8 @@ public class GlobalExceptionHandler {
         for (FieldError fieldError : ex.getBindingResult().getFieldErrors()) {
             errors.put(fieldError.getField(), fieldError.getDefaultMessage());
         }
-        ApiResponse<Map<String, String>> response = new ApiResponse<>(
-                HttpStatus.BAD_REQUEST.value(), "Dữ liệu đầu vào không hợp lệ", errors) {};
-        // dùng anonymous class để bypass private constructor – hoặc thêm factory method
         return ResponseEntity.badRequest().body(
-                ApiResponse.error(400, "Dữ liệu đầu vào không hợp lệ")
+                ApiResponse.error(400, "Dữ liệu đầu vào không hợp lệ", errors)
         );
     }
 

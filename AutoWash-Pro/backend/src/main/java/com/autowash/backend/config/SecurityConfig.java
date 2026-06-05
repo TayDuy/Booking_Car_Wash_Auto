@@ -2,7 +2,6 @@ package com.autowash.backend.config;
 
 import com.autowash.backend.security.CustomUserDetailsService;
 import com.autowash.backend.security.JwtAuthenticationFilter;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -43,8 +42,7 @@ public class SecurityConfig {
 
     @Bean
     public DaoAuthenticationProvider authenticationProvider() {
-        DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
-        provider.setUserDetailsService(userDetailsService);
+        DaoAuthenticationProvider provider = new DaoAuthenticationProvider(userDetailsService);
         provider.setPasswordEncoder(passwordEncoder());
         return provider;
     }
@@ -70,16 +68,12 @@ public class SecurityConfig {
                         .authenticationEntryPoint((request, response, authException) -> {
                             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                             response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-                            response.getWriter().write(
-                                    new ObjectMapper().writeValueAsString(
-                                            Map.of("status", 401, "message", "Bạn chưa đăng nhập")));
+                            response.getWriter().write("{\"status\": 401, \"message\": \"Bạn chưa đăng nhập\"}");
                         })
                         .accessDeniedHandler((request, response, accessDeniedException) -> {
                             response.setStatus(HttpServletResponse.SC_FORBIDDEN);
                             response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-                            response.getWriter().write(
-                                    new ObjectMapper().writeValueAsString(
-                                            Map.of("status", 403, "message", "Bạn không có quyền truy cập")));
+                            response.getWriter().write("{\"status\": 403, \"message\": \"Bạn không có quyền truy cập\"}");
                         })
                 )
 
