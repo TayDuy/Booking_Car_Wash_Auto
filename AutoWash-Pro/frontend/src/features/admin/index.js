@@ -1,0 +1,6 @@
+export { default as AdminDashboardPage } from './pages/AdminDashboardPage'
+export { default as ManageBookingsPage } from './pages/ManageBookingsPage'
+export { default as ManageCustomersPage } from './pages/ManageCustomersPage'
+export { default as ManageVehiclesPage } from './pages/ManageVehiclesPage'
+export { default as ManagePromotionsPage } from './pages/ManagePromotionsPage'
+export { default as ReportsPage } from './pages/ReportsPage'
