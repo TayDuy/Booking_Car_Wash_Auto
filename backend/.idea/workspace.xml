@@ -4,10 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="1a590ffa-8431-4050-9821-10c4affc452d" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/car-wash-management-backend/pom.xml" beforeDir="false" afterPath="$PROJECT_DIR$/car-wash-management-backend/pom.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/car-wash-management-backend/src/main/java/com/autowash/backend/BackendApplication.java" beforeDir="false" afterPath="$PROJECT_DIR$/car-wash-management-backend/src/main/java/com/autowash/backend/BackendApplication.java" afterDir="false" />
-    </list>
+    <list default="true" id="1a590ffa-8431-4050-9821-10c4affc452d" name="Changes" comment="" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -78,6 +75,7 @@
       <workItem from="1780542902855" duration="295000" />
       <workItem from="1780543220120" duration="1764000" />
       <workItem from="1780640407874" duration="20000" />
+      <workItem from="1780642260302" duration="298000" />
     </task>
     <servers />
   </component>

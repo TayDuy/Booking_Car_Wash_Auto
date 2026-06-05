@@ -1,15 +1,22 @@
-package com.autowash.backend.common.exception;
+package com.autowash.pro.common.exception;
+
+import org.springframework.http.HttpStatus;
 
 public class BusinessException extends RuntimeException {
 
-    private final int errorCode; // Mã lỗi tùy chỉnh tương ứng trong ApiResponse
+    private final HttpStatus httpStatus;
 
-    public BusinessException(String message, int errorCode) {
+    public BusinessException(String message) {
         super(message);
-        this.errorCode = errorCode;
+        this.httpStatus = HttpStatus.BAD_REQUEST;
     }
 
-    public int getErrorCode() {
-        return errorCode;
+    public BusinessException(String message, HttpStatus httpStatus) {
+        super(message);
+        this.httpStatus = httpStatus;
+    }
+
+    public HttpStatus getHttpStatus() {
+        return httpStatus;
     }
 }
