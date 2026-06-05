@@ -1,4 +1,4 @@
-package com.autowash.pro.security;
+package com.autowash.backend.security;
 
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;

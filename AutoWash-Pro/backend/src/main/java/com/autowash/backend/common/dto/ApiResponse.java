@@ -1,4 +1,4 @@
-package com.autowash.pro.common.dto;
+package com.autowash.backend.common.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 

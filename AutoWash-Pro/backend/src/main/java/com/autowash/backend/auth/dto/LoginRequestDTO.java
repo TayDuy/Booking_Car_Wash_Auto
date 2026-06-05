@@ -1,4 +1,4 @@
-package com.autowash.pro.auth.dto;
+package com.autowash.backend.auth.dto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;

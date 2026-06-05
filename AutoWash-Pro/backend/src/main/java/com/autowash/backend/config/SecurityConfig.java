@@ -1,7 +1,7 @@
-package com.autowash.pro.config;
+package com.autowash.backend.config;
 
-import com.autowash.pro.security.CustomUserDetailsService;
-import com.autowash.pro.security.JwtAuthenticationFilter;
+import com.autowash.backend.security.CustomUserDetailsService;
+import com.autowash.backend.security.JwtAuthenticationFilter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
