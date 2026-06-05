@@ -18,17 +18,17 @@ public class User {
     @Column(nullable = false)
     private String password;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "nvarchar(255) default ''")
     private String fullName;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "varchar(255) default ''")
     private String phone;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Role role;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "bit default 1")
     private boolean enabled = true;
 
     @Column(nullable = false, updatable = false)
