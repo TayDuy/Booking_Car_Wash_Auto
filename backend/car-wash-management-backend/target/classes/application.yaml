@@ -1,0 +1,21 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: car-wash-management-backend
+
+  datasource:
+    url: jdbc:sqlserver://localhost:1433;databaseName=demo_login_db;encrypt=true;trustServerCertificate=true
+    username: sa
+    password: MAT_KHAU_CUA_BAN    # <-- Thay bằng mật khẩu SQL Server của bạn ở đây
+    driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
+
+  jpa:
+    hibernate:
+      ddl-auto: update            # Tự động cập nhật cấu trúc DB dựa theo Entity
+    show-sql: true                # In các câu lệnh SQL ra console để debug
+    properties:
+      hibernate:
+        format_sql: true          # Định dạng SQL in ra cho dễ đọc
+    open-in-view: false           # Đóng EntityManager sau khi kết thúc request để tối ưu hiệu năng
