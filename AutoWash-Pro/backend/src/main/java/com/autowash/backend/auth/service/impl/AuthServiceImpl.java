@@ -1,15 +1,15 @@
-package com.autowash.pro.auth.service.impl;
+package com.autowash.backend.auth.service.impl;
 
-import com.autowash.pro.auth.dto.LoginRequestDTO;
-import com.autowash.pro.auth.dto.LoginResponseDTO;
-import com.autowash.pro.auth.dto.RegisterRequestDTO;
-import com.autowash.pro.auth.service.AuthService;
-import com.autowash.pro.common.exception.BusinessException;
-import com.autowash.pro.security.CustomUserDetails;
-import com.autowash.pro.security.JwtTokenProvider;
-import com.autowash.pro.user.entity.User;
-import com.autowash.pro.user.enums.Role;
-import com.autowash.pro.user.repository.UserRepository;
+import com.autowash.backend.auth.dto.LoginRequestDTO;
+import com.autowash.backend.auth.dto.LoginResponseDTO;
+import com.autowash.backend.auth.dto.RegisterRequestDTO;
+import com.autowash.backend.auth.service.AuthService;
+import com.autowash.backend.common.exception.BusinessException;
+import com.autowash.backend.security.CustomUserDetails;
+import com.autowash.backend.security.JwtTokenProvider;
+import com.autowash.backend.user.entity.User;
+import com.autowash.backend.user.enums.Role;
+import com.autowash.backend.user.repository.UserRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;

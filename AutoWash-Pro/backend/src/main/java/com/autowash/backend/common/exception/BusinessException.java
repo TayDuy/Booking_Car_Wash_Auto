@@ -1,4 +1,4 @@
-package com.autowash.pro.common.exception;
+package com.autowash.backend.common.exception;
 
 import org.springframework.http.HttpStatus;
 
