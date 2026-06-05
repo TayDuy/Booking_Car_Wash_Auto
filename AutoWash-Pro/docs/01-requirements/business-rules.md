@@ -1,3 +1,4 @@
+<<<<<<< Updated upstream
 # AutoWash Pro — Business Rules
 
 ## 1. Introduction
@@ -515,3 +516,29 @@ Authorization Rules (sample)
 - Exceptions: BR-EX-001..BR-EX-025
 
 End of Business Rules document.
+=======
+# AutoWash Pro — business-rules.md
+
+Business rules are authoritative declarations; they are enforced in service layer with unit + integration tests.
+
+| Rule ID | Description | Example |
+|---|---|---:|
+| BR-01 | User Registration Rules: phone required and unique; OTP verification mandatory. | A new user must verify OTP before booking. |
+| BR-02 | Vehicle Registration Rules: license_plate unique per branch; optional for user. | Duplicate plates cause validation error. |
+| BR-03 | Booking Window Rules: booking window days depend on tier (configurable). | Gold -> 12 days in advance by default. |
+| BR-04 | Booking Capacity Rules: branch/service has capacity per slot; overbook blocked. | Slot capacity 10; 11th booking fails. |
+| BR-05 | Queue Priority Rules: on full slots, higher tier customers placed earlier in waitlist. | Platinum users jump ahead of Silver in waitlist. |
+| BR-06 | Loyalty Point Accumulation Rules: points = floor(amount * accrual_rate). | $50 with rate 1.5 -> 75 points. |
+| BR-07 | Loyalty Tier Upgrade Rules: evaluated monthly; upgrade requires points/visits thresholds. | 3 visits and 500 points -> upgrade to Silver. |
+| BR-08 | Loyalty Tier Downgrade Rules: inactivity or negative balance triggers downgrade monthly. | <100 points -> downgrade to Member. |
+| BR-09 | Point Expiration Rules: points expire after configured months (default 12). | Points granted 2025-06-01 expire 2026-06-01. |
+| BR-10 | Redemption Rules: redemption must be ≤ available points; some perks limited per period. | Free wash cost 1000 pts; user with 900 pts cannot redeem. |
+| BR-11 | Promotion Eligibility Rules: target filters (tier, branch, last_visit) applied at dispatch. | Promo sent to Silver+ who didn’t visit in 30 days. |
+| BR-12 | Analytics Rules: reports computed with snapshot time; sensitive PII anonymized. | LTV computed per customer excluding PII in exports. |
+
+Additional rules suggested:
+- BR-13 Cancellation Policy: define time-based fees or point penalties.
+- BR-14 No-Show Handling: mark no-shows and apply penalties after N occurrences.
+- BR-15 Overlapping Booking Prevention: prevent multiple active bookings at same time for same vehicle.
+- BR-16 Promotion Stackability: define whether promotions/discounts can combine.
+>>>>>>> Stashed changes
