@@ -1,6 +1,6 @@
-package com.autowash.pro.security;
+package com.autowash.backend.security;
 
-import com.autowash.pro.user.entity.User;
+import com.autowash.backend.user.entity.User;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;

@@ -1,10 +1,10 @@
-package com.autowash.pro.auth.controller;
+package com.autowash.backend.auth.controller;
 
-import com.autowash.pro.auth.dto.LoginRequestDTO;
-import com.autowash.pro.auth.dto.LoginResponseDTO;
-import com.autowash.pro.auth.dto.RegisterRequestDTO;
-import com.autowash.pro.auth.service.AuthService;
-import com.autowash.pro.common.dto.ApiResponse;
+import com.autowash.backend.auth.dto.LoginRequestDTO;
+import com.autowash.backend.auth.dto.LoginResponseDTO;
+import com.autowash.backend.auth.dto.RegisterRequestDTO;
+import com.autowash.backend.auth.service.AuthService;
+import com.autowash.backend.common.dto.ApiResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

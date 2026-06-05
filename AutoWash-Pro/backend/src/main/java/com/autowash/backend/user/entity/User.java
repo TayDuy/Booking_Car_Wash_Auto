@@ -1,6 +1,6 @@
-package com.autowash.pro.user.entity;
+package com.autowash.backend.user.entity;
 
-import com.autowash.pro.user.enums.Role;
+import com.autowash.backend.user.enums.Role;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
