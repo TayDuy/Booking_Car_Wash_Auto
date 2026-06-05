@@ -1,3 +1,4 @@
+<<<<<<< Updated upstream
 # AutoWash Pro — Requirements Specification
 
 ## Project Overview
@@ -113,3 +114,80 @@ Internationalization
 ---
 
 This Requirements Specification is based on the authoritative SRS (Topic.md) and is intended to serve as the contract for implementation, testing, and acceptance of the AutoWash Pro system. Any changes to scope, business rules or acceptance criteria must be recorded via the approval workflow and reflected in an updated version of this document.
+=======
+# AutoWash Pro — requirements.md
+
+## Project Overview
+AutoWash Pro is a smart automated car & motorbike wash management system providing advanced booking, tiered loyalty, priority queuing, admin configuration, and analytics. Backend: Java 21 + Spring Boot 3; Frontend: React + Vite. DB: SQL Server. Deploy to Azure/AWS. RBAC with Customer, Manager, Admin (extendable to Staff).
+
+## Business Goals
+- Increase repeat visits and LTV via loyalty tiers and promotions
+- Reduce manual queueing and improve throughput with priority booking
+- Enable data-driven promotions and analytics
+- Provide admin tools for branches and campaigns
+
+## Scope
+Core booking, loyalty, promotions, admin analytics, LPR integration optional, REST API, web UI.
+
+## In Scope
+- Registration, authentication (JWT)
+- Customer profiles & vehicles
+- Tiered loyalty engine (accrual, expiry, auto-upgrade/downgrade)
+- Tier-based booking windows & priority queue
+- Admin UI for tiers, promotions, branches
+- Reporting & export
+- Notifications (in-app, SMS/email hooks)
+- SQL Server schema and migrations
+
+## Out Of Scope
+- Payment gateway integration (explicitly excluded)
+- Refund processing
+- On-prem hardware drivers (beyond LPR event contract)
+
+## Actors
+
+| Actor | Description | Permissions |
+|---|---:|---|
+| Customer | Vehicle owner who books services | Register/login, manage profile/vehicles, book/cancel, view history, redeem points |
+| Manager | Branch operator / shift lead | Manage bookings, view branch metrics, approve promotions (branch scope) |
+| Admin | System administrator | Configure tiers, promotions, global reports, user/branch management |
+
+Note: System is designed to add Staff role later with permissions subset (e.g., check-in, operate stations).
+
+## Functional Requirements
+
+| ID | Requirement | Description | Priority |
+|---|---|---:|---:|
+| FR-1 | Customer Registration & Profile | Register via phone, verify OTP, add vehicles, manage profile | High |
+| FR-2 | Booking System | Tier-based advanced booking windows, limited slots, cancellations | High |
+| FR-3 | Priority Queueing | Higher tiers get earlier slots & queue priority | High |
+| FR-4 | Loyalty Engine | Points for spend/visits, monthly auto-upgrades/downgrades, expiry | High |
+| FR-5 | Redemption | Points → discounts/free services/add-on redemptions | High |
+| FR-6 | Tier Management (Admin) | Create/edit tiers, accrual rates, perks, auto rules | High |
+| FR-7 | Promotions | Targeted campaigns (e.g., Silver+), scheduling & limits | Medium |
+| FR-8 | Transaction Logging | Store booking/transaction histories for audit & export | High |
+| FR-9 | Analytics & Reports | Repeat rate, LTV, tier distribution, promotion performance | Medium |
+| FR-10 | LPR Integration (Optional) | Match plate to customer, auto-checkin | Low |
+| FR-11 | Notifications | Email/SMS/in-app notifications for booking and promotions | Medium |
+| FR-12 | RBAC & Security | JWT, Spring Security, role-based endpoints | High |
+| FR-13 | Admin UI | Manage branches, services, staff (future), promotions | High |
+| FR-14 | Export Data | CSV/Excel exports for analytics | Medium |
+
+## Non-Functional Requirements
+- Security: JWT auth, HTTPS, secure storage of PII, least-privilege RBAC, hashing of secrets.
+- Reliability: ACID transactions for bookings/points; retries for external calls.
+- Availability: 99.5% SLA target; read replicas for reporting.
+- Maintainability: Layered, modular codebase, clear API contracts, versioning (/api/v1).
+- Scalability: Use stateless services behind load balancers; database scaling via read replicas and partitioning.
+- Performance: Booking queries and tier-priority decisions < 1s for normal load.
+
+## Assumptions
+- Phone OTP service available (3rd-party)
+- Branch capacities are predefined and configured per branch
+- Offline/edge devices send LPR events via reliable queue (e.g., Azure Service Bus)
+
+## Constraints
+- No payment/refund implementation
+- SQL Server required (on-prem or managed)
+- Team of 5 with parallel backend/frontend workstreams
+>>>>>>> Stashed changes
