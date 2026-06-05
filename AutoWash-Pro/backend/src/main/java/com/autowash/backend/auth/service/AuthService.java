@@ -1,8 +1,8 @@
-package com.autowash.pro.auth.service;
+package com.autowash.backend.auth.service;
 
-import com.autowash.pro.auth.dto.LoginRequestDTO;
-import com.autowash.pro.auth.dto.LoginResponseDTO;
-import com.autowash.pro.auth.dto.RegisterRequestDTO;
+import com.autowash.backend.auth.dto.LoginRequestDTO;
+import com.autowash.backend.auth.dto.LoginResponseDTO;
+import com.autowash.backend.auth.dto.RegisterRequestDTO;
 
 public interface AuthService {
 

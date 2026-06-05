@@ -1,6 +1,6 @@
-package com.autowash.pro.common.exception;
+package com.autowash.backend.common.exception;
 
-import com.autowash.pro.common.dto.ApiResponse;
+import com.autowash.backend.common.dto.ApiResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
