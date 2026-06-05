@@ -1,5 +1,6 @@
 # Product Backlog
 
+<<<<<<< Updated upstream
 Backlog items ordered by priority. Each entry: ID, Title, Description, Priority, Estimate (SP), Owner.
 
 | ID | Title | Description | Priority | Est (SP) | Owner |
@@ -15,3 +16,15 @@ Backlog items ordered by priority. Each entry: ID, Title, Description, Priority,
 | FE-003 | Admin Console | Manage tiers, promotions, branches, export reports | High | 13 | Frontend 2 |
 | CI-001 | CI Pipeline | GH Actions: build, test, lint for backend & frontend | High | 5 | Team Leader |
 | DB-001 | Migrations & Seed | Flyway scripts for initial schema and sample data | High | 5 | Backend 1 |
+=======
+Organized backlog items (epics -> stories) with priority and estimates.
+
+## Epics
+- Onboarding & Auth
+- Booking System
+- Loyalty Engine
+- Promotions & Campaigns
+- Admin Dashboard & Reports
+
+(Add detailed tickets and acceptance criteria in project tracker)
+>>>>>>> Stashed changes
