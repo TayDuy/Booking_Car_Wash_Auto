@@ -1,3 +1,4 @@
 AutoWash-Pro/backend/target/
 **/target/
 .vscode/
+.idea/
