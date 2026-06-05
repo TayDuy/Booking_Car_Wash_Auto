@@ -1,91 +1,125 @@
-package com.autowash.backend.auth.service.impl;
+package com.autowash.pro.auth.service.impl;
 
-import com.autowash.backend.auth.dto.LoginRequestDTO;
-import com.autowash.backend.auth.dto.LoginResponseDTO;
-import com.autowash.backend.auth.dto.RegisterRequestDTO;
-import com.autowash.backend.auth.service.AuthService;
-import com.autowash.backend.common.exception.BusinessException;
-import com.autowash.backend.security.JwtTokenProvider;
-import com.autowash.backend.user.entity.User;
-import com.autowash.backend.user.enums.Role;
-import com.autowash.backend.user.repository.UserRepository;
-
+import com.autowash.pro.auth.dto.LoginRequestDTO;
+import com.autowash.pro.auth.dto.LoginResponseDTO;
+import com.autowash.pro.auth.dto.RegisterRequestDTO;
+import com.autowash.pro.auth.service.AuthService;
+import com.autowash.pro.common.exception.BusinessException;
+import com.autowash.pro.security.CustomUserDetails;
+import com.autowash.pro.security.JwtTokenProvider;
+import com.autowash.pro.user.entity.User;
+import com.autowash.pro.user.enums.Role;
+import com.autowash.pro.user.repository.UserRepository;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class AuthServiceImpl implements AuthService {
 
     private final AuthenticationManager authenticationManager;
-    private final JwtTokenProvider jwtTokenProvider;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final JwtTokenProvider jwtTokenProvider;
 
-    public AuthServiceImpl(
-            AuthenticationManager authenticationManager,
-            JwtTokenProvider jwtTokenProvider,
-            UserRepository userRepository,
-            PasswordEncoder passwordEncoder) {
-
+    public AuthServiceImpl(AuthenticationManager authenticationManager,
+                           UserRepository userRepository,
+                           PasswordEncoder passwordEncoder,
+                           JwtTokenProvider jwtTokenProvider) {
         this.authenticationManager = authenticationManager;
-        this.jwtTokenProvider = jwtTokenProvider;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.jwtTokenProvider = jwtTokenProvider;
     }
 
     @Override
+    @Transactional(readOnly = true)
     public LoginResponseDTO login(LoginRequestDTO request) {
-
-        // Xác thực username + password qua Spring Security
-        authenticationManager.authenticate(
+        // Xác thực email + password qua Spring Security
+        Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
-                        request.getUsername(),
+                        request.getEmail().trim().toLowerCase(),
                         request.getPassword()
                 )
         );
 
-        // Tìm user trong database
-        User user = userRepository
-                .findByUsername(request.getUsername())
-                .orElseThrow(() ->
-                        new BusinessException("Không tìm thấy người dùng", 404));
+        // Lưu vào SecurityContext (tùy chọn với stateless JWT)
+        SecurityContextHolder.getContext().setAuthentication(authentication);
 
-        // Tạo JWT token
-        String token = jwtTokenProvider.generateToken(
-                user.getUsername(),
-                user.getRole().name()
-        );
+        // Lấy thông tin user
+        CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
+        User user = userRepository.findByEmail(userDetails.getUsername())
+                .orElseThrow(() -> new BusinessException("Không tìm thấy người dùng",
+                        HttpStatus.NOT_FOUND));
 
-        return LoginResponseDTO.builder()
-                .token(token)
-                .username(user.getUsername())
-                .role(user.getRole().name())
-                .build();
+        // Tạo token
+        String token = jwtTokenProvider.generateToken(authentication);
+
+        return buildLoginResponse(token, user);
     }
 
     @Override
-    public void register(RegisterRequestDTO request) {
+    @Transactional
+    public LoginResponseDTO register(RegisterRequestDTO request) {
+        String normalizedEmail = request.getEmail().trim().toLowerCase();
 
-        // Kiểm tra username đã tồn tại chưa
-        if (userRepository.existsByUsername(request.getUsername())) {
-            throw new BusinessException("Tên tài khoản đã tồn tại", 1001);
+        // Kiểm tra email đã tồn tại
+        if (userRepository.existsByEmail(normalizedEmail)) {
+            throw new BusinessException("Email '" + normalizedEmail + "' đã được sử dụng");
         }
 
-        // Kiểm tra email đã tồn tại chưa
-        if (userRepository.existsByEmail(request.getEmail())) {
-            throw new BusinessException("Email đã được sử dụng", 1002);
+        // Kiểm tra số điện thoại đã tồn tại
+        if (userRepository.existsByPhone(request.getPhone())) {
+            throw new BusinessException("Số điện thoại '" + request.getPhone()
+                    + "' đã được sử dụng");
         }
 
-        // Tạo user mới
-        User user = User.builder()
-                .username(request.getUsername())
-                .password(passwordEncoder.encode(request.getPassword()))
-                .email(request.getEmail())
-                .role(Role.USER)
-                .build();
+        // Tạo user mới (mặc định role CUSTOMER)
+        User newUser = new User(
+                normalizedEmail,
+                passwordEncoder.encode(request.getPassword()),
+                request.getFullName().trim(),
+                request.getPhone().trim(),
+                Role.CUSTOMER
+        );
 
-        userRepository.save(user);
+        User savedUser = userRepository.save(newUser);
+
+        // Auto-login: tạo token ngay sau khi đăng ký
+        String token = jwtTokenProvider.generateToken(savedUser.getEmail(), savedUser.getId());
+
+        return buildLoginResponse(token, savedUser);
+    }
+
+    @Override
+    public void logout(String token) {
+        /*
+         * JWT là stateless — client tự xóa token.
+         * Nếu cần server-side invalidation (bảo mật cao hơn),
+         * thêm token vào Redis blacklist tại đây.
+         *
+         * Ví dụ mở rộng:
+         *   long expiry = jwtTokenProvider.getExpirationFromToken(token);
+         *   redisTemplate.opsForValue().set("blacklist:" + token, "1",
+         *       expiry, TimeUnit.MILLISECONDS);
+         */
+        SecurityContextHolder.clearContext();
+    }
+
+    // ---- Helper ----
+
+    private LoginResponseDTO buildLoginResponse(String token, User user) {
+        return new LoginResponseDTO(
+                token,
+                user.getId(),
+                user.getEmail(),
+                user.getFullName(),
+                user.getRole().name()
+        );
     }
 }

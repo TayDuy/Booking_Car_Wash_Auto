@@ -1,103 +1,100 @@
-package com.autowash.backend.security;
+package com.autowash.pro.security;
 
+import io.jsonwebtoken.*;
+import io.jsonwebtoken.security.Keys;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 
-import javax.crypto.Mac;
-import javax.crypto.spec.SecretKeySpec;
+import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
-import java.util.Base64;
-import java.util.Map;
-import java.util.HashMap;
-import java.util.StringJoiner;
-import java.util.concurrent.TimeUnit;
+import java.util.Date;
 
 @Component
 public class JwtTokenProvider {
 
-    // Secret key dùng để ký token (trong production nên đưa vào application.yaml)
-    private static final String SECRET_KEY = "mySecretKeymySecretKeymySecretKey123456";
-    private static final long EXPIRATION_MS = TimeUnit.DAYS.toMillis(1); // Token hết hạn sau 1 ngày
+    private static final Logger logger = LoggerFactory.getLogger(JwtTokenProvider.class);
 
-    // Tạo token từ username và role
-    public String generateToken(String username, String role) {
-        long now = System.currentTimeMillis();
-        long exp = now + EXPIRATION_MS;
+    @Value("${app.jwt.secret}")
+    private String jwtSecret;
 
-        Map<String, String> payload = new HashMap<>();
-        payload.put("sub", username);
-        payload.put("role", role);
-        payload.put("iat", String.valueOf(now));
-        payload.put("exp", String.valueOf(exp));
+    @Value("${app.jwt.expiration-ms}")
+    private long jwtExpirationMs;
 
-        String body = encodePayload(payload);
-        String sig = sign(body);
-
-        return body + "." + sig;
+    private SecretKey getSigningKey() {
+        byte[] keyBytes = jwtSecret.getBytes(StandardCharsets.UTF_8);
+        return Keys.hmacShaKeyFor(keyBytes);
     }
 
-    // Lấy username từ token
-    public String getUsername(String token) {
-        if (token == null) return null;
-        String[] parts = token.split("\\.");
-        if (parts.length != 2) return null;
-        Map<String, String> payload = decodePayload(parts[0]);
-        return payload.get("sub");
+    /**
+     * Tạo JWT token từ Authentication object (sau khi login thành công).
+     */
+    public String generateToken(Authentication authentication) {
+        CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
+        return buildToken(userDetails.getUsername(), userDetails.getId());
     }
 
-    // Kiểm tra token có hợp lệ không
+    /**
+     * Tạo JWT token trực tiếp từ email + userId (dùng khi register xong tự động login).
+     */
+    public String generateToken(String email, Long userId) {
+        return buildToken(email, userId);
+    }
+
+    private String buildToken(String email, Long userId) {
+        Date now = new Date();
+        Date expiryDate = new Date(now.getTime() + jwtExpirationMs);
+
+        return Jwts.builder()
+                .subject(email)
+                .claim("userId", userId)
+                .issuedAt(now)
+                .expiration(expiryDate)
+                .signWith(getSigningKey())
+                .compact();
+    }
+
+    /**
+     * Lấy email từ JWT token.
+     */
+    public String getEmailFromToken(String token) {
+        return parseClaims(token).getSubject();
+    }
+
+    /**
+     * Lấy userId từ JWT token.
+     */
+    public Long getUserIdFromToken(String token) {
+        Claims claims = parseClaims(token);
+        return claims.get("userId", Long.class);
+    }
+
+    /**
+     * Validate JWT token — trả về true nếu hợp lệ.
+     */
     public boolean validateToken(String token) {
         try {
-            if (token == null) return false;
-            String[] parts = token.split("\\.");
-            if (parts.length != 2) return false;
-            String body = parts[0];
-            String sig = parts[1];
-            if (!sign(body).equals(sig)) return false;
-            Map<String, String> payload = decodePayload(body);
-            String expStr = payload.get("exp");
-            if (expStr == null) return false;
-            long exp = Long.parseLong(expStr);
-            return System.currentTimeMillis() < exp;
-        } catch (Exception ex) {
-            return false;
+            parseClaims(token);
+            return true;
+        } catch (MalformedJwtException e) {
+            logger.error("JWT không hợp lệ: {}", e.getMessage());
+        } catch (ExpiredJwtException e) {
+            logger.error("JWT đã hết hạn: {}", e.getMessage());
+        } catch (UnsupportedJwtException e) {
+            logger.error("JWT không được hỗ trợ: {}", e.getMessage());
+        } catch (IllegalArgumentException e) {
+            logger.error("JWT rỗng: {}", e.getMessage());
         }
+        return false;
     }
 
-    private String encodePayload(Map<String, String> payload) {
-        StringJoiner sj = new StringJoiner(";");
-        payload.forEach((k, v) -> sj.add(k + "=" + v));
-        return Base64.getUrlEncoder().withoutPadding()
-                .encodeToString(sj.toString().getBytes(StandardCharsets.UTF_8));
-    }
-
-    private Map<String, String> decodePayload(String encoded) {
-        try {
-            String decoded = new String(
-                    Base64.getUrlDecoder().decode(encoded), StandardCharsets.UTF_8);
-            Map<String, String> map = new HashMap<>();
-            String[] pairs = decoded.split(";");
-            for (String p : pairs) {
-                int idx = p.indexOf('=');
-                if (idx > 0) {
-                    map.put(p.substring(0, idx), p.substring(idx + 1));
-                }
-            }
-            return map;
-        } catch (Exception ex) {
-            return new HashMap<>();
-        }
-    }
-
-    private String sign(String data) {
-        try {
-            Mac mac = Mac.getInstance("HmacSHA256");
-            SecretKeySpec keySpec = new SecretKeySpec(
-                    SECRET_KEY.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
-            mac.init(keySpec);
-            byte[] sig = mac.doFinal(data.getBytes(StandardCharsets.UTF_8));
-            return Base64.getUrlEncoder().withoutPadding().encodeToString(sig);
-        } catch (Exception ex) {
-            throw new RuntimeException("Failed to sign token", ex);
-        }
+    private Claims parseClaims(String token) {
+        return Jwts.parser()
+                .verifyWith(getSigningKey())
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
     }
 }

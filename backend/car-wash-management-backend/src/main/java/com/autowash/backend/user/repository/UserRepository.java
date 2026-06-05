@@ -1,16 +1,17 @@
-package com.autowash.backend.user.repository;
+package com.autowash.pro.user.repository;
 
-import com.autowash.backend.user.entity.User;
+import com.autowash.pro.user.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
 
-import java.util.List;
 import java.util.Optional;
 
+@Repository
 public interface UserRepository extends JpaRepository<User, Long> {
-    //kiem tra tai khoan nguoi dung khi dang nhap
-    Optional<User> findByUsername(String username);
 
-    boolean existsByUsername(String username);
+    Optional<User> findByEmail(String email);
+
     boolean existsByEmail(String email);
 
+    boolean existsByPhone(String phone);
 }
