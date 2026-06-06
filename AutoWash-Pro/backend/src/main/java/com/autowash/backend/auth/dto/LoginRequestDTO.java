@@ -6,7 +6,6 @@ import jakarta.validation.constraints.NotBlank;
 public class LoginRequestDTO {
 
     @NotBlank(message = "Username không được để trống")
-    @Email(message = "Username không đúng định dạng")
     private String username;
 
     @NotBlank(message = "Mật khẩu không được để trống")
