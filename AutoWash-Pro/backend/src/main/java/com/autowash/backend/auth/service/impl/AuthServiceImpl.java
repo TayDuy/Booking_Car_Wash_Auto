@@ -7,8 +7,9 @@ import com.autowash.backend.auth.service.AuthService;
 import com.autowash.backend.common.exception.BusinessException;
 import com.autowash.backend.security.CustomUserDetails;
 import com.autowash.backend.security.JwtTokenProvider;
+import com.autowash.backend.user.entity.Customer;
+import com.autowash.backend.user.repository.CustomerRepository;
 import com.autowash.backend.user.entity.User;
-import com.autowash.backend.user.enums.Role;
 import com.autowash.backend.user.repository.UserRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -26,15 +27,18 @@ public class AuthServiceImpl implements AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
+    private final CustomerRepository customerRepository;
 
     public AuthServiceImpl(AuthenticationManager authenticationManager,
                            UserRepository userRepository,
                            PasswordEncoder passwordEncoder,
-                           JwtTokenProvider jwtTokenProvider) {
+                           JwtTokenProvider jwtTokenProvider,
+                           CustomerRepository customerRepository) {
         this.authenticationManager = authenticationManager;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtTokenProvider = jwtTokenProvider;
+        this.customerRepository = customerRepository;
     }
 
     @Override
@@ -43,7 +47,7 @@ public class AuthServiceImpl implements AuthService {
         // Xác thực email + password qua Spring Security
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
-                        request.getEmail().trim().toLowerCase(),
+                        request.getUsername().trim().toLowerCase(),
                         request.getPassword()
                 )
         );
@@ -53,7 +57,7 @@ public class AuthServiceImpl implements AuthService {
 
         // Lấy thông tin user
         CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
-        User user = userRepository.findByEmail(userDetails.getUsername())
+        User user = userRepository.findById(userDetails.getId())
                 .orElseThrow(() -> new BusinessException("Không tìm thấy người dùng",
                         HttpStatus.NOT_FOUND));
 
@@ -73,6 +77,11 @@ public class AuthServiceImpl implements AuthService {
             throw new BusinessException("Email '" + normalizedEmail + "' đã được sử dụng");
         }
 
+        // Kiểm tra username đã tồn tại
+        if (userRepository.existsByUsername(request.getUsername())) {
+            throw new BusinessException("Tài khoản '" + request.getUsername() + "' đã được sử dụng");
+        }
+
         // Kiểm tra số điện thoại đã tồn tại
         if (userRepository.existsByPhone(request.getPhone())) {
             throw new BusinessException("Số điện thoại '" + request.getPhone()
@@ -80,15 +89,23 @@ public class AuthServiceImpl implements AuthService {
         }
 
         // Tạo user mới (mặc định role CUSTOMER)
-        User newUser = new User(
-                normalizedEmail,
-                passwordEncoder.encode(request.getPassword()),
-                request.getFullName().trim(),
-                request.getPhone().trim(),
-                Role.CUSTOMER
-        );
+        User newUser = User.builder()
+                .username(request.getUsername()) // <-- Lấy username từ form Đăng ký
+                .email(normalizedEmail)
+                .password(passwordEncoder.encode(request.getPassword()))
+                .phone(request.getPhone() != null ? request.getPhone().trim() : "")
+                .role("customer")
+                .status("active")
+                .build();
 
         User savedUser = userRepository.save(newUser);
+
+        // Tạo thông tin khách hàng (Customer)
+        Customer newCustomer = Customer.builder()
+                .userId(savedUser.getId())
+                .fullName(request.getFullName() != null ? request.getFullName().trim() : "")
+                .build();
+        customerRepository.save(newCustomer);
 
         // Auto-login: tạo token ngay sau khi đăng ký
         String token = jwtTokenProvider.generateToken(savedUser.getEmail(), savedUser.getId());
@@ -114,12 +131,21 @@ public class AuthServiceImpl implements AuthService {
     // ---- Helper ----
 
     private LoginResponseDTO buildLoginResponse(String token, User user) {
-        return new LoginResponseDTO(
-                token,
-                user.getId(),
-                user.getEmail(),
-                user.getFullName(),
-                user.getRole().name()
-        );
+        String fullName = "Unknown";
+        if ("customer".equalsIgnoreCase(user.getRole())) {
+            fullName = customerRepository.findByUserId(user.getId())
+                    .map(Customer::getFullName)
+                    .orElse("Khách hàng");
+        }
+
+        return LoginResponseDTO.builder()
+                .accessToken(token)
+                .tokenType("Bearer")
+                .userId(user.getId())
+                .username(user.getUsername()) // <-- Thêm vào đúng chỗ này
+                .email(user.getEmail())
+                .fullName(fullName)
+                .role(user.getRole().toUpperCase())
+                .build();
     }
 }

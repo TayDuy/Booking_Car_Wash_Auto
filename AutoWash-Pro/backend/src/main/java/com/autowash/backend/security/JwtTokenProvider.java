@@ -39,11 +39,11 @@ public class JwtTokenProvider {
     /**
      * Tạo JWT token trực tiếp từ email + userId (dùng khi register xong tự động login).
      */
-    public String generateToken(String email, Long userId) {
+    public String generateToken(String email, Integer userId) {
         return buildToken(email, userId);
     }
 
-    private String buildToken(String email, Long userId) {
+    private String buildToken(String email, Integer userId) {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + jwtExpirationMs);
 
@@ -66,9 +66,9 @@ public class JwtTokenProvider {
     /**
      * Lấy userId từ JWT token.
      */
-    public Long getUserIdFromToken(String token) {
+    public Integer getUserIdFromToken(String token) {
         Claims claims = parseClaims(token);
-        return claims.get("userId", Long.class);
+        return claims.get("userId", Integer.class);
     }
 
     /**

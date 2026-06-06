@@ -21,10 +21,10 @@ import org.springframework.transaction.annotation.Transactional;
 
             @Override
             @Transactional(readOnly = true)
-            public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-                User user = userRepository.findByEmail(email)
+            public UserDetails loadUserByUsername(String identifier) throws UsernameNotFoundException {
+                User user = userRepository.findByUsernameOrEmail(identifier, identifier)
                         .orElseThrow(() -> new UsernameNotFoundException(
-                                "Không tìm thấy người dùng với email: " + email));
+                                "Không tìm thấy người dùng với tài khoản hoặc email: " + identifier));
                 return new CustomUserDetails(user);
             }
         }
