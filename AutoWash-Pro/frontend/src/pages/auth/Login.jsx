@@ -10,8 +10,8 @@ function Login({ onLoginSuccess }){
         e.preventDefault();
         try{
             const data = await login(username, password);
-            if(data.code === 1000){
-                saveAuth(data.result);
+            if(data.status === 200 || data.data){
+                saveAuth(data.data);
                 onLoginSuccess();
             }else{
                 setErrorMessage(data.message);
