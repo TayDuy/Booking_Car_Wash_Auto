@@ -7,6 +7,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 
         @Service
@@ -20,16 +21,10 @@ import org.springframework.stereotype.Service;
 
             @Override
             @Transactional(readOnly = true)
-            public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-                User user = userRepository.findByEmail(email)
+            public UserDetails loadUserByUsername(String identifier) throws UsernameNotFoundException {
+                User user = userRepository.findByUsernameOrEmail(identifier, identifier)
                         .orElseThrow(() -> new UsernameNotFoundException(
-                                "Không tìm thấy người dùng với email: " + email));
+                                "Không tìm thấy người dùng với tài khoản hoặc email: " + identifier));
                 return new CustomUserDetails(user);
             }
         }
-                        new UsernameNotFoundException(
-                                "Không tìm thấy người dùng: " + username));
-
-        return new CustomUserDetails(user);
-    }
-}

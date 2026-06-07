@@ -10,29 +10,29 @@ import java.util.Collections;
 
 public class CustomUserDetails implements UserDetails {
 
-    private final Long id;
-    private final String email;
+    private final Integer id;
+    private final String username;
     private final String password;
     private final boolean enabled;
     private final Collection<? extends GrantedAuthority> authorities;
 
     public CustomUserDetails(User user) {
         this.id = user.getId();
-        this.email = user.getEmail();
+        this.username = user.getUsername();
         this.password = user.getPassword();
-        this.enabled = user.isEnabled();
+        this.enabled = "active".equalsIgnoreCase(user.getStatus());
         this.authorities = Collections.singletonList(
-                new SimpleGrantedAuthority("ROLE_" + user.getRole().name())
+                new SimpleGrantedAuthority("ROLE_" + user.getRole().toUpperCase())
         );
     }
 
-    public Long getId() {
+    public Integer getId() {
         return id;
     }
 
     @Override
     public String getUsername() {
-        return email;
+        return username;
     }
 
     @Override

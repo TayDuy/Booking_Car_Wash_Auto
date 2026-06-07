@@ -5,9 +5,8 @@ import jakarta.validation.constraints.NotBlank;
 
 public class LoginRequestDTO {
 
-    @NotBlank(message = "Email không được để trống")
-    @Email(message = "Email không đúng định dạng")
-    private String email;
+    @NotBlank(message = "Username không được để trống")
+    private String username;
 
     @NotBlank(message = "Mật khẩu không được để trống")
     private String password;
@@ -16,13 +15,13 @@ public class LoginRequestDTO {
     public LoginRequestDTO() {}
 
     public LoginRequestDTO(String email, String password) {
-        this.email = email;
+        this.username = email;
         this.password = password;
     }
 
     // Getters & Setters
-    public String getEmail() { return email; }
-    public void setEmail(String email) { this.email = email; }
+    public String getUsername() { return username; }
+    public void setUsername(String username) { this.username = username; }
 
     public String getPassword() { return password; }
     public void setPassword(String password) { this.password = password; }

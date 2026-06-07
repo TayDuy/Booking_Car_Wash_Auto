@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API_URL = "http://localhost:8080/api/auth";
+const API_URL = "http://localhost:8080/api/v1/auth";
 
 export async function login(username, password){
     const respone = await axios.post(`${API_URL}/login`,{
@@ -20,7 +20,7 @@ export async function register(username, password, email){
 }
 
 export function saveAuth(result){
-    localStorage.setItem("token", result.token);
+    localStorage.setItem("token", result.accessToken);
     localStorage.setItem("username", result.username);
     localStorage.setItem("role", result.role);
 }
