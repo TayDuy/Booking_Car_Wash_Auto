@@ -8,11 +8,11 @@
         <version>4.0.6</version>
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
-    <groupId>com.group4</groupId>
-    <artifactId>demo-loginn</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
-    <name>demo-loginn</name>
-    <description>demo-loginn</description>
+    <groupId>com.autowash</groupId>
+    <artifactId>autowash-backend</artifactId>
+    <version>1.0.0</version>
+    <name>autowash-backend</name>
+    <description>AutoWash Pro - Car Wash Booking System Backend</description>
     <url/>
     <licenses>
         <license/>
@@ -27,7 +27,7 @@
         <url/>
     </scm>
     <properties>
-        <java.version>26</java.version>
+        <java.version>25</java.version>
     </properties>
     <dependencies>
 
@@ -109,6 +109,7 @@
     </dependencies>
 
     <build>
+        <finalName>autowash-backend</finalName>
         <plugins>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
