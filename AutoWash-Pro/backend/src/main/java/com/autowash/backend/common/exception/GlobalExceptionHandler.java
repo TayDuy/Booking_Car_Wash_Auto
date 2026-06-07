@@ -52,16 +52,14 @@ public class GlobalExceptionHandler {
         for (FieldError fieldError : ex.getBindingResult().getFieldErrors()) {
             errors.put(fieldError.getField(), fieldError.getDefaultMessage());
         }
-        ApiResponse<Map<String, String>> response = new ApiResponse<>(
-                HttpStatus.BAD_REQUEST.value(), "Dữ liệu đầu vào không hợp lệ", errors) {};
-        // dùng anonymous class để bypass private constructor – hoặc thêm factory method
         return ResponseEntity.badRequest().body(
-                ApiResponse.error(400, "Dữ liệu đầu vào không hợp lệ")
+                ApiResponse.error(400, "Dữ liệu đầu vào không hợp lệ", errors)
         );
     }
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleGenericException(Exception ex) {
+        ex.printStackTrace(); // Thêm dòng này để in lỗi ra màn hình Console
         return ResponseEntity
                 .status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(ApiResponse.error(500, "Lỗi hệ thống. Vui lòng thử lại sau."));
