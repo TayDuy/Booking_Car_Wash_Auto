@@ -1,234 +1,229 @@
-﻿-- ============================================================
--- SWP Car Wash - Full Database Script (SQL Server / T-SQL)
--- Bao gồm: Tạo DB + Schema + Seed Data (100 Customers)
 -- ============================================================
-
-USE master;
-GO
-IF EXISTS (SELECT name FROM sys.databases WHERE name = N'SWP_CarWash')
-    DROP DATABASE SWP_CarWash;
-GO
-CREATE DATABASE SWP_CarWash
-    COLLATE Vietnamese_CI_AS;
-GO
-USE SWP_CarWash;
-GO
-
+-- BƯỚC 1: XÓA BẢNG CŨ (nếu có)
 -- ============================================================
--- PHẦN 1: TẠO BẢNG (SCHEMA)
--- ============================================================
-
-CREATE TABLE LoyaltyTier (
-    TierID             INT           NOT NULL PRIMARY KEY,
-    TierName           NVARCHAR(20)  NOT NULL CHECK (TierName IN (N'Member',N'Silver',N'Gold',N'Platinum')),
-    MinPoints          INT           NOT NULL DEFAULT 0,
-    MinVisits          INT           NOT NULL DEFAULT 0,
-    MinSpending        DECIMAL(12,2) NOT NULL DEFAULT 0,
-    BookingWindowDays  INT           NOT NULL DEFAULT 3,
-    PriorityLevel      INT           NOT NULL DEFAULT 1,
-    BenefitDescription NVARCHAR(255),
-    IsActive           BIT           NOT NULL DEFAULT 1
-);
-GO
-
-CREATE TABLE Account (
-    UserID       INT           NOT NULL IDENTITY(1,1) PRIMARY KEY,
-    Username     NVARCHAR(50)  NOT NULL UNIQUE,
-    PasswordHash NVARCHAR(255) NOT NULL,
-    Email        NVARCHAR(100),
-    Phone        NVARCHAR(15)  UNIQUE,
-    Status       NVARCHAR(10)  NOT NULL DEFAULT 'active' CHECK (Status IN ('active','locked','inactive')),
-    CreatedAt    DATETIME      NOT NULL DEFAULT GETDATE(),
-    Role         NVARCHAR(10)  NOT NULL DEFAULT 'customer' CHECK (Role IN ('customer','employee','admin'))
-);
-GO
-CREATE TABLE Customer (
-    CustomerID    INT            NOT NULL IDENTITY(1,1) PRIMARY KEY,
-    UserID        INT            NOT NULL UNIQUE,
-    BrandID       INT,
-    FullName      NVARCHAR(100)  NOT NULL,
-    DateOfBirth   DATE,
-    Gender        NVARCHAR(10)   CHECK (Gender IN ('male','female','other')),
-    TierID        INT            NOT NULL DEFAULT 1,
-    TotalPoints   INT            NOT NULL DEFAULT 0,
-    TotalVisits   INT            NOT NULL DEFAULT 0,
-    TotalSpending DECIMAL(12,2)  NOT NULL DEFAULT 0,
-    JoinedAt      DATETIME       NOT NULL DEFAULT GETDATE(),
-    CONSTRAINT FK_Customer_User FOREIGN KEY (UserID)  REFERENCES Account(UserID),
-    CONSTRAINT FK_Customer_Tier FOREIGN KEY (TierID)  REFERENCES LoyaltyTier(TierID)
-);
-GO
-
-CREATE TABLE Branch (
-    BranchID   INT           NOT NULL IDENTITY(1,1) PRIMARY KEY,
-    BranchName NVARCHAR(100) NOT NULL,
-    Address    NVARCHAR(255),
-    Phone      NVARCHAR(15),
-    OpenTime   TIME,
-    CloseTime  TIME,
-    Status     NVARCHAR(10)  NOT NULL DEFAULT 'active' CHECK (Status IN ('active','inactive')),
-    CreatedAt  DATETIME      NOT NULL DEFAULT GETDATE()
-);
-GO
-
-CREATE TABLE WashBay (
-    BayID    INT          NOT NULL IDENTITY(1,1) PRIMARY KEY,
-    BranchID INT          NOT NULL,
-    BayName  NVARCHAR(50),
-    Status   NVARCHAR(15) NOT NULL DEFAULT 'available' CHECK (Status IN ('available','occupied','maintenance')),
-    Capacity INT          NOT NULL DEFAULT 1,
-    CONSTRAINT FK_WashBay_Branch FOREIGN KEY (BranchID) REFERENCES Branch(BranchID)
-);
-GO
-
-CREATE TABLE Employee (
-    EmployeeID INT           NOT NULL IDENTITY(1,1) PRIMARY KEY,
-    UserID     INT           NOT NULL UNIQUE,
-    BranchID   INT           NOT NULL,
-    FullName   NVARCHAR(100) NOT NULL,
-    Position   NVARCHAR(10)  NOT NULL DEFAULT 'staff' CHECK (Position IN ('staff','manager','admin')),
-    Shift      NVARCHAR(50),
-    HireDate   DATE,
-    Salary     DECIMAL(12,2),
-    Status     NVARCHAR(10)  NOT NULL DEFAULT 'active' CHECK (Status IN ('active','inactive')),
-    CONSTRAINT FK_Employee_User   FOREIGN KEY (UserID)   REFERENCES Account(UserID),
-    CONSTRAINT FK_Employee_Branch FOREIGN KEY (BranchID) REFERENCES Branch(BranchID)
-);
-GO
-
-CREATE TABLE Vehicle (
-    VehicleID    INT          NOT NULL IDENTITY(1,1) PRIMARY KEY,
-    CustomerID   INT          NOT NULL,
-    LicensePlate NVARCHAR(20) NOT NULL UNIQUE,
-    VehicleType  NVARCHAR(10) NOT NULL CHECK (VehicleType IN ('car')),
-    Brand        NVARCHAR(50),
-    Model        NVARCHAR(50),
-    Color        NVARCHAR(30),
-    IsActive     BIT          NOT NULL DEFAULT 1,
-    CONSTRAINT FK_Vehicle_Customer FOREIGN KEY (CustomerID) REFERENCES Customer(CustomerID)
-);
-GO
-
-CREATE TABLE ServicePackage (
-    ServiceID       INT           NOT NULL IDENTITY(1,1) PRIMARY KEY,
-    ServiceName     NVARCHAR(100) NOT NULL,
-    Description     NVARCHAR(255),
-    BasePrice       DECIMAL(12,2) NOT NULL,
-    DurationMinutes INT           NOT NULL DEFAULT 30,
-    IsActive        BIT           NOT NULL DEFAULT 1
-);
-GO
-
-CREATE TABLE TimeSlot (
-    SlotID          INT          NOT NULL IDENTITY(1,1) PRIMARY KEY,
-    BranchID        INT          NOT NULL,
-    BayID           INT          NOT NULL,
-    SlotDate        DATE         NOT NULL,
-    StartTime       TIME         NOT NULL,
-    EndTime         TIME         NOT NULL,
-    MaxCapacity     INT          NOT NULL DEFAULT 1,
-    CurrentBookings INT          NOT NULL DEFAULT 0,
-    Status          NVARCHAR(10) NOT NULL DEFAULT 'open' CHECK (Status IN ('open','full','closed')),
-    CONSTRAINT FK_TimeSlot_Branch FOREIGN KEY (BranchID) REFERENCES Branch(BranchID),
-    CONSTRAINT FK_TimeSlot_Bay    FOREIGN KEY (BayID)    REFERENCES WashBay(BayID)
-);
-GO
-
-CREATE TABLE Promotion (
-    PromotionID   INT           NOT NULL IDENTITY(1,1) PRIMARY KEY,
-    PromotionName NVARCHAR(100) NOT NULL,
-    TargetTierID  INT,
-    DiscountType  NVARCHAR(15)  NOT NULL CHECK (DiscountType IN ('percent','fixed','free_service')),
-    DiscountValue DECIMAL(12,2) NOT NULL,
-    StartDate     DATE          NOT NULL,
-    EndDate       DATE          NOT NULL,
-    UsageLimit    INT,
-    Status        NVARCHAR(10)  NOT NULL DEFAULT 'active' CHECK (Status IN ('active','inactive','expired')),
-    CreatedBy     INT           NOT NULL,
-    CONSTRAINT FK_Promo_Tier    FOREIGN KEY (TargetTierID) REFERENCES LoyaltyTier(TierID),
-    CONSTRAINT FK_Promo_Creator FOREIGN KEY (CreatedBy)    REFERENCES Account(UserID)
-);
-GO
-
-CREATE TABLE Reward (
-    RewardID       INT           NOT NULL IDENTITY(1,1) PRIMARY KEY,
-    RewardName     NVARCHAR(100) NOT NULL,
-    RequiredPoints INT           NOT NULL,
-    RewardType     NVARCHAR(15)  NOT NULL CHECK (RewardType IN ('discount','free_wash','addon')),
-    RewardValue    DECIMAL(12,2) NOT NULL,
-    VehicleType    NVARCHAR(10)  NOT NULL DEFAULT 'car' CHECK (VehicleType IN ('car')),
-    Status         NVARCHAR(10)  NOT NULL DEFAULT 'active' CHECK (Status IN ('active','inactive')),
-    CreatedAt      DATETIME      NOT NULL DEFAULT GETDATE()
-);
-GO
-
-CREATE TABLE Booking (
-    BookingID     INT           NOT NULL IDENTITY(1,1) PRIMARY KEY,
-    CustomerID    INT           NOT NULL,
-    VehicleID     INT           NOT NULL,
-    SlotID        INT           NOT NULL,
-    BranchID      INT           NOT NULL,
-    EmployeeID    INT,
-    BookingCode   NVARCHAR(30)  NOT NULL UNIQUE,
-    BookingDate   DATETIME      NOT NULL DEFAULT GETDATE(),
-    Status        NVARCHAR(15)  NOT NULL DEFAULT 'pending' CHECK (Status IN ('pending','confirmed','in_progress','completed','cancelled','no_show')),
-    PriorityScore INT           NOT NULL DEFAULT 1,
-    StartTime     DATETIME,
-    EndTime       DATETIME,
-    Note          NVARCHAR(255),
-    CONSTRAINT FK_Booking_Customer FOREIGN KEY (CustomerID) REFERENCES Customer(CustomerID),
-    CONSTRAINT FK_Booking_Vehicle  FOREIGN KEY (VehicleID)  REFERENCES Vehicle(VehicleID),
-    CONSTRAINT FK_Booking_Slot     FOREIGN KEY (SlotID)     REFERENCES TimeSlot(SlotID),
-    CONSTRAINT FK_Booking_Branch   FOREIGN KEY (BranchID)   REFERENCES Branch(BranchID),
-    CONSTRAINT FK_Booking_Employee FOREIGN KEY (EmployeeID) REFERENCES Employee(EmployeeID)
-);
-GO
-
-CREATE TABLE BookingDetail (
-    BookingDetailID INT           NOT NULL IDENTITY(1,1) PRIMARY KEY,
-    BookingID       INT           NOT NULL,
-    ServiceID       INT           NOT NULL,
-    Quantity        INT           NOT NULL DEFAULT 1,
-    UnitPrice       DECIMAL(12,2) NOT NULL,
-    SubTotal        DECIMAL(12,2) NOT NULL,
-    CONSTRAINT FK_BookingDetail_Booking  FOREIGN KEY (BookingID)  REFERENCES Booking(BookingID),
-    CONSTRAINT FK_BookingDetail_Service  FOREIGN KEY (ServiceID)  REFERENCES ServicePackage(ServiceID)
-);
-GO
-
-CREATE TABLE Payment (
-    PaymentID      INT           NOT NULL IDENTITY(1,1) PRIMARY KEY,
-    BookingID      INT           NOT NULL UNIQUE,
-    PromotionID    INT,
-    RewardID       INT,
-    OriginalAmount DECIMAL(12,2) NOT NULL,
-    DiscountAmount DECIMAL(12,2) NOT NULL DEFAULT 0,
-    FinalAmount    DECIMAL(12,2) NOT NULL,
-    PaymentMethod  NVARCHAR(15)  NOT NULL DEFAULT 'cash' CHECK (PaymentMethod IN ('cash','bank_transfer','pos')),
-    PaymentStatus  NVARCHAR(10)  NOT NULL DEFAULT 'unpaid' CHECK (PaymentStatus IN ('unpaid','paid','failed','cancelled')),
-    PaidAt         DATETIME,
-    CONSTRAINT FK_Payment_Booking   FOREIGN KEY (BookingID)   REFERENCES Booking(BookingID),
-    CONSTRAINT FK_Payment_Promotion FOREIGN KEY (PromotionID) REFERENCES Promotion(PromotionID),
-    CONSTRAINT FK_Payment_Reward    FOREIGN KEY (RewardID)    REFERENCES Reward(RewardID)
-);
-GO
-
-CREATE TABLE LoyaltyTransaction (
-    LoyaltyTransactionID INT           NOT NULL IDENTITY(1,1) PRIMARY KEY,
-    CustomerID           INT           NOT NULL,
-    PaymentID            INT,
-    TransactionType      NVARCHAR(10)  NOT NULL CHECK (TransactionType IN ('earn','redeem','expire','adjust')),
-    Points               INT           NOT NULL,
-    BalanceBefore        INT           NOT NULL DEFAULT 0,
-    BalanceAfter         INT           NOT NULL DEFAULT 0,
-    ExpiredAt            DATETIME,
-    CreatedAt            DATETIME      NOT NULL DEFAULT GETDATE(),
-    Note                 NVARCHAR(255),
-    CONSTRAINT FK_LoyaltyTx_Customer FOREIGN KEY (CustomerID) REFERENCES Customer(CustomerID),
-    CONSTRAINT FK_LoyaltyTx_Payment  FOREIGN KEY (PaymentID)  REFERENCES Payment(PaymentID)
-);
-GO
+DROP TABLE IF EXISTS loyaltytransaction CASCADE;
+DROP TABLE IF EXISTS payment CASCADE;
+DROP TABLE IF EXISTS bookingdetail CASCADE;
+DROP TABLE IF EXISTS booking CASCADE;
+DROP TABLE IF EXISTS timeslot CASCADE;
+DROP TABLE IF EXISTS promotion CASCADE;
+DROP TABLE IF EXISTS reward CASCADE;
+DROP TABLE IF EXISTS servicepackage CASCADE;
+DROP TABLE IF EXISTS vehicle CASCADE;
+DROP TABLE IF EXISTS employee CASCADE;
+DROP TABLE IF EXISTS washbay CASCADE;
+DROP TABLE IF EXISTS branch CASCADE;
+DROP TABLE IF EXISTS customer CASCADE;
+DROP TABLE IF EXISTS account CASCADE;
+DROP TABLE IF EXISTS loyaltytier CASCADE;
 
 -- ============================================================
--- END: Tạo Database & Schema hoàn tất
+-- BƯỚC 2: TẠO BẢNG
 -- ============================================================
+
+CREATE TABLE loyaltytier (
+    tierid             INT           NOT NULL PRIMARY KEY,
+    tiername           VARCHAR(20)   NOT NULL CHECK (tiername IN ('Member','Silver','Gold','Platinum')),
+    minpoints          INT           NOT NULL DEFAULT 0,
+    minvisits          INT           NOT NULL DEFAULT 0,
+    minspending        DECIMAL(12,2) NOT NULL DEFAULT 0,
+    bookingwindowdays  INT           NOT NULL DEFAULT 3,
+    prioritylevel      INT           NOT NULL DEFAULT 1,
+    benefitdescription VARCHAR(255),
+    isactive           BOOLEAN       NOT NULL DEFAULT TRUE
+);
+
+CREATE TABLE account (
+    userid       SERIAL        NOT NULL PRIMARY KEY,
+    username     VARCHAR(50)   NOT NULL UNIQUE,
+    passwordhash VARCHAR(255)  NOT NULL,
+    email        VARCHAR(100),
+    phone        VARCHAR(15)   UNIQUE,
+    status       VARCHAR(10)   NOT NULL DEFAULT 'active' CHECK (status IN ('active','locked','inactive')),
+    createdat    TIMESTAMP     NOT NULL DEFAULT NOW(),
+    role         VARCHAR(10)   NOT NULL DEFAULT 'customer' CHECK (role IN ('customer','employee','admin'))
+);
+
+CREATE TABLE customer (
+    customerid    SERIAL         NOT NULL PRIMARY KEY,
+    userid        INT            NOT NULL UNIQUE,
+    brandid       INT,
+    fullname      VARCHAR(100)   NOT NULL,
+    dateofbirth   DATE,
+    gender        VARCHAR(10)    CHECK (gender IN ('male','female','other')),
+    tierid        INT            NOT NULL DEFAULT 1,
+    totalpoints   INT            NOT NULL DEFAULT 0,
+    totalvisits   INT            NOT NULL DEFAULT 0,
+    totalspending DECIMAL(12,2)  NOT NULL DEFAULT 0,
+    joinedat      TIMESTAMP      NOT NULL DEFAULT NOW(),
+    CONSTRAINT fk_customer_user FOREIGN KEY (userid)  REFERENCES account(userid),
+    CONSTRAINT fk_customer_tier FOREIGN KEY (tierid)  REFERENCES loyaltytier(tierid)
+);
+
+CREATE TABLE branch (
+    branchid   SERIAL        NOT NULL PRIMARY KEY,
+    branchname VARCHAR(100)  NOT NULL,
+    address    VARCHAR(255),
+    phone      VARCHAR(15),
+    opentime   TIME,
+    closetime  TIME,
+    status     VARCHAR(10)   NOT NULL DEFAULT 'active' CHECK (status IN ('active','inactive')),
+    createdat  TIMESTAMP     NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE washbay (
+    bayid    SERIAL       NOT NULL PRIMARY KEY,
+    branchid INT          NOT NULL,
+    bayname  VARCHAR(50),
+    status   VARCHAR(15)  NOT NULL DEFAULT 'available' CHECK (status IN ('available','occupied','maintenance')),
+    capacity INT          NOT NULL DEFAULT 1,
+    CONSTRAINT fk_washbay_branch FOREIGN KEY (branchid) REFERENCES branch(branchid)
+);
+
+CREATE TABLE employee (
+    employeeid SERIAL        NOT NULL PRIMARY KEY,
+    userid     INT           NOT NULL UNIQUE,
+    branchid   INT           NOT NULL,
+    fullname   VARCHAR(100)  NOT NULL,
+    position   VARCHAR(10)   NOT NULL DEFAULT 'staff' CHECK (position IN ('staff','manager','admin')),
+    shift      VARCHAR(50),
+    hiredate   DATE,
+    salary     DECIMAL(12,2),
+    status     VARCHAR(10)   NOT NULL DEFAULT 'active' CHECK (status IN ('active','inactive')),
+    CONSTRAINT fk_employee_user   FOREIGN KEY (userid)   REFERENCES account(userid),
+    CONSTRAINT fk_employee_branch FOREIGN KEY (branchid) REFERENCES branch(branchid)
+);
+
+CREATE TABLE vehicle (
+    vehicleid    SERIAL       NOT NULL PRIMARY KEY,
+    customerid   INT          NOT NULL,
+    licenseplate VARCHAR(20)  NOT NULL UNIQUE,
+    vehicletype  VARCHAR(10)  NOT NULL CHECK (vehicletype IN ('car')),
+    brand        VARCHAR(50),
+    model        VARCHAR(50),
+    color        VARCHAR(30),
+    isactive     BOOLEAN      NOT NULL DEFAULT TRUE,
+    CONSTRAINT fk_vehicle_customer FOREIGN KEY (customerid) REFERENCES customer(customerid)
+);
+
+CREATE TABLE servicepackage (
+    serviceid       SERIAL        NOT NULL PRIMARY KEY,
+    servicename     VARCHAR(100)  NOT NULL,
+    description     VARCHAR(255),
+    baseprice       DECIMAL(12,2) NOT NULL,
+    durationminutes INT           NOT NULL DEFAULT 30,
+    isactive        BOOLEAN       NOT NULL DEFAULT TRUE
+);
+
+CREATE TABLE timeslot (
+    slotid          SERIAL       NOT NULL PRIMARY KEY,
+    branchid        INT          NOT NULL,
+    bayid           INT          NOT NULL,
+    slotdate        DATE         NOT NULL,
+    starttime       TIME         NOT NULL,
+    endtime         TIME         NOT NULL,
+    maxcapacity     INT          NOT NULL DEFAULT 1,
+    currentbookings INT          NOT NULL DEFAULT 0,
+    status          VARCHAR(10)  NOT NULL DEFAULT 'open' CHECK (status IN ('open','full','closed')),
+    CONSTRAINT fk_timeslot_branch FOREIGN KEY (branchid) REFERENCES branch(branchid),
+    CONSTRAINT fk_timeslot_bay    FOREIGN KEY (bayid)    REFERENCES washbay(bayid)
+);
+
+CREATE TABLE promotion (
+    promotionid   SERIAL        NOT NULL PRIMARY KEY,
+    promotionname VARCHAR(100)  NOT NULL,
+    targettierid  INT,
+    discounttype  VARCHAR(15)   NOT NULL CHECK (discounttype IN ('percent','fixed','free_service')),
+    discountvalue DECIMAL(12,2) NOT NULL,
+    startdate     DATE          NOT NULL,
+    enddate       DATE          NOT NULL,
+    usagelimit    INT,
+    status        VARCHAR(10)   NOT NULL DEFAULT 'active' CHECK (status IN ('active','inactive','expired')),
+    createdby     INT           NOT NULL,
+    CONSTRAINT fk_promo_tier    FOREIGN KEY (targettierid) REFERENCES loyaltytier(tierid),
+    CONSTRAINT fk_promo_creator FOREIGN KEY (createdby)    REFERENCES account(userid)
+);
+
+CREATE TABLE reward (
+    rewardid       SERIAL        NOT NULL PRIMARY KEY,
+    rewardname     VARCHAR(100)  NOT NULL,
+    requiredpoints INT           NOT NULL,
+    rewardtype     VARCHAR(15)   NOT NULL CHECK (rewardtype IN ('discount','free_wash','addon')),
+    rewardvalue    DECIMAL(12,2) NOT NULL,
+    vehicletype    VARCHAR(10)   NOT NULL DEFAULT 'car' CHECK (vehicletype IN ('car')),
+    status         VARCHAR(10)   NOT NULL DEFAULT 'active' CHECK (status IN ('active','inactive')),
+    createdat      TIMESTAMP     NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE booking (
+    bookingid     SERIAL        NOT NULL PRIMARY KEY,
+    customerid    INT           NOT NULL,
+    vehicleid     INT           NOT NULL,
+    slotid        INT           NOT NULL,
+    branchid      INT           NOT NULL,
+    employeeid    INT,
+    bookingcode   VARCHAR(30)   NOT NULL UNIQUE,
+    bookingdate   TIMESTAMP     NOT NULL DEFAULT NOW(),
+    status        VARCHAR(15)   NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','confirmed','in_progress','completed','cancelled','no_show')),
+    priorityscore INT           NOT NULL DEFAULT 1,
+    starttime     TIMESTAMP,
+    endtime       TIMESTAMP,
+    note          VARCHAR(255),
+    CONSTRAINT fk_booking_customer FOREIGN KEY (customerid) REFERENCES customer(customerid),
+    CONSTRAINT fk_booking_vehicle  FOREIGN KEY (vehicleid)  REFERENCES vehicle(vehicleid),
+    CONSTRAINT fk_booking_slot     FOREIGN KEY (slotid)     REFERENCES timeslot(slotid),
+    CONSTRAINT fk_booking_branch   FOREIGN KEY (branchid)   REFERENCES branch(branchid),
+    CONSTRAINT fk_booking_employee FOREIGN KEY (employeeid) REFERENCES employee(employeeid)
+);
+
+CREATE TABLE bookingdetail (
+    bookingdetailid SERIAL        NOT NULL PRIMARY KEY,
+    bookingid       INT           NOT NULL,
+    serviceid       INT           NOT NULL,
+    quantity        INT           NOT NULL DEFAULT 1,
+    unitprice       DECIMAL(12,2) NOT NULL,
+    subtotal        DECIMAL(12,2) NOT NULL,
+    CONSTRAINT fk_bookingdetail_booking  FOREIGN KEY (bookingid)  REFERENCES booking(bookingid),
+    CONSTRAINT fk_bookingdetail_service  FOREIGN KEY (serviceid)  REFERENCES servicepackage(serviceid)
+);
+
+CREATE TABLE payment (
+    paymentid      SERIAL        NOT NULL PRIMARY KEY,
+    bookingid      INT           NOT NULL UNIQUE,
+    promotionid    INT,
+    rewardid       INT,
+    originalamount DECIMAL(12,2) NOT NULL,
+    discountamount DECIMAL(12,2) NOT NULL DEFAULT 0,
+    finalamount    DECIMAL(12,2) NOT NULL,
+    paymentmethod  VARCHAR(15)   NOT NULL DEFAULT 'cash' CHECK (paymentmethod IN ('cash','bank_transfer','pos')),
+    paymentstatus  VARCHAR(10)   NOT NULL DEFAULT 'unpaid' CHECK (paymentstatus IN ('unpaid','paid','failed','cancelled')),
+    paidat         TIMESTAMP,
+    CONSTRAINT fk_payment_booking   FOREIGN KEY (bookingid)   REFERENCES booking(bookingid),
+    CONSTRAINT fk_payment_promotion FOREIGN KEY (promotionid) REFERENCES promotion(promotionid),
+    CONSTRAINT fk_payment_reward    FOREIGN KEY (rewardid)    REFERENCES reward(rewardid)
+);
+
+CREATE TABLE loyaltytransaction (
+    loyaltytransactionid SERIAL        NOT NULL PRIMARY KEY,
+    customerid           INT           NOT NULL,
+    paymentid            INT,
+    transactiontype      VARCHAR(10)   NOT NULL CHECK (transactiontype IN ('earn','redeem','expire','adjust')),
+    points               INT           NOT NULL,
+    balancebefore        INT           NOT NULL DEFAULT 0,
+    balanceafter         INT           NOT NULL DEFAULT 0,
+    expiredat            TIMESTAMP,
+    createdat            TIMESTAMP     NOT NULL DEFAULT NOW(),
+    note                 VARCHAR(255),
+    CONSTRAINT fk_loyaltytx_customer FOREIGN KEY (customerid) REFERENCES customer(customerid),
+    CONSTRAINT fk_loyaltytx_payment  FOREIGN KEY (paymentid)  REFERENCES payment(paymentid)
+);
+
+-- ============================================================
+-- BƯỚC 3: SEED DATA
+-- ============================================================
+INSERT INTO loyaltytier (tierid, tiername, minpoints, minvisits, minspending, bookingwindowdays, prioritylevel, benefitdescription, isactive)
+VALUES
+    (1, 'Member',   0,    0,  0,       3, 1, 'Hạng cơ bản - Đặt lịch trước 3 ngày', TRUE),
+    (2, 'Silver',   500,  10, 500000,  5, 2, 'Hạng Bạc - Đặt lịch trước 5 ngày, ưu tiên trung bình', TRUE),
+    (3, 'Gold',     2000, 30, 2000000, 7, 3, 'Hạng Vàng - Đặt lịch trước 7 ngày, ưu tiên cao', TRUE),
+    (4, 'Platinum', 5000, 60, 5000000, 14, 4, 'Hạng Kim Cương - Đặt lịch trước 14 ngày, ưu tiên cao nhất', TRUE);

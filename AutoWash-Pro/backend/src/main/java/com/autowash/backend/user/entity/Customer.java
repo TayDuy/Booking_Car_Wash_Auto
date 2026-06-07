@@ -6,7 +6,7 @@ import lombok.*;
 import java.time.LocalDate;
 
 @Entity
-@Table(name = "Customer")
+@Table(name = "customer")
 @NoArgsConstructor
 @AllArgsConstructor
 @Data
@@ -15,36 +15,36 @@ public class Customer {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "CustomerID")
+    @Column(name = "customerid")
     private Integer customerId;
 
-    @Column(name = "UserID", nullable = false)
+    @Column(name = "userid", nullable = false)
     private Integer userId;
 
-    @Column(name = "BrandID")
+    @Column(name = "brandid")
     private Integer brandId;
 
-    @Column(name = "FullName", nullable = false, length = 100)
+    @Column(name = "fullname", nullable = false, length = 100)
     private String fullName;
 
-    @Column(name = "DateOfBirth")
+    @Column(name = "dateofbirth")
     private LocalDate dateOfBirth;
 
-    @Column(name = "Gender", length = 10)
+    @Column(name = "gender", length = 10)
     private String gender;
 
-    @Column(name = "TierID", nullable = false, insertable = false, updatable = false)
+    @Column(name = "tierid", nullable = false, insertable = false, updatable = false)
     private Integer tierId;
 
-    @Column(name = "TotalPoints", nullable = false, insertable = false, updatable = false)
+    @Column(name = "totalpoints", nullable = false, insertable = false, updatable = false)
     private Integer totalPoints;
 
-    @Column(name = "TotalVisits", nullable = false, insertable = false, updatable = false)
+    @Column(name = "totalvisits", nullable = false, insertable = false, updatable = false)
     private Integer totalVisits;
 
-    @Column(name = "TotalSpending", nullable = false, insertable = false, updatable = false)
+    @Column(name = "totalspending", nullable = false, insertable = false, updatable = false)
     private java.math.BigDecimal totalSpending;
 
-    @Column(name = "JoinedAt", nullable = false, insertable = false, updatable = false)
+    @Column(name = "joinedat", nullable = false, insertable = false, updatable = false)
     private java.time.LocalDateTime joinedAt;
 }
