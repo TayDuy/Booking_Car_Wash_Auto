@@ -1,74 +1,39 @@
 import { useState } from "react";
 import Login from "./pages/auth/Login";
-import Register from "./pages/auth/Register";
-
-import {
+import{
   getRole,
   getUsername,
   isLoggedIn,
   logout,
 } from "./api/authService";
 
-function App() {
+function App(){
   const [loggedIn, setLoggedIn] = useState(isLoggedIn());
-  const [authMode, setAuthMode] = useState("login");
-
-  function handleLoginSuccess() {
+  
+  function handleLoginSuccess(){
     setLoggedIn(true);
   }
-
-  function handleLogout() {
+  function handleLogout(){
     logout();
     setLoggedIn(false);
-    setAuthMode("login");
   }
-
-  return (
+  return(
     <div className="container mt-5">
-      <h1>AutoWash Pro</h1>
-      <p>Smart Automated Car Wash Management System</p>
 
-      {loggedIn ? (
-        <div>
-          <h3>Đăng nhập thành công</h3>
-          <p>Username: {getUsername()}</p>
-          <p>Role: {getRole()}</p>
+    {loggedIn ? (
+      <div>
+        <h3> Đăng nhập thành công</h3>
+        <p>username: {getUsername()}</p>
+        <p>Role: {getRole()}</p>
 
-          <button className="btn btn-danger" onClick={handleLogout}>
-            Logout
-          </button>
-        </div>
-      ) : authMode === "login" ? (
-        <>
-          <Login onLoginSuccess={handleLoginSuccess} />
-
-          <p className="mt-3">
-            Chưa có tài khoản?{" "}
-            <button
-              className="btn btn-link p-0"
-              onClick={() => setAuthMode("register")}
-            >
-              Đăng ký
-            </button>
-          </p>
-        </>
-      ) : (
-        <>
-          <Register onRegisterSuccess={() => setAuthMode("login")} />
-
-          <p className="mt-3">
-            Đã có tài khoản?{" "}
-            <button
-              className="btn btn-link p-0"
-              onClick={() => setAuthMode("login")}
-            >
-              Đăng nhập
-            </button>
-          </p>
-        </>
-      )}
+        <button className="btn btn-danger" onClick={handleLogout}>
+          Logout
+        </button>
+      </div>
+    ) : (
+      <Login onLoginSuccess={handleLoginSuccess} />
+    )}    
     </div>
   );
 }
-
 export default App;
