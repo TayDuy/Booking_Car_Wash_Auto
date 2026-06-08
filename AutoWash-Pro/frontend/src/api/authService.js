@@ -3,20 +3,16 @@ import axios from "axios";
 const API_URL = "http://localhost:8080/api/v1/auth";
 
 export async function login(username, password){
-    const respone = await axios.post(`${API_URL}/login`,{
+    const response = await axios.post(`${API_URL}/login`,{
         username: username,
         password: password,
     });
     return respone.data;
 }
 
-export async function register(username, password, email){
-    const respone = await axios.post(`${API_URL}/register`,{
-        username: username,
-        password: password,
-        email: email,
-    });
-    return respone.data;
+export async function register(payload) {
+    const response = await axios.post(`${API_URL}/register`, payload);
+    return response.data;
 }
 
 export function saveAuth(result){
