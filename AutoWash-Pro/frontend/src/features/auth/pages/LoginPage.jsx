@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import useAuth from '../../../hooks/useAuth'
+import { Link } from 'react-router-dom'
 
 export default function LoginPage() {
   const auth = useAuth()
@@ -28,6 +29,10 @@ export default function LoginPage() {
         <input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password" type="password" />
         <button type="submit" disabled={loading}>Sign in</button>
       </form>
+
+      <p>
+        Chưa có tài khoản? <Link to="/register-test">Đăng ký</Link>
+      </p>
     </div>
   )
 }

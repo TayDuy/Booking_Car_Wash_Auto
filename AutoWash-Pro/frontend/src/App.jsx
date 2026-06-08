@@ -19,8 +19,6 @@ function App(){
   }
   return(
     <div className="container mt-5">
-    <h1>AutoWash Pro</h1>
-    <p>Smart Automated Car Wash Management System</p>
 
     {loggedIn ? (
       <div>
