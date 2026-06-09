@@ -16,7 +16,7 @@ public class User {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "userid")
+    @Column(name = "user_id")
     private Integer id;
 
     @Column(name = "username", nullable = false, unique = true, length = 50)
@@ -25,7 +25,7 @@ public class User {
     @Column(name = "email", length = 100)
     private String email;
 
-    @Column(name = "passwordhash", nullable = false, length = 255)
+    @Column(name = "password_hash", nullable = false, length = 255)
     private String password;
 
     @Column(name = "phone", length = 15, unique = true)
@@ -37,7 +37,7 @@ public class User {
     @Column(name = "role", nullable = false, length = 10)
     private String role = "customer";
 
-    @Column(name = "createdat", nullable = false, updatable = false)
+    @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
 
