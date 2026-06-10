@@ -1,8 +1,7 @@
-package com.autowash.backend.user.entity;
+package com.autowash.backend.customer.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
-
 import java.time.LocalDate;
 
 @Entity
