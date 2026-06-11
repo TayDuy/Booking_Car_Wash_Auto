@@ -23,7 +23,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @Builder
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
-@ToString(exclude = {"booking", "promotion", "reward"})
+@ToString(exclude = {"booking"})
 public class Payment {
 
     @Id

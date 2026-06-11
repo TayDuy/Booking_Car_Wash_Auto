@@ -46,9 +46,15 @@ import java.time.LocalDateTime;
 @Builder
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @ToString(exclude = {"customer", "vehicle", "slot", "branch", "assignedStaff"})  // cái cuối thay tên đẻ tránh trùng tên db cho rõ nghĩa
-
-
 public class Booking {
+
+    @AssertTrue(message = "End time must be after start time")
+    private boolean isValidTimeRange() {
+        if (startTime == null || endTime == null) {
+            return true;  // Skip validation if either is null
+        }
+        return endTime.isAfter(startTime);
+    }
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -138,8 +144,8 @@ public class Booking {
 
     /** Booking đang chiếm chỗ trong slot — dùng để check overlap. */
     public boolean isActive() {
-        return this.status == BookingStatus.pending
-                || this.status == BookingStatus.confirmed
-                || this.status == BookingStatus.in_progress;
+        return BookingStatus.pending.equals(this.status)
+                || BookingStatus.confirmed.equals(this.status)
+                || BookingStatus.in_progress.equals(this.status);
     }
 }
