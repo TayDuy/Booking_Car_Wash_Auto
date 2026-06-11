@@ -2,6 +2,8 @@ package com.autowash.backend.user.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
 
@@ -11,6 +13,7 @@ import java.time.LocalDateTime;
  * role phân quyền ở tầng application — không tách bảng để đơn giản hóa auth.
  */
 @Entity
+@EntityListeners(AuditingEntityListener.class)
 @Table(name = "account")
 @NoArgsConstructor
 @AllArgsConstructor
