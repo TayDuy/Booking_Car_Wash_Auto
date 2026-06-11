@@ -20,7 +20,7 @@ import java.time.LocalTime;
  * FR-4: Khung giờ có thể đặt tại một bay cụ thể.
  * FR-6: Quản lý sức chứa — tránh overbooking bằng optimistic locking.
  *
- * @Version trên currentBookings = optimistic locking:
+ * @Version on version field = optimistic locking:
  *   Khi 2 request đồng thời book cùng slot, transaction thứ 2 nhận
  *   OptimisticLockException → service bắt và trả "slot đã đầy",
  *   không cần PESSIMISTIC lock toàn table.
@@ -132,6 +132,9 @@ public class TimeSlot {
 
         /** Gọi khi booking được xác nhận — tự chuyển status → full khi đủ chỗ. */
         public void incrementBookings() {
+                if (!hasCapacity()) {
+                        throw new IllegalStateException("Time slot has no remaining capacity");
+                }
                 this.currentBookings++;
                 if (this.currentBookings >= this.maxCapacity) {
                         this.status = SlotStatus.full;
