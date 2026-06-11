@@ -85,14 +85,15 @@ public class TimeSlot {
         @Builder.Default
         private Integer maxCapacity = 1;
 
-        /**
-         * FR-6: @Version — JPA dùng field này làm version check khi UPDATE.
-         * TX1 và TX2 cùng đọc currentBookings=2, cùng tăng lên 3:
-         *   TX1 commit trước → DB version tăng.
-         *   TX2 commit sau   → version mismatch → OptimisticLockException.
-         * Service bắt exception → trả lỗi "slot đã đầy".
-         */
         @Version
+        @Column(name = "version", nullable = false)
+        @Builder.Default
+        private Integer version = 0;
+
+        /**
+         * Number of confirmed bookings for this slot.
+         * Incremented/decremented by incrementBookings()/decrementBookings().
+         */
         @Column(name = "current_bookings", nullable = false)
         @Builder.Default
         private Integer currentBookings = 0;
