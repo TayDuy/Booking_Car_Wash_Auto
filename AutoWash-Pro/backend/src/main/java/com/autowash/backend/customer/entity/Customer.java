@@ -1,8 +1,11 @@
 package com.autowash.backend.customer.entity;
 
+import com.autowash.backend.user.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
+import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "customer")
@@ -17,8 +20,9 @@ public class Customer {
     @Column(name = "customer_id")
     private Integer customerId;
 
-    @Column(name = "user_id", nullable = false)
-    private Integer userId;
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false, unique = true)
+    private User user;
 
     @Column(name = "brand_id")
     private Integer brandId;
@@ -42,8 +46,8 @@ public class Customer {
     private Integer totalVisits;
 
     @Column(name = "total_spending", nullable = false, insertable = false, updatable = false)
-    private java.math.BigDecimal totalSpending;
+    private BigDecimal totalSpending;
 
     @Column(name = "joined_at", nullable = false, insertable = false, updatable = false)
-    private java.time.LocalDateTime joinedAt;
+    private LocalDateTime joinedAt;
 }

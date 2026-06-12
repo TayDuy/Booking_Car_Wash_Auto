@@ -9,15 +9,6 @@ import lombok.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
-/**
- * Chương trình khuyến mãi do admin tạo.
- * discount_type:
- *   percent      → giảm theo % trên tổng tiền
- *   fixed        → giảm số tiền cố định (VND)
- *   free_service → miễn phí 1 dịch vụ
- * target_tier_id nullable → null = áp dụng cho tất cả hạng.
- * usage_limit    nullable → null = không giới hạn số lần dùng.
- */
 @Entity
 @Table(name = "promotion")
 @Getter
@@ -42,7 +33,6 @@ public class Promotion {
 
     /**
      * Nullable — null = áp dụng cho tất cả hạng thành viên.
-     * Set khi muốn giới hạn promotion chỉ cho hạng Silver/Gold/Platinum.
      */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "target_tier_id",
@@ -50,22 +40,36 @@ public class Promotion {
     private LoyaltyTier targetTier;
 
     /**
-     * Loại giảm giá:
-     *   percent      → discountValue là % (VD: 10.0 = giảm 10%)
-     *   fixed        → discountValue là số tiền VND (VD: 50000)
-     *   free_service → discountValue là service_id được miễn phí
+     * Loại xe áp dụng khuyến mãi.
+     * Nullable — null = áp dụng cho tất cả loại xe.
+     *   sedan      → xe con 4 chỗ / 5 chỗ thông thường
+     *   suv        → xe gầm cao, 7 chỗ
+     *   truck      → xe tải nhỏ / bán tải
+     *   minivan    → xe gia đình 7–9 chỗ
      */
+    @Column(name = "vehicle_type", length = 20)
+    @Enumerated(EnumType.STRING)
+    private VehicleType vehicleType;
+
     @NotNull(message = "Loại giảm giá không được null")
     @Column(name = "discount_type", nullable = false, length = 15)
     @Enumerated(EnumType.STRING)
     private DiscountType discountType;
 
-    /** Giá trị giảm — ý nghĩa tùy discountType. */
     @NotNull(message = "Giá trị giảm không được null")
     @DecimalMin(value = "0.0", inclusive = false, message = "Giá trị giảm phải lớn hơn 0")
     @Digits(integer = 10, fraction = 2)
     @Column(name = "discount_value", nullable = false, precision = 12, scale = 2)
     private BigDecimal discountValue;
+
+    /**
+     * Áp dụng thêm điều kiện: giá trị đơn hàng tối thiểu để dùng promotion.
+     * Nullable — null = không yêu cầu giá trị tối thiểu.
+     */
+    @DecimalMin(value = "0.0", inclusive = false)
+    @Digits(integer = 10, fraction = 2)
+    @Column(name = "min_order_value", precision = 12, scale = 2)
+    private BigDecimal minOrderValue;
 
     @NotNull(message = "Ngày bắt đầu không được null")
     @Column(name = "start_date", nullable = false)
@@ -75,10 +79,6 @@ public class Promotion {
     @Column(name = "end_date", nullable = false)
     private LocalDate endDate;
 
-    /**
-     * Nullable — null = không giới hạn số lần dùng toàn hệ thống.
-     * Service cần kiểm tra usage_limit trước khi áp dụng promotion.
-     */
     @Min(value = 1, message = "Usage limit tối thiểu là 1")
     @Column(name = "usage_limit")
     private Integer usageLimit;
@@ -89,12 +89,13 @@ public class Promotion {
     @Builder.Default
     private PromotionStatus status = PromotionStatus.active;
 
-    /** Admin tạo promotion — FK → account. */
     @NotNull(message = "CreatedBy không được null")
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by", nullable = false,
             foreignKey = @ForeignKey(name = "fk_promo_creator"))
     private User createdBy;
+
+    public enum VehicleType { sedan, suv, truck, minivan }
 
     public enum DiscountType { percent, fixed, free_service }
 
@@ -102,7 +103,7 @@ public class Promotion {
 
     // ── Helpers ──────────────────────────────────────────────────────────────
 
-    /** Promotion có đang trong thời hạn sử dụng không. */
+    /** Promotion có đang trong thời hạn và active không. */
     public boolean isValid() {
         LocalDate today = LocalDate.now();
         return PromotionStatus.active.equals(this.status)
@@ -114,5 +115,25 @@ public class Promotion {
     public boolean isApplicableForTier(Integer tierId) {
         return this.targetTier == null
                 || this.targetTier.getTierId().equals(tierId);
+    }
+
+    /**
+     * Promotion có áp dụng cho loại xe này không.
+     * null vehicleType = áp dụng tất cả loại xe.
+     */
+    public boolean isApplicableForVehicle(VehicleType type) {
+        return this.vehicleType == null
+                || this.vehicleType.equals(type);
+    }
+
+    /**
+     * Kiểm tra toàn bộ điều kiện: valid + tier + loại xe + giá trị đơn tối thiểu.
+     */
+    public boolean isApplicable(Integer tierId, VehicleType vehicleType, BigDecimal orderValue) {
+        if (!isValid()) return false;
+        if (!isApplicableForTier(tierId)) return false;
+        if (!isApplicableForVehicle(vehicleType)) return false;
+        if (this.minOrderValue != null && orderValue.compareTo(this.minOrderValue) < 0) return false;
+        return true;
     }
 }
