@@ -1,6 +1,5 @@
 package com.autowash.backend.booking.entity;
 
-
 import com.autowash.backend.branch.entity.Branch;
 import com.autowash.backend.employee.entity.Employee;
 import com.autowash.backend.timeslot.entity.TimeSlot;
@@ -11,6 +10,7 @@ import jakarta.validation.constraints.*;
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
 
@@ -37,20 +37,19 @@ import java.time.LocalDateTime;
  */
 @Entity
 @Table(name = "booking")
-@EntityListeners(AbstractMethodError.class)
+@EntityListeners(AuditingEntityListener.class)
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
-@ToString(exclude = {"customer", "vehicle", "slot", "branch", "assignedStaff"})  // cái cuối thay tên đẻ tránh trùng tên db cho rõ nghĩa
-
-
+@ToString(exclude = {"customer", "vehicle", "slot", "branch", "assignedStaff"})
 public class Booking {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "booking_id")
     @EqualsAndHashCode.Include
     private Integer bookingId;
 
@@ -78,7 +77,6 @@ public class Booking {
             foreignKey = @ForeignKey(name = "fk_booking_branch"))
     private Branch branch;
 
-    // Nullable — chỉ set khi chuyển sang in_progress
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "employee_id",
             foreignKey = @ForeignKey(name = "fk_booking_employee"))
@@ -99,10 +97,6 @@ public class Booking {
     @Builder.Default
     private BookingStatus status = BookingStatus.pending;
 
-    /**
-     * FR-6: Set từ customer.tier.priorityLevel khi tạo booking.
-     * Dùng để sort waitlist khi slot mở lại sau cancel/no_show.
-     */
     @Min(value = 1, message = "Priority score tối thiểu là 1")
     @Max(value = 4, message = "Priority score tối đa là 4")
     @Column(name = "priority_score", nullable = false)
@@ -127,15 +121,11 @@ public class Booking {
         pending, confirmed, in_progress, completed, cancelled, no_show
     }
 
-    // ── FR-5 Helpers ─────────────────────────────────────────────────────────
-
-    /** Cho phép huỷ ở pending hoặc confirmed. */
     public boolean isCancellable() {
         return BookingStatus.pending.equals(this.status)
                 || BookingStatus.confirmed.equals(this.status);
     }
 
-    /** Booking đang chiếm chỗ trong slot — dùng để check overlap. */
     public boolean isActive() {
         return this.status == BookingStatus.pending
                 || this.status == BookingStatus.confirmed
