@@ -1,9 +1,9 @@
 package com.autowash.backend.reward.repository;
 
-import com.autowash.backend.loyaltytier.entity.Reward;
-import com.autowash.backend.loyaltytier.entity.Reward.RewardStatus;
-import com.autowash.backend.loyaltytier.entity.Reward.RewardType;
-import com.autowash.backend.loyaltytier.entity.Reward.RewardVehicleType;
+import com.autowash.backend.reward.entity.Reward;
+import com.autowash.backend.reward.entity.Reward.RewardStatus;
+import com.autowash.backend.reward.entity.Reward.RewardType;
+import com.autowash.backend.reward.entity.Reward.RewardVehicleType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
