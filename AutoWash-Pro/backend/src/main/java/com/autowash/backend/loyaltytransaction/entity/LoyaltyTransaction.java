@@ -1,50 +1,50 @@
-package com.autowash.backend.transaction.entity;
+package com.autowash.backend.loyaltytransaction.entity;
 
 import jakarta.persistence.*;
-
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "loyalty_transaction")
+@Table(name = "LoyaltyTransaction")
 public class LoyaltyTransaction {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "loyalty_transaction_id")
+    @Column(name = "LoyaltyTransactionID")
     private Long loyaltyTransactionId;
 
-    @Column(name = "customer_id", nullable = false)
+    @Column(name = "CustomerID", nullable = false)
     private Long customerId;
 
-    @Column(name = "payment_id")
+    @Column(name = "PaymentID")
     private Long paymentId;
 
-    @Column(name = "transaction_type", nullable = false)
+    @Column(name = "TransactionType", nullable = false, length = 10)
     private String transactionType;
 
-    @Column(name = "points", nullable = false)
+    @Column(name = "Points", nullable = false)
     private Integer points;
 
-    @Column(name = "balance_before", nullable = false)
+    @Column(name = "BalanceBefore", nullable = false)
     private Integer balanceBefore;
 
-    @Column(name = "balance_after", nullable = false)
+    @Column(name = "BalanceAfter", nullable = false)
     private Integer balanceAfter;
 
-    @Column(name = "expired_at")
+    @Column(name = "ExpiredAt")
     private LocalDateTime expiredAt;
 
-    @Column(name = "created_at", nullable = false)
+    @Column(name = "CreatedAt", nullable = false)
     private LocalDateTime createdAt;
 
-    @Column(name = "note")
+    @Column(name = "Note", length = 255)
     private String note;
 
-    public LoyaltyTransaction(){
+    public LoyaltyTransaction() {
     }
 
-    public LoyaltyTransaction(Long loyaltyTransactionId, Long customerId, Long paymentId, String transactionType, Integer points, Integer balanceBefore, Integer balanceAfter, LocalDateTime expiredAt, LocalDateTime createdAt, String note) {
-        this.loyaltyTransactionId = loyaltyTransactionId;
+    public LoyaltyTransaction(Long customerId, Long paymentId, String transactionType,
+                              Integer points, Integer balanceBefore, Integer balanceAfter,
+                              LocalDateTime expiredAt, String note) {
         this.customerId = customerId;
         this.paymentId = paymentId;
         this.transactionType = transactionType;
@@ -52,8 +52,15 @@ public class LoyaltyTransaction {
         this.balanceBefore = balanceBefore;
         this.balanceAfter = balanceAfter;
         this.expiredAt = expiredAt;
-        this.createdAt = createdAt;
+        this.createdAt = LocalDateTime.now();
         this.note = note;
+    }
+
+    @PrePersist
+    public void prePersist() {
+        if (this.createdAt == null) {
+            this.createdAt = LocalDateTime.now();
+        }
     }
 
     public Long getLoyaltyTransactionId() {

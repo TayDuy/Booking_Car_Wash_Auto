@@ -1,6 +1,6 @@
 package com.autowash.backend.promotion.entity;
 
-import com.autowash.backend.loyalty.entity.LoyaltyTier;
+import com.autowash.backend.loyaltytier.entity.LoyaltyTier;
 import com.autowash.backend.user.entity.User;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
