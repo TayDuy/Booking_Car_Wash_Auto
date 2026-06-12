@@ -15,7 +15,7 @@ import java.time.LocalDateTime;
  *   discount  → giảm giá theo rewardValue (VND hoặc %)
  *   free_wash → rửa xe miễn phí 1 lần
  *   addon     → dịch vụ thêm miễn phí (VD: hút bụi, đánh bóng)
- * vehicle_type: giới hạn reward áp dụng cho loại xe nào.
+ * vehicle_type: chỉ áp dụng cho ô tô (car).
  */
 @Entity
 @Table(name = "reward")
@@ -68,15 +68,13 @@ public class Reward {
 
     /**
      * Loại xe được áp dụng reward:
-     *   motorbike → chỉ xe máy
-     *   car       → chỉ ô tô
-     *   both      → tất cả loại xe
+     *   car → chỉ ô tô (hiện tại hệ thống chỉ hỗ trợ ô tô)
      */
     @NotNull(message = "Vehicle type không được null")
     @Column(name = "vehicle_type", nullable = false, length = 10)
     @Enumerated(EnumType.STRING)
     @Builder.Default
-    private RewardVehicleType vehicleType = RewardVehicleType.both;
+    private RewardVehicleType vehicleType = RewardVehicleType.car;
 
     @NotNull(message = "Status không được null")
     @Column(name = "status", nullable = false, length = 10)
@@ -91,7 +89,7 @@ public class Reward {
 
     public enum RewardType { discount, free_wash, addon }
 
-    public enum RewardVehicleType { motorbike, car, both }
+    public enum RewardVehicleType { car }
 
     public enum RewardStatus { active, inactive }
 
@@ -103,9 +101,8 @@ public class Reward {
                 && customerPoints >= this.requiredPoints;
     }
 
-    /** Reward có áp dụng cho loại xe này không. */
+    /** Reward có áp dụng cho loại xe này không (luôn true vì chỉ hỗ trợ car). */
     public boolean isApplicableForVehicleType(String vehicleType) {
-        return RewardVehicleType.both.equals(this.vehicleType)
-                || this.vehicleType.name().equals(vehicleType);
+        return RewardVehicleType.car.name().equals(vehicleType);
     }
 }
