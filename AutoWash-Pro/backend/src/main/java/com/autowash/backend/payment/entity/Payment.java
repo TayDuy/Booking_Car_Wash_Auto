@@ -4,6 +4,7 @@ import com.autowash.backend.booking.entity.Booking;
 //import com.autowash.backend.loyalty.entity.Reward;       // ← fix package
 //import com.autowash.backend.voucher.entity.Promotion;   // ← fix package
 import com.autowash.backend.promotion.entity.Promotion;
+import com.autowash.backend.reward.entity.Reward;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import lombok.*;
