@@ -31,4 +31,7 @@ public interface BookingRepository extends JpaRepository<Booking, Integer> {
             ORDER BY b.priorityScore DESC, b.bookingDate ASC
             """)
     List<Booking> findWaitlistBySlot(@Param("slotId") Integer slotId, @Param("status") BookingStatus status);
+
+    //Dùng cho FR2 :Kiểm tra xem xe có đang vướng lịch đặt nào chưa hoàn thành không
+    boolean existsByVehicle_VehicleIdAndStatusIn(Integer vehicleId, java.util.List<BookingStatus> statuses);
 }
