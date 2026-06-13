@@ -125,6 +125,14 @@ public class BookingDetailServiceImpl implements BookingDetailService {
                 .toList();
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public BigDecimal calculateTotalAmount(Integer bookingId) {
+        return getByBookingId(bookingId).stream()
+                .map(BookingDetailItemResponseDTO::getSubTotal)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
     /**
      * Lấy chi tiết một booking detail theo id.
      *

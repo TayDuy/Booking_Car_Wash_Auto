@@ -178,4 +178,21 @@ public class BookingController {
                 bookingService.cancelBooking(bookingId)
         );
     }
+
+    /**
+     * STAFF / ADMIN hoàn thành booking
+     *
+     * PATCH:
+     * /api/v1/staff/bookings/{bookingId}/complete
+     */
+    @PatchMapping("/staff/bookings/{bookingId}/complete")
+    @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
+    public ResponseEntity<BookingResponseDTO> completeBooking(
+            @PathVariable Integer bookingId
+    ) {
+
+        return ResponseEntity.ok(
+                bookingService.completeBooking(bookingId)
+        );
+    }
 }
