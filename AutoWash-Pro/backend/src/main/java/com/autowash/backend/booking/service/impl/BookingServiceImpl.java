@@ -7,6 +7,7 @@ import com.autowash.backend.booking.entity.BookingDetail;
 import com.autowash.backend.booking.repository.BookingDetailRepository;
 import com.autowash.backend.booking.repository.BookingRepository;
 import com.autowash.backend.booking.service.BookingService;
+import com.autowash.backend.branch.entity.Branch;
 import com.autowash.backend.branch.repository.BranchRepository;
 import com.autowash.backend.customer.entity.Customer;
 import com.autowash.backend.customer.repository.CustomerRepository;
@@ -222,6 +223,46 @@ public class BookingServiceImpl implements BookingService {
 
         timeSlotRepository.save(slot);
 
+        return BookingResponseDTO.fromEntity(
+                bookingRepository.save(booking)
+        );
+    }
+
+    /**
+     * Hoàn thành một booking — chuyển trạng thái sang "completed".
+     *
+     * Chỉ nhân viên (STAFF) hoặc quản trị viên (ADMIN) mới được gọi hàm này.
+     *
+     * Điều kiện:
+     * - Booking phải đang ở trạng thái "pending" (đang chờ) hoặc "in_progress" (đang xử lý).
+     * - Nếu booking đã bị hủy hoặc đã hoàn thành trước đó → ném lỗi.
+     *
+     * Sau khi booking chuyển sang "completed":
+     * - Hệ thống cho phép tạo phiếu thanh toán (Payment) cho booking này.
+     * - Luồng tiếp theo: Client gọi POST /api/payments với bookingId để tạo payment.
+     *
+     * @param bookingId ID của booking cần hoàn thành
+     * @return DTO chứa thông tin booking sau khi đã cập nhật trạng thái
+     * @throws RuntimeException nếu booking không ở trạng thái hợp lệ để hoàn thành
+     */
+    @Override
+    @Transactional
+    public BookingResponseDTO completeBooking(Integer bookingId) {
+
+        // Tìm booking theo ID, ném lỗi nếu không tồn tại
+        Booking booking = findBookingOrThrow(bookingId);
+
+        // Kiểm tra trạng thái hợp lệ: chỉ cho phép hoàn thành khi đang "pending" hoặc "in_progress"
+        if (!BookingStatus.in_progress.equals(booking.getStatus())
+                && !BookingStatus.pending.equals(booking.getStatus())) {
+            throw new RuntimeException(
+                    "Chỉ có thể hoàn thành booking đang xử lý hoặc đang chờ");
+        }
+
+        // Cập nhật trạng thái booking thành "completed"
+        booking.setStatus(BookingStatus.completed);
+
+        // Lưu vào database và trả về DTO
         return BookingResponseDTO.fromEntity(
                 bookingRepository.save(booking)
         );
