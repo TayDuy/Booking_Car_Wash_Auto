@@ -1,6 +1,11 @@
 import "./Login.css";
+dev/Tu
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+
+import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
+develop
 import { login, saveAuth } from "../../api/authService";
 import { signInWithPopup } from "firebase/auth";
 import { auth, googleProvider } from "../../firebase/firebaseConfig";
@@ -46,7 +51,10 @@ function Login({ onLoginSuccess }) {
     }
   }
 
+dev/Tu
   async function handleGoogleLogin() {
+  async function handleGoogleLogin(){
+develop
     try {
       const result = await signInWithPopup(auth, googleProvider);
       const googleToken = await result.user.getIdToken();
@@ -56,33 +64,71 @@ function Login({ onLoginSuccess }) {
         username: result.user.email,
         role: "customer",
       });
+dev/Tu
 
       if (onLoginSuccess) {
         onLoginSuccess();
       }
 
       redirectByRole("customer");
+      onLoginSuccess();
+develop
     } catch (error) {
       console.log("Google login error:", error);
       alert("Đăng nhập Google thất bại!");
     }
+dev/Tu
 
   }
 
   return (
     <div className="login-page login-only-page">
       <div className="login-main">
+    
+  }
+  useEffect(() => {
+    console.log("Login page loaded, checking Google redirect...");
+
+    async function checkGoogleRedirect() {
+      try {
+        const result = await getRedirectResult(auth);
+
+        console.log("Redirect result:", result);
+
+        if (result){
+          console.log("Google user:", result.user);
+          alert("Đăng nhập Google thành công: " + result.user.email);
+        }
+      } catch (error) {
+        console.log("Google redirect error:", error);
+      }
+    }
+
+    checkGoogleRedirect();
+  }, []);
+
+  return (
+    <div className="login-page login-only-page">
+      <div className="login-main">    
+develop
         <div className="login-card">
 
           <div className="login-header">
 
+dev/Tu
             <h1 className="login-title">
+            <h1 className="login-title">           
+develop
               WashFlow Pro
             </h1>
 
             <p className="login-subtitle">
               PRECISION AUTOMATION DASHBOARD
+dev/Tu
             </p>
+
+            </p>            
+develop
           </div>
 
           {errorMessage && (
@@ -163,6 +209,7 @@ function Login({ onLoginSuccess }) {
 
             <button
               type="submit"
+dev/Tu
               className="login-btn"
             >
               🚀 Sign In
@@ -188,6 +235,32 @@ function Login({ onLoginSuccess }) {
           </form>
 
           <div className="text-center mt-4">
+              className="login-btn"              
+            >
+              🚀 Sign In
+            </button>
+          <div className="login-divider">            
+            <div className="divider-line"></div>
+            <span className="divider-text">OR CONTINUE WITH</span>
+            <div className="divider-line"></div>                
+          </div>
+          <button 
+                  type="button"
+                  className="google-btn"
+                  onClick={handleGoogleLogin}
+                >
+                  <img
+                    src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
+                    alt="Google"
+                    style={{width: "40px", height: "40px", marginRight: "8px"}}
+                  />
+                  Đăng nhập với Google
+          </button>
+
+          </form>
+
+          <div className="text-center mt-4">          
+develop
             <span>Chưa có tài khoản? </span>
             <Link
               to="/register"
@@ -197,7 +270,7 @@ function Login({ onLoginSuccess }) {
             </Link>
           </div>
         </div>
-      </div>
+      </div>  
     </div>
   );
 }

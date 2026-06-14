@@ -1,9 +1,8 @@
 package com.autowash.backend.auth.controller;
 
-import com.autowash.backend.auth.dto.LoginRequestDTO;
-import com.autowash.backend.auth.dto.LoginResponseDTO;
-import com.autowash.backend.auth.dto.RegisterRequestDTO;
+import com.autowash.backend.auth.dto.*;
 import com.autowash.backend.auth.service.AuthService;
+import com.autowash.backend.auth.service.OtpService;
 import com.autowash.backend.common.dto.ApiResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -17,9 +16,11 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final AuthService authService;
+    private final OtpService otpService;
+    public AuthController(AuthService authService, OtpService otpService) {
 
-    public AuthController(AuthService authService) {
         this.authService = authService;
+        this.otpService=otpService;
     }
 
     /**
@@ -81,5 +82,25 @@ public class AuthController {
 
         return ResponseEntity.ok(
                 ApiResponse.success("Token hợp lệ", userDetails.getUsername()));
+    }
+
+    /**
+     * POST /api/v1/auth/send-otp
+     * Body: { "phone": "0912345678" }
+     */
+    @PostMapping("/send-otp")
+    public ResponseEntity<ApiResponse<Void>> sendOtp(@Valid @RequestBody OtpRequestDTO request){
+        otpService.sendOtp(request.getPhone());
+        return ResponseEntity.ok(ApiResponse.success("Mã otp đã được gửi", null));
+    }
+
+    /**
+     * POST /api/v1/auth/verify-otp
+     * Body: { "phone": "0912345678", "otp": "123456" }
+     */
+    @PostMapping("/verify-otp")
+    public ResponseEntity<ApiResponse<Void>> verifyOtp(@Valid@RequestBody OtpVerifyDTO request){
+        otpService.verifyOtp(request.getPhone(),request.getOtp());
+        return ResponseEntity.ok(ApiResponse.success("Xác minh thành công", null));
     }
 }

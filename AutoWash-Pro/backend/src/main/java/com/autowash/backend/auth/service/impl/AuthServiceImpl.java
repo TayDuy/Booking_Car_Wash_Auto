@@ -4,11 +4,12 @@ import com.autowash.backend.auth.dto.LoginRequestDTO;
 import com.autowash.backend.auth.dto.LoginResponseDTO;
 import com.autowash.backend.auth.dto.RegisterRequestDTO;
 import com.autowash.backend.auth.service.AuthService;
+import com.autowash.backend.auth.service.OtpService;
 import com.autowash.backend.common.exception.BusinessException;
+import com.autowash.backend.customer.entity.Customer;
 import com.autowash.backend.security.CustomUserDetails;
 import com.autowash.backend.security.JwtTokenProvider;
-import com.autowash.backend.user.entity.Customer;
-import com.autowash.backend.user.repository.CustomerRepository;
+import com.autowash.backend.customer.repository.CustomerRepository;
 import com.autowash.backend.user.entity.User;
 import com.autowash.backend.user.repository.UserRepository;
 import org.springframework.http.HttpStatus;
@@ -28,17 +29,19 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
     private final CustomerRepository customerRepository;
+    private final OtpService otpService;
 
     public AuthServiceImpl(AuthenticationManager authenticationManager,
                            UserRepository userRepository,
                            PasswordEncoder passwordEncoder,
                            JwtTokenProvider jwtTokenProvider,
-                           CustomerRepository customerRepository) {
+                           CustomerRepository customerRepository, OtpService otpService) {
         this.authenticationManager = authenticationManager;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtTokenProvider = jwtTokenProvider;
         this.customerRepository = customerRepository;
+        this.otpService = otpService;
     }
 
     @Override
@@ -86,6 +89,11 @@ public class AuthServiceImpl implements AuthService {
         if (userRepository.existsByPhone(request.getPhone())) {
             throw new BusinessException("Số điện thoại '" + request.getPhone()
                     + "' đã được sử dụng");
+        }
+
+        //kiểm tra phone đã được xác minh
+        if(!otpService.isPhoneVerified(request.getPhone())){
+            throw new BusinessException("số điện thoại chưa được xác minh OTP");
         }
 
         // Tạo user mới (mặc định role CUSTOMER)

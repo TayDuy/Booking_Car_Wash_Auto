@@ -1,5 +1,9 @@
 import "./Login.css";
+dev/Tu
 import { register, sendOtp, verifyOtp } from "../../api/authService";
+
+import { register } from "../../api/authService";
+develop
 import { useState } from "react";
 import { Link } from "react-router-dom";
 
@@ -21,10 +25,18 @@ function Register() {
   const [otpSent, setOtpSent] = useState(false);
   const [otpVerified, setOtpVerified] = useState(false);
 
+dev/Tu
   async function handleSubmit(e) {
     e.preventDefault();
 
     if (!fullName || !email || !username || !phone || !password || !confirmPassword) {
+
+  async function handleSubmit(e){
+    e.preventDefault();
+
+    if (!fullName || !email || !username || !phone || !password || !confirmPassword)
+    {
+develop
       setErrorMessage(
         "Vui lòng nhập đầy đủ thông tin."
       );
@@ -57,6 +69,7 @@ function Register() {
       alert(data.message || "Đăng ký thành công");
     } catch (error) {
       setErrorMessage("Đăng ký thất bại.");
+dev/Tu
     }
   }
 
@@ -88,6 +101,9 @@ function Register() {
     } catch (error) {
       setErrorMessage("OTP không đúng hoặc đã hết hạn.");
     }
+
+}
+develop
   }
 
   return (
@@ -130,6 +146,20 @@ function Register() {
                   }
                 />
               </div>
+dev/Tu
+
+              <div className="mb-3">
+                <label className="form-label fw-semibold d-block text-start">
+                  Email
+                </label>
+
+                <input
+                  type="email"
+                  className="login-input"
+                  placeholder="Nhập email"
+                  value={email}
+                  onChange={(e) =>
+                    setEmail(e.target.value)
 
               <div className="mb-3">
                 <label className="form-label fw-semibold d-block text-start">
@@ -149,6 +179,24 @@ function Register() {
 
               <div className="mb-3">
                 <label className="form-label fw-semibold d-block text-start">
+                  Username
+                </label>
+
+                <input
+                  type="text"
+                  className="login-input"
+                  placeholder="Nhập username"
+                  value={username}
+                  onChange={(e) =>
+                    setUsername(e.target.value)
+develop
+                  }
+                />
+              </div>
+
+              <div className="mb-3">
+                <label className="form-label fw-semibold d-block text-start">
+dev/Tu
                   Username
                 </label>
 
@@ -255,6 +303,75 @@ function Register() {
                   }
                 />
               </div>
+
+                  Phone Number
+                </label>
+
+                <input
+                  type="tel"
+                  className="login-input"
+                  placeholder="Nhập phone"
+                  value={phone}
+                  onChange={(e) =>
+                    setPhone(e.target.value)
+                  }
+                />
+              </div>
+
+              <div className="mb-3">
+                <label className="form-label fw-semibold d-block text-start">
+                  Password
+                </label>
+
+                <div className="password-wrap">
+                  <input
+                    type={
+                      showPassword
+                        ? "text"
+                        : "password"
+                    }
+                    className="login-input password-input"
+                    placeholder="Nhập mật khẩu"
+                    value={password}
+                    onChange={(e) =>
+                      setPassword(e.target.value)
+                    }
+                  />
+
+                  <button
+                    type="button"
+                    className="password-toggle"
+                    onClick={() =>
+                      setShowPassword(
+                        !showPassword
+                      )
+                    }
+                  >
+                    {showPassword
+                      ? "🙈"
+                      : "👁"}
+                  </button>
+                </div>
+              </div>
+
+              <div className="mb-4">
+                <label className="form-label fw-semibold d-block text-start">
+                  Confirm Password
+                </label>
+
+                <input
+                  type="password"
+                  className="login-input"
+                  placeholder="Nhập lại mật khẩu"
+                  value={confirmPassword}
+                  onChange={(e) =>
+                    setConfirmPassword(
+                      e.target.value
+                    )
+                  }
+                />
+              </div>
+develop
             </div>
             <button
               type="submit"
