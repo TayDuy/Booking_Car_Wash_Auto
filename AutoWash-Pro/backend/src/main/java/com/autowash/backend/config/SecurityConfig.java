@@ -56,14 +56,8 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                // Bật CORS để cho phép Frontend (Vite) gọi API
-                .cors(cors -> cors.configurationSource(request -> {
-                    var config = new org.springframework.web.cors.CorsConfiguration();
-                    config.setAllowedOrigins(java.util.List.of("http://localhost:5173", "http://127.0.0.1:5173"));
-                    config.setAllowedMethods(java.util.List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-                    config.setAllowedHeaders(java.util.List.of("*"));
-                    return config;
-                }))
+                // Bật CORS (Cấu hình chi tiết nằm ở CorsConfig.java)
+                .cors(org.springframework.security.config.Customizer.withDefaults())
                 // Tắt CSRF vì dùng JWT (stateless)
                 .csrf(AbstractHttpConfigurer::disable)
 
@@ -95,7 +89,9 @@ public class SecurityConfig {
                                 "/swagger-ui/**",
                                 "/v3/api-docs/**",
                                 "/api/v1/auth/send-otp",
-                                "/api/v1/auth/verify-otp"
+                                "/api/v1/auth/verify-otp",
+                                "/api/v1/customers/**",
+                                "/api/v1/vehicles/**"
                         ).permitAll()
 
                         // Admin only
