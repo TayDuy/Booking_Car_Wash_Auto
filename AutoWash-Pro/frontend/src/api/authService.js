@@ -16,8 +16,7 @@ export async function register(username, password, email, fullName, phone){
         password: password,
         email: email,
         fullName: fullName,
-        phone: phone,
-dev/Tu
+        phone: phone
     });
     return respone.data;
 }
@@ -32,9 +31,7 @@ export async function sendOtp(phone){
 export async function verifyOtp(phone, otp) {
     const respone = await axios.post(`${API_URL}/verify-otp`,{
         phone: phone,
-        otp: otp,
-
-develop
+        otp: otp
     });
     return respone.data;
 }
