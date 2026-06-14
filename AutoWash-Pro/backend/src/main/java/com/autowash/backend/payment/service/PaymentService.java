@@ -1,229 +1,85 @@
 package com.autowash.backend.payment.service;
 
-import com.autowash.backend.booking.entity.Booking;
-import com.autowash.backend.booking.entity.Booking.BookingStatus;
-import com.autowash.backend.booking.repository.BookingRepository;
-import com.autowash.backend.booking.repository.BookingDetailRepository;
-import com.autowash.backend.payment.dto.*;
-import com.autowash.backend.payment.entity.Payment;
-import com.autowash.backend.payment.entity.Payment.PaymentStatus;
-import com.autowash.backend.payment.repository.PaymentRepository;
-import com.autowash.backend.promotion.entity.Promotion;
-import com.autowash.backend.promotion.repository.PromotionRepository;
-import com.autowash.backend.reward.entity.Reward;
-import com.autowash.backend.reward.repository.RewardRepository;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.stream.Collectors;
+import com.autowash.backend.payment.dto.PaymentCreateRequestDTO;
+import com.autowash.backend.payment.dto.PaymentResponseDTO;
 
 /**
- * PaymentService — xử lý toàn bộ nghiệp vụ thanh toán (FR-5).
- *
- * Quan hệ với các service khác:
- *   - BookingService  : payment chỉ tạo được khi booking = completed.
- *   - LoyaltyService  : khi payment → paid, trigger cộng điểm (FR-7) — TODO.
- *   - PromotionService: validate và tính discount từ promotion.
- *   - RewardService   : validate và tính discount từ reward redemption.
+ * Interface định nghĩa các nghiệp vụ liên quan đến thanh toán (Payment).
+ * 
+ * Quản lý toàn bộ vòng đời của một giao dịch thanh toán:
+ * 1. Tạo mới thanh toán sau khi đặt lịch (booking) hoàn tất.
+ * 2. Cập nhật trạng thái thanh toán (Thành công, Thất bại, Hủy).
+ * 3. Tự động tính toán số tiền cần thanh toán dựa trên các dịch vụ, mã giảm giá, và điểm thưởng.
  */
-@Service
-@RequiredArgsConstructor
-public class PaymentService {
-
-    private final PaymentRepository       paymentRepository;
-    private final BookingRepository       bookingRepository;
-    private final BookingDetailRepository bookingDetailRepository;
-    private final PromotionRepository     promotionRepository;
-    private final RewardRepository        rewardRepository;
-
-    // ── CREATE ────────────────────────────────────────────────────────────────
+public interface PaymentService {
 
     /**
-     * Tạo payment cho một booking đã completed.
-     *
-     * Luồng xử lý:
-     *   1. Validate booking tồn tại và status = completed.
-     *   2. Kiểm tra chưa có payment (tránh duplicate).
-     *   3. Tính originalAmount = sum(subTotal) từ booking_detail.
-     *   4. Tính discountAmount từ promotion (nếu có).
-     *   5. Cộng thêm discount từ reward redemption (nếu có).
-     *   6. Cap discountAmount ≤ originalAmount (không hoàn tiền âm).
-     *   7. Lưu payment với status = unpaid.
+     * Tạo một giao dịch thanh toán mới.
+     * Dành cho các booking đã ở trạng thái completed.
+     * 
+     * @param request Chứa ID booking, mã giảm giá (nếu có), reward (nếu có), và phương thức thanh toán.
+     * @return DTO chứa thông tin chi tiết của payment vừa tạo.
      */
-    @Transactional
-    public PaymentResponseDTO createPayment(PaymentCreateRequestDTO request) {
-
-        // 1. Validate booking tồn tại và đã completed
-        Booking booking = bookingRepository.findById(request.getBookingId())
-                .orElseThrow(() -> new RuntimeException("Booking không tồn tại: " + request.getBookingId()));
-
-        if (booking.getStatus() != BookingStatus.completed) {
-            throw new RuntimeException("Chỉ tạo payment khi booking đã completed");
-        }
-
-        // 2. Tránh tạo duplicate payment cho cùng 1 booking
-        if (paymentRepository.existsByBooking_BookingId(request.getBookingId())) {
-            throw new RuntimeException("Booking này đã có payment");
-        }
-
-        // 3. Tính originalAmount = sum(subTotal) của tất cả booking_detail
-        //    Không lấy từ client để tránh giả mạo số tiền
-        BigDecimal originalAmount = bookingDetailRepository
-                .findByBooking_BookingId(request.getBookingId())
-                .stream()
-                .map(d -> d.getSubTotal())
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        // 4. Tính discount từ promotion nếu client truyền promotionId
-        Promotion promotion = null;
-        BigDecimal discountAmount = BigDecimal.ZERO;
-
-        if (request.getPromotionId() != null) {
-            promotion = promotionRepository.findById(request.getPromotionId())
-                    .orElseThrow(() -> new RuntimeException("Promotion không tồn tại"));
-            discountAmount = calculateDiscount(promotion, originalAmount);
-        }
-
-        // 5. Cộng thêm discount từ reward nếu client truyền rewardId
-        Reward reward = null;
-        if (request.getRewardId() != null) {
-            reward = rewardRepository.findById(request.getRewardId())
-                    .orElseThrow(() -> new RuntimeException("Reward không tồn tại"));
-            discountAmount = discountAmount.add(reward.getRewardValue());
-        }
-
-        // 6. Cap discount — không để finalAmount âm
-        if (discountAmount.compareTo(originalAmount) > 0) {
-            discountAmount = originalAmount;
-        }
-
-        BigDecimal finalAmount = originalAmount.subtract(discountAmount);
-
-        // 7. Lưu payment, status mặc định = unpaid
-        Payment payment = Payment.builder()
-                .booking(booking)
-                .promotion(promotion)
-                .reward(reward)
-                .originalAmount(originalAmount)
-                .discountAmount(discountAmount)
-                .finalAmount(finalAmount)
-                .paymentMethod(request.getPaymentMethod())
-                .paymentStatus(PaymentStatus.unpaid)
-                .build();
-
-        return PaymentResponseDTO.fromEntity(paymentRepository.save(payment));
-    }
-
-    // ── UPDATE STATUS ─────────────────────────────────────────────────────────
+    PaymentResponseDTO createPayment(
+            PaymentCreateRequestDTO request);
 
     /**
-     * Cập nhật trạng thái payment theo state machine.
-     *
-     * Khi chuyển sang paid:
-     *   - Set paidAt = now().
-     *   - TODO: gọi LoyaltyService.earnPoints() để cộng điểm (FR-7).
+     * Chuyển trạng thái thanh toán từ unpaid sang paid.
+     * Đồng thời, hệ thống sẽ kích hoạt chức năng tích điểm thưởng (Loyalty Earn) cho khách hàng.
+     * 
+     * @param paymentId ID của payment cần xử lý.
+     * @return DTO chứa thông tin chi tiết của payment sau khi đã cập nhật.
      */
-    @Transactional
-    public PaymentResponseDTO updateStatus(Integer paymentId, PaymentUpdateRequestDTO request) {
-
-        Payment payment = findOrThrow(paymentId);
-
-        // Validate chuyển trạng thái hợp lệ theo state machine
-        validateStatusTransition(payment.getPaymentStatus(), request.getPaymentStatus());
-
-        payment.setPaymentStatus(request.getPaymentStatus());
-
-        // Ghi nhận thời điểm thanh toán thành công
-        if (request.getPaymentStatus() == PaymentStatus.paid) {
-            payment.setPaidAt(LocalDateTime.now());
-            // TODO: loyaltyService.earnPoints(payment) — FR-7
-        }
-
-        return PaymentResponseDTO.fromEntity(paymentRepository.save(payment));
-    }
-
-    // ── READ ──────────────────────────────────────────────────────────────────
-
-    /** Lấy chi tiết payment theo paymentId. */
-    @Transactional(readOnly = true)
-    public PaymentResponseDTO getById(Integer paymentId) {
-        return PaymentResponseDTO.fromEntity(findOrThrow(paymentId));
-    }
+    PaymentResponseDTO processPayment(Integer paymentId);
 
     /**
-     * Lấy payment theo bookingId.
-     * Dùng khi client chỉ biết bookingId, không biết paymentId.
+     * Cập nhật trạng thái chung cho payment (có thể là paid, cancelled, hoặc failed).
+     * 
+     * @param paymentId ID của payment cần cập nhật.
+     * @param request Chứa trạng thái mới cần cập nhật.
+     * @return DTO chứa thông tin payment sau khi cập nhật.
      */
-    @Transactional(readOnly = true)
-    public PaymentResponseDTO getByBookingId(Integer bookingId) {
-        return PaymentResponseDTO.fromEntity(
-                paymentRepository.findByBooking_BookingId(bookingId)
-                        .orElseThrow(() -> new RuntimeException(
-                                "Payment không tồn tại cho booking: " + bookingId))
-        );
-    }
+    PaymentResponseDTO updateStatus(Integer paymentId, com.autowash.backend.payment.dto.PaymentUpdateRequestDTO request);
 
     /**
-     * Lấy danh sách payment theo status.
-     * Null = lấy tất cả (admin dashboard).
-     * VD: status=unpaid → nhắc nhở thanh toán; status=paid → thống kê doanh thu.
+     * Lấy danh sách các giao dịch thanh toán dựa trên trạng thái (ví dụ: chỉ lấy các giao dịch chưa thanh toán).
+     * 
+     * @param status Trạng thái cần lọc (có thể null để lấy tất cả).
+     * @return Danh sách các payment phù hợp.
      */
-    @Transactional(readOnly = true)
-    public List<PaymentResponseDTO> getByStatus(PaymentStatus status) {
-        List<Payment> result = (status == null)
-                ? paymentRepository.findAll()
-                : paymentRepository.findByPaymentStatus(status);
-
-        return result.stream()
-                .map(PaymentResponseDTO::fromEntity)
-                .collect(Collectors.toList());
-    }
-
-    // ── PRIVATE HELPERS ───────────────────────────────────────────────────────
-
-    private Payment findOrThrow(Integer paymentId) {
-        return paymentRepository.findById(paymentId)
-                .orElseThrow(() -> new RuntimeException("Payment không tồn tại: " + paymentId));
-    }
+    java.util.List<PaymentResponseDTO> getByStatus(com.autowash.backend.payment.entity.Payment.PaymentStatus status);
 
     /**
-     * Tính discount từ promotion theo discountType:
-     *   percent      → originalAmount * value / 100
-     *   fixed        → value (VND cố định)
-     *   free_service → 0 (xử lý riêng ở tầng booking, không giảm tiền trực tiếp)
+     * Hủy bỏ một giao dịch thanh toán (chuyển sang trạng thái cancelled).
+     * Sẽ hoàn lại điểm thưởng nếu khách hàng đã sử dụng để đổi lấy giảm giá trong giao dịch này.
+     * 
+     * @param paymentId ID của payment cần hủy.
+     * @return DTO chứa thông tin payment sau khi hủy.
      */
-    private BigDecimal calculateDiscount(Promotion promotion, BigDecimal originalAmount) {
-        return switch (promotion.getDiscountType()) {
-            case percent -> originalAmount
-                    .multiply(promotion.getDiscountValue())
-                    .divide(BigDecimal.valueOf(100));
-            case fixed   -> promotion.getDiscountValue();
-            default      -> BigDecimal.ZERO;
-        };
-    }
+    PaymentResponseDTO cancelPayment(Integer paymentId);
 
     /**
-     * Validate chuyển trạng thái payment theo state machine:
-     *   unpaid  → paid / cancelled
-     *   failed  → paid  (cho phép retry)
-     *   paid    → không cho phép (terminal state)
-     *   cancelled → không cho phép (terminal state)
+     * Đánh dấu một giao dịch thanh toán là thất bại (chuyển sang trạng thái failed).
+     * 
+     * @param paymentId ID của payment cần đánh dấu thất bại.
+     * @return DTO chứa thông tin payment sau khi cập nhật.
      */
-    private void validateStatusTransition(PaymentStatus current, PaymentStatus next) {
-        boolean valid = switch (current) {
-            case unpaid    -> next == PaymentStatus.paid || next == PaymentStatus.cancelled;
-            case failed    -> next == PaymentStatus.paid;
-            case paid,
-                 cancelled -> false; // terminal states
-        };
+    PaymentResponseDTO markFailed(Integer paymentId);
 
-        if (!valid) {
-            throw new RuntimeException(
-                    "Không thể chuyển trạng thái từ " + current + " sang " + next);
-        }
-    }
+    /**
+     * Lấy thông tin chi tiết của một payment dựa trên ID của nó.
+     * 
+     * @param paymentId ID của payment.
+     * @return DTO chứa thông tin chi tiết của payment.
+     */
+    PaymentResponseDTO getById(Integer paymentId);
+
+    /**
+     * Tìm kiếm thông tin payment dựa vào ID của Booking.
+     * Mỗi Booking chỉ có duy nhất 1 payment tương ứng.
+     * 
+     * @param bookingId ID của Booking.
+     * @return DTO chứa thông tin chi tiết của payment tương ứng.
+     */
+    PaymentResponseDTO getByBookingId(Integer bookingId);
 }

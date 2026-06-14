@@ -9,4 +9,5 @@ public interface BookingDetailService {
     void removeDetail(Integer detailId);
     List<BookingDetailItemResponseDTO> getByBookingId(Integer bookingId);
     BookingDetailItemResponseDTO getById(Integer detailId);
+    java.math.BigDecimal calculateTotalAmount(Integer bookingId);
 }

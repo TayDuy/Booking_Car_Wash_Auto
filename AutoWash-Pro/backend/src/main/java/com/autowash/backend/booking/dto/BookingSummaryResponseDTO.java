@@ -1,10 +1,17 @@
 package com.autowash.backend.booking.dto;
 
-import com.autowash.backend.booking.entity.Booking;
+import com.autowash.backend.booking.enums.BookingStatus;
 import lombok.*;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 
+/**
+ * DTO tóm tắt booking — dùng cho danh sách, không bao gồm chi tiết dịch vụ.
+ * Không có fromEntity — mapping xử lý tại BookingMapper.
+ */
 @Getter
 @Setter
 @NoArgsConstructor
@@ -15,23 +22,15 @@ public class BookingSummaryResponseDTO {
     private Integer bookingId;
     private String bookingCode;
     private LocalDateTime bookingDate;
-    private Booking.BookingStatus status;
-    private Integer priorityScore;
+    private BookingStatus status;
 
     private String customerName;
-    private String vehiclePlateNumber;
+    private String licensePlate;            // đổi từ vehiclePlateNumber cho đồng nhất với Mapper
     private String branchName;
 
-    public static BookingSummaryResponseDTO fromEntity(Booking booking) {
-        return BookingSummaryResponseDTO.builder()
-                .bookingId(booking.getBookingId())
-                .bookingCode(booking.getBookingCode())
-                .bookingDate(booking.getBookingDate())
-                .status(booking.getStatus())
-                .priorityScore(booking.getPriorityScore())
-                .customerName(booking.getCustomer() != null ? booking.getCustomer().getFullName() : null)
-                .vehiclePlateNumber(booking.getVehicle() != null ? booking.getVehicle().getLicensePlate() : null)
-                .branchName(booking.getBranch() != null ? booking.getBranch().getBranchName() : null)
-                .build();
-    }
+    // TimeSlot — tách date + startTime thay vì slotTime
+    private LocalDate slotDate;
+    private LocalTime slotStartTime;
+
+    private BigDecimal totalAmount;         // sum(subTotal) từ BookingDetail
 }

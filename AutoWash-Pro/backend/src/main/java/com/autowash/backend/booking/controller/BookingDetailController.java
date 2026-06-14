@@ -1,7 +1,7 @@
 package com.autowash.backend.booking.controller;
 
 import com.autowash.backend.booking.dto.BookingDetailRequestDTO;
-import com.autowash.backend.booking.dto.BookingResponseDTO;
+import com.autowash.backend.booking.dto.BookingDetailItemResponseDTO;
 import com.autowash.backend.booking.service.BookingDetailService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -29,7 +29,7 @@ public class BookingDetailController {
      */
     @GetMapping("/{bookingId}/details")
     @PreAuthorize("hasAnyRole('CUSTOMER', 'STAFF', 'ADMIN')")
-    public ResponseEntity<List<BookingResponseDTO>> getDetailsByBookingId(
+    public ResponseEntity<List<BookingDetailItemResponseDTO>> getDetailsByBookingId(
             @PathVariable Integer bookingId) {
 
         return ResponseEntity.ok(bookingDetailService.getByBookingId(bookingId));
@@ -41,7 +41,7 @@ public class BookingDetailController {
      */
     @PostMapping("/{bookingId}/details")
     @PreAuthorize("hasRole('CUSTOMER')")
-    public ResponseEntity<BookingResponseDTO> addDetail(
+    public ResponseEntity<BookingDetailItemResponseDTO> addDetail(
             @PathVariable Integer bookingId,
             @Valid @RequestBody BookingDetailRequestDTO request) {
 
@@ -67,7 +67,7 @@ public class BookingDetailController {
      */
     @GetMapping("/details/{detailId}")
     @PreAuthorize("hasAnyRole('CUSTOMER', 'STAFF', 'ADMIN')")
-    public ResponseEntity<BookingResponseDTO> getDetailById(@PathVariable Integer detailId) {
+    public ResponseEntity<BookingDetailItemResponseDTO> getDetailById(@PathVariable Integer detailId) {
 
         return ResponseEntity.ok(bookingDetailService.getById(detailId));
     }
