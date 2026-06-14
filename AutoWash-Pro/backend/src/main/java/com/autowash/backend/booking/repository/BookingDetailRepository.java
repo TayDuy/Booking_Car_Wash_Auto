@@ -10,4 +10,7 @@ import java.util.List;
 public interface BookingDetailRepository extends JpaRepository<BookingDetail, Integer> {
 
     List<BookingDetail> findByBooking_BookingId(Integer bookingId);
+
+    @org.springframework.data.jpa.repository.Query("SELECT bd FROM BookingDetail bd JOIN FETCH bd.service WHERE bd.booking.bookingId = :bookingId")
+    List<BookingDetail> findByBookingIdWithService(@org.springframework.data.repository.query.Param("bookingId") Integer bookingId);
 }

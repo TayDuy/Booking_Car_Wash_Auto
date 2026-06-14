@@ -28,6 +28,14 @@ import java.math.BigDecimal;
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @ToString(exclude = {"booking", "service"})
 public class BookingDetail {
+
+    @jakarta.validation.constraints.AssertTrue(message = "SubTotal must equal unitPrice × quantity")
+    private boolean isSubTotalValid() {
+        if (unitPrice == null || quantity == null || subTotal == null) {
+            return true;
+        }
+        return subTotal.compareTo(unitPrice.multiply(BigDecimal.valueOf(quantity))) == 0;
+    }
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "booking_detail_id")

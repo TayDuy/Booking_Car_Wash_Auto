@@ -1,5 +1,6 @@
 package com.autowash.backend.booking.entity;
 
+
 import com.autowash.backend.branch.entity.Branch;
 import com.autowash.backend.employee.entity.Employee;
 import com.autowash.backend.timeslot.entity.TimeSlot;
@@ -44,12 +45,19 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @Builder
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
-@ToString(exclude = {"customer", "vehicle", "slot", "branch", "assignedStaff"})
+@ToString(exclude = {"customer", "vehicle", "slot", "branch", "assignedStaff"})  // cái cuối thay tên đẻ tránh trùng tên db cho rõ nghĩa
 public class Booking {
+
+    @AssertTrue(message = "End time must be after start time")
+    private boolean isValidTimeRange() {
+        if (startTime == null || endTime == null) {
+            return true;  // Skip validation if either is null
+        }
+        return endTime.isAfter(startTime);
+    }
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "booking_id")
     @EqualsAndHashCode.Include
     private Integer bookingId;
 
@@ -77,6 +85,7 @@ public class Booking {
             foreignKey = @ForeignKey(name = "fk_booking_branch"))
     private Branch branch;
 
+    // Nullable — chỉ set khi chuyển sang in_progress
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "employee_id",
             foreignKey = @ForeignKey(name = "fk_booking_employee"))
@@ -97,6 +106,10 @@ public class Booking {
     @Builder.Default
     private BookingStatus status = BookingStatus.pending;
 
+    /**
+     * FR-6: Set từ customer.tier.priorityLevel khi tạo booking.
+     * Dùng để sort waitlist khi slot mở lại sau cancel/no_show.
+     */
     @Min(value = 1, message = "Priority score tối thiểu là 1")
     @Max(value = 4, message = "Priority score tối đa là 4")
     @Column(name = "priority_score", nullable = false)
@@ -121,14 +134,18 @@ public class Booking {
         pending, confirmed, in_progress, completed, cancelled, no_show
     }
 
+    // ── FR-5 Helpers ─────────────────────────────────────────────────────────
+
+    /** Cho phép huỷ ở pending hoặc confirmed. */
     public boolean isCancellable() {
         return BookingStatus.pending.equals(this.status)
                 || BookingStatus.confirmed.equals(this.status);
     }
 
+    /** Booking đang chiếm chỗ trong slot — dùng để check overlap. */
     public boolean isActive() {
-        return this.status == BookingStatus.pending
-                || this.status == BookingStatus.confirmed
-                || this.status == BookingStatus.in_progress;
+        return BookingStatus.pending.equals(this.status)
+                || BookingStatus.confirmed.equals(this.status)
+                || BookingStatus.in_progress.equals(this.status);
     }
 }

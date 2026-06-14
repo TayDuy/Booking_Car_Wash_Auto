@@ -52,12 +52,7 @@ public class User {
     private String role = "customer";
 
     /** Audit — set tự động khi INSERT, không cho phép update sau đó. */
+    @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
-
-    /** Set createdAt thủ công vì không dùng @EnableJpaAuditing cho entity này. */
-    @PrePersist
-    protected void onCreate() {
-        this.createdAt = LocalDateTime.now();
-    }
 }

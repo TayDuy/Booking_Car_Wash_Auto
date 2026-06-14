@@ -1,84 +1,93 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import "./Login.css";
+import { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { login, saveAuth } from "../../api/authService";
+import { signInWithPopup, getRedirectResult } from "firebase/auth";
+import { auth, googleProvider } from "../../firebase/firebaseConfig";
 
 function Login({ onLoginSuccess }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const navigate = useNavigate();
+
+  function redirectByRole(role) {
+    const normalizedRole = role?.toLowerCase();
+    if (normalizedRole === "admin") {
+      navigate("/admin");
+    } else if (normalizedRole === "employee") {
+      navigate("/employee");
+    } else {
+      navigate("/");
+    }
+  }
 
   async function handleSubmit(e) {
     e.preventDefault();
-
     try {
       const data = await login(username, password);
-
       if (data.status === 200 || data.data) {
         saveAuth(data.data);
-        onLoginSuccess();
+        if (onLoginSuccess) {
+          onLoginSuccess();
+        }
+        redirectByRole(data.data.role);
       } else {
         setErrorMessage(data.message);
       }
     } catch {
-      setErrorMessage(
-        "Đăng nhập thất bại. Kiểm tra lại username/password."
-      );
+      setErrorMessage("Đăng nhập thất bại. Kiểm tra lại username/password.");
     }
   }
 
+  async function handleGoogleLogin() {
+    try {
+      const result = await signInWithPopup(auth, googleProvider);
+      const googleToken = await result.user.getIdToken();
+      saveAuth({
+        accessToken: googleToken,
+        username: result.user.email,
+        role: "customer",
+      });
+      if (onLoginSuccess) {
+        onLoginSuccess();
+      }
+      redirectByRole("customer");
+    } catch (error) {
+      console.log("Google login error:", error);
+      alert("Đăng nhập Google thất bại!");
+    }
+  }
+
+  useEffect(() => {
+    console.log("Login page loaded, checking Google redirect...");
+    async function checkGoogleRedirect() {
+      try {
+        const result = await getRedirectResult(auth);
+        console.log("Redirect result:", result);
+        if (result){
+          console.log("Google user:", result.user);
+          alert("Đăng nhập Google thành công: " + result.user.email);
+        }
+      } catch (error) {
+        console.log("Google redirect error:", error);
+      }
+    }
+    checkGoogleRedirect();
+  }, []);
+
   return (
-    <div
-      className="d-flex justify-content-center align-items-center"
-      style={{
-        minHeight: "100vh",
-        background:
-          "linear-gradient(135deg,#00c6ff,#0072ff,#6a11cb)",
-        }}
-    >
-      <div
-        className="card shadow-lg"
-        style={{
-          width: "800px",
-          maxWidth: "92%",
-          borderRadius: "25px",
-          background: "rgba(255,255,255,0.97)",
-          border: "none",
-        }}
-      >
-        <div className="card-body p-5">
-
-          <div className="text-center mb-4">
-            <div
-              style={{
-                fontSize: "90px",
-                filter: "drop-shadow(0 5px 10px rgba(0,0,0,0.2))"
-              }}
-            >
-              🚗
-            </div>
-
-            <h1
-              style={{
-                fontWeight: "700",
-                color: "#2a5298",
-              }}
-            >
-              AutoWash Pro
+    <div className="login-page login-only-page">
+      <div className="login-main">    
+        <div className="login-card">
+          <div className="login-header">
+            <h1 className="login-title">           
+              WashFlow Pro
             </h1>
-
-            <p className="text-muted">
-              Smart Automated Car Wash Management System
-            </p>
-
-            <p
-              style={{
-                color: "#6c757d",
-                fontSize: "14px"
-              }}
-            >
-              Manage bookings, customers and services easily.
-            </p>
+            <p className="login-subtitle">
+              PRECISION AUTOMATION DASHBOARD
+            </p>            
           </div>
 
           {errorMessage && (
@@ -90,46 +99,37 @@ function Login({ onLoginSuccess }) {
           <form onSubmit={handleSubmit}>
             <div className="mb-3">
               <label className="form-label d-block text-start fw-bold">
-                Username
+                Email Address
               </label>
-
-              <input
-                type="text"
-                className="form-control form-control-lg"
-                placeholder="Nhập username"
-                value={username}
-                onChange={(e) =>
-                  setUsername(e.target.value)
-                }
-              />
+              <div className="username-wrap">
+                <span className="username-icon">✉</span>
+                <input
+                  type="text"
+                  className="login-input username-input"
+                  placeholder="manager@washflowpro.com"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                />
+              </div>
             </div>
 
             <div className="mb-3">
               <label className="form-label d-block text-start fw-bold">
                 Password
               </label>
-
-              <div className="input-group">
+              <div className="password-wrap">
+                <span className="password-icon">🔒</span>
                 <input
-                  type={
-                    showPassword
-                      ? "text"
-                      : "password"
-                  }
-                  className="form-control form-control-lg"
+                  type={showPassword ? "text" : "password"}
+                  className="login-input password-input"
                   placeholder="Nhập password"
                   value={password}
-                  onChange={(e) =>
-                    setPassword(e.target.value)
-                  }
+                  onChange={(e) => setPassword(e.target.value)}
                 />
-
                 <button
                   type="button"
-                  className="btn btn-outline-secondary"
-                  onClick={() =>
-                    setShowPassword(!showPassword)
-                  }
+                  className="password-toggle"
+                  onClick={() => setShowPassword(!showPassword)}
                 >
                   {showPassword ? "🙈" : "👁"}
                 </button>
@@ -138,61 +138,44 @@ function Login({ onLoginSuccess }) {
 
             <div className="d-flex justify-content-between align-items-center mt-3">
               <div>
-                <input
-                  type="checkbox"
-                  className="form-check-input me-2"
-                />
+                <input type="checkbox" className="form-check-input me-2" />
                 <span>Remember me</span>
               </div>
-
-              <a
-                href="#"
-                className="text-decoration-none fw-semibold"
-              >
+              <a href="#" className="text-decoration-none fw-semibold">
                 Forgot Password?
               </a>
             </div>
 
-            <button
-              type="submit"
-              className="btn w-100 py-3 mt-3"
-              style={{
-                background:
-                  "linear-gradient(90deg,#00c6ff,#0072ff)",
-                color: "white",
-                border: "none",
-                borderRadius: "12px",
-                fontWeight: "bold",
-                fontSize: "18px",
-                boxShadow:
-                  "0 4px 15px rgba(0,114,255,0.4)"
-              }}
+            <button type="submit" className="login-btn">
+              🚀 Sign In
+            </button>
+            <div className="login-divider">            
+              <div className="divider-line"></div>
+              <span className="divider-text">OR CONTINUE WITH</span>
+              <div className="divider-line"></div>                
+            </div>
+            <button 
+              type="button"
+              className="google-btn"
+              onClick={handleGoogleLogin}
             >
-              🚀 Login
+              <img
+                src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
+                alt="Google"
+                style={{width: "40px", height: "40px", marginRight: "8px"}}
+              />
+              Đăng nhập với Google
             </button>
           </form>
 
-          <div className="text-center mt-4">
-            <hr />
-
-              <p
-                className="text-center text-muted mb-0"
-                style={{ fontSize: "13px" }}
-              >
-                © 2026 AutoWash Pro Team
-              </p>
+          <div className="text-center mt-4">          
             <span>Chưa có tài khoản? </span>
-
-            <Link
-              to="/register"
-              className="fw-bold text-decoration-none"
-            >
+            <Link to="/register" className="fw-bold text-decoration-none">
               Đăng ký ngay
             </Link>
           </div>
-
         </div>
-      </div>
+      </div>  
     </div>
   );
 }

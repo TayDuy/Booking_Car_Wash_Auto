@@ -29,6 +29,7 @@ public class OtpVerification {
     @Column(name = "otp_code", nullable = false, length = 6)
     private String otpCode;
 
+    @Builder.Default
     @Column(nullable = false)
     private Boolean verified = false;
 

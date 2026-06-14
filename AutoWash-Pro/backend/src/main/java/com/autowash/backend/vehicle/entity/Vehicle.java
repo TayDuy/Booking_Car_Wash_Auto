@@ -61,6 +61,10 @@ public class Vehicle {
     @Column(name = "color", length = 20)
     private String color;
 
+    @Size(max = 50)
+    @Column(name = "nickname", length =  50)
+    private String nickname;
+
     @Column(name = "is_active", nullable = false)
     @Builder.Default
     private Boolean isActive = true;
@@ -74,9 +78,8 @@ public class Vehicle {
     private LocalDateTime updatedAt;
 
     public enum VehicleType {
-        /** Sedan, hatchback, coupe — thân xe nhỏ */
-        car_small,
-        /** SUV, MPV, pickup — thân xe lớn */
-        car_large
+        car,
+        suv,
+        truck
     }
 }
