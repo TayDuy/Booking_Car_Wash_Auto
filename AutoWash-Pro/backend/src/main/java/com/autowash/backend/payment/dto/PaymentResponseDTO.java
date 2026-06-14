@@ -1,6 +1,6 @@
 package com.autowash.backend.payment.dto;
 
-import com.autowash.backend.payment.entity.Payment;
+
 import com.autowash.backend.payment.entity.Payment.PaymentMethod;
 import com.autowash.backend.payment.entity.Payment.PaymentStatus;
 import lombok.*;
@@ -53,28 +53,4 @@ public class PaymentResponseDTO {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
-    /**
-     * Static factory — chuyển entity Payment sang DTO.
-     * Dùng optional chaining để tránh NullPointerException
-     * khi promotion hoặc reward là null.
-     */
-    public static PaymentResponseDTO fromEntity(Payment p) {
-        return PaymentResponseDTO.builder()
-                .paymentId(p.getPaymentId())
-                .bookingId(p.getBooking().getBookingId())
-                .bookingCode(p.getBooking().getBookingCode())
-                .promotionId(p.getPromotion() != null ? p.getPromotion().getPromotionId() : null)
-                .promotionName(p.getPromotion() != null ? p.getPromotion().getPromotionName() : null)
-                .rewardId(p.getReward() != null ? p.getReward().getRewardId() : null)
-                .rewardName(p.getReward() != null ? p.getReward().getRewardName() : null)
-                .originalAmount(p.getOriginalAmount())
-                .discountAmount(p.getDiscountAmount())
-                .finalAmount(p.getFinalAmount())
-                .paymentMethod(p.getPaymentMethod())
-                .paymentStatus(p.getPaymentStatus())
-                .paidAt(p.getPaidAt())
-                .createdAt(p.getCreatedAt())
-                .updatedAt(p.getUpdatedAt())
-                .build();
-    }
 }

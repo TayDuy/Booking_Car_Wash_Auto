@@ -1,41 +1,34 @@
 package com.autowash.backend.booking.dto;
 
-import com.autowash.backend.booking.entity.Booking;
-import com.autowash.backend.booking.entity.BookingDetail;
+import com.autowash.backend.booking.enums.BookingStatus;
 import lombok.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.List;
 
+/**
+ * DTO trả về ngay sau khi tạo booking thành công.
+ * Gọn hơn BookingResponseDTO — chỉ chứa thông tin cần thiết
+ * để client xác nhận booking đã được tạo.
+ * Logic tính totalAmount được chuyển vào BookingMapper.
+ */
 @Getter
 @Builder
 public class BookingCreateResponseDTO {
 
+    /** ID và mã định danh của booking vừa tạo. */
     private Integer bookingId;
     private String bookingCode;
+
+    /** Thời điểm tạo booking. */
     private LocalDateTime bookingDate;
-    private Booking.BookingStatus status;
-    private BigDecimal totalAmount; // tổng tiền tất cả dịch vụ
+
+    /** Trạng thái ban đầu — luôn là pending khi mới tạo. */
+    private BookingStatus status;
+
+    /** Tổng tiền = sum(subTotal) của tất cả BookingDetail. */
+    private BigDecimal totalAmount;
+
+    /** Thông báo xác nhận cho client. */
     private String message;
-
-    /**
-     * Dùng sau khi tạo booking thành công.
-     * Nhận thêm details để tính totalAmount = sum(subTotal).
-     */
-    public static BookingCreateResponseDTO fromEntity(Booking booking, List<BookingDetail> details) {
-
-        BigDecimal totalAmount = details.stream()
-                .map(BookingDetail::getSubTotal)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        return BookingCreateResponseDTO.builder()
-                .bookingId(booking.getBookingId())
-                .bookingCode(booking.getBookingCode())
-                .bookingDate(booking.getBookingDate())
-                .status(booking.getStatus())
-                .totalAmount(totalAmount)
-                .message("Booking đã được tạo thành công, đang chờ xác nhận.")
-                .build();
-    }
 }

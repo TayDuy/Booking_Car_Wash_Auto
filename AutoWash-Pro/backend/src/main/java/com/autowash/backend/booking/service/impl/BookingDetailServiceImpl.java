@@ -3,7 +3,7 @@ package com.autowash.backend.booking.service.impl;
 import com.autowash.backend.booking.dto.BookingDetailItemResponseDTO;
 import com.autowash.backend.booking.dto.BookingDetailRequestDTO;
 import com.autowash.backend.booking.entity.Booking;
-import com.autowash.backend.booking.entity.Booking.BookingStatus;
+import com.autowash.backend.booking.enums.BookingStatus;
 import com.autowash.backend.booking.entity.BookingDetail;
 import com.autowash.backend.booking.repository.BookingDetailRepository;
 import com.autowash.backend.booking.repository.BookingRepository;
@@ -123,6 +123,14 @@ public class BookingDetailServiceImpl implements BookingDetailService {
                 .stream()
                 .map(BookingDetailItemResponseDTO::from)
                 .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public BigDecimal calculateTotalAmount(Integer bookingId) {
+        return getByBookingId(bookingId).stream()
+                .map(BookingDetailItemResponseDTO::getSubTotal)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
     /**

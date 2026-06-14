@@ -1,27 +1,59 @@
 package com.autowash.backend.reward.service;
 
-import com.autowash.backend.loyaltytransaction.repository.LoyaltyTransactionRepository;
-import com.autowash.backend.reward.dto.RewardResponse;
-import com.autowash.backend.reward.entity.Reward;
-import com.autowash.backend.reward.repository.RewardRepository;
-import org.springframework.stereotype.Service;
-import java.util.Arrays;
+import com.autowash.backend.reward.dto.RewardRequestDTO;
+import com.autowash.backend.reward.dto.RewardResponseDTO;
+
 import java.util.List;
 
-@Service // Danh dau day la xu ly nghiep vu
-public class RewardService {
+/**
+ * Contract của tầng service cho nghiệp vụ quản lý Reward (FR-7).
+ *
+ * <p>Mọi logic kiểm tra điểm, validate trạng thái, và ánh xạ DTO ↔ entity
+ * đều nằm trong implementation — controller chỉ gọi interface này.</p>
+ */
+public interface RewardService {
 
-    private final RewardRepository rewardRepository; // do @Service : k can new moi 1 obj
-    private final LoyaltyTransactionRepository loyaltyTransactionRepository;
+    /**
+     * Tạo mới một reward.
+     *
+     * @param dto thông tin reward từ client (đã qua Bean Validation)
+     * @return reward vừa được lưu, bao gồm rewardId và createdAt do DB sinh ra
+     */
+    RewardResponseDTO create(RewardRequestDTO dto);
 
-    public RewardService(RewardRepository rewardRepository, LoyaltyTransactionRepository loyaltyTransactionRepository) {
-        this.rewardRepository = rewardRepository;
-        this.loyaltyTransactionRepository = loyaltyTransactionRepository;
-    }
+    /**
+     * Lấy thông tin một reward theo ID.
+     *
+     * @param id primary key của reward
+     * @return thông tin reward
+     * @throws jakarta.persistence.EntityNotFoundException nếu không tồn tại
+     */
+    RewardResponseDTO getById(Integer id);
 
-    public List<RewardResponse> getRedeemalableRewards(Long customerId, String vehicleTypeText) {
-        Integer currentPoints = getCurrentPoints(customerId);
+    /**
+     * Lấy danh sách toàn bộ reward (active và inactive).
+     * Nếu chỉ muốn lấy active, cân nhắc thêm method {@code getAllActive()} riêng.
+     *
+     * @return danh sách reward, rỗng nếu chưa có dữ liệu
+     */
+    List<RewardResponseDTO> getAll();
 
+    /**
+     * Cập nhật reward đã tồn tại — chỉ patch field được gửi lên (null = giữ nguyên).
+     *
+     * @param id  primary key của reward cần cập nhật
+     * @param dto dữ liệu mới từ client
+     * @return reward sau khi cập nhật
+     * @throws jakarta.persistence.EntityNotFoundException nếu id không tồn tại
+     */
+    RewardResponseDTO update(Integer id, RewardRequestDTO dto);
 
-    }
+    /**
+     * Vô hiệu hóa reward (soft-delete) — đặt {@code status = inactive}.
+     * Không xóa khỏi DB để giữ lịch sử redemption của khách hàng.
+     *
+     * @param id primary key của reward cần vô hiệu hóa
+     * @throws jakarta.persistence.EntityNotFoundException nếu id không tồn tại
+     */
+    void deactivate(Integer id);
 }
