@@ -1,7 +1,7 @@
 package com.autowash.backend.booking.repository;
 
 import com.autowash.backend.booking.entity.Booking;
-import com.autowash.backend.booking.entity.Booking.BookingStatus;
+import com.autowash.backend.booking.enums.BookingStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;

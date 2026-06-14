@@ -1,5 +1,6 @@
 package com.autowash.backend.booking.entity;
 
+import com.autowash.backend.booking.enums.BookingStatus;
 import com.autowash.backend.branch.entity.Branch;
 import com.autowash.backend.employee.entity.Employee;
 import com.autowash.backend.timeslot.entity.TimeSlot;
@@ -77,6 +78,7 @@ public class Booking {
             foreignKey = @ForeignKey(name = "fk_booking_branch"))
     private Branch branch;
 
+    /** Nhân viên phụ trách — nullable, có thể chưa phân công khi mới tạo. */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "employee_id",
             foreignKey = @ForeignKey(name = "fk_booking_employee"))
@@ -91,24 +93,36 @@ public class Booking {
     @Column(name = "booking_date", nullable = false, updatable = false)
     private LocalDateTime bookingDate;
 
+    /**
+     * Trạng thái hiện tại của booking.
+     * Dùng enum tách riêng (BookingStatus) thay vì inner enum
+     * để DTO không cần import entity.
+     */
     @NotNull(message = "Status không được null")
     @Column(name = "status", nullable = false, length = 15)
     @Enumerated(EnumType.STRING)
     @Builder.Default
     private BookingStatus status = BookingStatus.pending;
 
+    /**
+     * Điểm ưu tiên trong waitlist (1–4).
+     * Set từ customer.tier.priorityLevel khi tạo booking.
+     */
     @Min(value = 1, message = "Priority score tối thiểu là 1")
     @Max(value = 4, message = "Priority score tối đa là 4")
     @Column(name = "priority_score", nullable = false)
     @Builder.Default
     private Integer priorityScore = 1;
 
+    /** Thời điểm bắt đầu rửa xe thực tế. */
     @Column(name = "start_time")
     private LocalDateTime startTime;
 
+    /** Thời điểm kết thúc rửa xe thực tế. */
     @Column(name = "end_time")
     private LocalDateTime endTime;
 
+    /** Ghi chú thêm của khách hàng khi đặt. */
     @Size(max = 255)
     @Column(name = "note", length = 255)
     private String note;
@@ -117,15 +131,15 @@ public class Booking {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
-    public enum BookingStatus {
-        pending, confirmed, in_progress, completed, cancelled, no_show
-    }
+    // ── Helpers ──────────────────────────────────────────────────────────────
 
+    /** Booking có thể huỷ không — chỉ khi đang pending hoặc confirmed. */
     public boolean isCancellable() {
         return BookingStatus.pending.equals(this.status)
                 || BookingStatus.confirmed.equals(this.status);
     }
 
+    /** Booking có đang trong vòng đời hoạt động không. */
     public boolean isActive() {
         return this.status == BookingStatus.pending
                 || this.status == BookingStatus.confirmed

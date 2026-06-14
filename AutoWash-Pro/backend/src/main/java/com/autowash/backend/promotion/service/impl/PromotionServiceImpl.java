@@ -1,0 +1,274 @@
+package com.autowash.backend.promotion.service.impl;
+
+import com.autowash.backend.loyaltytier.entity.LoyaltyTier;
+import com.autowash.backend.loyaltytier.repository.LoyaltyTierRepository;
+import com.autowash.backend.promotion.dto.*;
+import com.autowash.backend.promotion.entity.Promotion;
+import com.autowash.backend.promotion.entity.Promotion.PromotionStatus;
+import com.autowash.backend.promotion.mapper.PromotionMapper;
+import com.autowash.backend.promotion.repository.PromotionRepository;
+import com.autowash.backend.promotion.service.PromotionService;
+import com.autowash.backend.user.entity.User;
+import com.autowash.backend.user.repository.UserRepository;
+import jakarta.persistence.EntityNotFoundException;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.LocalDate;
+import java.util.List;
+
+/**
+ * Implementation của {@link PromotionService}.
+ *
+ * <p>Phân tách trách nhiệm:
+ * <ul>
+ *   <li>Validation nghiệp vụ (date range, entity tồn tại) → thực hiện tại đây.</li>
+ *   <li>Validation format/constraint → khai báo ở DTO bằng annotation.</li>
+ *   <li>Mapping entity ↔ DTO → uỷ thác cho {@link PromotionMapper}.</li>
+ * </ul>
+ */
+@Service
+@RequiredArgsConstructor
+public class PromotionServiceImpl implements PromotionService {
+
+    private final PromotionRepository promotionRepository;
+    private final LoyaltyTierRepository loyaltyTierRepository;
+    private final UserRepository userRepository;
+    private final PromotionMapper promotionMapper;
+
+    // ── CRUD ────────────────────────────────────────────────────────────────
+
+    /**
+     * {@inheritDoc}
+     * Validate ngày hợp lệ, resolve tier và user trước khi persist.
+     */
+    @Override
+    @Transactional
+    public PromotionResponseDTO create(PromotionRequestDTO dto, String createdByEmail) {
+        validateDateRange(dto);
+        LoyaltyTier tier = resolveTier(dto.getTargetTierId());
+
+        // Resolve email → User entity
+        User creator = userRepository.findByEmail(createdByEmail)
+                .orElseThrow(() -> new EntityNotFoundException(
+                        "User không tồn tại: " + createdByEmail));
+
+        Promotion promotion = promotionMapper.toEntity(dto, tier, creator);
+        return promotionMapper.toDTO(promotionRepository.save(promotion));
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    @Transactional(readOnly = true)
+    public PromotionResponseDTO getById(Integer id) {
+        return promotionMapper.toDTO(findOrThrow(id));
+    }
+
+    /**
+     * {@inheritDoc}
+     * Trả về tất cả promotion không phân biệt trạng thái — dùng cho admin.
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public List<PromotionResponseDTO> getAll() {
+        return promotionRepository.findAll()
+                .stream()
+                .map(promotionMapper::toDTO)
+                .toList();
+    }
+
+    /**
+     * {@inheritDoc}
+     * Chỉ trả về promotion có status = active — dùng cho client chọn khuyến mãi.
+     * Lưu ý: promotion active nhưng hết hạn ngày vẫn được trả về ở đây;
+     * field {@code valid} trong DTO phản ánh trạng thái thực tế.
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public List<PromotionResponseDTO> getAllActive() {
+        return promotionRepository.findByStatus(PromotionStatus.active)
+                .stream()
+                .map(promotionMapper::toDTO)
+                .toList();
+    }
+
+    /**
+     * {@inheritDoc}
+     * Không cho phép thay đổi status qua endpoint này.
+     * Dùng {@link #deactivate(Integer)} để vô hiệu hoá.
+     */
+    @Override
+    @Transactional
+    public PromotionResponseDTO update(Integer id, PromotionRequestDTO dto) {
+        validateDateRange(dto);
+        Promotion promotion = findOrThrow(id);
+        LoyaltyTier tier = resolveTier(dto.getTargetTierId());
+        promotionMapper.updateEntity(promotion, dto, tier);
+        return promotionMapper.toDTO(promotionRepository.save(promotion));
+    }
+
+    /**
+     * {@inheritDoc}
+     * Soft-delete bằng cách chuyển status → inactive thay vì xoá khỏi DB,
+     * đảm bảo không mất lịch sử sử dụng của các đơn hàng trước đó.
+     */
+    @Override
+    @Transactional
+    public void deactivate(Integer id) {
+        Promotion promotion = findOrThrow(id);
+        promotion.setStatus(PromotionStatus.inactive);
+        promotionRepository.save(promotion);
+    }
+
+    // ── Apply logic ─────────────────────────────────────────────────────────
+
+    /**
+     * {@inheritDoc}
+     *
+     * <p>Luồng xử lý:
+     * <ol>
+     *   <li>Load promotion, kiểm tra toàn bộ điều kiện qua {@code isApplicable()}.</li>
+     *   <li>Nếu không thoả → trả về {@code applicable=false}, giữ nguyên orderValue.</li>
+     *   <li>Nếu thoả → tính {@code discountAmount} theo discountType,
+     *       sau đó trả về {@code finalAmount = orderValue - discountAmount}.</li>
+     * </ol>
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public PromotionApplyResponseDTO applyPromotion(PromotionApplyRequestDTO req) {
+        Promotion promotion = findOrThrow(req.getPromotionId());
+
+        // Kiểm tra tổng hợp: valid (status + ngày) + tier + loại xe + giá trị tối thiểu
+        boolean applicable = promotion.isApplicable(
+                req.getTierId(),
+                req.getVehicleType(),
+                req.getOrderValue()
+        );
+
+        if (!applicable) {
+            // Trả về response thất bại, không tính giảm giá
+            return PromotionApplyResponseDTO.builder()
+                    .applicable(false)
+                    .message("Khuyến mãi không áp dụng được cho đơn hàng này.")
+                    .discountAmount(BigDecimal.ZERO)
+                    .finalAmount(req.getOrderValue())   // Giữ nguyên giá gốc
+                    .build();
+        }
+
+        BigDecimal discountAmount = calculateDiscount(promotion, req.getOrderValue());
+
+        // Đảm bảo finalAmount không âm (trường hợp fixed > orderValue)
+        BigDecimal finalAmount = req.getOrderValue()
+                .subtract(discountAmount)
+                .max(BigDecimal.ZERO);
+
+        return PromotionApplyResponseDTO.builder()
+                .applicable(true)
+                .message("Áp dụng khuyến mãi thành công.")
+                .discountAmount(discountAmount)
+                .finalAmount(finalAmount)
+                .build();
+    }
+
+    // ── Private helpers ──────────────────────────────────────────────────────
+
+    /**
+     * Load Promotion theo ID, ném {@link EntityNotFoundException} nếu không tồn tại.
+     */
+    private Promotion findOrThrow(Integer id) {
+        return promotionRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException(
+                        "Promotion không tồn tại: " + id));
+    }
+
+    /**
+     * Resolve LoyaltyTier từ ID.
+     *
+     * @param tierId null → promotion áp dụng tất cả tier, trả về null
+     * @return entity LoyaltyTier hoặc null
+     * @throws EntityNotFoundException nếu tierId khác null nhưng không tìm thấy
+     */
+    private LoyaltyTier resolveTier(Integer tierId) {
+        if (tierId == null) return null;
+        return loyaltyTierRepository.findById(tierId)
+                .orElseThrow(() -> new EntityNotFoundException(
+                        "LoyaltyTier không tồn tại: " + tierId));
+    }
+
+    /**
+     * Validate logic ngày: endDate phải >= startDate.
+     * Gọi trước khi persist để tránh data không hợp lệ.
+     *
+     * @throws IllegalArgumentException nếu endDate trước startDate
+     */
+    private void validateDateRange(PromotionRequestDTO dto) {
+        if (dto.getEndDate().isBefore(dto.getStartDate())) {
+            throw new IllegalArgumentException(
+                    "Ngày kết thúc phải sau hoặc bằng ngày bắt đầu.");
+        }
+    }
+
+    /**
+     * Tính số tiền được giảm dựa trên {@code discountType} của promotion.
+     *
+     * <ul>
+     *   <li><b>percent</b>     → {@code orderValue × discountValue / 100}, làm tròn HALF_UP 2 chữ số</li>
+     *   <li><b>fixed</b>       → {@code min(discountValue, orderValue)} — không giảm quá giá trị đơn</li>
+     *   <li><b>free_service</b>→ {@code orderValue} — miễn phí toàn bộ</li>
+     * </ul>
+     *
+     * @param promotion promotion đang áp dụng
+     * @param orderValue giá trị đơn hàng gốc
+     * @return số tiền được giảm (>= 0)
+     */
+    private BigDecimal calculateDiscount(Promotion promotion, BigDecimal orderValue) {
+        return switch (promotion.getDiscountType()) {
+            case percent -> orderValue
+                    .multiply(promotion.getDiscountValue())
+                    .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+
+            // Giới hạn tối đa bằng orderValue để tránh discountAmount > orderValue
+            case fixed -> promotion.getDiscountValue().min(orderValue);
+
+            // Miễn phí toàn bộ: discount = toàn bộ giá trị đơn hàng
+            case free_service -> orderValue;
+        };
+    }
+    /**
+     * {@inheritDoc}
+     *
+     * <p>Filter in-memory trên stream — phù hợp khi số lượng promotion
+     * không quá lớn (vài trăm bản ghi). Nếu cần scale lên hàng nghìn,
+     * chuyển sang JPA Specification hoặc {@code @Query} động.</p>
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public List<PromotionResponseDTO> getAll(
+            PromotionStatus status,
+            Promotion.VehicleType vehicleType,
+            Promotion.DiscountType discountType,
+            LocalDate date) {
+
+        return promotionRepository.findAll()
+                .stream()
+                // Lọc theo status nếu client truyền lên, bỏ qua nếu null
+                .filter(p -> status == null
+                        || p.getStatus().equals(status))
+                // vehicleType null trên entity = promotion áp dụng tất cả loại xe
+                .filter(p -> vehicleType == null
+                        || p.getVehicleType() == null
+                        || p.getVehicleType().equals(vehicleType))
+                // Lọc theo discountType nếu client truyền lên, bỏ qua nếu null
+                .filter(p -> discountType == null
+                        || p.getDiscountType().equals(discountType))
+                // Lọc promotion còn hiệu lực tại ngày date (startDate <= date <= endDate)
+                .filter(p -> date == null
+                        || (!date.isBefore(p.getStartDate())
+                        && !date.isAfter(p.getEndDate())))
+                .map(promotionMapper::toDTO)
+                .toList();
+    }
+}
