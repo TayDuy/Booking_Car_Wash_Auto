@@ -2,8 +2,9 @@ package com.autowash.backend.booking.service.impl;
 
 import com.autowash.backend.booking.dto.*;
 import com.autowash.backend.booking.entity.Booking;
-import com.autowash.backend.booking.entity.Booking.BookingStatus;
+import com.autowash.backend.booking.enums.BookingStatus;
 import com.autowash.backend.booking.entity.BookingDetail;
+import com.autowash.backend.booking.mapper.BookingMapper;
 import com.autowash.backend.booking.repository.BookingDetailRepository;
 import com.autowash.backend.booking.repository.BookingRepository;
 import com.autowash.backend.booking.service.BookingService;
@@ -44,262 +45,197 @@ public class BookingServiceImpl implements BookingService {
     private final BranchRepository branchRepository;
     private final EmployeeRepository employeeRepository;
     private final ServicePackageRepository servicePackageRepository;
+    private final BookingMapper bookingMapper;
 
+    // ── CREATE ──────────────────────────────────────────────────────────────
+
+    /**
+     * Tạo booking mới.
+     * Luồng: validate entities → build details → lock slot → save booking.
+     */
     @Override
     @Transactional
-    public BookingCreateResponseDTO createBooking(
-            BookingCreateRequestDTO request) {
+    public BookingCreateResponseDTO createBooking(BookingCreateRequestDTO request) {
 
-        Customer customer = customerRepository.findById(
-                        request.getCustomerId())
-                .orElseThrow(() ->
-                        new RuntimeException("Customer không tồn tại"));
+        // Validate các entity liên quan
+        Customer customer = customerRepository.findById(request.getCustomerId())
+                .orElseThrow(() -> new RuntimeException("Customer không tồn tại"));
 
-        Vehicle vehicle = vehicleRepository.findById(
-                        request.getVehicleId())
-                .orElseThrow(() ->
-                        new RuntimeException("Vehicle không tồn tại"));
+        Vehicle vehicle = vehicleRepository.findById(request.getVehicleId())
+                .orElseThrow(() -> new RuntimeException("Vehicle không tồn tại"));
 
-        TimeSlot slot = timeSlotRepository.findById(
-                        request.getSlotId())
-                .orElseThrow(() ->
-                        new RuntimeException("Slot không tồn tại"));
+        TimeSlot slot = timeSlotRepository.findById(request.getSlotId())
+                .orElseThrow(() -> new RuntimeException("Slot không tồn tại"));
 
         if (!slot.hasCapacity()) {
-            throw new RuntimeException(
-                    "Slot đã đầy, vui lòng chọn khung giờ khác");
+            throw new RuntimeException("Slot đã đầy, vui lòng chọn khung giờ khác");
         }
 
-        // FIX: Bổ sung logic lấy Branch để map vào entity Booking (tránh lỗi null)
-        Branch branch = branchRepository.findById(
-                        request.getBranchId())
-                .orElseThrow(() ->
-                        new RuntimeException("Branch không tồn tại"));
+        Branch branch = branchRepository.findById(request.getBranchId())
+                .orElseThrow(() -> new RuntimeException("Branch không tồn tại"));
 
+        // Build danh sách BookingDetail từ request
         List<BookingDetail> details = new ArrayList<>();
+        for (BookingCreateRequestDTO.BookingDetailItem item : request.getDetails()) {
+            ServicePackage servicePackage = servicePackageRepository.findById(item.getServiceId())
+                    .orElseThrow(() -> new RuntimeException("Dịch vụ không tồn tại"));
 
-        for (BookingCreateRequestDTO.BookingDetailItem item
-                : request.getDetails()) {
+            BigDecimal unitPrice = servicePackage.getBasePrice();
+            BigDecimal subTotal = unitPrice.multiply(BigDecimal.valueOf(item.getQuantity()));
 
-            ServicePackage servicePackage =
-                    servicePackageRepository.findById(
-                                    item.getServiceId())
-                            .orElseThrow(() ->
-                                    new RuntimeException(
-                                            "Dịch vụ không tồn tại"));
-
-            BigDecimal unitPrice =
-                    servicePackage.getBasePrice();
-
-            BigDecimal subTotal =
-                    unitPrice.multiply(
-                            BigDecimal.valueOf(
-                                    item.getQuantity()));
-
-            BookingDetail detail = BookingDetail.builder()
+            details.add(BookingDetail.builder()
                     .service(servicePackage)
                     .quantity(item.getQuantity())
                     .unitPrice(unitPrice)
                     .subTotal(subTotal)
-                    .build();
-
-            details.add(detail);
+                    .build());
         }
 
+        // Tăng số lượng booking trên slot, flush ngay để bắt optimistic lock kịp thời
         try {
             slot.incrementBookings();
-            // FIX: Dùng saveAndFlush để JPA lập tức chạy câu lệnh UPDATE xuống DB.
-            // Có như vậy mới bắt được ObjectOptimisticLockingFailureException tại đây.
             timeSlotRepository.saveAndFlush(slot);
         } catch (ObjectOptimisticLockingFailureException e) {
-            throw new RuntimeException(
-                    "Slot vừa được người khác đặt");
+            throw new RuntimeException("Slot vừa được người khác đặt");
         }
 
+        // Tạo và lưu Booking
         Booking booking = Booking.builder()
                 .customer(customer)
                 .vehicle(vehicle)
                 .slot(slot)
-                // FIX: Thêm branch vào entity (chỗ này trước đó bị bỏ quên gây lỗi thiếu FK)
                 .branch(branch)
                 .bookingCode(generateBookingCode())
                 .status(BookingStatus.pending)
                 .priorityScore(resolvePriorityScore(customer))
                 .note(request.getNote())
-                // FIX: Tự động khởi tạo thời gian startTime và endTime từ TimeSlot
                 .startTime(LocalDateTime.of(slot.getSlotDate(), slot.getStartTime()))
                 .endTime(LocalDateTime.of(slot.getSlotDate(), slot.getEndTime()))
                 .build();
 
-        Booking savedBooking =
-                bookingRepository.save(booking);
+        Booking savedBooking = bookingRepository.save(booking);
 
-        details.forEach(
-                detail -> detail.setBooking(savedBooking));
-
+        // Gán booking vào từng detail rồi lưu
+        details.forEach(d -> d.setBooking(savedBooking));
         bookingDetailRepository.saveAll(details);
 
-        return BookingCreateResponseDTO.fromEntity(
-                savedBooking,
-                details
-        );
+        return bookingMapper.toCreateResponse(savedBooking, details);
     }
 
+    // ── READ ─────────────────────────────────────────────────────────────────
+
+    /** Lấy chi tiết một booking theo ID. */
     @Override
     @Transactional(readOnly = true)
-    public BookingResponseDTO getBookingById(
-            Integer bookingId) {
-
+    public BookingResponseDTO getBookingById(Integer bookingId) {
         Booking booking = findBookingOrThrow(bookingId);
-
-        return BookingResponseDTO.fromEntity(
-                booking
-        );
+        List<BookingDetail> details = bookingDetailRepository.findByBooking(booking);
+        return bookingMapper.toResponse(booking, details);
     }
 
+    /** Lấy danh sách tóm tắt tất cả booking. */
     @Override
     @Transactional(readOnly = true)
     public List<BookingSummaryResponseDTO> getAllBookings() {
-
-        return bookingRepository.findAll()
-                .stream()
-                .map(BookingSummaryResponseDTO::fromEntity)
+        return bookingRepository.findAll().stream()
+                .map(b -> bookingMapper.toSummaryResponse(b, bookingDetailRepository.findByBooking(b)))
                 .collect(Collectors.toList());
     }
 
+    /** Lấy danh sách booking theo customer, sắp xếp mới nhất trước. */
     @Override
     @Transactional(readOnly = true)
-    public List<BookingSummaryResponseDTO>
-    getBookingsByCustomer(Integer customerId) {
-
-        return bookingRepository
-                .findByCustomer_CustomerIdOrderByBookingDateDesc(
-                        customerId)
-                .stream()
-                .map(BookingSummaryResponseDTO::fromEntity)
+    public List<BookingSummaryResponseDTO> getBookingsByCustomer(Integer customerId) {
+        return bookingRepository.findByCustomer_CustomerIdOrderByBookingDateDesc(customerId).stream()
+                .map(b -> bookingMapper.toSummaryResponse(b, bookingDetailRepository.findByBooking(b)))
                 .collect(Collectors.toList());
     }
 
+    // ── UPDATE ───────────────────────────────────────────────────────────────
+
+    /**
+     * Cập nhật note và/hoặc nhân viên phụ trách.
+     * Không cho phép thay đổi status hay thông tin booking qua endpoint này.
+     */
     @Override
     @Transactional
-    public BookingResponseDTO updateBooking(
-            Integer bookingId,
-            BookingUpdateRequestDTO request) {
-
+    public BookingResponseDTO updateBooking(Integer bookingId, BookingUpdateRequestDTO request) {
         Booking booking = findBookingOrThrow(bookingId);
 
-        if (request.getNote() != null) {
-            booking.setNote(request.getNote());
-        }
+        if (request.getNote() != null) booking.setNote(request.getNote());
 
         if (request.getAssignedStaffId() != null) {
-
-            Employee employee =
-                    employeeRepository.findById(
-                                    request.getAssignedStaffId())
-                            .orElseThrow(() ->
-                                    new RuntimeException(
-                                            "Không tìm thấy nhân viên"));
-
+            Employee employee = employeeRepository.findById(request.getAssignedStaffId())
+                    .orElseThrow(() -> new RuntimeException("Không tìm thấy nhân viên"));
             booking.setAssignedStaff(employee);
         }
 
-        return BookingResponseDTO.fromEntity(
-                bookingRepository.save(booking)
-        );
+        Booking saved = bookingRepository.save(booking);
+        return bookingMapper.toResponse(saved, bookingDetailRepository.findByBooking(saved));
     }
 
+    // ── STATUS TRANSITIONS ───────────────────────────────────────────────────
+
+    /**
+     * Hủy booking — giải phóng slot để người khác có thể đặt.
+     */
     @Override
     @Transactional
-    public BookingResponseDTO cancelBooking(
-            Integer bookingId) {
-
+    public BookingResponseDTO cancelBooking(Integer bookingId) {
         Booking booking = findBookingOrThrow(bookingId);
-
         booking.setStatus(BookingStatus.cancelled);
 
+        // Giảm số lượng đặt trên slot để mở lại capacity
         TimeSlot slot = booking.getSlot();
         slot.decrementBookings();
-
         timeSlotRepository.save(slot);
 
-        return BookingResponseDTO.fromEntity(
-                bookingRepository.save(booking)
-        );
+        Booking saved = bookingRepository.save(booking);
+        return bookingMapper.toResponse(saved, bookingDetailRepository.findByBooking(saved));
     }
 
     /**
-     * Hoàn thành một booking — chuyển trạng thái sang "completed".
-     *
-     * Chỉ nhân viên (STAFF) hoặc quản trị viên (ADMIN) mới được gọi hàm này.
-     *
-     * Điều kiện:
-     * - Booking phải đang ở trạng thái "pending" (đang chờ) hoặc "in_progress" (đang xử lý).
-     * - Nếu booking đã bị hủy hoặc đã hoàn thành trước đó → ném lỗi.
-     *
-     * Sau khi booking chuyển sang "completed":
-     * - Hệ thống cho phép tạo phiếu thanh toán (Payment) cho booking này.
-     * - Luồng tiếp theo: Client gọi POST /api/payments với bookingId để tạo payment.
-     *
-     * @param bookingId ID của booking cần hoàn thành
-     * @return DTO chứa thông tin booking sau khi đã cập nhật trạng thái
-     * @throws RuntimeException nếu booking không ở trạng thái hợp lệ để hoàn thành
+     * Hoàn thành booking — chuyển sang "completed".
+     * Chỉ được gọi khi booking đang ở trạng thái pending hoặc in_progress.
+     * Sau bước này client mới được tạo Payment cho booking.
      */
     @Override
     @Transactional
     public BookingResponseDTO completeBooking(Integer bookingId) {
-
-        // Tìm booking theo ID, ném lỗi nếu không tồn tại
         Booking booking = findBookingOrThrow(bookingId);
 
-        // Kiểm tra trạng thái hợp lệ: chỉ cho phép hoàn thành khi đang "pending" hoặc "in_progress"
         if (!BookingStatus.in_progress.equals(booking.getStatus())
                 && !BookingStatus.pending.equals(booking.getStatus())) {
-            throw new RuntimeException(
-                    "Chỉ có thể hoàn thành booking đang xử lý hoặc đang chờ");
+            throw new RuntimeException("Chỉ có thể hoàn thành booking đang xử lý hoặc đang chờ");
         }
 
-        // Cập nhật trạng thái booking thành "completed"
         booking.setStatus(BookingStatus.completed);
 
-        // Lưu vào database và trả về DTO
-        return BookingResponseDTO.fromEntity(
-                bookingRepository.save(booking)
-        );
+        Booking saved = bookingRepository.save(booking);
+        return bookingMapper.toResponse(saved, bookingDetailRepository.findByBooking(saved));
     }
 
+    // ── HELPERS ──────────────────────────────────────────────────────────────
+
+    /** Tìm booking theo ID, ném lỗi nếu không tồn tại. */
     private Booking findBookingOrThrow(Integer bookingId) {
-
         return bookingRepository.findById(bookingId)
-                .orElseThrow(() ->
-                        new RuntimeException(
-                                "Booking không tồn tại"));
+                .orElseThrow(() -> new RuntimeException("Booking không tồn tại"));
     }
 
+    /** Sinh mã booking dạng BK-YYYYMMDD-XXXXXX. */
     private String generateBookingCode() {
-
-        String date =
-                LocalDateTime.now().format(
-                        DateTimeFormatter.ofPattern(
-                                "yyyyMMdd"));
-
-        String suffix =
-                UUID.randomUUID()
-                        .toString()
-                        .replace("-", "")
-                        .substring(0, 6)
-                        .toUpperCase();
-
+        String date = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+        String suffix = UUID.randomUUID().toString().replace("-", "").substring(0, 6).toUpperCase();
         return "BK-" + date + "-" + suffix;
     }
 
-    private int resolvePriorityScore(
-            Customer customer) {
-
-        if (customer.getTierId() == null) {
-            return 1;
-        }
-
+    /**
+     * Tính điểm ưu tiên dựa theo tier của customer.
+     * Tier càng cao → điểm càng cao → xử lý trước trong hàng đợi.
+     */
+    private int resolvePriorityScore(Customer customer) {
+        if (customer.getTierId() == null) return 1;
         return switch (customer.getTierId()) {
             case 4 -> 4;
             case 3 -> 3;

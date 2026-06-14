@@ -1,6 +1,6 @@
 package com.autowash.backend.booking.dto;
 
-import com.autowash.backend.booking.entity.Booking;
+import com.autowash.backend.booking.enums.BookingStatus;
 import jakarta.validation.constraints.Size;
 import lombok.*;
 
@@ -15,7 +15,7 @@ public class BookingUpdateRequestDTO {
 
     private Integer assignedStaffId; //employee
 
-    private Booking.BookingStatus status;
+    private BookingStatus status;
 
     private LocalDateTime startTime;
 

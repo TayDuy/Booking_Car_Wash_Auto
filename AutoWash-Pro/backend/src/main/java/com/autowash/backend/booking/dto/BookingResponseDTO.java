@@ -1,10 +1,19 @@
 package com.autowash.backend.booking.dto;
 
-import com.autowash.backend.booking.entity.Booking;
+import com.autowash.backend.booking.enums.BookingStatus;
+import com.autowash.backend.vehicle.entity.Vehicle;
 import lombok.*;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.List;
 
+/**
+ * DTO đầy đủ thông tin booking — dùng cho màn hình chi tiết.
+ * Không có fromEntity — mapping xử lý tại BookingMapper.
+ */
 @Getter
 @Setter
 @NoArgsConstructor
@@ -12,53 +21,43 @@ import java.time.LocalDateTime;
 @Builder
 public class BookingResponseDTO {
 
+    // ── Thông tin booking ────────────────────────────────────────────────────
     private Integer bookingId;
     private String bookingCode;
     private LocalDateTime bookingDate;
-    private Booking.BookingStatus status;
+    private BookingStatus status;
     private Integer priorityScore;
     private LocalDateTime startTime;
     private LocalDateTime endTime;
     private String note;
     private LocalDateTime updatedAt;
+    private BigDecimal totalAmount;         // sum(subTotal) từ BookingDetail
 
+    // ── Customer ─────────────────────────────────────────────────────────────
     private Integer customerId;
     private String customerName;
-    private String customerPhone;
+    private String customerPhone;           // lấy từ Customer.user.phone
 
+    // ── Vehicle ──────────────────────────────────────────────────────────────
     private Integer vehicleId;
-    private String vehiclePlateNumber;
+    private String licensePlate;
+    private Vehicle.VehicleType vehicleType;
 
+    // ── TimeSlot ─────────────────────────────────────────────────────────────
+    // Không có field slotTime trong entity → tách thành 3 field riêng
+    private Integer slotId;
+    private LocalDate slotDate;
+    private LocalTime slotStartTime;
+    private LocalTime slotEndTime;
+
+    // ── Branch ───────────────────────────────────────────────────────────────
     private Integer branchId;
     private String branchName;
 
-    private Integer slotId;
-
+    // ── Staff (null nếu chưa phân công) ─────────────────────────────────────
     private Integer assignedStaffId;
     private String assignedStaffName;
 
-    public static BookingResponseDTO fromEntity(Booking booking) {
-        return BookingResponseDTO.builder()
-                .bookingId(booking.getBookingId())
-                .bookingCode(booking.getBookingCode())
-                .bookingDate(booking.getBookingDate())
-                .status(booking.getStatus())
-                .priorityScore(booking.getPriorityScore())
-                .startTime(booking.getStartTime())
-                .endTime(booking.getEndTime())
-                .note(booking.getNote())
-                .updatedAt(booking.getUpdatedAt())
-                .customerId(booking.getCustomer() != null ? booking.getCustomer().getCustomerId() : null)
-                .customerName(booking.getCustomer() != null ? booking.getCustomer().getFullName() : null)
-                .customerPhone(booking.getCustomer() != null && booking.getCustomer().getUser() != null
-                ? booking.getCustomer().getUser().getPhone() : null)
-                .vehicleId(booking.getVehicle() != null ? booking.getVehicle().getVehicleId() : null)
-                .vehiclePlateNumber(booking.getVehicle() != null ? booking.getVehicle().getLicensePlate() : null)
-                .branchId(booking.getBranch() != null ? booking.getBranch().getBranchId() : null)
-                .branchName(booking.getBranch() != null ? booking.getBranch().getBranchName() : null)
-                .slotId(booking.getSlot() != null ? booking.getSlot().getSlotId() : null)
-                .assignedStaffId(booking.getAssignedStaff() != null ? booking.getAssignedStaff().getEmployeeId() : null)
-                .assignedStaffName(booking.getAssignedStaff() != null ? booking.getAssignedStaff().getFullName() : null)
-                .build();
-    }
+    // ── Chi tiết dịch vụ ─────────────────────────────────────────────────────
+    private List<BookingDetailItemResponseDTO> details;
 }
