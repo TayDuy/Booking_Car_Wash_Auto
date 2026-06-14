@@ -10,11 +10,13 @@ export async function login(username, password){
     return respone.data;
 }
 
-export async function register(username, password, email){
+export async function register(username, password, email, fullName, phone){
     const respone = await axios.post(`${API_URL}/register`,{
         username: username,
         password: password,
         email: email,
+        fullName: fullName,
+        phone: phone,
     });
     return respone.data;
 }
