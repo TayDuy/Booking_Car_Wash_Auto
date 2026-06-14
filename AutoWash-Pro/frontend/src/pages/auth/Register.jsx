@@ -1,5 +1,9 @@
 import "./Login.css";
+dev/Tu
+import { register, sendOtp, verifyOtp } from "../../api/authService";
+
 import { register } from "../../api/authService";
+develop
 import { useState } from "react";
 import { Link } from "react-router-dom";
 
@@ -17,12 +21,22 @@ function Register() {
 
   const [errorMessage, setErrorMessage] =
     useState("");
+  const [otp, setOtp] = useState("");
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpVerified, setOtpVerified] = useState(false);
+
+dev/Tu
+  async function handleSubmit(e) {
+    e.preventDefault();
+
+    if (!fullName || !email || !username || !phone || !password || !confirmPassword) {
 
   async function handleSubmit(e){
     e.preventDefault();
 
     if (!fullName || !email || !username || !phone || !password || !confirmPassword)
     {
+develop
       setErrorMessage(
         "Vui lòng nhập đầy đủ thông tin."
       );
@@ -32,6 +46,13 @@ function Register() {
     if (password !== confirmPassword) {
       setErrorMessage(
         "Mật khẩu xác nhận không khớp."
+      );
+      return;
+    }
+
+    if (!otpVerified) {
+      setErrorMessage(
+        "Vui lòng xác minh OTP trước khi đăng ký."
       );
       return;
     }
@@ -48,7 +69,41 @@ function Register() {
       alert(data.message || "Đăng ký thành công");
     } catch (error) {
       setErrorMessage("Đăng ký thất bại.");
+dev/Tu
+    }
+  }
+
+  async function handleSendOtp() {
+    if (!phone) {
+      setErrorMessage("Vui lòng nhập số điện thoại trước.");
+      return;
+    }
+    try {
+      await sendOtp(phone);
+      setOtpSent(true);
+      setErrorMessage("")
+      alert("Mã OTP đã được gửi.");
+    } catch (error) {
+      setErrorMessage("Gửi OTP thất bại.");
+    }
+  }
+
+  async function handleVerifyOtp() {
+    if (!otp) {
+      setErrorMessage("Vui lòng nhập mã OTP.");
+      return;
+    }
+    try {
+      await verifyOtp(phone, otp);
+      setOtpVerified(true);
+      setErrorMessage("");
+      alert("Xác minh OTP thành công.");
+    } catch (error) {
+      setErrorMessage("OTP không đúng hoặc đã hết hạn.");
+    }
+
 }
+develop
   }
 
   return (
@@ -91,6 +146,20 @@ function Register() {
                   }
                 />
               </div>
+dev/Tu
+
+              <div className="mb-3">
+                <label className="form-label fw-semibold d-block text-start">
+                  Email
+                </label>
+
+                <input
+                  type="email"
+                  className="login-input"
+                  placeholder="Nhập email"
+                  value={email}
+                  onChange={(e) =>
+                    setEmail(e.target.value)
 
               <div className="mb-3">
                 <label className="form-label fw-semibold d-block text-start">
@@ -120,12 +189,121 @@ function Register() {
                   value={username}
                   onChange={(e) =>
                     setUsername(e.target.value)
+develop
                   }
                 />
               </div>
 
               <div className="mb-3">
                 <label className="form-label fw-semibold d-block text-start">
+dev/Tu
+                  Username
+                </label>
+
+                <input
+                  type="text"
+                  className="login-input"
+                  placeholder="Nhập username"
+                  value={username}
+                  onChange={(e) =>
+                    setUsername(e.target.value)
+                  }
+                />
+              </div>
+
+              <div className="mb-3">
+                <label className="form-label fw-semibold d-block text-start">
+                  Phone Number
+                </label>
+
+                <input
+                  type="tel"
+                  className="login-input"
+                  placeholder="Nhập phone"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                />
+              </div>
+
+              <div className="mb-3">
+                <label className="form-label fw-semibold d-block text-start">
+                  OTP Code
+                </label>
+
+                <input
+                  type="text"
+                  className="login-input"
+                  placeholder="Nhập mã OTP"
+                  value={otp}
+                  disabled={!otpSent || otpVerified}
+                  onChange={(e) => setOtp(e.target.value)}
+                />
+              </div>
+
+              <div className="mb-3">
+                <button
+                  type="button"
+                  className="otp-btn"
+                  onClick={otpSent ? handleVerifyOtp : handleSendOtp}
+                  disabled={otpVerified}
+                >
+                  {otpVerified ? "Đã xác minh" : otpSent ? "Xác minh OTP" : "Gửi OTP"}
+                </button>
+              </div>
+              <div className="mb-3">
+                <label className="form-label fw-semibold d-block text-start">
+                  Password
+                </label>
+
+                <div className="password-wrap">
+                  <input
+                    type={
+                      showPassword
+                        ? "text"
+                        : "password"
+                    }
+                    className="login-input password-input"
+                    placeholder="Nhập mật khẩu"
+                    value={password}
+                    onChange={(e) =>
+                      setPassword(e.target.value)
+                    }
+                  />
+
+                  <button
+                    type="button"
+                    className="password-toggle"
+                    onClick={() =>
+                      setShowPassword(
+                        !showPassword
+                      )
+                    }
+                  >
+                    {showPassword
+                      ? "🙈"
+                      : "👁"}
+                  </button>
+                </div>
+              </div>
+
+              <div className="mb-4">
+                <label className="form-label fw-semibold d-block text-start">
+                  Confirm Password
+                </label>
+
+                <input
+                  type="password"
+                  className="login-input"
+                  placeholder="Nhập lại mật khẩu"
+                  value={confirmPassword}
+                  onChange={(e) =>
+                    setConfirmPassword(
+                      e.target.value
+                    )
+                  }
+                />
+              </div>
+
                   Phone Number
                 </label>
 
@@ -193,6 +371,7 @@ function Register() {
                   }
                 />
               </div>
+develop
             </div>
             <button
               type="submit"
