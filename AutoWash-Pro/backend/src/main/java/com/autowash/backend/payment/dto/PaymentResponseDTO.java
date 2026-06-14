@@ -1,6 +1,6 @@
 package com.autowash.backend.payment.dto;
 
-import com.autowash.backend.payment.entity.Payment;
+
 import com.autowash.backend.payment.entity.Payment.PaymentMethod;
 import com.autowash.backend.payment.entity.Payment.PaymentStatus;
 import lombok.*;
