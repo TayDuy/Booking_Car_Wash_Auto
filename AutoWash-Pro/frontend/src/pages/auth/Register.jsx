@@ -1,3 +1,5 @@
+import "./Login.css";
+import { register } from "../../api/authService";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 
@@ -5,7 +7,7 @@ function Register() {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
-
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] =
     useState("");
@@ -16,15 +18,11 @@ function Register() {
   const [errorMessage, setErrorMessage] =
     useState("");
 
-  function handleSubmit(e) {
+  async function handleSubmit(e){
     e.preventDefault();
 
-    if (
-      !fullName ||
-      !email ||
-      !username ||
-      !password
-    ) {
+    if (!fullName || !email || !username || !phone || !password || !confirmPassword)
+    {
       setErrorMessage(
         "Vui lòng nhập đầy đủ thông tin."
       );
@@ -45,42 +43,27 @@ function Register() {
     );
 
     // Sau này gọi API Register ở đây
+    try {
+      const data = await register(username, password, email, fullName, phone);
+      alert(data.message || "Đăng ký thành công");
+    } catch (error) {
+      setErrorMessage("Đăng ký thất bại.");
+}
   }
 
   return (
-    <div
-      className="d-flex justify-content-center align-items-center"
-      style={{
-        minHeight: "100vh",
-        background:
-            "linear-gradient(135deg,#667eea 0%,#764ba2 50%,#6B73FF 100%)",
-      }}
-    >
-      <div
-        className="card shadow-lg"
-        style={{
-            width: "750px",
-            maxWidth: "92%",
-            borderRadius: "25px",
-            background: "rgba(255,255,255,0.97)",
-        }}
-      >
-        <div className="card-body p-5">
-          <div className="text-center mb-4">
-            <div style={{ fontSize: "70px" }}>
-                🚗
-            </div>
 
+    <div className="login-page register-page">
+      <div className="login-main">
+        <div className="login-card register-card">
+          <div className="login-header">
             <h1
-                className="fw-bold"
-                style={{
-                    color: "#2a5298",
-                }}
+              className="login-title"
             >
-                AutoWash Pro
+              AutoWash Pro
             </h1>
 
-            <p className="text-muted">
+            <p className="login-subtitle">
               Create Your Account
             </p>
           </div>
@@ -92,128 +75,146 @@ function Register() {
           )}
 
           <form onSubmit={handleSubmit}>
-            <div className="mb-3">
-              <label className="form-label fw-semibold d-block text-start">
-                Full Name
-              </label>
+            <div className="register-grid">
+              <div className="mb-3">
+                <label className="form-label fw-semibold d-block text-start">
+                  Full Name
+                </label>
 
-              <input
-                type="text"
-                className="form-control py-3"
-                placeholder="Nhập họ tên"
-                value={fullName}
-                onChange={(e) =>
-                  setFullName(e.target.value)
-                }
-              />
-            </div>
-
-            <div className="mb-3">
-              <label className="form-label fw-semibold d-block text-start">
-                Email
-              </label>
-
-              <input
-                type="email"
-                className="form-control py-3"
-                placeholder="Nhập email"
-                value={email}
-                onChange={(e) =>
-                  setEmail(e.target.value)
-                }
-              />
-            </div>
-
-            <div className="mb-3">
-              <label className="form-label fw-semibold d-block text-start">
-                Username
-              </label>
-
-              <input
-                type="text"
-                className="form-control py-3"
-                placeholder="Nhập username"
-                value={username}
-                onChange={(e) =>
-                  setUsername(e.target.value)
-                }
-              />
-            </div>
-
-            <div className="mb-3">
-              <label className="form-label fw-semibold d-block text-start">
-                Password
-              </label>
-
-              <div className="input-group">
                 <input
-                  type={
-                    showPassword
-                      ? "text"
-                      : "password"
-                  }
-                  className="form-control py-3"
-                  placeholder="Nhập mật khẩu"
-                  value={password}
+                  type="text"
+                  className="login-input"
+                  placeholder="Nhập họ tên"
+                  value={fullName}
                   onChange={(e) =>
-                    setPassword(e.target.value)
+                    setFullName(e.target.value)
                   }
                 />
+              </div>
 
-                <button
-                  type="button"
-                  className="btn btn-outline-secondary"
-                  onClick={() =>
-                    setShowPassword(
-                      !showPassword
+              <div className="mb-3">
+                <label className="form-label fw-semibold d-block text-start">
+                  Email
+                </label>
+
+                <input
+                  type="email"
+                  className="login-input"
+                  placeholder="Nhập email"
+                  value={email}
+                  onChange={(e) =>
+                    setEmail(e.target.value)
+                  }
+                />
+              </div>
+
+              <div className="mb-3">
+                <label className="form-label fw-semibold d-block text-start">
+                  Username
+                </label>
+
+                <input
+                  type="text"
+                  className="login-input"
+                  placeholder="Nhập username"
+                  value={username}
+                  onChange={(e) =>
+                    setUsername(e.target.value)
+                  }
+                />
+              </div>
+
+              <div className="mb-3">
+                <label className="form-label fw-semibold d-block text-start">
+                  Phone Number
+                </label>
+
+                <input
+                  type="tel"
+                  className="login-input"
+                  placeholder="Nhập phone"
+                  value={phone}
+                  onChange={(e) =>
+                    setPhone(e.target.value)
+                  }
+                />
+              </div>
+
+              <div className="mb-3">
+                <label className="form-label fw-semibold d-block text-start">
+                  Password
+                </label>
+
+                <div className="password-wrap">
+                  <input
+                    type={
+                      showPassword
+                        ? "text"
+                        : "password"
+                    }
+                    className="login-input password-input"
+                    placeholder="Nhập mật khẩu"
+                    value={password}
+                    onChange={(e) =>
+                      setPassword(e.target.value)
+                    }
+                  />
+
+                  <button
+                    type="button"
+                    className="password-toggle"
+                    onClick={() =>
+                      setShowPassword(
+                        !showPassword
+                      )
+                    }
+                  >
+                    {showPassword
+                      ? "🙈"
+                      : "👁"}
+                  </button>
+                </div>
+              </div>
+
+              <div className="mb-4">
+                <label className="form-label fw-semibold d-block text-start">
+                  Confirm Password
+                </label>
+
+                <input
+                  type="password"
+                  className="login-input"
+                  placeholder="Nhập lại mật khẩu"
+                  value={confirmPassword}
+                  onChange={(e) =>
+                    setConfirmPassword(
+                      e.target.value
                     )
                   }
-                >
-                  {showPassword
-                    ? "🙈"
-                    : "👁"}
-                </button>
+                />
               </div>
             </div>
-
-            <div className="mb-4">
-              <label className="form-label fw-semibold d-block text-start">
-                Confirm Password
-              </label>
-
-              <input
-                type="password"
-                className="form-control py-3"
-                placeholder="Nhập lại mật khẩu"
-                value={confirmPassword}
-                onChange={(e) =>
-                  setConfirmPassword(
-                    e.target.value
-                  )
-                }
-              />
-            </div>
-
             <button
               type="submit"
-              className="btn btn-success w-100 py-3 fw-bold"
+              className="login-btn"
             >
               Đăng ký
             </button>
 
-            <div className="text-center mt-4">
-              <span className="text-muted">
+            <div className="register-footer">
+              <span className="register-footer-text">
                 Đã có tài khoản?
               </span>
 
               <Link
                 to="/"
-                className="ms-2 fw-bold text-decoration-none"
+                className="register-footer-link"
               >
                 Đăng nhập
               </Link>
             </div>
           </form>
+
         </div>
       </div>
     </div>
