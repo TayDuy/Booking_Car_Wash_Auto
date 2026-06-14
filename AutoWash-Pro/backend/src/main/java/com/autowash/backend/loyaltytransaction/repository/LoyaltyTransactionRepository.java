@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 public interface LoyaltyTransactionRepository extends JpaRepository<LoyaltyTransaction, Long> {
 
@@ -13,4 +14,6 @@ public interface LoyaltyTransactionRepository extends JpaRepository<LoyaltyTrans
     List<LoyaltyTransaction> findByCustomerIdAndTransactionType(Long customerId, String transactionType);
 
     List<LoyaltyTransaction> findByTransactionTypeAndExpiredAtBefore(String transactionType, LocalDateTime now);
+
+    Optional<LoyaltyTransaction> findTopByCustomerIdOrderByCreatedAtDesc(Long customerId);
 }
