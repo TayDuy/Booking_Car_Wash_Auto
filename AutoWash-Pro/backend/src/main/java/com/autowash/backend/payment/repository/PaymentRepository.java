@@ -50,10 +50,11 @@ public interface PaymentRepository extends JpaRepository<Payment, Integer> {
      */
     @Query("""
             SELECT p FROM Payment p
-            WHERE p.paymentStatus = 'paid'
+            WHERE p.paymentStatus = :status
               AND p.paidAt BETWEEN :from AND :to
             ORDER BY p.paidAt ASC
             """)
-    List<Payment> findPaidBetween(@Param("from") LocalDateTime from,
-                                  @Param("to") LocalDateTime to);
+    List<Payment> findByStatusBetween(@Param("status") PaymentStatus status,
+                                      @Param("from") LocalDateTime from,
+                                      @Param("to") LocalDateTime to);
 }

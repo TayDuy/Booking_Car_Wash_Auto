@@ -20,7 +20,7 @@ import java.time.LocalTime;
  * FR-4: Khung giờ có thể đặt tại một bay cụ thể.
  * FR-6: Quản lý sức chứa — tránh overbooking bằng optimistic locking.
  *
- * @Version trên currentBookings = optimistic locking:
+ * @Version on version field = optimistic locking:
  *   Khi 2 request đồng thời book cùng slot, transaction thứ 2 nhận
  *   OptimisticLockException → service bắt và trả "slot đã đầy",
  *   không cần PESSIMISTIC lock toàn table.
@@ -85,18 +85,14 @@ public class TimeSlot {
         @Builder.Default
         private Integer maxCapacity = 1;
 
-        /**
-         * FR-6: @Version — JPA dùng field này làm version check khi UPDATE.
-         * Khởi tạo version dùng cho Optimistic Locking độc lập.
-         * // FIX: Thêm trường version riêng biệt để Spring Data JPA quản lý Optimistic Locking
-         */
         @Version
         @Column(name = "version", nullable = false)
         @Builder.Default
-        private Long version = 0L;
+        private Integer version = 0;
 
-        /** Số lượng booking hiện tại của slot. 
-         * // FIX: Bỏ annotation @Version ở đây vì code business có thao tác cộng/trừ thủ công
+        /**
+         * Number of confirmed bookings for this slot.
+         * Incremented/decremented by incrementBookings()/decrementBookings().
          */
         @Column(name = "current_bookings", nullable = false)
         @Builder.Default
@@ -136,6 +132,9 @@ public class TimeSlot {
 
         /** Gọi khi booking được xác nhận — tự chuyển status → full khi đủ chỗ. */
         public void incrementBookings() {
+                if (!hasCapacity()) {
+                        throw new IllegalStateException("Time slot has no remaining capacity");
+                }
                 this.currentBookings++;
                 if (this.currentBookings >= this.maxCapacity) {
                         this.status = SlotStatus.full;
