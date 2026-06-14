@@ -2,13 +2,15 @@ package com.autowash.backend.promotion.service;
 
 import com.autowash.backend.promotion.dto.*;
 import com.autowash.backend.promotion.entity.Promotion;
+import com.autowash.backend.promotion.service.impl.PromotionServiceImpl;
+import jakarta.persistence.EntityNotFoundException;
 
 import java.time.LocalDate;
 import java.util.List;
 
 /**
  * Service interface định nghĩa các nghiệp vụ liên quan đến Promotion.
- * Implementation: {@link com.autowash.backend.promotion.service.impl.PromotionServiceImpl}.
+ * Implementation: {@link PromotionServiceImpl}.
  */
 public interface PromotionService {
 
@@ -16,7 +18,7 @@ public interface PromotionService {
      * Tạo mới một promotion.
      *
      * @param request         dữ liệu promotion từ client
-     * @param createdByUserId ID của admin/staff đang tạo promotion
+     * @param createdByEmail ID của admin/staff đang tạo promotion
      * @return promotion vừa tạo dưới dạng DTO
      */
     PromotionResponseDTO create(PromotionRequestDTO request, String createdByEmail);
@@ -26,7 +28,7 @@ public interface PromotionService {
      *
      * @param id ID của promotion
      * @return DTO chứa thông tin đầy đủ
-     * @throws jakarta.persistence.EntityNotFoundException nếu không tìm thấy
+     * @throws EntityNotFoundException nếu không tìm thấy
      */
     PromotionResponseDTO getById(Integer id);
 
