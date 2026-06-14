@@ -1,3 +1,4 @@
+<<<<<<< Updated upstream
 # AutoWash Pro — Database Design (SQL Server)
 
 This document defines the SQL Server database design for AutoWash Pro. It includes entity descriptions, table DDLs, primary and foreign keys, constraints, indexes, and notes on transactional safety and maintenance. The design targets at least 10 entities covering the booking, loyalty, promotions, users, and integration needs described in the SRS (Topic.md).
@@ -383,3 +384,14 @@ Additional Implementation Notes
 - Backups & DR: Configure full and differential backups; transaction log backups at frequent intervals; consider geo-replication in production.
 
 End of database design document.
+=======
+# AutoWash Pro — database-design.md
+
+Design principles: 3NF, referential integrity, sensible indexing for read-heavy reporting and transactional safety for bookings/points. Use schemas (e.g., dbo), use GUID/UUID for public IDs, identity for internal keys where suitable. Use SQL Server types.
+
+## Entities and sample columns
+
+(Truncated here — full definitions in file stored in docs.)
+
+Refer to created ERD for relationships and SQL snippets.
+>>>>>>> Stashed changes

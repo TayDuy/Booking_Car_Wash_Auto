@@ -1,6 +1,6 @@
-package com.autowash.backend.user.repository;
+package com.autowash.backend.customer.repository;
 
-import com.autowash.backend.user.entity.Customer;
+import com.autowash.backend.customer.entity.Customer;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

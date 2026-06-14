@@ -1,3 +1,4 @@
+<<<<<<< Updated upstream
 # AutoWash Pro — API Design (REST)
 
 Base URL: /api/v1
@@ -237,3 +238,152 @@ Notes for Implementation (Spring Boot)
 - Expose OpenAPI via springdoc-openapi and secure swagger UI behind role-based access.
 
 End of API design document.
+=======
+# AutoWash Pro — api-design.md
+
+Base: /api/v1
+Auth: Bearer JWT (Authorization: Bearer <token>)
+HTTP: Use standard status codes; return Problem+JSON for errors.
+
+## Authentication Module
+- POST /api/v1/auth/register
+  - Description: Register new user (Customer)
+  - Role: Public
+  - Request DTO:
+    { "phone": "string", "name": "string", "password": "string (min8)", "otp": "string (optional for verify)"} 
+  - Response DTO:
+    { "userId": "uuid", "phone":"", "verified":false }
+  - Validation: phone E.164, password min 8, unique phone
+  - Status: 201 Created / 400 Bad Request
+- POST /api/v1/auth/login
+  - Request: { "phone": "string", "password": "string" }
+  - Response: { "accessToken":"jwt", "expiresIn":3600, "refreshToken":"token" }
+  - Status: 200 / 401
+
+- POST /api/v1/auth/otp/send
+  - Request: { "phone": "string" } → 200
+
+- POST /api/v1/auth/otp/verify
+  - Request: { "phone", "otp" } → marks verified → 200
+
+## Users Module (Admin)
+- GET /api/v1/users
+  - List users (Admin only), pagination, filters
+  - Role: Admin
+- GET /api/v1/users/{id}
+  - Role: Admin
+- PUT /api/v1/users/{id}
+  - Role: Admin
+
+## Customers Module
+- GET /api/v1/customers/me
+  - Role: Customer
+  - Response: profile, tier, points_balance
+- PUT /api/v1/customers/me
+  - Update profile (name, preferences)
+
+## Vehicles Module
+- POST /api/v1/vehicles
+  - Role: Customer
+  - Request:
+    { "licensePlate":"string", "type":"car|motorbike", "nickname":"string" }
+  - Response: 201 location /vehicles/{id}
+- GET /api/v1/vehicles
+  - List user's vehicles
+- PUT /api/v1/vehicles/{id}
+- DELETE /api/v1/vehicles/{id}
+  - Validation: prevent deletion if active booking exists
+
+## Branches & Services
+- GET /api/v1/branches
+  - Public: list branches with capacities & services
+- GET /api/v1/branches/{id}/services
+- POST /api/v1/branches (Admin)
+- PUT /api/v1/branches/{id} (Admin)
+
+## Booking Module
+- GET /api/v1/bookings
+  - Role: Customer returns user's bookings; Manager returns branch bookings; Admin universal (query filters)
+- POST /api/v1/bookings
+  - Role: Customer
+  - Request DTO:
+    {
+      "customerId":"uuid (optional if token)",
+      "vehicleId":"uuid",
+      "branchId":"uuid",
+      "serviceIds":[uuid],
+      "preferredDatetime":"ISO8601",
+      "notes":"string",
+      "paymentReference":"string (optional)"
+    }
+  - Validation:
+    - slot within booking window per tier
+    - capacity check
+    - vehicle not double-booked overlapping
+  - Responses:
+    - 201 Created with booking payload and estimated points_awarded
+    - 409 Conflict for capacity/overlap
+- PUT /api/v1/bookings/{id}
+  - Role: Customer (own booking), Manager/Admin
+  - For reschedule/cancel. Cancellation policy enforced.
+  - Status: 200 / 400 / 403
+- DELETE /api/v1/bookings/{id}
+  - Role: Customer (own), Manager/Admin
+  - 204 No Content
+
+## Booking slot-search
+- GET /api/v1/branches/{id}/slots?serviceId=&date=
+  - Role: Public/Customer
+  - Returns available slots with priority weighting
+
+## Loyalty Module
+- GET /api/v1/loyalty/me
+  - Points balance, tier, history
+- GET /api/v1/loyalty/tiers
+  - List configured tiers (Admin read)
+- POST /api/v1/loyalty/redeem
+  - Request:
+    { "customerId", "points", "redemptionType", "bookingId" (optional) }
+  - Validation: sufficient points, expiry
+  - Responses: 200 with updated balance / 400
+
+## Promotions Module
+- GET /api/v1/promotions
+  - Returns active promotions (Customer)
+- POST /api/v1/promotions (Admin)
+  - Body:
+    { "name","targetCriteria":{"minTier":"Silver","lastVisitDays":30},"perk":{"type":"discount","value":10},"startDate","endDate","maxUses" }
+
+## Reports & Dashboard
+- GET /api/v1/reports/loyalty?from=&to=&branchId=
+  - Role: Admin/Manager scoped
+  - Response: aggregated metrics
+- GET /api/v1/reports/bookings?from=&to=&groupBy=
+  - CSV export supported via Accept: text/csv
+
+## Notifications
+- POST /api/v1/notifications/send (Admin)
+  - Target via promotion or criteria
+
+## Security & Authorization
+- All protected endpoints require Authorization: Bearer <jwt>
+- Roles checked via Spring Security annotations (@PreAuthorize("hasRole('ADMIN')"))
+- Refresh tokens endpoint: POST /api/v1/auth/refresh
+
+## Error Handling
+- Use Problem JSON (RFC 7807) with code, message, details
+- Standard codes: 200,201,204,400,401,403,404,409,500
+
+## JWT Authorization Requirements
+- Access token expiry short (e.g., 1 hour), refresh token longer
+- Token contains roles and tenant/branch claims where applicable
+
+## Examples & Validation
+- Use jakarta.validation annotations (@NotNull, @Pattern, @Future)
+- Centralized ControllerAdvice for exception translation
+
+## Missing API suggestions
+- Webhook endpoints for LPR events: POST /api/v1/integrations/lpr/events
+- Health and metrics: /actuator (Spring Boot)
+- Admin audit logs: GET /api/v1/audit
+>>>>>>> Stashed changes
