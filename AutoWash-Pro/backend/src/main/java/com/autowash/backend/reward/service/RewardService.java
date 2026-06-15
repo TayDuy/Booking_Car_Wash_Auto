@@ -1,7 +1,10 @@
 package com.autowash.backend.reward.service;
 
+import com.autowash.backend.reward.dto.RedeemRewardRequestDTO;
+import com.autowash.backend.reward.dto.RedeemRewardResponseDTO;
 import com.autowash.backend.reward.dto.RewardRequestDTO;
 import com.autowash.backend.reward.dto.RewardResponseDTO;
+
 
 import java.util.List;
 
@@ -56,4 +59,38 @@ public interface RewardService {
      * @throws jakarta.persistence.EntityNotFoundException nếu id không tồn tại
      */
     void deactivate(Integer id);
+
+    /**
+     * FR7: Lấy danh sách reward mà customer có thể đổi bằng điểm hiện tại.
+     *
+     * <p>Điều kiện lọc:</p>
+     * <ul>
+     *   <li>Reward đang active</li>
+     *   <li>Customer đủ điểm để đổi</li>
+     *   <li>Reward áp dụng cho đúng loại xe hoặc áp dụng cho cả hai loại xe</li>
+     * </ul>
+     *
+     * @param customerId ID của customer
+     * @param vehicleType loại xe của customer, ví dụ: car, motorbike, both
+     * @return danh sách reward có thể đổi
+     */
+    List<RewardResponseDTO> getRedeemableRewards(Long customerId, String vehicleType);
+
+    /**
+     * FR7: Customer đổi điểm lấy reward.
+     *
+     * <p>Flow xử lý:</p>
+     * <ul>
+     *   <li>Tìm reward theo rewardId</li>
+     *   <li>Kiểm tra reward còn active không</li>
+     *   <li>Kiểm tra reward có áp dụng cho loại xe này không</li>
+     *   <li>Kiểm tra customer có đủ điểm không</li>
+     *   <li>Trừ điểm bằng cách lưu một LoyaltyTransaction mới</li>
+     * </ul>
+     *
+     * @param rewardId ID của reward muốn đổi
+     * @param dto thông tin customer và loại xe
+     * @return kết quả đổi reward, bao gồm điểm trước và sau khi đổi
+     */
+    RedeemRewardResponseDTO redeemReward(Integer rewardId, RedeemRewardRequestDTO dto);
 }

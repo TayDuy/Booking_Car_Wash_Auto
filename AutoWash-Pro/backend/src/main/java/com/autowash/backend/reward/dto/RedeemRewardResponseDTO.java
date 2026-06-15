@@ -1,6 +1,6 @@
 package com.autowash.backend.reward.dto;
 
-public record RedeemRewardResponse(
+public record RedeemRewardResponseDTO(
         String message,
         Long customerId,
         Integer rewardId,

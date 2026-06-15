@@ -7,7 +7,7 @@ import jakarta.validation.constraints.NotNull;
         Nó giúp kiểm tra dữ liệu frontend gửi lên.
 */
 
-public record RedeemRewardRequest (
+public record RedeemRewardRequestDTO(
     /*
     Bắt frontend phải gửi nếu không có id thì báo lỗi
         {
