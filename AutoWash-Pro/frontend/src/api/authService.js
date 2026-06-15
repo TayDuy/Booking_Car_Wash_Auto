@@ -21,6 +21,21 @@ export async function register(username, password, email, fullName, phone){
     return respone.data;
 }
 
+export async function sendOtp(phone){
+    const respone = await axios.post(`${API_URL}/send-otp`,{
+        phone: phone,
+    });
+    return respone.data;
+}
+
+export async function verifyOtp(phone, otp) {
+    const respone = await axios.post(`${API_URL}/verify-otp`,{
+        phone: phone,
+        otp: otp,
+    });
+    return respone.data;
+}
+
 export function saveAuth(result){
     localStorage.setItem("token", result.accessToken);
     localStorage.setItem("username", result.username);
