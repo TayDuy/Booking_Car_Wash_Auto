@@ -87,17 +87,12 @@ public class TimeSlot {
 
         /**
          * FR-6: @Version — JPA dùng field này làm version check khi UPDATE.
-         * Khởi tạo version dùng cho Optimistic Locking độc lập.
-         * // FIX: Thêm trường version riêng biệt để Spring Data JPA quản lý Optimistic Locking
+         * TX1 và TX2 cùng đọc currentBookings=2, cùng tăng lên 3:
+         *   TX1 commit trước → DB version tăng.
+         *   TX2 commit sau   → version mismatch → OptimisticLockException.
+         * Service bắt exception → trả lỗi "slot đã đầy".
          */
         @Version
-        @Column(name = "version", nullable = false)
-        @Builder.Default
-        private Long version = 0L;
-
-        /** Số lượng booking hiện tại của slot. 
-         * // FIX: Bỏ annotation @Version ở đây vì code business có thao tác cộng/trừ thủ công
-         */
         @Column(name = "current_bookings", nullable = false)
         @Builder.Default
         private Integer currentBookings = 0;

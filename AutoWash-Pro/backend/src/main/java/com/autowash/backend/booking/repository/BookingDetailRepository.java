@@ -1,6 +1,5 @@
 package com.autowash.backend.booking.repository;
 
-import com.autowash.backend.booking.entity.Booking;
 import com.autowash.backend.booking.entity.BookingDetail;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
@@ -11,6 +10,4 @@ import java.util.List;
 public interface BookingDetailRepository extends JpaRepository<BookingDetail, Integer> {
 
     List<BookingDetail> findByBooking_BookingId(Integer bookingId);
-    // Lấy tất cả detail theo booking
-    List<BookingDetail> findByBooking(Booking booking);
 }
