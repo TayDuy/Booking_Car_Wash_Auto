@@ -1,6 +1,7 @@
 package com.autowash.backend.booking.entity;
 
 
+import com.autowash.backend.booking.enums.BookingStatus;
 import com.autowash.backend.branch.entity.Branch;
 import com.autowash.backend.employee.entity.Employee;
 import com.autowash.backend.timeslot.entity.TimeSlot;
@@ -123,9 +124,6 @@ public class Booking {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
-    public enum BookingStatus {
-        pending, confirmed, in_progress, completed, cancelled, no_show
-    }
 
     // ── FR-5 Helpers ─────────────────────────────────────────────────────────
 

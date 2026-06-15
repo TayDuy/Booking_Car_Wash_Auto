@@ -3,6 +3,7 @@ package com.autowash.backend.booking.mapper;
 import com.autowash.backend.booking.dto.*;
 import com.autowash.backend.booking.entity.Booking;
 import com.autowash.backend.booking.entity.BookingDetail;
+import com.autowash.backend.booking.enums.BookingStatus;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
