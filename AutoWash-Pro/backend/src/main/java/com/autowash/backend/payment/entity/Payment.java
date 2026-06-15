@@ -3,6 +3,8 @@ package com.autowash.backend.payment.entity;
 import com.autowash.backend.booking.entity.Booking;
 //import com.autowash.backend.loyalty.entity.Reward;       // ← fix package
 //import com.autowash.backend.voucher.entity.Promotion;   // ← fix package
+import com.autowash.backend.promotion.entity.Promotion;
+import com.autowash.backend.reward.entity.Reward;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import lombok.*;
@@ -38,15 +40,15 @@ public class Payment {
             foreignKey = @ForeignKey(name = "fk_payment_booking"))
     private Booking booking;
 
-//    @ManyToOne(fetch = FetchType.LAZY)
-//    @JoinColumn(name = "promotion_id",
-//            foreignKey = @ForeignKey(name = "fk_payment_promotion"))
-//    private Promotion promotion;
-//
-//    @ManyToOne(fetch = FetchType.LAZY)
-//    @JoinColumn(name = "reward_id",
-//            foreignKey = @ForeignKey(name = "fk_payment_reward"))
-//    private Reward reward;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "promotion_id",
+            foreignKey = @ForeignKey(name = "fk_payment_promotion"))
+    private Promotion promotion;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "reward_id",
+            foreignKey = @ForeignKey(name = "fk_payment_reward"))
+    private Reward reward;
 
     @NotNull
     @DecimalMin(value = "0.0", inclusive = false, message = "Số tiền gốc phải lớn hơn 0")
