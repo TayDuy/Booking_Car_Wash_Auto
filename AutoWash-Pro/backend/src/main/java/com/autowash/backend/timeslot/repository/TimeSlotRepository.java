@@ -22,7 +22,7 @@ public interface TimeSlotRepository extends JpaRepository<TimeSlot, Integer> {
             SELECT t FROM TimeSlot t
             WHERE t.branch.branchId = :branchId
               AND t.slotDate = :slotDate
-              AND t.status = 'open'
+              AND t.status = com.autowash.backend.timeslot.entity.TimeSlot.SlotStatus.open
               AND t.currentBookings < t.maxCapacity
             """)
     List<TimeSlot> findAvailableSlots(@Param("branchId") Integer branchId,

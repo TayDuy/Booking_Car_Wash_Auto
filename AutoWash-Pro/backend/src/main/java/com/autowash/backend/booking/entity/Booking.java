@@ -1,6 +1,6 @@
 package com.autowash.backend.booking.entity;
 
-import com.autowash.backend.booking.enums.BookingStatus;
+
 import com.autowash.backend.branch.entity.Branch;
 import com.autowash.backend.employee.entity.Employee;
 import com.autowash.backend.timeslot.entity.TimeSlot;
@@ -11,7 +11,6 @@ import jakarta.validation.constraints.*;
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
-import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
 
@@ -38,19 +37,20 @@ import java.time.LocalDateTime;
  */
 @Entity
 @Table(name = "booking")
-@EntityListeners(AuditingEntityListener.class)
+@EntityListeners(AbstractMethodError.class)
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
-@ToString(exclude = {"customer", "vehicle", "slot", "branch", "assignedStaff"})
+@ToString(exclude = {"customer", "vehicle", "slot", "branch", "assignedStaff"})  // cái cuối thay tên đẻ tránh trùng tên db cho rõ nghĩa
+
+
 public class Booking {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "booking_id")
     @EqualsAndHashCode.Include
     private Integer bookingId;
 
@@ -78,7 +78,7 @@ public class Booking {
             foreignKey = @ForeignKey(name = "fk_booking_branch"))
     private Branch branch;
 
-    /** Nhân viên phụ trách — nullable, có thể chưa phân công khi mới tạo. */
+    // Nullable — chỉ set khi chuyển sang in_progress
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "employee_id",
             foreignKey = @ForeignKey(name = "fk_booking_employee"))
@@ -93,11 +93,6 @@ public class Booking {
     @Column(name = "booking_date", nullable = false, updatable = false)
     private LocalDateTime bookingDate;
 
-    /**
-     * Trạng thái hiện tại của booking.
-     * Dùng enum tách riêng (BookingStatus) thay vì inner enum
-     * để DTO không cần import entity.
-     */
     @NotNull(message = "Status không được null")
     @Column(name = "status", nullable = false, length = 15)
     @Enumerated(EnumType.STRING)
@@ -105,8 +100,8 @@ public class Booking {
     private BookingStatus status = BookingStatus.pending;
 
     /**
-     * Điểm ưu tiên trong waitlist (1–4).
-     * Set từ customer.tier.priorityLevel khi tạo booking.
+     * FR-6: Set từ customer.tier.priorityLevel khi tạo booking.
+     * Dùng để sort waitlist khi slot mở lại sau cancel/no_show.
      */
     @Min(value = 1, message = "Priority score tối thiểu là 1")
     @Max(value = 4, message = "Priority score tối đa là 4")
@@ -114,15 +109,12 @@ public class Booking {
     @Builder.Default
     private Integer priorityScore = 1;
 
-    /** Thời điểm bắt đầu rửa xe thực tế. */
     @Column(name = "start_time")
     private LocalDateTime startTime;
 
-    /** Thời điểm kết thúc rửa xe thực tế. */
     @Column(name = "end_time")
     private LocalDateTime endTime;
 
-    /** Ghi chú thêm của khách hàng khi đặt. */
     @Size(max = 255)
     @Column(name = "note", length = 255)
     private String note;
@@ -131,15 +123,19 @@ public class Booking {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
-    // ── Helpers ──────────────────────────────────────────────────────────────
+    public enum BookingStatus {
+        pending, confirmed, in_progress, completed, cancelled, no_show
+    }
 
-    /** Booking có thể huỷ không — chỉ khi đang pending hoặc confirmed. */
+    // ── FR-5 Helpers ─────────────────────────────────────────────────────────
+
+    /** Cho phép huỷ ở pending hoặc confirmed. */
     public boolean isCancellable() {
         return BookingStatus.pending.equals(this.status)
                 || BookingStatus.confirmed.equals(this.status);
     }
 
-    /** Booking có đang trong vòng đời hoạt động không. */
+    /** Booking đang chiếm chỗ trong slot — dùng để check overlap. */
     public boolean isActive() {
         return this.status == BookingStatus.pending
                 || this.status == BookingStatus.confirmed
