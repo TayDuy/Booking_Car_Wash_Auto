@@ -11,6 +11,5 @@ import java.util.List;
 public interface BookingDetailRepository extends JpaRepository<BookingDetail, Integer> {
 
     List<BookingDetail> findByBooking_BookingId(Integer bookingId);
-    // Lấy tất cả detail theo booking
     List<BookingDetail> findByBooking(Booking booking);
 }
