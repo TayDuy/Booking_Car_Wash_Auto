@@ -1,6 +1,7 @@
 package com.autowash.backend.vehicle.service;
 
-import com.autowash.backend.booking.entity.Booking;
+
+import com.autowash.backend.booking.enums.BookingStatus;
 import com.autowash.backend.booking.repository.BookingRepository;
 import com.autowash.backend.customer.entity.Customer;
 import com.autowash.backend.customer.repository.CustomerRepository;
@@ -84,10 +85,10 @@ public class VehicleServiceImpl implements VehicleService{
         Vehicle vehicle = vehicleRespository.findByVehicleIdAndCustomer_CustomerId(vehicleId, customer.getCustomerId())
                 .orElseThrow(() -> new BusinessException("Không tìm thấy xe của bạn", HttpStatus.NOT_FOUND));
         // Chặn xóa nếu xe đang có lịch hẹn chưa xong (pending, confirmed, in_progress)
-        List<Booking.BookingStatus> activeStatuses = List.of(
-                Booking.BookingStatus.pending,
-                Booking.BookingStatus.confirmed,
-                Booking.BookingStatus.in_progress
+        List<BookingStatus> activeStatuses = List.of(
+                BookingStatus.pending,
+                BookingStatus.confirmed,
+                BookingStatus.in_progress
         );
         if (bookingRepository.existsByVehicle_VehicleIdAndStatusIn(vehicleId, activeStatuses)) {
             throw new BusinessException("Không thể xóa xe đang có lịch đặt chưa hoàn thành");
