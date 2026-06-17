@@ -110,8 +110,10 @@ public class AuthServiceImpl implements AuthService {
 
         // Tạo thông tin khách hàng (Customer)
         Customer newCustomer = Customer.builder()
-                .userId(savedUser.getId())
-                .fullName(request.getFullName() != null ? request.getFullName().trim() : "")
+                .user(savedUser)   // lỗi nè
+                .fullName(request.getFullName() != null
+                        ? request.getFullName().trim()
+                        : "")
                 .build();
         customerRepository.save(newCustomer);
 
