@@ -11,7 +11,10 @@ import "./index.css";
 
 import App from "./App";
 import Register from "./pages/auth/Register";
-import BookingPage from "./features/booking/pages/BookingPage";
+import BookingPage from "./pages/auth/Booking";
+import NotificationPage from "./pages/auth/NotificationPage";
+import ProfilePage from "./pages/auth/ProfilePage";
+import SupportPage from "./pages/auth/SupportPage";
 
 ReactDOM.createRoot(
   document.getElementById("root")
@@ -27,6 +30,20 @@ ReactDOM.createRoot(
         <Route
           path="/booking"
           element={<BookingPage />}
+        />
+        <Route
+          path="/notifications"
+          element={<NotificationPage />}
+        />
+
+        <Route
+          path="/profile"
+          element={<ProfilePage />}
+        />
+
+        <Route
+          path="/support"
+          element={<SupportPage />}
         />
       </Routes>
     </BrowserRouter>
