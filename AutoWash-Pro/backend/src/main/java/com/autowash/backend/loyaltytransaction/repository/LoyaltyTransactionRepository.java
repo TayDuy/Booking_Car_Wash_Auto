@@ -16,4 +16,11 @@ public interface LoyaltyTransactionRepository extends JpaRepository<LoyaltyTrans
     List<LoyaltyTransaction> findByTransactionTypeAndExpiredAtBefore(String transactionType, LocalDateTime now);
 
     Optional<LoyaltyTransaction> findTopByCustomerIdOrderByCreatedAtDesc(Integer customerId);
+
+    List<LoyaltyTransaction> findByCustomerIdOrderByCreatedAtDesc(Integer customerId);
+
+    List<LoyaltyTransaction> findByCustomerIdAndTransactionTypeOrderByCreatedAtDesc(
+            Integer customerId,
+            String transactionType
+    );
 }

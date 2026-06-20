@@ -100,4 +100,10 @@ public interface PromotionService {
      * @return danh sách promotion customer đã dùng
      */
     List<PromotionUseResponseDTO> getCustomerPromotionUses(Integer customerId);
+    /**
+     * Tự động chuyển các promotion đã hết hạn nhưng còn active sang expired.
+     *
+     * @return số lượng promotion đã được cập nhật
+     */
+    int expireExpiredPromotions();
 }
