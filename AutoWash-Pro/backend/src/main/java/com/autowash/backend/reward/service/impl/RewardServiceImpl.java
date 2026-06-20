@@ -105,7 +105,7 @@ public class RewardServiceImpl implements RewardService {
     }
 
     @Override
-    public List<RewardResponseDTO> getRedeemableRewards(Long customerId, String vehicleType) {
+    public List<RewardResponseDTO> getRedeemableRewards(Integer customerId, String vehicleType) {
         Integer currentPoints = getCurrentPoints(customerId);
 
         Reward.RewardStatus activeStatus = parseEnumIgnoreCase(Reward.RewardStatus.class, "active");
@@ -200,7 +200,7 @@ public class RewardServiceImpl implements RewardService {
                         "Reward không tồn tại, id=" + id));
     }
 
-    private Integer getCurrentPoints(Long customerId) {
+    private Integer getCurrentPoints(Integer customerId) {
         return loyaltyTransactionRepository
                 .findTopByCustomerIdOrderByCreatedAtDesc(customerId)
                 .map(LoyaltyTransaction::getBalanceAfter)
