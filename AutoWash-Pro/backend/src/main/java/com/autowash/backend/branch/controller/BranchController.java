@@ -7,6 +7,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -18,6 +19,7 @@ public class BranchController {
     private final BranchService branchService;
 
     //1.API tạo mới chi nhánh (POST /api/v1/admin/branches)
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/admin/branches")
     public ResponseEntity<BranchResponse> createBranch(@Valid @RequestBody BranchRequest request){
 
@@ -40,6 +42,7 @@ public class BranchController {
     }
 
     //4.API Cập nhật Chi nhánh (PUT /api/v1/branches/{id})
+    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/admin/branches/{id}")
     public ResponseEntity<BranchResponse> updateBranch(@PathVariable("id") Integer id, @Valid @RequestBody BranchRequest request){
         BranchResponse response = branchService.updateBranch(id,request);
