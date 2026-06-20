@@ -15,7 +15,7 @@ public record RedeemRewardRequestDTO(
         }
     */
     @NotNull(message = "Yeu cau ID khach hang")
-    Long customerId,
+    Integer customerId,
     /*
         @NotBlank:
              Không được null

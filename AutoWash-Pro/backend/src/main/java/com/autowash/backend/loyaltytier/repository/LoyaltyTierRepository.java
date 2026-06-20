@@ -13,4 +13,7 @@ public interface LoyaltyTierRepository extends JpaRepository<LoyaltyTier, Intege
     Optional<LoyaltyTier> findByTierName(String tierName);
 
     List<LoyaltyTier> findByIsActiveTrueOrderByMinPointsDesc();
+
+    List<LoyaltyTier> findByIsActiveTrueOrderByPriorityLevelDesc();
+
 }

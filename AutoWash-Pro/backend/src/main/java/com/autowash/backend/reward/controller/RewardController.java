@@ -126,7 +126,7 @@ public class RewardController {
      */
     @GetMapping("/redeemable")
     public ResponseEntity<List<RewardResponseDTO>> getRedeemableRewards(
-            @RequestParam Long customerId,
+            @RequestParam Integer customerId,
             @RequestParam String vehicleType
     ) {
         List<RewardResponseDTO> rewards =
