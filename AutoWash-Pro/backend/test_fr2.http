@@ -12,7 +12,7 @@ Content-Type: application/json
 
 {
   "phone": "0912345678",
-  "otp": "267228"
+  "otp": "293578"
 }
 
 ### 0A. ĐĂNG KÝ KHÁCH HÀNG MỚI (Bắt buộc phone phải giống ở trên)

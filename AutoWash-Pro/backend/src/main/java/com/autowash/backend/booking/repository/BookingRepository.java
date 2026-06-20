@@ -1,7 +1,9 @@
 package com.autowash.backend.booking.repository;
 
 import com.autowash.backend.booking.entity.Booking;
-import com.autowash.backend.booking.entity.Booking.BookingStatus;
+import com.autowash.backend.booking.enums.BookingStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -15,7 +17,12 @@ public interface BookingRepository extends JpaRepository<Booking, Integer> {
 
     Optional<Booking> findByBookingCode(String bookingCode);
 
+    // Lấy booking của customer, mới nhất trước
     List<Booking> findByCustomer_CustomerIdOrderByBookingDateDesc(Integer customerId);
+
+    Page<Booking> findByCustomer_CustomerId(Integer customerId, Pageable pageable);
+
+    Page<Booking> findByBranch_BranchId(Integer branchId, Pageable pageable);
 
     List<Booking> findByBranch_BranchIdAndStatus(Integer branchId, BookingStatus status);
 

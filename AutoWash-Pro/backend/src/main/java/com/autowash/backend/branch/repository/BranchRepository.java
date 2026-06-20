@@ -18,4 +18,7 @@ public interface BranchRepository extends JpaRepository<Branch, Integer> {
     boolean existsByBranchName(String branchName);
 
     boolean existsByPhone(String phone);
+
+    // Thêm vào BranchRepository – dùng khi UPDATE để loại trừ chính mình
+    boolean existsByBranchNameAndBranchIdNot(String branchName, Integer branchId);
 }
