@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
@@ -40,16 +41,19 @@ public class PromotionController {
     // ── CREATE ────────────────────────────────────────────────────────────────
 
     /**
-     * Tạo mới một promotion.
+     * Tạo mới một promotion — CHỈ ADMIN.
      * createdByUserId lấy từ JWT trong SecurityContext —
      * client không thể tự truyền lên để giả mạo.
      *
      * <p>{@code POST /api/v1/promotions}</p>
      *
+     * <p>@PreAuthorize: Chặn ngay tại đây nếu không phải ADMIN → 403 Forbidden.</p>
+     *
      * @param dto         thông tin promotion từ request body (JSON)
      * @param currentUser user đang đăng nhập, inject từ Spring Security
      * @return HTTP 201 Created kèm promotion vừa tạo
      */
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
     public ResponseEntity<PromotionResponseDTO> create(
             @Valid @RequestBody PromotionRequestDTO dto,
@@ -132,14 +136,17 @@ public class PromotionController {
     // ── UPDATE ────────────────────────────────────────────────────────────────
 
     /**
-     * Cập nhật thông tin promotion (patch — chỉ field được gửi lên mới thay đổi).
+     * Cập nhật thông tin promotion (patch — chỉ field được gửi lên mới thay đổi) — CHỈ ADMIN.
      *
      * <p>{@code PUT /api/v1/promotions/{id}}</p>
+     *
+     * <p>@PreAuthorize: Chặn ngay tại đây nếu không phải ADMIN → 403 Forbidden.</p>
      *
      * @param id  primary key của promotion cần cập nhật
      * @param dto dữ liệu mới từ request body
      * @return HTTP 200 kèm promotion sau khi cập nhật, hoặc HTTP 404
      */
+    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{id}")
     public ResponseEntity<PromotionResponseDTO> update(
             @PathVariable Integer id,
@@ -150,14 +157,17 @@ public class PromotionController {
     // ── DELETE (soft) ─────────────────────────────────────────────────────────
 
     /**
-     * Vô hiệu hóa promotion (soft-delete) — đặt {@code status = inactive}.
-     * Không xóa khỏi DB để giữ lịch sử promotion đã áp dụng vào các booking.
+     * Vô hiệu hóa promotion (soft-delete) — CHỈ ADMIN.
+     * Đặt {@code status = inactive}, không xóa khỏi DB để giữ lịch sử promotion đã áp dụng vào các booking.
      *
      * <p>{@code DELETE /api/v1/promotions/{id}}</p>
+     *
+     * <p>@PreAuthorize: Chặn ngay tại đây nếu không phải ADMIN → 403 Forbidden.</p>
      *
      * @param id primary key của promotion cần vô hiệu hóa
      * @return HTTP 204 No Content nếu thành công, hoặc HTTP 404
      */
+    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deactivate(@PathVariable Integer id) {
         promotionService.deactivate(id);
