@@ -240,6 +240,27 @@ public class PromotionServiceImpl implements PromotionService {
                 .toList();
     }
 
+    @Override
+    @Transactional
+    public int expireExpiredPromotions() {
+        LocalDate today = LocalDate.now();
+
+        List<Promotion> expiredPromotions =
+                promotionRepository.findExpiredButActive(today);
+
+        if (expiredPromotions.isEmpty()) {
+            return 0;
+        }
+
+        expiredPromotions.forEach(promotion ->
+                promotion.setStatus(PromotionStatus.expired)
+        );
+
+        promotionRepository.saveAll(expiredPromotions);
+
+        return expiredPromotions.size();
+    }
+
     // ── Private helpers ──────────────────────────────────────────────────────
 
     /**
