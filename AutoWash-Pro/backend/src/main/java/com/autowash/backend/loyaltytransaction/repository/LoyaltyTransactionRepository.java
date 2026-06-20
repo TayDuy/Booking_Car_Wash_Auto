@@ -9,9 +9,9 @@ import java.util.Optional;
 
 public interface LoyaltyTransactionRepository extends JpaRepository<LoyaltyTransaction, Long> {
 
-    List<LoyaltyTransaction> findByCustomerId(Long customerId);
+    List<LoyaltyTransaction> findByCustomerId(Integer customerId);
 
-    List<LoyaltyTransaction> findByCustomerIdAndTransactionType(Long customerId, String transactionType);
+    List<LoyaltyTransaction> findByCustomerIdAndTransactionType(Integer customerId, String transactionType);
 
     List<LoyaltyTransaction> findByTransactionTypeAndExpiredAtBefore(String transactionType, LocalDateTime now);
 
