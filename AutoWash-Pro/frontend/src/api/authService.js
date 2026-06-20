@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const API_URL = "http://localhost:8080/api/v1/auth";
-//const API_URL = "http://localhost:5000/api/v1/auth"
+
 export async function login(username, password){
     const respone = await axios.post(`${API_URL}/login`,{
         username: username,
@@ -10,11 +10,28 @@ export async function login(username, password){
     return respone.data;
 }
 
-export async function register(username, password, email){
+export async function register(username, password, email, fullName, phone){
     const respone = await axios.post(`${API_URL}/register`,{
         username: username,
         password: password,
         email: email,
+        fullName: fullName,
+        phone: phone
+    });
+    return respone.data;
+}
+
+export async function sendOtp(phone){
+    const respone = await axios.post(`${API_URL}/send-otp`,{
+        phone: phone,
+    });
+    return respone.data;
+}
+
+export async function verifyOtp(phone, otp) {
+    const respone = await axios.post(`${API_URL}/verify-otp`,{
+        phone: phone,
+        otp: otp
     });
     return respone.data;
 }

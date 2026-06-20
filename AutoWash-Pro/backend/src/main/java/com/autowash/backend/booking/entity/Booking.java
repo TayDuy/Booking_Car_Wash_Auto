@@ -1,6 +1,7 @@
 package com.autowash.backend.booking.entity;
 
 
+import com.autowash.backend.booking.enums.BookingStatus;
 import com.autowash.backend.branch.entity.Branch;
 import com.autowash.backend.employee.entity.Employee;
 import com.autowash.backend.timeslot.entity.TimeSlot;
@@ -11,7 +12,6 @@ import jakarta.validation.constraints.*;
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
-import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
 
@@ -38,7 +38,7 @@ import java.time.LocalDateTime;
  */
 @Entity
 @Table(name = "booking")
-@EntityListeners(AuditingEntityListener.class)
+@EntityListeners(AbstractMethodError.class)
 @Getter
 @Setter
 @NoArgsConstructor
@@ -46,15 +46,9 @@ import java.time.LocalDateTime;
 @Builder
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @ToString(exclude = {"customer", "vehicle", "slot", "branch", "assignedStaff"})  // cái cuối thay tên đẻ tránh trùng tên db cho rõ nghĩa
-public class Booking {
 
-    @AssertTrue(message = "End time must be after start time")
-    private boolean isValidTimeRange() {
-        if (startTime == null || endTime == null) {
-            return true;  // Skip validation if either is null
-        }
-        return endTime.isAfter(startTime);
-    }
+
+public class Booking {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -130,9 +124,6 @@ public class Booking {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
-    public enum BookingStatus {
-        pending, confirmed, in_progress, completed, cancelled, no_show
-    }
 
     // ── FR-5 Helpers ─────────────────────────────────────────────────────────
 
@@ -144,8 +135,8 @@ public class Booking {
 
     /** Booking đang chiếm chỗ trong slot — dùng để check overlap. */
     public boolean isActive() {
-        return BookingStatus.pending.equals(this.status)
-                || BookingStatus.confirmed.equals(this.status)
-                || BookingStatus.in_progress.equals(this.status);
+        return this.status == BookingStatus.pending
+                || this.status == BookingStatus.confirmed
+                || this.status == BookingStatus.in_progress;
     }
 }

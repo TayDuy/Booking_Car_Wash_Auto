@@ -13,21 +13,31 @@ import java.util.List;
 @Repository
 public interface TimeSlotRepository extends JpaRepository<TimeSlot, Integer> {
 
-    // FR-4: tìm slot theo branch + ngày + status để hiển thị cho khách
-    List<TimeSlot> findByBranch_BranchIdAndSlotDateAndStatus(
-            Integer branchId, LocalDate slotDate, SlotStatus status);
-
-    // FR-6: tìm slot còn chỗ để check trước khi book
+    /**
+     * FR-4: Tìm slot còn chỗ theo branch và ngày — dùng cho màn hình chọn giờ.
+     * JOIN FETCH tránh N+1 khi mapper đọc branch.branchName và washBay.bayName.
+     */
     @Query("""
-            SELECT t FROM TimeSlot t
-            WHERE t.branch.branchId = :branchId
-              AND t.slotDate = :slotDate
-              AND t.status = com.autowash.backend.timeslot.entity.TimeSlot.SlotStatus.open
-              AND t.currentBookings < t.maxCapacity
+            SELECT ts FROM TimeSlot ts
+            JOIN FETCH ts.branch b
+            JOIN FETCH ts.washBay wb
+            WHERE b.branchId = :branchId
+              AND ts.slotDate = :date
+              AND ts.status   = :status
+            ORDER BY ts.startTime
             """)
-    List<TimeSlot> findAvailableSlots(@Param("branchId") Integer branchId,
-                                      @Param("slotDate") LocalDate slotDate);
+    List<TimeSlot> findByBranchAndDateAndStatus(
+            @Param("branchId") Integer branchId,
+            @Param("date")     LocalDate date,
+            @Param("status")   SlotStatus status
+    );
 
+    /**
+     * Kiểm tra trùng slot (cùng bay + ngày + giờ bắt đầu) trước khi INSERT.
+     * Unique constraint trên DB là lưới an toàn cuối cùng,
+     * check trước ở đây để trả lỗi rõ ràng hơn thay vì DataIntegrityViolationException.
+     */
     boolean existsByWashBay_BayIdAndSlotDateAndStartTime(
-            Integer bayId, LocalDate slotDate, java.time.LocalTime startTime);
+            Integer bayId, LocalDate slotDate, java.time.LocalTime startTime
+    );
 }
