@@ -1,5 +1,6 @@
 package com.autowash.backend.branch.service;
 
+<<<<<<< HEAD
 import com.autowash.backend.branch.dto.BranchRequestDTO;
 import com.autowash.backend.branch.dto.BranchResponseDTO;
 import com.autowash.backend.branch.entity.Branch.BranchStatus;
@@ -98,3 +99,19 @@ public interface BranchService {
      */
     void softDelete(Integer branchId);
 }
+=======
+import com.autowash.backend.branch.dto.BranchRequest;
+import com.autowash.backend.branch.dto.BranchResponse;
+
+import java.util.List;
+
+public interface BranchService {
+    BranchResponse createBranch(BranchRequest request);
+    BranchResponse updateBranch(Integer branchId, BranchRequest request);
+    BranchResponse getBranchById(Integer branchId);
+
+    List<BranchResponse> getAllBranches();
+
+
+}
+>>>>>>> origin/dev/Dung
