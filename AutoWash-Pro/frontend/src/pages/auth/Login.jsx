@@ -13,13 +13,19 @@ function Login({ onLoginSuccess }) {
   const navigate = useNavigate();
 
   function redirectByRole(role) {
+    console.log("ROLE =", role);
+
     const normalizedRole = role?.toLowerCase();
+
     if (normalizedRole === "admin") {
+      console.log("GO ADMIN");
       navigate("/admin");
     } else if (normalizedRole === "employee") {
+      console.log("GO EMPLOYEE");
       navigate("/employee");
     } else {
-      navigate("/");
+      console.log("GO BOOKING");
+      navigate("/booking");
     }
   }
 

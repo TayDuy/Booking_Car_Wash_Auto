@@ -12,6 +12,7 @@
     "test:ci": "vitest run"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.108.2",
     "axios": "^1.5.0",
     "bootstrap": "^5.3.8",
     "firebase": "^12.14.0",
