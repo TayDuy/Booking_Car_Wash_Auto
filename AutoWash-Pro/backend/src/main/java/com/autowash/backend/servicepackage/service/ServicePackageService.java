@@ -1,5 +1,6 @@
 package com.autowash.backend.servicepackage.service;
 
+<<<<<<< HEAD
 import com.autowash.backend.servicepackage.dto.ServicePackageRequestDTO;
 import com.autowash.backend.servicepackage.dto.ServicePackageResponseDTO;
 import java.util.List;
@@ -24,3 +25,17 @@ public interface ServicePackageService {
     /** Xóa mềm: chỉ set isActive = false thay vì DELETE khỏi DB. */
     void deactivate(Integer id);
 }
+=======
+import com.autowash.backend.servicepackage.dto.ServicePackageRequest;
+import com.autowash.backend.servicepackage.dto.ServicePackageResponse;
+
+import java.util.List;
+
+public interface ServicePackageService {
+    ServicePackageResponse createServicePackage(ServicePackageRequest request);
+    ServicePackageResponse updateServicePackage(Integer serviceId, ServicePackageRequest request);
+    ServicePackageResponse getServicePackageById(Integer serviceId);
+    List<ServicePackageResponse> getAllServicePackages();
+
+}
+>>>>>>> origin/dev/Dung
