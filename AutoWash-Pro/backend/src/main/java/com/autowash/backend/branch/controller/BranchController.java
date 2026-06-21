@@ -8,6 +8,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -21,40 +22,27 @@ import java.util.List;
  * <pre>
  * GET    /api/v1/branches                  Lấy danh sách chi nhánh (filter theo ?status=)
  * GET    /api/v1/branches/{id}             Lấy chi tiết một chi nhánh
- * POST   /api/v1/branches                  Tạo chi nhánh mới
- * PUT    /api/v1/branches/{id}             Cập nhật thông tin chi nhánh
- * PATCH  /api/v1/branches/{id}/status      Đổi trạng thái chi nhánh
- * DELETE /api/v1/branches/{id}             Soft delete (chuyển sang CLOSED)
+ * POST   /api/v1/branches                  Tạo chi nhánh mới (Admin only)
+ * PUT    /api/v1/branches/{id}             Cập nhật thông tin chi nhánh (Admin only)
+ * PATCH  /api/v1/branches/{id}/status      Đổi trạng thái chi nhánh (Admin only)
+ * DELETE /api/v1/branches/{id}             Soft delete - chuyển sang CLOSED (Admin only)
  * </pre>
- *
- * <h3>Error handling:</h3>
- * Các exception từ service layer ({@code EntityNotFoundException},
- * {@code IllegalArgumentException}) được xử lý tập trung bởi
- * {@code GlobalExceptionHandler} (@ControllerAdvice), không cần try-catch ở đây.
  */
 @RestController
 @RequestMapping("/api/v1/branches")
-@RequiredArgsConstructor  // Inject BranchService qua constructor (best practice, không dùng @Autowired field)
+@RequiredArgsConstructor
 public class BranchController {
 
     private final BranchService branchService;
 
     // ====================================================================
-    //  GET /api/v1/branches?status=open
+    //  GET /api/v1/branches?status=open  — Ai cũng xem được
     // ====================================================================
 
     /**
-     * Lấy danh sách chi nhánh.
-     *
-     * <p>Query param {@code status} là tuỳ chọn:</p>
-     * <ul>
-     *   <li>{@code GET /branches}               → trả về tất cả chi nhánh</li>
-     *   <li>{@code GET /branches?status=open}    → chỉ trả về chi nhánh đang mở</li>
-     *   <li>{@code GET /branches?status=closed}  → chỉ trả về chi nhánh đã đóng</li>
-     * </ul>
-     *
+     * Lấy danh sách chi nhánh (khách hàng cần xem để chọn chỗ đặt lịch).
      * @param status (optional) lọc theo trạng thái; null = lấy tất cả
-     * @return 200 OK + danh sách DTO (có thể là list rỗng [])
+     * @return 200 OK + danh sách DTO
      */
     @GetMapping
     public ResponseEntity<List<BranchResponseDTO>> getAll(
@@ -63,15 +51,13 @@ public class BranchController {
     }
 
     // ====================================================================
-    //  GET /api/v1/branches/{id}
+    //  GET /api/v1/branches/{id}  — Ai cũng xem được
     // ====================================================================
 
     /**
      * Lấy chi tiết một chi nhánh theo ID.
-     *
      * @param id ID của chi nhánh cần tra cứu
-     * @return 200 OK + DTO chi tiết
-     *         404 Not Found nếu không tìm thấy (xử lý bởi GlobalExceptionHandler)
+     * @return 200 OK + DTO chi tiết | 404 Not Found
      */
     @GetMapping("/{id}")
     public ResponseEntity<BranchResponseDTO> getById(@PathVariable Integer id) {
@@ -79,44 +65,32 @@ public class BranchController {
     }
 
     // ====================================================================
-    //  POST /api/v1/branches
+    //  POST /api/v1/branches  — Chỉ Admin
     // ====================================================================
 
     /**
      * Tạo chi nhánh mới.
-     *
-     * <p>{@code @Valid} kích hoạt Bean Validation trên {@link BranchRequestDTO}
-     * trước khi method được gọi. Nếu validation fail, Spring tự trả 400 Bad Request.</p>
-     *
-     * @param request body JSON chứa thông tin chi nhánh mới
-     * @return 201 Created + DTO chi nhánh vừa tạo (có ID và timestamp)
-     *         400 Bad Request nếu request không hợp lệ
-     *         409 Conflict nếu tên đã tồn tại (xử lý bởi GlobalExceptionHandler)
+     * @PreAuthorize: Chặn ngay tại đây nếu token không phải Admin → 403 Forbidden
+     * @return 201 Created + DTO chi nhánh vừa tạo | 400 Bad Request | 409 Conflict
      */
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
     public ResponseEntity<BranchResponseDTO> create(
             @Valid @RequestBody BranchRequestDTO request) {
         BranchResponseDTO created = branchService.create(request);
-        // Trả về 201 Created thay vì 200 OK vì đây là tạo resource mới (REST convention)
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
     // ====================================================================
-    //  PUT /api/v1/branches/{id}
+    //  PUT /api/v1/branches/{id}  — Chỉ Admin
     // ====================================================================
 
     /**
-     * Cập nhật thông tin chi nhánh (partial update được hỗ trợ).
-     *
-     * <p>Mặc dù dùng HTTP PUT (thường ngụ ý full replace), implementation
-     * hỗ trợ partial update nhờ mapper bỏ qua field null.
-     * Client có thể chỉ truyền field cần thay đổi.</p>
-     *
-     * @param id      ID chi nhánh cần cập nhật
-     * @param request body JSON chứa thông tin cần thay đổi
-     * @return 200 OK + DTO sau khi cập nhật
-     *         404 Not Found nếu không tìm thấy ID
+     * Cập nhật thông tin chi nhánh.
+     * @PreAuthorize: Chặn ngay tại đây nếu token không phải Admin → 403 Forbidden
+     * @return 200 OK + DTO sau khi cập nhật | 404 Not Found
      */
+    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{id}")
     public ResponseEntity<BranchResponseDTO> update(
             @PathVariable Integer id,
@@ -125,22 +99,16 @@ public class BranchController {
     }
 
     // ====================================================================
-    //  PATCH /api/v1/branches/{id}/status?status=maintenance
+    //  PATCH /api/v1/branches/{id}/status  — Chỉ Admin
     // ====================================================================
 
     /**
      * Thay đổi trạng thái hoạt động của chi nhánh.
-     *
-     * <p>Dùng PATCH thay vì PUT vì chỉ cập nhật một field duy nhất.
-     * Truyền status qua query param để URL ngắn gọn, không cần request body.</p>
-     *
-     * <p>Ví dụ: {@code PATCH /api/v1/branches/3/status?status=maintenance}</p>
-     *
-     * @param id     ID chi nhánh cần đổi trạng thái
-     * @param status trạng thái mới (open / closed / maintenance)
-     * @return 200 OK + DTO sau khi đổi trạng thái
-     *         404 Not Found nếu không tìm thấy ID
+     * @PreAuthorize: Chặn ngay tại đây nếu token không phải Admin → 403 Forbidden
+     * Ví dụ: PATCH /api/v1/branches/3/status?status=maintenance
+     * @return 200 OK + DTO sau khi đổi trạng thái | 404 Not Found
      */
+    @PreAuthorize("hasRole('ADMIN')")
     @PatchMapping("/{id}/status")
     public ResponseEntity<BranchResponseDTO> changeStatus(
             @PathVariable Integer id,
@@ -149,22 +117,22 @@ public class BranchController {
     }
 
     // ====================================================================
-    //  DELETE /api/v1/branches/{id}
+    //  DELETE /api/v1/branches/{id}  — Chỉ Admin
     // ====================================================================
 
     /**
      * Soft delete chi nhánh (chuyển status về CLOSED, không xóa khỏi DB).
-     *
-     * <p>Trả về {@code 204 No Content} thay vì 200 vì không có body cần trả về
-     * – đây là convention chuẩn REST cho DELETE thành công.</p>
-     *
-     * @param id ID chi nhánh cần đóng
-     * @return 204 No Content khi thành công
-     *         404 Not Found nếu không tìm thấy ID
+     * @PreAuthorize: Chặn ngay tại đây nếu token không phải Admin → 403 Forbidden
+     * @return 204 No Content khi thành công | 404 Not Found
      */
+    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> softDelete(@PathVariable Integer id) {
         branchService.softDelete(id);
-        return ResponseEntity.noContent().build();  // HTTP 204
+        return ResponseEntity.noContent().build();
     }
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> origin/develop

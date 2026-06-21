@@ -23,4 +23,8 @@ public interface ServicePackageService {
 
     /** Xóa mềm: chỉ set isActive = false thay vì DELETE khỏi DB. */
     void deactivate(Integer id);
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> origin/develop

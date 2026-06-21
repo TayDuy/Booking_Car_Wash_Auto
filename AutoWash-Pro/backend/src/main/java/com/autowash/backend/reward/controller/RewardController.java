@@ -9,6 +9,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -35,7 +36,7 @@ public class RewardController {
     // ── CREATE ────────────────────────────────────────────────────────────────
 
     /**
-     * Tạo mới một reward.
+     * Tạo mới một reward — CHỈ ADMIN.
      *
      * <p>{@code POST /api/v1/rewards}</p>
      *
@@ -43,9 +44,12 @@ public class RewardController {
      * — nếu vi phạm constraint, Spring tự động trả về HTTP 400 trước khi
      * vào service.</p>
      *
+     * <p>@PreAuthorize: Chặn ngay tại đây nếu không phải ADMIN → 403 Forbidden.</p>
+     *
      * @param dto thông tin reward từ request body (JSON)
      * @return HTTP 201 Created kèm reward vừa tạo
      */
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
     public ResponseEntity<RewardResponseDTO> create(@Valid @RequestBody RewardRequestDTO dto) {
         RewardResponseDTO response = rewardService.create(dto);
@@ -83,15 +87,18 @@ public class RewardController {
     // ── UPDATE ────────────────────────────────────────────────────────────────
 
     /**
-     * Cập nhật thông tin reward (patch — chỉ field được gửi lên mới thay đổi).
+     * Cập nhật thông tin reward — CHỈ ADMIN.
      *
      * <p>{@code PUT /api/v1/rewards/{id}}</p>
+     *
+     * <p>@PreAuthorize: Chặn ngay tại đây nếu không phải ADMIN → 403 Forbidden.</p>
      *
      * @param id  primary key của reward cần cập nhật
      * @param dto dữ liệu mới từ request body (field null = giữ nguyên giá trị cũ)
      * @return HTTP 200 kèm reward sau khi cập nhật,
      *         hoặc HTTP 404 nếu không tìm thấy
      */
+    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{id}")
     public ResponseEntity<RewardResponseDTO> update(
             @PathVariable Integer id,
@@ -102,17 +109,18 @@ public class RewardController {
     // ── DELETE (soft) ─────────────────────────────────────────────────────────
 
     /**
-     * Vô hiệu hóa reward (soft-delete) — đặt status = inactive.
+     * Vô hiệu hóa reward (soft-delete) — CHỈ ADMIN.
+     * Đặt status = inactive, không xóa khỏi DB để giữ lịch sử redemption.
      *
      * <p>{@code DELETE /api/v1/rewards/{id}}</p>
      *
-     * <p>Không xóa bản ghi khỏi DB để giữ lịch sử redemption của khách hàng
-     * đã liên kết với reward này.</p>
+     * <p>@PreAuthorize: Chặn ngay tại đây nếu không phải ADMIN → 403 Forbidden.</p>
      *
      * @param id primary key của reward cần vô hiệu hóa
      * @return HTTP 204 No Content nếu thành công,
      *         hoặc HTTP 404 nếu không tìm thấy
      */
+    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deactivate(@PathVariable Integer id) {
         rewardService.deactivate(id);
