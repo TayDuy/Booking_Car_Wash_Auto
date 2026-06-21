@@ -5,27 +5,30 @@ import com.autowash.backend.loyaltytier.dto.CustomerTierEvaluationResponseDTO;
 import java.util.List;
 
 /**
- * Service interface định nghĩa các chức năng đánh giá và cập nhật hạng thành viên.
+ * Service interface định nghĩa các chức năng đánh giá hạng thành viên.
  *
- * Nhiệm vụ chính:
- * - Đánh giá hạng loyalty tier cho một customer.
- * - Đánh giá lại hạng cho toàn bộ customer trong hệ thống.
+ * Nhiệm vụ:
+ * - Đánh giá hạng cho 1 customer.
+ * - Đánh giá lại hạng cho toàn bộ customer.
  *
- * Việc tách interface giúp Controller phụ thuộc vào abstraction,
- * dễ test và dễ thay đổi implementation sau này.
+ * Controller sẽ gọi interface này, không gọi trực tiếp class implementation.
  */
 public interface LoyaltyTierEvaluationService {
 
     /**
-     * Đánh giá và cập nhật hạng loyalty tier cho một customer.
+     * Đánh giá và cập nhật hạng thành viên cho 1 customer.
      *
      * @param customerId ID của customer trong bảng Customer.
-     * @return kết quả đánh giá gồm hạng cũ, hạng mới, điểm, số lượt và tổng chi tiêu.
+     * @return kết quả gồm hạng cũ, hạng mới, điểm, lượt ghé thăm, tổng chi tiêu.
      */
     CustomerTierEvaluationResponseDTO evaluateCustomerTier(Integer customerId);
 
     /**
-     * Đánh giá lại hạng loyalty tier cho tất cả customer.
+     * Đánh giá lại hạng cho toàn bộ customer trong hệ thống.
+
+     * Hàm này dùng cho:
+     * - Admin chạy thủ công.
+     * - Scheduler chạy tự động hàng tháng.
      *
      * @return danh sách kết quả đánh giá của toàn bộ customer.
      */
