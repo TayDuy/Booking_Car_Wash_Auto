@@ -7,6 +7,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -15,9 +16,9 @@ import java.util.List;
  * REST controller cho Service Package.
  * Base path: /api/v1/service-packages
  *
- * Phân quyền (gợi ý cho Spring Security):
- *  - GET  → PUBLIC (hoặc ROLE_USER)
- *  - POST/PUT/DELETE → ROLE_ADMIN
+ * Phân quyền (FR-13):
+ *  - GET        → Tất cả (khách hàng xem để chọn gói)
+ *  - POST/PUT/DELETE → Chỉ ADMIN
  */
 @RestController
 @RequestMapping("/api/v1/service-packages")
@@ -29,6 +30,7 @@ public class ServicePackageController {
     /**
      * GET /api/v1/service-packages/active
      * Dành cho khách hàng: chỉ lấy dịch vụ đang hoạt động.
+     * Không cần @PreAuthorize vì khách hàng cần xem để chọn gói dịch vụ.
      */
     @GetMapping("/active")
     public ResponseEntity<List<ServicePackageResponseDTO>> getAllActive() {
@@ -37,7 +39,8 @@ public class ServicePackageController {
 
     /**
      * GET /api/v1/service-packages
-     * Dành cho admin: lấy toàn bộ kể cả inactive.
+     * Lấy toàn bộ kể cả inactive (admin quản lý).
+     * Không cần @PreAuthorize - chỉ đọc dữ liệu.
      */
     @GetMapping
     public ResponseEntity<List<ServicePackageResponseDTO>> getAll() {
@@ -46,7 +49,8 @@ public class ServicePackageController {
 
     /**
      * GET /api/v1/service-packages/{id}
-     * Lấy chi tiết 1 dịch vụ.
+     * Lấy chi tiết 1 dịch vụ theo ID.
+     * Không cần @PreAuthorize - chỉ đọc dữ liệu.
      */
     @GetMapping("/{id}")
     public ResponseEntity<ServicePackageResponseDTO> getById(@PathVariable Integer id) {
@@ -55,8 +59,10 @@ public class ServicePackageController {
 
     /**
      * POST /api/v1/service-packages
-     * Tạo mới dịch vụ. @Valid kích hoạt Bean Validation trên RequestDTO.
+     * Tạo mới dịch vụ.
+     * @PreAuthorize: Chặn ngay nếu không phải Admin → 403 Forbidden
      */
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
     public ResponseEntity<ServicePackageResponseDTO> create(
             @Valid @RequestBody ServicePackageRequestDTO request) {
@@ -66,7 +72,9 @@ public class ServicePackageController {
     /**
      * PUT /api/v1/service-packages/{id}
      * Cập nhật dịch vụ — hỗ trợ partial update (field null sẽ bị bỏ qua).
+     * @PreAuthorize: Chặn ngay nếu không phải Admin → 403 Forbidden
      */
+    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{id}")
     public ResponseEntity<ServicePackageResponseDTO> update(
             @PathVariable Integer id,
@@ -77,11 +85,17 @@ public class ServicePackageController {
     /**
      * DELETE /api/v1/service-packages/{id}
      * Xóa mềm: set isActive = false, không xóa khỏi DB.
+     * @PreAuthorize: Chặn ngay nếu không phải Admin → 403 Forbidden
      * Trả 204 No Content theo chuẩn REST.
      */
+    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deactivate(@PathVariable Integer id) {
         service.deactivate(id);
         return ResponseEntity.noContent().build();
     }
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> origin/develop

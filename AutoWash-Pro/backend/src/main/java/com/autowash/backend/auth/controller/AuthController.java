@@ -10,9 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.beans.factory.annotation.Autowired;
-    
+
 @RestController
 @RequestMapping("/api/v1/auth")
 public class AuthController {
@@ -106,8 +104,5 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.success("Xác minh OTP thành công", null));
     }
 
-    @GetMapping("/db-check")
-    public String checkDb(@Autowired JdbcTemplate jdbcTemplate) {
-        return jdbcTemplate.queryForObject("SELECT pg_get_constraintdef(oid) FROM pg_constraint WHERE conname = 'customer_gender_check'", String.class);
-    }
+
 }

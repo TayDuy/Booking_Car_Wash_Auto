@@ -1,10 +1,11 @@
-package com.autowash.backend.customer.service;
+package com.autowash.backend.customer.service.impl;
 
 import com.autowash.backend.customer.dto.CustomerProfileResponse;
 import com.autowash.backend.customer.dto.CustomerUpdateRequest;
 import com.autowash.backend.common.exception.BusinessException;
 import com.autowash.backend.customer.entity.Customer;
 import com.autowash.backend.customer.repository.CustomerRepository;
+import com.autowash.backend.customer.service.CustomerService;
 import org.springframework.http.HttpStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
