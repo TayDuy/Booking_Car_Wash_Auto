@@ -14,6 +14,16 @@ public interface LoyaltyTierRepository extends JpaRepository<LoyaltyTier, Intege
 
     List<LoyaltyTier> findByIsActiveTrueOrderByMinPointsDesc();
 
+    /**
+     * Lấy danh sách tier đang active và sắp xếp từ hạng cao xuống thấp.
+     *
+     * priorityLevel càng lớn thì hạng càng cao.
+     * Ví dụ:
+     * - Platinum = 4
+     * - Gold = 3
+     * - Silver = 2
+     * - Member = 1
+     */
     List<LoyaltyTier> findByIsActiveTrueOrderByPriorityLevelDesc();
 
 }

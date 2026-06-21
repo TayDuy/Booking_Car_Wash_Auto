@@ -4,6 +4,7 @@ import com.autowash.backend.customer.entity.Customer;
 import com.autowash.backend.customer.repository.CustomerRepository;
 import com.autowash.backend.loyaltytier.dto.CustomerTierEvaluationResponseDTO;
 import com.autowash.backend.loyaltytier.entity.LoyaltyTier;
+import com.autowash.backend.loyaltytier.mapper.LoyaltyTierMapper;
 import com.autowash.backend.loyaltytier.repository.LoyaltyTierRepository;
 import com.autowash.backend.loyaltytier.service.LoyaltyTierEvaluationService;
 import com.autowash.backend.loyaltytransaction.entity.LoyaltyTransaction;
@@ -13,23 +14,28 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Objects;
 import java.math.BigDecimal;
 import java.util.List;
-import java.util.Objects;
-
 /**
- * Implementation xử lý logic đánh giá hạng thành viên loyalty tier.
+ * Implementation xử lý logic phân hạng loyalty tier.
  *
- * Luồng xử lý chính:
- * 1. Tìm customer theo customerId.
- * 2. Lấy điểm hiện tại từ bảng LoyaltyTransaction.
- * 3. Lấy totalVisits và totalSpending từ Customer.
- * 4. Lấy danh sách LoyaltyTier đang active, sắp xếp từ hạng cao xuống thấp.
- * 5. Tìm hạng phù hợp theo điều kiện OR:
- *    - Đủ điểm, hoặc
- *    - Đủ số lượt rửa xe, hoặc
- *    - Đủ tổng chi tiêu.
- * 6. Cập nhật tierId mới vào Customer.
+ * Business rule tối ưu theo hướng Shopee-style:
+ *
+ * Customer đạt một hạng nếu:
+ * - Đủ số lượt ghé thăm tối thiểu
+ * AND
+ * - Đủ điểm tích lũy hoặc đủ tổng chi tiêu
+ *
+ * Công thức:
+ * totalVisits >= minVisits
+ * AND
+ * (currentPoints >= minPoints OR totalSpending >= minSpending)
+ *
+ * Lý do:
+ * - totalVisits đảm bảo khách quay lại đủ thường xuyên.
+ * - points hoặc spending đảm bảo khách có đủ giá trị tích lũy.
+ * - Tránh việc khách chỉ ghé nhiều nhưng chi quá ít vẫn lên hạng cao.
  */
 @Service
 @RequiredArgsConstructor
@@ -39,20 +45,22 @@ public class LoyaltyTierEvaluationServiceImpl implements LoyaltyTierEvaluationSe
     private final CustomerRepository customerRepository;
     private final LoyaltyTierRepository loyaltyTierRepository;
     private final LoyaltyTransactionRepository loyaltyTransactionRepository;
+    private final LoyaltyTierMapper loyaltyTierMapper;
 
     /**
-     * Đánh giá và cập nhật hạng cho một customer.
+     * Đánh giá hạng cho một customer và cập nhật tierId vào bảng Customer.
      *
-     * Lưu ý fix Bug #1:
-     * - customerId là ID của bảng Customer.
-     * - Không dùng findByUserId(customerId), vì userId và customerId là 2 cột khác nhau.
+     * Fix Bug #1:
+     * - Controller truyền customerId.
+     * - customerId là khóa chính của bảng Customer.
+     * - Vì vậy phải dùng findById(customerId), không dùng findByUserId(customerId).
      */
     @Override
     @Transactional
     public CustomerTierEvaluationResponseDTO evaluateCustomerTier(Integer customerId) {
-        Customer customer = customerRepository.findById(customerId)
+        Customer customer = customerRepository.findByUserId(customerId)
                 .orElseThrow(() -> new EntityNotFoundException(
-                        "Customer không tồn tại, id=" + customerId
+                        "Customer khong ton tai, id = " + customerId
                 ));
 
         Integer currentPoints = getCurrentPoints(customerId);
@@ -60,10 +68,10 @@ public class LoyaltyTierEvaluationServiceImpl implements LoyaltyTierEvaluationSe
         BigDecimal totalSpending = getTotalSpending(customer);
 
         List<LoyaltyTier> activeTiers =
-                loyaltyTierRepository.findByIsActiveTrueOrderByPriorityLevelDesc();
+                loyaltyTierRepository.findByIsActiveTrueOrderByMinPointsDesc();
 
         if (activeTiers.isEmpty()) {
-            throw new IllegalArgumentException("Chưa có LoyaltyTier active trong hệ thống");
+            throw new IllegalArgumentException("Chua co Loyalty active trong he thong");
         }
 
         LoyaltyTier matchedTier = findMatchedTier(
@@ -85,12 +93,11 @@ public class LoyaltyTierEvaluationServiceImpl implements LoyaltyTierEvaluationSe
                 ? "Customer tier updated successfully"
                 : "Customer tier unchanged";
 
-        return new CustomerTierEvaluationResponseDTO(
-                customer.getCustomerId(),
+        return loyaltyTierMapper.toEvaluationResponse(
+                customer,
                 previousTierId,
                 previousTierName,
-                matchedTier.getTierId(),
-                matchedTier.getTierName(),
+                matchedTier,
                 currentPoints,
                 totalVisits,
                 totalSpending,
@@ -101,12 +108,10 @@ public class LoyaltyTierEvaluationServiceImpl implements LoyaltyTierEvaluationSe
     /**
      * Đánh giá lại hạng cho toàn bộ customer.
      *
-     * Hàm này thường dùng cho:
-     * - Admin chạy thủ công.
-     * - Scheduler chạy tự động hằng tháng.
+     * Hàm này sẽ duyệt toàn bộ customer trong database,
+     * sau đó gọi lại evaluateCustomerTier(customerId) cho từng người.
      */
     @Override
-    @Transactional
     public List<CustomerTierEvaluationResponseDTO> evaluateAllCustomers() {
         return customerRepository.findAll()
                 .stream()
@@ -114,20 +119,20 @@ public class LoyaltyTierEvaluationServiceImpl implements LoyaltyTierEvaluationSe
                 .toList();
     }
 
+    //=======================================HELPER===========================================
+
     /**
-     * Tìm loyalty tier phù hợp nhất cho customer.
+     * Tìm tier phù hợp nhất cho customer.
      *
-     * Fix Bug #3:
-     * Logic cũ dùng AND:
-     * - Phải đủ điểm
-     * - Và đủ lượt
-     * - Và đủ chi tiêu
+     * Danh sách activeTiers phải được sort theo priorityLevel giảm dần.
+     * Ví dụ:
+     * - Platinum priority = 4
+     * - Gold priority = 3
+     * - Silver priority = 2
+     * - Member priority = 1
      *
-     * Logic mới dùng OR:
-     * - Chỉ cần đạt một trong ba điều kiện là được lên hạng.
-     *
-     * Vì danh sách activeTiers đã được sort theo priorityLevel DESC,
-     * hệ thống sẽ kiểm tra hạng cao trước.
+     * Hệ thống sẽ kiểm tra từ hạng cao nhất xuống thấp nhất.
+     * Customer đạt hạng nào đầu tiên thì lấy hạng đó.
      */
     private LoyaltyTier findMatchedTier(
             List<LoyaltyTier> activeTiers,
@@ -136,7 +141,7 @@ public class LoyaltyTierEvaluationServiceImpl implements LoyaltyTierEvaluationSe
             BigDecimal totalSpending
     ) {
         return activeTiers.stream()
-                .filter(tier -> isMatchedByAnyCondition(
+                .filter(tier -> isMatchedShoppeStyle(
                         tier,
                         currentPoints,
                         totalVisits,
@@ -147,56 +152,69 @@ public class LoyaltyTierEvaluationServiceImpl implements LoyaltyTierEvaluationSe
     }
 
     /**
-     * Kiểm tra customer có đạt bất kỳ điều kiện nào của tier hay không.
+     * Kiểm tra customer có đạt điều kiện của tier hay không.
      *
-     * Điều kiện đạt:
-     * - currentPoints >= minPoints
-     * - hoặc totalVisits >= minVisits
-     * - hoặc totalSpending >= minSpending
+     * Logic tối ưu:
+     * totalVisits >= minVisits
+     * AND
+     * (currentPoints >= minPoints OR totalSpending >= minSpending)
      *
-     * Nếu tier không có yêu cầu nào, ví dụ Bronze min = 0,
-     * thì tier đó được xem là tier mặc định.
+     * Nếu tier là hạng cơ bản, ví dụ:
+     * - minVisits = 0
+     * - minPoints = 0
+     * - minSpending = 0
+     *
+     * thì customer mới vẫn được match vào hạng đó.
      */
-    private boolean isMatchedByAnyCondition(
+    private boolean isMatchedShoppeStyle(
             LoyaltyTier tier,
             Integer currentPoints,
             Integer totalVisits,
             BigDecimal totalSpending
     ) {
-        boolean matchedByPoints = tier.getMinPoints() != null
-                && tier.getMinPoints() > 0
-                && currentPoints != null
-                && currentPoints >= tier.getMinPoints();
 
-        boolean matchedByVisits = tier.getMinVisits() != null
-                && tier.getMinVisits() > 0
-                && totalVisits != null
-                && totalVisits >= tier.getMinVisits();
+        Integer requiredVisits = tier.getMinVisits() != null
+                ? tier.getMinVisits()
+                : 0;
+        Integer requiredPoints = tier.getMinPoints() != null
+                ? tier.getMinPoints()
+                : 0;
+        BigDecimal requiredSpending = tier.getMinSpending() != null
+                ? tier.getMinSpending()
+                : BigDecimal.ZERO;
+        Integer safeVisits = totalVisits != null
+                ? totalVisits
+                : 0;
+        Integer safePoints = currentPoints != null
+                ? currentPoints
+                : 0;
+        BigDecimal safeSpending = totalSpending != null
+                ? totalSpending
+                : BigDecimal.ZERO;
 
-        boolean matchedBySpending = tier.getMinSpending() != null
-                && tier.getMinSpending().compareTo(BigDecimal.ZERO) > 0
-                && totalSpending != null
-                && totalSpending.compareTo(tier.getMinSpending()) >= 0;
-
-        boolean hasNoRequirement =
-                (tier.getMinPoints() == null || tier.getMinPoints() <= 0)
-                        && (tier.getMinVisits() == null || tier.getMinVisits() <= 0)
-                        && (tier.getMinSpending() == null
-                        || tier.getMinSpending().compareTo(BigDecimal.ZERO) <= 0);
-
-        return matchedByPoints
-                || matchedByVisits
-                || matchedBySpending
-                || hasNoRequirement;
+        boolean enoughVisits = safeVisits >= requiredVisits;
+        boolean enoughPoints = requiredPoints <= 0
+                || safePoints >= requiredPoints;
+        boolean enoughSpending = requiredSpending.compareTo(BigDecimal.ZERO) <= 0
+                || safeSpending.compareTo(requiredSpending) >= 0;
+        boolean isDefaultTier = requiredVisits <= 0
+                && requiredPoints <= 0
+                && requiredSpending.compareTo(BigDecimal.ZERO) <= 0;
+        if (isDefaultTier) {
+            return true;
+        }
+        return enoughVisits && (enoughPoints || enoughSpending);
     }
 
+
+//====================================HElPER====================================================
     /**
      * Lấy điểm hiện tại của customer.
      *
-     * Cách lấy:
-     * - Tìm giao dịch loyalty mới nhất của customer.
-     * - Lấy balanceAfter làm số điểm hiện tại.
-     * - Nếu chưa có transaction nào thì điểm = 0.
+     * Cách tính:
+     * - Lấy loyalty transaction mới nhất của customer.
+     * - balanceAfter của transaction mới nhất là số điểm hiện tại.
+     * - Nếu customer chưa có transaction thì điểm = 0.
      */
     private Integer getCurrentPoints(Integer customerId) {
         return loyaltyTransactionRepository
@@ -208,41 +226,38 @@ public class LoyaltyTierEvaluationServiceImpl implements LoyaltyTierEvaluationSe
     /**
      * Lấy tổng số lượt sử dụng dịch vụ của customer.
      *
-     * Nếu totalVisits đang null trong DB thì trả về 0
+     * Nếu totalVisits trong DB đang null thì trả về 0
      * để tránh lỗi NullPointerException.
      */
     private Integer getTotalVisits(Customer customer) {
         if (customer.getTotalVisits() == null) {
             return 0;
         }
-
         return customer.getTotalVisits();
     }
 
     /**
-     * Lấy tổng số tiền customer đã chi tiêu.
+     * Lấy tổng chi tiêu của customer.
      *
-     * Nếu totalSpending đang null trong DB thì trả về BigDecimal.ZERO
+     * Nếu totalSpending trong DB đang null thì trả về BigDecimal.ZERO
      * để so sánh an toàn.
      */
     private BigDecimal getTotalSpending(Customer customer) {
         if (customer.getTotalSpending() == null) {
             return BigDecimal.ZERO;
         }
-
         return customer.getTotalSpending();
     }
 
     /**
-     * Tìm tên tier cũ dựa trên tierId.
+     * Tìm tên tier cũ dựa theo previousTierId.
      *
-     * Dùng để response trả ra được previousTierName.
+     * Dùng để response trả về được previousTierName.
      */
     private String findTierNameById(List<LoyaltyTier> activeTiers, Integer tierId) {
         if (tierId == null) {
             return null;
         }
-
         return activeTiers.stream()
                 .filter(tier -> Objects.equals(tier.getTierId(), tierId))
                 .map(LoyaltyTier::getTierName)
