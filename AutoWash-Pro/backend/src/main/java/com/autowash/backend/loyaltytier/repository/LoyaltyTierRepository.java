@@ -8,11 +8,20 @@ import java.util.Optional;
 
 public interface LoyaltyTierRepository extends JpaRepository<LoyaltyTier, Integer> {
 
+    /**
+     * Lấy danh sách tier đang active.
+     */
     List<LoyaltyTier> findByIsActiveTrue();
 
+    /**
+     * Tìm tier theo tên.
+     */
     Optional<LoyaltyTier> findByTierName(String tierName);
 
-    List<LoyaltyTier> findByIsActiveTrueOrderByMinPointsDesc();
+    /**
+     * Tìm tier mặc định, ví dụ Member, dùng khi register customer mới.
+     */
+    Optional<LoyaltyTier> findByTierNameIgnoreCaseAndIsActiveTrue(String tierName);
 
     /**
      * Lấy danh sách tier đang active và sắp xếp từ hạng cao xuống thấp.
@@ -25,5 +34,4 @@ public interface LoyaltyTierRepository extends JpaRepository<LoyaltyTier, Intege
      * - Member = 1
      */
     List<LoyaltyTier> findByIsActiveTrueOrderByPriorityLevelDesc();
-
 }
