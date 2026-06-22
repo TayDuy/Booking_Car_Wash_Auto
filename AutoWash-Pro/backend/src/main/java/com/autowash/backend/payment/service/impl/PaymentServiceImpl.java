@@ -272,7 +272,7 @@ public class PaymentServiceImpl implements PaymentService {
         customerRepository.save(customer);
 
         loyaltyTransactionRepository.save(LoyaltyTransaction.builder()
-                .customerId(Long.valueOf(customer.getCustomerId()))
+                .customerId(Integer.valueOf(customer.getCustomerId()))
                 .paymentId(Long.valueOf(payment.getPaymentId()))
                 .transactionType("earn")
                 .points(pointsEarned)
@@ -305,7 +305,7 @@ public class PaymentServiceImpl implements PaymentService {
         customerRepository.save(customer);
 
         loyaltyTransactionRepository.save(LoyaltyTransaction.builder()
-                .customerId(Long.valueOf(customer.getCustomerId()))
+                .customerId(Integer.valueOf(customer.getCustomerId()))
                 .transactionType("redeem")
                 .points(-reward.getRequiredPoints())
                 .balanceBefore(balanceBefore)
@@ -325,7 +325,7 @@ public class PaymentServiceImpl implements PaymentService {
         customerRepository.save(customer);
 
         loyaltyTransactionRepository.save(LoyaltyTransaction.builder()
-                .customerId(Long.valueOf(customer.getCustomerId()))
+                .customerId(Integer.valueOf(customer.getCustomerId()))
                 .transactionType("adjust")
                 .points(reward.getRequiredPoints())
                 .balanceBefore(balanceBefore)

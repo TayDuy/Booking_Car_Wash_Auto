@@ -77,7 +77,7 @@ public class RedeemService {
 
         // ── 5. Tạo loyalty_transaction type = redeem ──────────────────────────
         LoyaltyTransaction tx = LoyaltyTransaction.builder()
-                .customerId(customer.getCustomerId().longValue())   // FIX: Integer → Long
+                .customerId(customer.getCustomerId())   // FIX: Integer → Long
                 .paymentId(payment.getPaymentId().longValue())      // FIX: Integer → Long
                 .transactionType("redeem")                          // FIX: String field, không phải enum
                 .points(-reward.getRequiredPoints())

@@ -1,22 +1,19 @@
-package com.autowash.backend.loyaltytransaction.entity;
+package com.autowash.backend.loyaltytransaction.dto;
 
-import jakarta.persistence.*;
+import lombok.*;
+
 import java.time.LocalDateTime;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-
-@Entity
-@Data
-@Builder
+/**
+ * DTO trả về lịch sử giao dịch điểm của customer.
+ */
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class LoyaltyTransaction {
+@Builder
+public class LoyaltyTransactionResponseDTO {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long loyaltyTransactionId;
 
     private Integer customerId;
