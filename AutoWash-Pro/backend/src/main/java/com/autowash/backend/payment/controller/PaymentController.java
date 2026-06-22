@@ -14,7 +14,7 @@ import java.util.List;
 /**
  * PaymentController — REST API cho nghiệp vụ thanh toán (FR-5).
  *
- * Base path: /api/payments
+ * Base path: /api/v1/payments
  *
  * Endpoints:
  *   POST   /                        → tạo payment sau khi booking completed
@@ -24,7 +24,7 @@ import java.util.List;
  *   GET    /?status={status}        → lọc danh sách theo status (admin)
  */
 @RestController
-@RequestMapping("/api/payments")
+@RequestMapping("/api/v1/payments")
 @RequiredArgsConstructor
 public class PaymentController {
 

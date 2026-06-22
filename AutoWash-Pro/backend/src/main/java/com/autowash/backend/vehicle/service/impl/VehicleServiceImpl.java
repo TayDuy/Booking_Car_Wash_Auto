@@ -1,4 +1,4 @@
-package com.autowash.backend.vehicle.service;
+package com.autowash.backend.vehicle.service.impl;
 
 
 import com.autowash.backend.booking.enums.BookingStatus;
@@ -10,6 +10,7 @@ import com.autowash.backend.vehicle.dto.VehicleResponse;
 import com.autowash.backend.vehicle.entity.Vehicle;
 import com.autowash.backend.common.exception.BusinessException;
 import com.autowash.backend.vehicle.repository.VehicleRepository;
+import com.autowash.backend.vehicle.service.VehicleService;
 import org.springframework.http.HttpStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
