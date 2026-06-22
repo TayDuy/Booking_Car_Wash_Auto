@@ -85,13 +85,10 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/api/v1/auth/login",
                                 "/api/v1/auth/register",
-                                "/api/v1/dev/**",
                                 "/swagger-ui/**",
                                 "/v3/api-docs/**",
                                 "/api/v1/auth/send-otp",
-                                "/api/v1/auth/verify-otp",
-                                "/api/v1/customers/**",
-                                "/api/v1/vehicles/**"
+                                "/api/v1/auth/verify-otp"
                         ).permitAll()
 
                         // Admin only
