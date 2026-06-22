@@ -1,7 +1,5 @@
 package com.autowash.backend.reward.controller;
 
-import com.autowash.backend.reward.dto.RedeemRewardRequestDTO;
-import com.autowash.backend.reward.dto.RedeemRewardResponseDTO;
 import com.autowash.backend.reward.dto.RewardRequestDTO;
 import com.autowash.backend.reward.dto.RewardResponseDTO;
 import com.autowash.backend.reward.service.RewardService;
@@ -132,29 +130,29 @@ public class RewardController {
      *
      * GET /api/v1/rewards/redeemable?customerId=1&vehicleType=car
      */
-    @GetMapping("/redeemable")
-    public ResponseEntity<List<RewardResponseDTO>> getRedeemableRewards(
-            @RequestParam Integer customerId,
-            @RequestParam String vehicleType
-    ) {
-        List<RewardResponseDTO> rewards =
-                rewardService.getRedeemableRewards(customerId, vehicleType);
-
-        return ResponseEntity.ok(rewards);
-    }
-    /**
-     * FR7: Customer đổi điểm lấy reward.
-     *
-     * POST /api/v1/rewards/{id}/redeem
-     */
-    @PostMapping("/{id}/redeem")
-    public ResponseEntity<RedeemRewardResponseDTO> redeemReward(
-            @PathVariable("id") Integer rewardId,
-            @Valid @RequestBody RedeemRewardRequestDTO dto
-    ) {
-        RedeemRewardResponseDTO response =
-                rewardService.redeemReward(rewardId, dto);
-
-        return ResponseEntity.ok(response);
-    }
+//    @GetMapping("/redeemable")
+//    public ResponseEntity<List<RewardResponseDTO>> getRedeemableRewards(
+//            @RequestParam Integer customerId,
+//            @RequestParam String vehicleType
+//    ) {
+//        List<RewardResponseDTO> rewards =
+//                rewardService.getRedeemableRewards(customerId, vehicleType);
+//
+//        return ResponseEntity.ok(rewards);
+//    }
+//    /**
+//     * FR7: Customer đổi điểm lấy reward.
+//     *
+//     * POST /api/v1/rewards/{id}/redeem
+//     */
+//    @PostMapping("/{id}/redeem")
+//    public ResponseEntity<RedeemRewardResponseDTO> redeemReward(
+//            @PathVariable("id") Integer rewardId,
+//            @Valid @RequestBody RedeemRewardRequestDTO dto
+//    ) {
+//        RedeemRewardResponseDTO response =
+//                rewardService.redeemReward(rewardId, dto);
+//
+//        return ResponseEntity.ok(response);
+//    }
 }

@@ -60,6 +60,7 @@ public class ServicePackageController {
     /**
      * POST /api/v1/service-packages
      * Tạo mới dịch vụ.
+     *
      * @PreAuthorize: Chặn ngay nếu không phải Admin → 403 Forbidden
      */
     @PreAuthorize("hasRole('ADMIN')")
@@ -72,6 +73,7 @@ public class ServicePackageController {
     /**
      * PUT /api/v1/service-packages/{id}
      * Cập nhật dịch vụ — hỗ trợ partial update (field null sẽ bị bỏ qua).
+     *
      * @PreAuthorize: Chặn ngay nếu không phải Admin → 403 Forbidden
      */
     @PreAuthorize("hasRole('ADMIN')")
@@ -85,6 +87,7 @@ public class ServicePackageController {
     /**
      * DELETE /api/v1/service-packages/{id}
      * Xóa mềm: set isActive = false, không xóa khỏi DB.
+     *
      * @PreAuthorize: Chặn ngay nếu không phải Admin → 403 Forbidden
      * Trả 204 No Content theo chuẩn REST.
      */
@@ -94,8 +97,4 @@ public class ServicePackageController {
         service.deactivate(id);
         return ResponseEntity.noContent().build();
     }
-<<<<<<< HEAD
 }
-=======
-}
->>>>>>> origin/develop

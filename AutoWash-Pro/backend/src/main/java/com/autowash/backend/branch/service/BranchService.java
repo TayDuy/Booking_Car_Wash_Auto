@@ -29,8 +29,4 @@ public interface BranchService {
     BranchResponseDTO changeStatus(Integer branchId, BranchStatus newStatus);
 
     void softDelete(Integer branchId);
-<<<<<<< HEAD
 }
-=======
-}
->>>>>>> origin/develop
