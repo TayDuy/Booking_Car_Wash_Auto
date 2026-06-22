@@ -124,4 +124,35 @@ public class RewardController {
         rewardService.deactivate(id);
         return ResponseEntity.noContent().build();
     }
+
+    /**
+     * FR7: Customer xem danh sách reward có thể đổi bằng điểm hiện tại.
+     *
+     * GET /api/v1/rewards/redeemable?customerId=1&vehicleType=car
+     */
+//    @GetMapping("/redeemable")
+//    public ResponseEntity<List<RewardResponseDTO>> getRedeemableRewards(
+//            @RequestParam Integer customerId,
+//            @RequestParam String vehicleType
+//    ) {
+//        List<RewardResponseDTO> rewards =
+//                rewardService.getRedeemableRewards(customerId, vehicleType);
+//
+//        return ResponseEntity.ok(rewards);
+//    }
+//    /**
+//     * FR7: Customer đổi điểm lấy reward.
+//     *
+//     * POST /api/v1/rewards/{id}/redeem
+//     */
+//    @PostMapping("/{id}/redeem")
+//    public ResponseEntity<RedeemRewardResponseDTO> redeemReward(
+//            @PathVariable("id") Integer rewardId,
+//            @Valid @RequestBody RedeemRewardRequestDTO dto
+//    ) {
+//        RedeemRewardResponseDTO response =
+//                rewardService.redeemReward(rewardId, dto);
+//
+//        return ResponseEntity.ok(response);
+//    }
 }

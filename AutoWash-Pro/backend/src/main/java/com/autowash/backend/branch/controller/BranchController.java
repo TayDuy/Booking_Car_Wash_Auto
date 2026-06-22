@@ -41,6 +41,7 @@ public class BranchController {
 
     /**
      * Lấy danh sách chi nhánh (khách hàng cần xem để chọn chỗ đặt lịch).
+     *
      * @param status (optional) lọc theo trạng thái; null = lấy tất cả
      * @return 200 OK + danh sách DTO
      */
@@ -56,6 +57,7 @@ public class BranchController {
 
     /**
      * Lấy chi tiết một chi nhánh theo ID.
+     *
      * @param id ID của chi nhánh cần tra cứu
      * @return 200 OK + DTO chi tiết | 404 Not Found
      */
@@ -70,8 +72,9 @@ public class BranchController {
 
     /**
      * Tạo chi nhánh mới.
-     * @PreAuthorize: Chặn ngay tại đây nếu token không phải Admin → 403 Forbidden
+     *
      * @return 201 Created + DTO chi nhánh vừa tạo | 400 Bad Request | 409 Conflict
+     * @PreAuthorize: Chặn ngay tại đây nếu token không phải Admin → 403 Forbidden
      */
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
@@ -87,8 +90,9 @@ public class BranchController {
 
     /**
      * Cập nhật thông tin chi nhánh.
-     * @PreAuthorize: Chặn ngay tại đây nếu token không phải Admin → 403 Forbidden
+     *
      * @return 200 OK + DTO sau khi cập nhật | 404 Not Found
+     * @PreAuthorize: Chặn ngay tại đây nếu token không phải Admin → 403 Forbidden
      */
     @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{id}")
@@ -104,9 +108,10 @@ public class BranchController {
 
     /**
      * Thay đổi trạng thái hoạt động của chi nhánh.
+     *
+     * @return 200 OK + DTO sau khi đổi trạng thái | 404 Not Found
      * @PreAuthorize: Chặn ngay tại đây nếu token không phải Admin → 403 Forbidden
      * Ví dụ: PATCH /api/v1/branches/3/status?status=maintenance
-     * @return 200 OK + DTO sau khi đổi trạng thái | 404 Not Found
      */
     @PreAuthorize("hasRole('ADMIN')")
     @PatchMapping("/{id}/status")
@@ -122,8 +127,9 @@ public class BranchController {
 
     /**
      * Soft delete chi nhánh (chuyển status về CLOSED, không xóa khỏi DB).
-     * @PreAuthorize: Chặn ngay tại đây nếu token không phải Admin → 403 Forbidden
+     *
      * @return 204 No Content khi thành công | 404 Not Found
+     * @PreAuthorize: Chặn ngay tại đây nếu token không phải Admin → 403 Forbidden
      */
     @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{id}")
