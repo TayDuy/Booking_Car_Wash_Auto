@@ -6,10 +6,11 @@ import com.autowash.backend.auth.dto.RegisterRequestDTO;
 import com.autowash.backend.auth.service.AuthService;
 import com.autowash.backend.auth.service.OtpService;
 import com.autowash.backend.common.exception.BusinessException;
-import com.autowash.backend.customer.entity.Customer;
+import com.autowash.backend.loyaltytier.repository.LoyaltyTierRepository;
 import com.autowash.backend.security.CustomUserDetails;
 import com.autowash.backend.security.JwtTokenProvider;
 import com.autowash.backend.customer.repository.CustomerRepository;
+import com.autowash.backend.customer.entity.Customer;
 import com.autowash.backend.user.entity.User;
 import com.autowash.backend.user.repository.UserRepository;
 import org.springframework.http.HttpStatus;
@@ -30,18 +31,20 @@ public class AuthServiceImpl implements AuthService {
     private final JwtTokenProvider jwtTokenProvider;
     private final CustomerRepository customerRepository;
     private final OtpService otpService;
+    private final LoyaltyTierRepository loyaltyTierRepository;
 
     public AuthServiceImpl(AuthenticationManager authenticationManager,
                            UserRepository userRepository,
                            PasswordEncoder passwordEncoder,
                            JwtTokenProvider jwtTokenProvider,
-                           CustomerRepository customerRepository, OtpService otpService) {
+                           CustomerRepository customerRepository, OtpService otpService, LoyaltyTierRepository loyaltyTierRepository) {
         this.authenticationManager = authenticationManager;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtTokenProvider = jwtTokenProvider;
         this.customerRepository = customerRepository;
         this.otpService = otpService;
+        this.loyaltyTierRepository = loyaltyTierRepository;
     }
 
     @Override
@@ -114,6 +117,7 @@ public class AuthServiceImpl implements AuthService {
                 .fullName(request.getFullName() != null
                         ? request.getFullName().trim()
                         : "")
+                .tierId(1)
                 .build();
         customerRepository.save(newCustomer);
 
