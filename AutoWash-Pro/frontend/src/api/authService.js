@@ -10,6 +10,13 @@ export async function login(username, password){
     return respone.data;
 }
 
+export async function loginWithGoogle(supabaseToken) {
+    const response = await axios.post(`${API_URL}/google`, {
+        supabaseToken: supabaseToken
+    });
+    return response.data;
+}
+
 export async function register(username, password, email, fullName, phone){
     const respone = await axios.post(`${API_URL}/register`,{
         username: username,
