@@ -1,9 +1,8 @@
 import "./Login.css";
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { login, saveAuth } from "../../api/authService";
-import { signInWithPopup, getRedirectResult } from "firebase/auth";
-import { auth, googleProvider } from "../../firebase/firebaseConfig";
+import { login, saveAuth, loginWithGoogle } from "../../api/authService";
+import { supabase } from "../../api/supabaseClient";
 
 function Login({ onLoginSuccess }) {
   const [username, setUsername] = useState("");
@@ -49,17 +48,12 @@ function Login({ onLoginSuccess }) {
 
   async function handleGoogleLogin() {
     try {
-      const result = await signInWithPopup(auth, googleProvider);
-      const googleToken = await result.user.getIdToken();
-      saveAuth({
-        accessToken: googleToken,
-        username: result.user.email,
-        role: "customer",
+      await supabase.auth.signInWithOAuth({ 
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin + '/login'
+        }
       });
-      if (onLoginSuccess) {
-        onLoginSuccess();
-      }
-      redirectByRole("customer");
     } catch (error) {
       console.log("Google login error:", error);
       alert("Đăng nhập Google thất bại!");
@@ -68,19 +62,29 @@ function Login({ onLoginSuccess }) {
 
   useEffect(() => {
     console.log("Login page loaded, checking Google redirect...");
-    async function checkGoogleRedirect() {
-      try {
-        const result = await getRedirectResult(auth);
-        console.log("Redirect result:", result);
-        if (result){
-          console.log("Google user:", result.user);
-          alert("Đăng nhập Google thành công: " + result.user.email);
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session) {
+        try {
+          const supabaseToken = session.access_token;
+          const data = await loginWithGoogle(supabaseToken);
+          
+          if (data.status === 200 || data.data) {
+            saveAuth(data.data);
+            if (onLoginSuccess) onLoginSuccess();
+            redirectByRole(data.data.role);
+          } else {
+            setErrorMessage(data.message || "Đăng nhập bằng Google thất bại trên Backend.");
+          }
+        } catch (error) {
+          console.error("Lỗi khi gửi token về Backend:", error);
+          setErrorMessage("Đăng nhập thất bại. Không thể xác thực với máy chủ.");
         }
-      } catch (error) {
-        console.log("Google redirect error:", error);
       }
-    }
-    checkGoogleRedirect();
+    });
+
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
   }, []);
 
   return (

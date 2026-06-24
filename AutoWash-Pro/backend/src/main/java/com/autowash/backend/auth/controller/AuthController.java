@@ -1,9 +1,13 @@
 package com.autowash.backend.auth.controller;
 
 import com.autowash.backend.auth.dto.*;
+import com.autowash.backend.auth.entity.RefreshToken;
 import com.autowash.backend.auth.service.AuthService;
 import com.autowash.backend.auth.service.OtpService;
+import com.autowash.backend.auth.service.RefreshTokenService;
 import com.autowash.backend.common.dto.ApiResponse;
+import com.autowash.backend.security.JwtTokenProvider;
+import com.autowash.backend.user.entity.User;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -17,10 +21,14 @@ public class AuthController {
 
     private final AuthService authService;
     private final OtpService otpService;
-    public AuthController(AuthService authService, OtpService otpService) {
+    private final RefreshTokenService refreshTokenService;
+    private final JwtTokenProvider tokenProvider;
 
+    public AuthController(AuthService authService, OtpService otpService, RefreshTokenService refreshTokenService, JwtTokenProvider tokenProvider) {
         this.authService = authService;
-        this.otpService=otpService;
+        this.otpService = otpService;
+        this.refreshTokenService = refreshTokenService;
+        this.tokenProvider = tokenProvider;
     }
 
     /**
@@ -103,6 +111,49 @@ public class AuthController {
         otpService.verifyOtp(request.getPhone(), request.getOtp());
         return ResponseEntity.ok(ApiResponse.success("Xác minh OTP thành công", null));
     }
+
+    @PostMapping("/refresh")
+    public ResponseEntity<TokenRefreshResponseDTO> refreshJwtToken(
+        @Valid @RequestBody TokenRefreshRequestDTO request
+    ){
+        String requestRefreshToken = request.getRefreshToken();
+
+        //tìm thẻ trong DB
+        RefreshToken refreshToken = refreshTokenService.findByToken(requestRefreshToken);
+
+        //kiểm tra xem còn hạn hay không ?
+        refreshTokenService.verifyExpiration(refreshToken);
+
+        //lấy thông tin của cái thẻ ra
+        User user = refreshToken.getUser();
+
+        // in ra cái thẻ normal mới
+        String token = tokenProvider.generateToken(user.getEmail(),user.getId());
+
+        //gửi tra fontend thẻ bth mới với cả thẻ vip cũ
+
+        TokenRefreshResponseDTO responseDTO = TokenRefreshResponseDTO.builder()
+                .accessToken(token)
+                .refreshToken(requestRefreshToken)
+                .build();
+
+        return ResponseEntity.ok(responseDTO);
+    }
+
+    /**
+     * POST /api/v1/auth/google
+     * Xử lý đăng nhập bằng Google (Frontend gửi Supabase Token lên)
+     */
+    @PostMapping("/google")
+    public ResponseEntity<ApiResponse<LoginResponseDTO>> googleLogin(
+            @Valid @RequestBody GoogleLoginRequestDTO request
+    ){
+        //gọi hàm loginWithGoogle bên AuthService
+        LoginResponseDTO response = authService.loginWithGoogle(request.getSupabaseToken());
+
+        return ResponseEntity.ok(ApiResponse.success("Đăng nhập Google thành công!!!",response));
+    }
+
 
 
 }

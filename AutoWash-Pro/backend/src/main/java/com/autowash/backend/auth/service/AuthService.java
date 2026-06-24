@@ -23,4 +23,6 @@ public interface AuthService {
      * Nếu sau này thêm Redis blacklist, implement tại đây.
      */
     void logout(String token);
+
+    LoginResponseDTO loginWithGoogle(String supabaseToken);
 }
