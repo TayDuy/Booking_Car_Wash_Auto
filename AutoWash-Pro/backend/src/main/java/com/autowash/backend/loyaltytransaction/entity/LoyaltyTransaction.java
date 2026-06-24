@@ -19,7 +19,7 @@ public class LoyaltyTransaction {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long loyaltyTransactionId;
 
-    private Long customerId;
+    private Integer customerId;
 
     private Long paymentId;
 

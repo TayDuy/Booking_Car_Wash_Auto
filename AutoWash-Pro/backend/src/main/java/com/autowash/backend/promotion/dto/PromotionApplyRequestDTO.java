@@ -22,6 +22,10 @@ public class PromotionApplyRequestDTO {
     @NotNull
     private Integer promotionId;
 
+    /** ID của customer đang áp dụng promotion. */
+    @NotNull
+    private Integer customerId;
+
     /** ID hạng thành viên của khách hàng đang đặt đơn. */
     @NotNull
     private Integer tierId;
@@ -34,4 +38,6 @@ public class PromotionApplyRequestDTO {
     @NotNull
     @Positive
     private BigDecimal orderValue;
+
+
 }

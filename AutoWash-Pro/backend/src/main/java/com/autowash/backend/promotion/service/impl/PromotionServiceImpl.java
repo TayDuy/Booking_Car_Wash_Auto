@@ -5,8 +5,10 @@ import com.autowash.backend.loyaltytier.repository.LoyaltyTierRepository;
 import com.autowash.backend.promotion.dto.*;
 import com.autowash.backend.promotion.entity.Promotion;
 import com.autowash.backend.promotion.entity.Promotion.PromotionStatus;
+import com.autowash.backend.promotion.entity.PromotionUse;
 import com.autowash.backend.promotion.mapper.PromotionMapper;
 import com.autowash.backend.promotion.repository.PromotionRepository;
+import com.autowash.backend.promotion.repository.PromotionUseRepository;
 import com.autowash.backend.promotion.service.PromotionService;
 import com.autowash.backend.user.entity.User;
 import com.autowash.backend.user.repository.UserRepository;
@@ -38,6 +40,7 @@ public class PromotionServiceImpl implements PromotionService {
     private final LoyaltyTierRepository loyaltyTierRepository;
     private final UserRepository userRepository;
     private final PromotionMapper promotionMapper;
+    private final PromotionUseRepository promotionUseRepository;
 
     // ── CRUD ────────────────────────────────────────────────────────────────
 
@@ -141,7 +144,36 @@ public class PromotionServiceImpl implements PromotionService {
     public PromotionApplyResponseDTO applyPromotion(PromotionApplyRequestDTO req) {
         Promotion promotion = findOrThrow(req.getPromotionId());
 
-        // Kiểm tra tổng hợp: valid (status + ngày) + tier + loại xe + giá trị tối thiểu
+        boolean alreadyUsed = promotionUseRepository
+                .existsByPromotionIdAndCustomerId(
+                        req.getPromotionId(),
+                        req.getCustomerId()
+                );
+
+        if (alreadyUsed) {
+            return PromotionApplyResponseDTO.builder()
+                    .applicable(false)
+                    .message("Customer đã sử dụng khuyến mãi này rồi.")
+                    .discountAmount(BigDecimal.ZERO)
+                    .finalAmount(req.getOrderValue())
+                    .build();
+        }
+
+        if (promotion.getUsageLimit() != null) {
+            long usedCount = promotionUseRepository.countByPromotionId(
+                    promotion.getPromotionId()
+            );
+
+            if (usedCount >= promotion.getUsageLimit()) {
+                return PromotionApplyResponseDTO.builder()
+                        .applicable(false)
+                        .message("Khuyến mãi đã hết lượt sử dụng.")
+                        .discountAmount(BigDecimal.ZERO)
+                        .finalAmount(req.getOrderValue())
+                        .build();
+            }
+        }
+
         boolean applicable = promotion.isApplicable(
                 req.getTierId(),
                 req.getVehicleType(),
@@ -149,21 +181,34 @@ public class PromotionServiceImpl implements PromotionService {
         );
 
         if (!applicable) {
-            // Trả về response thất bại, không tính giảm giá
             return PromotionApplyResponseDTO.builder()
                     .applicable(false)
                     .message("Khuyến mãi không áp dụng được cho đơn hàng này.")
                     .discountAmount(BigDecimal.ZERO)
-                    .finalAmount(req.getOrderValue())   // Giữ nguyên giá gốc
+                    .finalAmount(req.getOrderValue())
                     .build();
         }
 
-        BigDecimal discountAmount = calculateDiscount(promotion, req.getOrderValue());
+        BigDecimal discountAmount = calculateDiscount(
+                promotion,
+                req.getOrderValue()
+        );
 
-        // Đảm bảo finalAmount không âm (trường hợp fixed > orderValue)
         BigDecimal finalAmount = req.getOrderValue()
                 .subtract(discountAmount)
                 .max(BigDecimal.ZERO);
+
+        PromotionUse promotionUse = PromotionUse.builder()
+                .promotionId(promotion.getPromotionId())
+                .customerId(req.getCustomerId())
+                .orderValue(req.getOrderValue())
+                .discountAmount(discountAmount)
+                .finalAmount(finalAmount)
+                .status(PromotionUse.PromotionUseStatus.used)
+                .usedAt(java.time.LocalDateTime.now())
+                .build();
+
+        promotionUseRepository.save(promotionUse);
 
         return PromotionApplyResponseDTO.builder()
                 .applicable(true)
@@ -171,6 +216,49 @@ public class PromotionServiceImpl implements PromotionService {
                 .discountAmount(discountAmount)
                 .finalAmount(finalAmount)
                 .build();
+    }
+
+    @Override
+    public List<PromotionUseResponseDTO> getPromotionUses(Integer promotionId) {
+        // Kiểm tra promotion có tồn tại không
+        findOrThrow(promotionId);
+
+        return promotionUseRepository
+                .findByPromotionIdOrderByUsedAtDesc(promotionId)
+                .stream()
+                .map(this::toPromotionUseResponse)
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<PromotionUseResponseDTO> getCustomerPromotionUses(Integer customerId) {
+        return promotionUseRepository
+                .findByCustomerIdOrderByUsedAtDesc(customerId)
+                .stream()
+                .map(this::toPromotionUseResponse)
+                .toList();
+    }
+
+    @Override
+    @Transactional
+    public int expireExpiredPromotions() {
+        LocalDate today = LocalDate.now();
+
+        List<Promotion> expiredPromotions =
+                promotionRepository.findExpiredButActive(today);
+
+        if (expiredPromotions.isEmpty()) {
+            return 0;
+        }
+
+        expiredPromotions.forEach(promotion ->
+                promotion.setStatus(PromotionStatus.expired)
+        );
+
+        promotionRepository.saveAll(expiredPromotions);
+
+        return expiredPromotions.size();
     }
 
     // ── Private helpers ──────────────────────────────────────────────────────
@@ -270,5 +358,18 @@ public class PromotionServiceImpl implements PromotionService {
                         && !date.isAfter(p.getEndDate())))
                 .map(promotionMapper::toDTO)
                 .toList();
+    }
+
+    private PromotionUseResponseDTO toPromotionUseResponse(PromotionUse promotionUse) {
+        return PromotionUseResponseDTO.builder()
+                .promotionUseId(promotionUse.getPromotionUseId())
+                .promotionId(promotionUse.getPromotionId())
+                .customerId(promotionUse.getCustomerId())
+                .orderValue(promotionUse.getOrderValue())
+                .discountAmount(promotionUse.getDiscountAmount())
+                .finalAmount(promotionUse.getFinalAmount())
+                .status(promotionUse.getStatus())
+                .usedAt(promotionUse.getUsedAt())
+                .build();
     }
 }

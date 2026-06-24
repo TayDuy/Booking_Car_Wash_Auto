@@ -10,6 +10,7 @@ import "bootstrap/dist/css/bootstrap.min.css";
 import "./index.css";
 
 import App from "./App";
+import Login from "./pages/auth/Login";
 import Register from "./pages/auth/Register";
 import BookingPage from "./pages/auth/Booking";
 import NotificationPage from "./pages/auth/NotificationPage";
@@ -23,6 +24,7 @@ ReactDOM.createRoot(
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<App />} />
+        <Route path="/login" element={<Login />} />
         <Route
           path="/register"
           element={<Register />}
