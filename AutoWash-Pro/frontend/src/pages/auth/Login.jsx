@@ -24,8 +24,8 @@ function Login({ onLoginSuccess }) {
       console.log("GO EMPLOYEE");
       navigate("/employee");
     } else {
-      console.log("GO BOOKING");
-      navigate("/booking");
+      console.log("GO HOME");
+      navigate("/home");
     }
   }
 
