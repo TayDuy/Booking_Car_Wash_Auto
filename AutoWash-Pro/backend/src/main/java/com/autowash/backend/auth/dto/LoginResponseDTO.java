@@ -11,11 +11,24 @@ import lombok.*;
 public class LoginResponseDTO {
 
     private String accessToken;
+
+    private String refreshToken;
+
     private String tokenType = "Bearer";
-    private Integer userId;
-    private String username;
-    private String email;
-    private String fullName;
-    private String role;
+    private UserDto user;
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class UserDto{
+        private Integer userId;
+        private String username;
+        private String email;
+        private String fullName;
+        private String role;
+        private Integer customerId;
+        private Integer branchId;
+    }
 
 }
