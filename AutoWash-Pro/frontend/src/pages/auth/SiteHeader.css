@@ -1,0 +1,187 @@
+.custom-app-header {
+    height: 64px;
+    background-color: #ffffff;
+    border-bottom: 1px solid #e2e8f0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 32px;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    box-sizing: border-box;
+}
+
+.header-logo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+}
+
+.logo-text {
+    font-size: 18px;
+    font-weight: 700;
+    color: #0046c7;
+}
+
+.header-navigation {
+    display: flex;
+    gap: 24px;
+}
+
+.header-navigation button {
+    background: none;
+    border: none;
+    font-size: 14px;
+    font-weight: 500;
+    color: #475569;
+    cursor: pointer;
+    padding: 8px 4px;
+}
+
+.header-navigation button:hover {
+    color: #0046c7;
+}
+
+/* CONTAINER CHO ICON VÀ DROPDOWN ĐÈ LÊN */
+.header-actions-group {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.icon-popover-container {
+    position: relative;
+}
+
+.action-btn-circle {
+    background: none;
+    border: none;
+    font-size: 18px;
+    cursor: pointer;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    transition: background-color 0.15s;
+}
+
+.action-btn-circle:hover,
+.action-btn-circle.btn-active {
+    background-color: #f1f5f9;
+}
+
+/* Chấm đỏ báo hiệu */
+.red-alert-dot {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 6px;
+    height: 6px;
+    background-color: #ef4444;
+    border-radius: 50%;
+}
+
+/* KHUNG ĐỰNG NỘI DUNG POP-UP (DROPDOWN BOX) */
+.dropdown-popover-box {
+    position: absolute;
+    top: 48px;
+    width: 320px;
+    background-color: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+    z-index: 1100;
+    overflow: hidden;
+}
+
+.dropdown-popover-box.alignment-right {
+    right: -6px;
+}
+
+/* Mũi tên nhọn chỉ lên icon đầu mục */
+.popover-arrow {
+    position: absolute;
+    top: -6px;
+    right: 18px;
+    width: 12px;
+    height: 12px;
+    background-color: #ffffff;
+    transform: rotate(45deg);
+    border-left: 1px solid #e2e8f0;
+    border-top: 1px solid #e2e8f0;
+}
+
+.popover-header {
+    padding: 14px 16px;
+    font-size: 13.5px;
+    font-weight: 700;
+    color: #0f172a;
+    border-bottom: 1px solid #f1f5f9;
+    background-color: #f8fafc;
+}
+
+.popover-body-content {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+/* Vùng để bạn thiết kế các item con bên trong */
+.placeholder-item,
+.support-item-placeholder {
+    padding: 14px 16px;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.placeholder-item p,
+.support-item-placeholder p {
+    font-size: 13px;
+    color: #334155;
+    margin: 0 0 4px 0;
+    line-height: 1.4;
+}
+
+.placeholder-item span {
+    font-size: 11px;
+    color: #94a3b8;
+}
+
+.support-item-placeholder small {
+    font-size: 12px;
+    color: #64748b;
+}
+
+.popover-footer-action {
+    padding: 12px;
+    text-align: center;
+    font-size: 12px;
+    font-weight: 600;
+    color: #0046c7;
+    cursor: pointer;
+    background-color: #ffffff;
+    border-top: 1px solid #f1f5f9;
+}
+
+.popover-footer-action:hover {
+    text-decoration: underline;
+}
+
+/* USER AVATAR THÀNH VIÊN TRÒN */
+.profile-user-avatar img {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1px solid #e2e8f0;
+    display: block;
+}
+
+/* Thêm hiệu ứng nhận diện trang hiện tại */
+.header-navigation button.active-link {
+    color: #0046c7;
+    font-weight: 700;
+}
