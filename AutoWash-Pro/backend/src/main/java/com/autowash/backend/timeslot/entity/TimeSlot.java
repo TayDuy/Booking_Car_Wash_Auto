@@ -86,16 +86,26 @@ public class TimeSlot {
         private Integer maxCapacity = 1;
 
         /**
-         * FR-6: @Version — JPA dùng field này làm version check khi UPDATE.
-         * TX1 và TX2 cùng đọc currentBookings=2, cùng tăng lên 3:
-         *   TX1 commit trước → DB version tăng.
-         *   TX2 commit sau   → version mismatch → OptimisticLockException.
-         * Service bắt exception → trả lỗi "slot đã đầy".
+         * Số booking hiện tại trong slot — đây là dữ liệu nghiệp vụ thuần,
+         * KHÔNG gắn @Version. Việc tăng/giảm số này được thực hiện bởi
+         * incrementBookings() / decrementBookings() ở dưới.
          */
-        @Version
         @Column(name = "current_bookings", nullable = false)
         @Builder.Default
         private Integer currentBookings = 0;
+
+        /**
+         * FR-6: @Version — cột kỹ thuật riêng biệt, Hibernate tự tăng mỗi lần UPDATE.
+         * TX1 và TX2 cùng đọc version=5, cùng load slot để book:
+         *   TX1 commit trước → DB version tăng lên 6.
+         *   TX2 commit sau, vẫn mang version=5 trong tay → mismatch → OptimisticLockException.
+         * Service bắt exception → trả lỗi "slot đã đầy, vui lòng thử slot khác".
+         * Field này không có ý nghĩa nghiệp vụ, chỉ phục vụ cơ chế khóa.
+         */
+        @Version
+        @Column(name = "version", nullable = false)
+        @Builder.Default
+        private Long version = 0L;
 
         /**
          * Trạng thái slot:

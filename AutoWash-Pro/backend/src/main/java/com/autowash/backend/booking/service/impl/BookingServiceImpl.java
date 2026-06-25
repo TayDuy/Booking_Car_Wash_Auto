@@ -10,6 +10,8 @@ import com.autowash.backend.booking.repository.BookingRepository;
 import com.autowash.backend.booking.service.BookingService;
 import com.autowash.backend.branch.entity.Branch;
 import com.autowash.backend.branch.repository.BranchRepository;
+import com.autowash.backend.common.exception.BusinessException;
+import com.autowash.backend.common.exception.ResourceNotFoundException;
 import com.autowash.backend.customer.entity.Customer;
 import com.autowash.backend.customer.repository.CustomerRepository;
 import com.autowash.backend.employee.entity.Employee;
@@ -21,7 +23,7 @@ import com.autowash.backend.timeslot.repository.TimeSlotRepository;
 import com.autowash.backend.vehicle.entity.Vehicle;
 import com.autowash.backend.vehicle.repository.VehicleRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.orm.ObjectOptimisticLockingFailureException;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -52,33 +54,71 @@ public class BookingServiceImpl implements BookingService {
     /**
      * Tạo booking mới.
      * Luồng: validate entities → build details → lock slot → save booking.
+     *
+     * FIX race condition:
+     *   Trước đây dùng findById() thông thường → 2 request đồng thời cùng đọc
+     *   slot còn chỗ → cùng vượt qua hasCapacity() → overbooking.
+     *
+     *   Sau khi fix dùng findByIdForUpdate() với PESSIMISTIC_WRITE:
+     *   → DB thực thi SELECT ... FOR UPDATE, lock hàng time_slot ngay lúc đọc.
+     *   → Request thứ 2 bị chặn ở DB cho đến khi request thứ 1 commit xong.
+     *   → Request thứ 2 đọc lại currentBookings đã tăng → hasCapacity() = false
+     *   → Ném lỗi "Slot đã đầy" đúng cách, không còn overbooking.
+     *
+     * FIX exception handling (2026-06-25):
+     *   Trước đây toàn bộ orElseThrow/validate dùng RuntimeException trần
+     *   → GlobalExceptionHandler không có handler riêng cho RuntimeException
+     *   → rơi vào handleGenericException() (catch-all Exception.class)
+     *   → log "Unhandled exception" + trả về HTTP 500 cho TẤT CẢ lỗi,
+     *     kể cả lỗi nghiệp vụ bình thường như "hết slot", "không tìm thấy".
+     *
+     *   Sau khi fix:
+     *   - Không tìm thấy resource (customer/vehicle/slot/branch/service)
+     *     → ResourceNotFoundException → GlobalExceptionHandler trả 404.
+     *   - Lỗi nghiệp vụ thực sự (hết slot) → BusinessException(HttpStatus, message)
+     *     → GlobalExceptionHandler trả đúng status do mình chỉ định (409 Conflict).
+     *   → Frontend nhận được status code + message rõ ràng để hiển thị cho user,
+     *     không còn bị che bởi message generic "Đã xảy ra lỗi hệ thống".
      */
     @Override
     @Transactional
     public BookingCreateResponseDTO createBooking(BookingCreateRequestDTO request) {
 
         // Validate các entity liên quan
+        // FIX: RuntimeException -> ResourceNotFoundException (404 thay vì 500)
+        // FIX: ResourceNotFoundException nhận 3 tham số (resourceName, fieldName, fieldValue)
+        // → tự build message dạng "Customer not found with id: '5'"
         Customer customer = customerRepository.findById(request.getCustomerId())
-                .orElseThrow(() -> new RuntimeException("Customer không tồn tại"));
+                .orElseThrow(() -> new ResourceNotFoundException("Customer", "id", request.getCustomerId()));
 
         Vehicle vehicle = vehicleRepository.findById(request.getVehicleId())
-                .orElseThrow(() -> new RuntimeException("Vehicle không tồn tại"));
+                .orElseThrow(() -> new ResourceNotFoundException("Vehicle", "id", request.getVehicleId()));
 
-        TimeSlot slot = timeSlotRepository.findById(request.getSlotId())
-                .orElseThrow(() -> new RuntimeException("Slot không tồn tại"));
+        // FIX: Dùng findByIdForUpdate thay vì findById
+        // → DB lock hàng time_slot ngay lúc SELECT, tránh 2 request đồng thời
+        //   cùng đọc slot còn chỗ rồi cùng đặt thành công (overbooking)
+        TimeSlot slot = timeSlotRepository.findByIdForUpdate(request.getSlotId())
+                .orElseThrow(() -> new ResourceNotFoundException("TimeSlot", "id", request.getSlotId()));
 
+        // Kiểm tra còn chỗ — lúc này slot đã được lock nên kết quả chính xác
+        // FIX: RuntimeException -> BusinessException(CONFLICT, ...)
+        // → Đây là lỗi nghiệp vụ (hết chỗ), không phải lỗi hệ thống,
+        //   nên trả 409 Conflict kèm message để frontend hiển thị cho user,
+        //   thay vì 500 + log "Unhandled exception" gây nhiễu monitoring.
         if (!slot.hasCapacity()) {
-            throw new RuntimeException("Slot đã đầy, vui lòng chọn khung giờ khác");
+            // FIX: BusinessException nhận (message, httpStatus) - đúng thứ tự tham số
+            throw new BusinessException("Slot đã đầy, vui lòng chọn khung giờ khác", HttpStatus.CONFLICT);
         }
 
         Branch branch = branchRepository.findById(request.getBranchId())
-                .orElseThrow(() -> new RuntimeException("Branch không tồn tại"));
+                .orElseThrow(() -> new ResourceNotFoundException("Branch", "id", request.getBranchId()));
 
         // Build danh sách BookingDetail từ request
         List<BookingDetail> details = new ArrayList<>();
         for (BookingCreateRequestDTO.BookingDetailItem item : request.getDetails()) {
+            // FIX: RuntimeException -> ResourceNotFoundException (404 thay vì 500)
             ServicePackage servicePackage = servicePackageRepository.findById(item.getServiceId())
-                    .orElseThrow(() -> new RuntimeException("Dịch vụ không tồn tại"));
+                    .orElseThrow(() -> new ResourceNotFoundException("ServicePackage", "id", item.getServiceId()));
 
             BigDecimal unitPrice = servicePackage.getBasePrice();
             BigDecimal subTotal = unitPrice.multiply(BigDecimal.valueOf(item.getQuantity()));
@@ -91,13 +131,12 @@ public class BookingServiceImpl implements BookingService {
                     .build());
         }
 
-        // Tăng số lượng booking trên slot, flush ngay để bắt optimistic lock kịp thời
-        try {
-            slot.incrementBookings();
-            timeSlotRepository.saveAndFlush(slot);
-        } catch (ObjectOptimisticLockingFailureException e) {
-            throw new RuntimeException("Slot vừa được người khác đặt");
-        }
+        // FIX: Bỏ try-catch ObjectOptimisticLockingFailureException
+        // → Không cần nữa vì PESSIMISTIC_WRITE đã ngăn race condition từ đầu.
+        //   Chỉ cần tăng counter và save bình thường.
+        //   incrementBookings() trong entity tự chuyển status → full khi đủ chỗ.
+        slot.incrementBookings();
+        timeSlotRepository.save(slot);
 
         // Tạo và lưu Booking
         Booking booking = Booking.builder()
@@ -165,8 +204,9 @@ public class BookingServiceImpl implements BookingService {
         if (request.getNote() != null) booking.setNote(request.getNote());
 
         if (request.getAssignedStaffId() != null) {
+            // FIX: RuntimeException -> ResourceNotFoundException (404 thay vì 500)
             Employee employee = employeeRepository.findById(request.getAssignedStaffId())
-                    .orElseThrow(() -> new RuntimeException("Không tìm thấy nhân viên"));
+                    .orElseThrow(() -> new ResourceNotFoundException("Employee", "id", request.getAssignedStaffId()));
             booking.setAssignedStaff(employee);
         }
 
@@ -186,6 +226,7 @@ public class BookingServiceImpl implements BookingService {
         booking.setStatus(BookingStatus.cancelled);
 
         // Giảm số lượng đặt trên slot để mở lại capacity
+        // decrementBookings() trong entity tự chuyển status → open nếu còn chỗ
         TimeSlot slot = booking.getSlot();
         slot.decrementBookings();
         timeSlotRepository.save(slot);
@@ -204,9 +245,14 @@ public class BookingServiceImpl implements BookingService {
     public BookingResponseDTO completeBooking(Integer bookingId) {
         Booking booking = findBookingOrThrow(bookingId);
 
+        // FIX: RuntimeException -> BusinessException(BAD_REQUEST, ...)
+        // → Đây là lỗi sai luồng nghiệp vụ (sai trạng thái), trả 400
+        //   kèm message rõ ràng, thay vì 500 generic.
         if (!BookingStatus.in_progress.equals(booking.getStatus())
                 && !BookingStatus.pending.equals(booking.getStatus())) {
-            throw new RuntimeException("Chỉ có thể hoàn thành booking đang xử lý hoặc đang chờ");
+            // FIX: BusinessException nhận (message, httpStatus) - đúng thứ tự tham số
+            throw new BusinessException("Chỉ có thể hoàn thành booking đang xử lý hoặc đang chờ",
+                    HttpStatus.BAD_REQUEST);
         }
 
         booking.setStatus(BookingStatus.completed);
@@ -217,10 +263,13 @@ public class BookingServiceImpl implements BookingService {
 
     // ── HELPERS ──────────────────────────────────────────────────────────────
 
-    /** Tìm booking theo ID, ném lỗi nếu không tồn tại. */
+    /**
+     * Tìm booking theo ID, ném lỗi nếu không tồn tại.
+     * FIX: RuntimeException -> ResourceNotFoundException (404 thay vì 500)
+     */
     private Booking findBookingOrThrow(Integer bookingId) {
         return bookingRepository.findById(bookingId)
-                .orElseThrow(() -> new RuntimeException("Booking không tồn tại"));
+                .orElseThrow(() -> new ResourceNotFoundException("Booking", "id", bookingId));
     }
 
     /** Sinh mã booking dạng BK-YYYYMMDD-XXXXXX. */
