@@ -1,9 +1,7 @@
-import Login from "./pages/auth/Login";
+import Home from "./pages/auth/HomePage";
 
 function App() {
-  return (
-    <Login />
-  );
+  return <Home />;
 }
 
 export default App;
