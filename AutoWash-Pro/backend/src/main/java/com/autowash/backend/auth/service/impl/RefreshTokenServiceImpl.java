@@ -32,16 +32,23 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User","id",userId));
 
-        //xóa token cũ trước khi tạo token mới
-        //phải đảm bảo mỗi 1 tk chỉ có 1 refresh token còn sống(tránh bị đánh cắp)
-        refreshTokenRepository.deleteByUser(user);
-
-        //Sinh ra chuỗi token ngẫu nhiên (dùng thư viện UUID)
-        RefreshToken refreshToken = RefreshToken.builder()
-                .user(user)
-                .token(UUID.randomUUID().toString())
-                .expriryDate(Instant.now().plusMillis(refreshTokenDurationMs))//set hạn sử dụng
-                .build();
+        //Kiểm tra xem user đã có refresh token chưa, nếu có thì cập nhật, nếu chưa thì tạo mới
+        //Cách này tránh lỗi DataIntegrityViolationException do Hibernate thực thi insert trước delete
+        java.util.Optional<RefreshToken> existingTokenOpt = refreshTokenRepository.findByUser(user);
+        RefreshToken refreshToken;
+        
+        if (existingTokenOpt.isPresent()) {
+            refreshToken = existingTokenOpt.get();
+            refreshToken.setToken(UUID.randomUUID().toString());
+            refreshToken.setExpriryDate(Instant.now().plusMillis(refreshTokenDurationMs));
+        } else {
+            refreshToken = RefreshToken.builder()
+                    .user(user)
+                    .token(UUID.randomUUID().toString())
+                    .expriryDate(Instant.now().plusMillis(refreshTokenDurationMs))
+                    .build();
+        }
+        
         return refreshTokenRepository.save(refreshToken);
     }
 
