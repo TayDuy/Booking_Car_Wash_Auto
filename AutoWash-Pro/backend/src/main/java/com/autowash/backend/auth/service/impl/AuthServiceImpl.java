@@ -160,59 +160,66 @@ public class AuthServiceImpl implements AuthService {
         //1.Dùng RestTemplate như 1 cái điện thoại để gọi cho Supabase
         RestTemplate restTemplate = new RestTemplate();
         HttpHeaders headers = new HttpHeaders();
-        headers.setBearerAuth(supabaseToken);//đưa cái thẻ token(của gg) cho supabase kiểm tra
-        headers.set("apikey", supabaseAnonKey);//đoc mật khẩu nhà
+        headers.setBearerAuth(supabaseToken);
+        headers.set("apikey", supabaseAnonKey);
 
         HttpEntity<String> entity = new HttpEntity<>(headers);
-        //header như là tem thư còn HttpEntity là thung bưu kiện , hành động này như là đem thư bỏ vào thùng
         Map<String, Object> body;
-        //sau khi gửi hàng qua supabase thì nó sẽ response lại 1 cái gói hàng thì hành động này chuẩn bị 1 cái rỗ để hứng cái gói hàng đó
 
         try {
-            //Đầu bên kia supabase trả lời:
             ResponseEntity<Map> supabaseResponse = restTemplate.exchange(
-                                    supabaseUrl + "/auth/v1/user",
+                    supabaseUrl + "/auth/v1/user",
                     HttpMethod.GET,
-                    entity,Map.class
+                    entity, Map.class
             );
-            body =supabaseResponse.getBody();
-        }catch (Exception e){
+            body = supabaseResponse.getBody();
+        } catch (Exception e) {
             throw new BusinessException("Token Google không hợp lệ hoặc đã bị chỉnh sửa!!", HttpStatus.UNAUTHORIZED);
         }
 
-        if(body == null || !body.containsKey("email")){
-            throw new BusinessException("Không lấy được mail từ Google!",HttpStatus.BAD_REQUEST);
+        if (body == null || !body.containsKey("email")) {
+            throw new BusinessException("Không lấy được mail từ Google!", HttpStatus.BAD_REQUEST);
         }
 
-
-        //trích xuất thông tin người dùng từ cái response của supabase
         String email = (String) body.get("email");
-        Map<String,Object> metadata = (Map<String, Object>) body.get("user_metadata");
-        String fullName = metadata != null && metadata.containsKey("full_name") ? (String) metadata.get("full_name"): "Khách hàng Google";
+        Map<String, Object> metadata = (Map<String, Object>) body.get("user_metadata");
+        String fullName = metadata != null && metadata.containsKey("full_name")
+                ? (String) metadata.get("full_name")
+                : "Khách hàng Google";
 
-        //3.kiểm tra xem user này đã từng đăng nhập hệ thống bao giờ chưa ?
-        User user = userRepository.findFirstByEmail(email).orElse(null);
+        // 3. Kiểm tra user đã tồn tại chưa
+        User user = userRepository.findByEmail(email).orElse(null);
         if (user == null) {
-            // Khách mới toanh -> Tự động tạo tài khoản DB cho họ
-            String randomUsername = "gg_" + java.util.UUID.randomUUID().toString().substring(0, 8);
+            try {
+                String randomUsername = "gg_" + java.util.UUID.randomUUID().toString().substring(0, 8);
 
-            user = User.builder()
-                    .username(randomUsername)
-                    .email(email)
-                    .password(passwordEncoder.encode(java.util.UUID.randomUUID().toString())) // Mật khẩu ảo chống hack
-                    .role("customer")
-                    .status("active")
-                    .build();
-            user = userRepository.save(user);
-            // Tạo luôn thông tin khách hàng (Customer)
-            Customer customer = Customer.builder()
-                    .user(user)
-                    .fullName(fullName)
-                    .tierId(1)
-                    .build();
-            customerRepository.save(customer);
+                user = User.builder()
+                        .username(randomUsername)
+                        .email(email)
+                        .password(passwordEncoder.encode(java.util.UUID.randomUUID().toString()))
+                        .role("customer")
+                        .status("active")
+                        .build();
+                user = userRepository.save(user);
+
+                Customer customer = Customer.builder()
+                        .user(user)
+                        .fullName(fullName)
+                        .tierId(1)
+                        .build();
+                customerRepository.save(customer);
+
+            } catch (org.springframework.dao.DataIntegrityViolationException e) {
+                // Race condition: request khác đã tạo user này trước trong lúc ta đang insert.
+                // Quay lại lấy bản ghi mà request kia vừa tạo thành công, không throw lỗi vô lý cho client.
+                user = userRepository.findByEmail(email)
+                        .orElseThrow(() -> new BusinessException(
+                                "Lỗi đồng thời khi đăng nhập Google, vui lòng thử lại",
+                                HttpStatus.CONFLICT));
+            }
         }
-        // 4. In thẻ VIP và Thẻ thường
+
+        // 4. Sinh token
         String token = jwtTokenProvider.generateToken(email, user.getId());
         return buildLoginResponse(token, user);
     }
