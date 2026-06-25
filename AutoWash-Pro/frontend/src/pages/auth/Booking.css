@@ -79,7 +79,20 @@
 }
 
 .section-icon {
-    font-size: 20px;
+    font-size: 16px;
+    color: #2563eb;
+
+    width: 34px;
+    height: 34px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    background: #eff6ff;
+    border-radius: 8px;
+
+    flex-shrink: 0;
 }
 
 .section-title-wrapper h3 {
@@ -453,8 +466,15 @@
     transition: all 0.15s ease;
 }
 
-.segment-btn .car-icon {
-    font-size: 16px;
+.segment-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.segment-active .car-icon {
+    color: #0046c7;
 }
 
 .segment-btn.segment-active {
@@ -997,70 +1017,72 @@
 
 /* Base style cho từng ô giờ */
 .time-slot-pill-btn {
-    background-color: #ffffff;
-    border: 1px solid #e2e8f0;
-    border-radius: 8px;
-    padding: 10px 12px;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+
+    min-height: 56px;
+    padding: 8px 6px;
+
     display: flex;
     flex-direction: column;
-    align-items: center;
     justify-content: center;
+    align-items: center;
+
     cursor: pointer;
-    transition: all 0.15s;
+    transition: all .2s ease;
+}
+
+.time-slot-pill-btn:hover:not(:disabled) {
+    border-color: #2563eb;
 }
 
 .slot-clock-text {
-    font-size: 13px;
-    font-weight: 700;
-    color: #1e293b;
+    font-size: 14px;
+    font-weight: 600;
+    color: #111827;
+    line-height: 1.2;
 }
 
 .slot-status-subtext {
-    font-size: 10px;
-    font-weight: 600;
     margin-top: 2px;
-    color: #64748b;
-    text-transform: uppercase;
+    font-size: 10px;
+    font-weight: 500;
+    line-height: 1.2;
+    color: #9ca3af;
 }
 
-/* TRẠNG THÁI ACTIVE KHI ĐÃ CHỌN */
 .time-slot-pill-btn.pill-selected {
-    border-color: #0046c7 !important;
-    background-color: #eff6ff !important;
+    border: 2px solid #2563eb;
+    background: #eff6ff;
 }
 
 .time-slot-pill-btn.pill-selected .slot-clock-text {
-    color: #0046c7;
+    color: #2563eb;
+    font-weight: 700;
 }
 
 .time-slot-pill-btn.pill-selected .slot-status-subtext {
     color: #2563eb;
 }
 
-/* TRẠNG THÁI GIỜ ECO (MÀU XANH LÁ) */
-.time-slot-pill-btn.status-eco .slot-status-subtext {
-    color: #10b981;
+.status-eco .slot-status-subtext {
+    color: #16a34a;
+    font-weight: 600;
 }
 
-/* TRẠNG THÁI GIỜ CAO ĐIỂM (MÀU ĐỎ) */
-.time-slot-pill-btn.status-peak .slot-status-subtext {
+.status-peak .slot-status-subtext {
     color: #ef4444;
+    font-weight: 600;
 }
 
-/* Khi bị disabled (Hết chỗ) */
 .time-slot-pill-btn:disabled {
-    background-color: #f8fafc;
+    background: #fafafa;
     border-color: #f1f5f9;
     cursor: not-allowed;
 }
 
 .time-slot-pill-btn:disabled .slot-clock-text,
 .time-slot-pill-btn:disabled .slot-status-subtext {
-    color: #cbd5e1;
-}
-
-@media (max-width: 768px) {
-    .scheduler-split-layout {
-        grid-template-columns: 1fr;
-    }
+    color: #d1d5db;
 }

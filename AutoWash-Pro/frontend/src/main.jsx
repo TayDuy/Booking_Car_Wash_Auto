@@ -25,6 +25,7 @@ ReactDOM.createRoot(
       <Routes>
         <Route path="/" element={<App />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/booking" element={<BookingPage />} />
         <Route
           path="/register"
           element={<Register />}
