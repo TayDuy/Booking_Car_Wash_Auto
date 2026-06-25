@@ -1,9 +1,5 @@
-import axios from "axios";
-
-const API_URL = "http://localhost:8080/api/v1";
+import axiosClient from "./axiosClient";
 
 export const getBranches = async () => {
-  return axios.get(
-    `${API_URL}/branches`
-  );
+   return axiosClient.get("/branches");
 };

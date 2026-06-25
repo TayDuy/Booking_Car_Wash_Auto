@@ -1,12 +1,21 @@
 import React, { useState, useEffect } from "react";
 import "./Booking.css";
+import {
+  FaDroplet,
+  FaCalendarDays,
+  FaCarSide
+} from "react-icons/fa6";
+import {
+  MdDirectionsCar,
+  MdAirportShuttle
+} from "react-icons/md";
 import { createBooking } from "../../api/bookingService";
 import SiteHeader from "./SiteHeader";
 import { useNavigate } from "react-router-dom";
 import { getActiveServices } from "../../api/servicePackageService";
 import { getBranches } from "../../api/branchService";
 import { getAvailableSlots } from "../../api/timeSlotService";
-import { getMyVehicles } from "../../api/vehicleService";
+import vehicleApi from "../../api/vehicleApi";
 
 // KHAI BÁO DỮ LIỆU MẪU RA NGOÀI COMPONENT ĐỂ TRÁNH LỖI REDECLARED IDENTIFIER
 const DEFAULT_SERVICES = [
@@ -14,7 +23,7 @@ const DEFAULT_SERVICES = [
     serviceId: 1,
     serviceName: "Gói Cơ Bản",
     basePrice: 350000,
-    imageUrl: "https://images.unsplash.com/photo-1601362840469-51e4d8d59085?auto=format&fit=crop&w=400&q=80",
+    imageUrl: "https://lh3.googleusercontent.com/aida/AP1WRLu0paW8-vyihBC1QtGpIREgGftVGqLPfl_B4JHyp6P4DxmKPxPip6boYICgifRpwilvyJkne_UZf3hxCwNfkPn40CXMxMySo2H4v-asx9ailbq1kiRZ76gUF21AWrhAHQycrOXXx9eCS9KbV8EE18bMjqcbRD5914eCyESZsOJ24u5QxwmC1RBl0atGZkOQkc7aXQqvz8kd3JKslVuRXR1weGyyMWPyw9ZkGOW7d4kSIn7D--iiqLV7Rw-1",
     features: ["Xà phòng pH trung tính", "Khăn Microfiber siêu thấm", "Làm khô khe kẽ bằng khí nén"],
     durationMinutes: 15,
     isPopular: false
@@ -23,7 +32,7 @@ const DEFAULT_SERVICES = [
     serviceId: 2,
     serviceName: "Gói Cao Cấp",
     basePrice: 750000,
-    imageUrl: "https://images.unsplash.com/photo-1520340356584-f9917d1eea6f?auto=format&fit=crop&w=400&q=80",
+    imageUrl: "https://lh3.googleusercontent.com/aida/AP1WRLtsUQfoNHGvuu3_bYohhGOUlf19Bph-wu1Ool2o5TJ2KIby1rfNOE2SPm43MT6OuzVZSi0xDZ9dN0mTdQlt3jmruI217ptX3s3WMfFu8VvMXTqDrS0l2JBpjwfkhb98K0Lx1GFN2XzxfJPBFKf5mqmeE4ycJFrlHvMH-w2E7wH2GVo2yYnJD3oD7o64h9yf7Yuf1uswYAT41gFzoM5BP4_OlPOxKky-2cX4_4WYvelEePZ5n0tRGN1g1msF",
     features: ["Phủ bọt 3 lớp (Triple Foam)", "Dưỡng bóng lốp chuyên sâu", "Vệ sinh thảm lót chân"],
     durationMinutes: 30,
     isPopular: true
@@ -32,7 +41,7 @@ const DEFAULT_SERVICES = [
     serviceId: 3,
     serviceName: "Gói Kim Cương",
     basePrice: 1200000,
-    imageUrl: "https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?auto=format&fit=crop&w=400&q=80",
+    imageUrl: "https://lh3.googleusercontent.com/aida/AP1WRLvi63JYKFsTVq5PCclrSGMPU633IBo-lrUgh1E6Xp2vqE9HYeiRjKz_yFA8oU9J-Fb9mgnHbJCMkmG8C-JvTN1ea6B64ru350hHw13-A1781Ok7-nj3neGtdvI3fxjJPhVt7e954SZyxGzNlBBSSFiKLR1ThfHYu8CRVUtkHxIt-GlMAx3UmmbfEven2UP6GLkaq8ZgVDDKqLXM-yDcbsDL4gb2AVRZHpjw72wgiThQWQvMyJhKC7VtlmQz",
     features: ["Wax Ceramic bảo vệ sơn", "Hút bụi & Vệ sinh nội thất", "Khử mùi diệt khuẩn chuyên sâu"],
     durationMinutes: 45,
     isPopular: false
@@ -46,6 +55,8 @@ const MOCK_SLOTS_DATA = [
   { slotId: 104, startTime: "10:30 sáng", statusType: "PEAK", statusLabel: "GIỜ CAO ĐIỂM", available: true },
   { slotId: 105, startTime: "11:00 sáng", statusType: "NORMAL", statusLabel: "Còn 1 chỗ", available: true },
   { slotId: 106, startTime: "11:30 sáng", statusType: "FULL", statusLabel: "Hết chỗ", available: false },
+  { slotId: 107, startTime: "12:00 sáng", available: true },
+  { slotId: 108, startTime: "12:30 trưa", available: true },
 ];
 
 export default function BookingPage() {
@@ -76,12 +87,7 @@ export default function BookingPage() {
   ];
 
   useEffect(() => {
-    loadServices();
-    loadBranches();
-    loadVehicles();
-  }, []);
-
-  const loadServices = async () => {
+    const loadServices = async () => {
     try {
       const res = await getActiveServices();
       if (res.data && res.data.length > 0) {
@@ -102,8 +108,9 @@ export default function BookingPage() {
       setSelectedService(DEFAULT_SERVICES[0].serviceId);
     }
   };
+    loadServices();
 
-  const loadBranches = async () => {
+    const loadBranches = async () => {
     try {
       const res = await getBranches();
       if (res.data && res.data.length > 0) {
@@ -114,22 +121,29 @@ export default function BookingPage() {
       console.log(err);
     }
   };
+    loadBranches();
 
-  const loadVehicles = async () => {
+    const loadVehicles = async () => {
     try {
-      const res = await getMyVehicles();
-      if (res.data) setVehicles(res.data);
+      const response = await vehicleApi.list();
+
+      const vehicles =
+        response.data?.data ||
+        response.data ||
+        [];
+      if (vehicles.length > 0) {
+        setVehicles(vehicles);
+      }
     } catch (err) {
       console.log(err);
     }
   };
+    loadVehicles();
+  }, []);
 
   useEffect(() => {
     // Bỏ dòng "if (!selectedBranch) return;" cũ đi
-    loadSlots();
-  }, [selectedBranch, selectedDate]);
-
-  const loadSlots = async () => {
+    const loadSlots = async () => {
     // NẾU CHƯA CÓ CHI NHÁNH: Cứ lấy dữ liệu mẫu hiển thị giao diện trước đã
     if (!selectedBranch) {
       setSlots(MOCK_SLOTS_DATA);
@@ -157,6 +171,27 @@ export default function BookingPage() {
       console.log("Lỗi API slots, chuyển sang dùng mock data:", err);
       setSlots(MOCK_SLOTS_DATA);
       setSelectedTime(MOCK_SLOTS_DATA[2].slotId);
+    }
+  };
+    loadSlots();
+  }, [selectedBranch, selectedDate]);
+
+  const handleVehicleChange = (vehicleId) => {
+    setSelectedVehicleId(vehicleId);
+
+    const selectedVehicle =
+      vehicles.find(
+        v => String(v.vehicleId) === String(vehicleId)
+      );
+
+    if(selectedVehicle){
+      setLicensePlate(
+        selectedVehicle.licensePlate || ""
+      );
+
+      setVehicleType(
+        selectedVehicle.vehicleType || "4_seats"
+      );
     }
   };
 
@@ -201,7 +236,7 @@ export default function BookingPage() {
     }
     try {
       const bookingData = {
-        customerId: 1,
+        customerId: localStorage.getItem("customerId"),
         vehicleId: selectedVehicleId || null,
         vehicleType: vehicleType,
         licensePlate: licensePlate,
@@ -233,12 +268,12 @@ export default function BookingPage() {
           {/* 1. CHỌN DỊCH VỤ */}
           <section className="form-section-card">
             <div className="section-title-wrapper">
-              <span className="section-icon">💧</span>
+              <FaDroplet className="section-icon" />
               <h3>1. Chọn dịch vụ</h3>
             </div>
             
             <div className="services-card-grid">
-              {services.map(service => (
+              {services.slice(0,3).map(service => (
                 <div
                   key={service.serviceId}
                   className={`service-item-card ${selectedService === service.serviceId ? "active-card" : ""} ${service.isPopular ? "popular-card" : ""}`}
@@ -246,7 +281,13 @@ export default function BookingPage() {
                 >
                   {service.isPopular && <span className="popular-badge">PHỔ BIẾN</span>}
                   <div className="service-img-holder">
-                    <img src={service.imageUrl} alt={service.serviceName} />
+                    <img
+                      src={
+                        service.imageUrl ||
+                        DEFAULT_SERVICES[0].imageUrl
+                      }
+                      alt={service.serviceName}
+                    />
                   </div>
                   <div className="service-details-box">
                     <div className="service-meta-header">
@@ -273,7 +314,7 @@ export default function BookingPage() {
           {/* 2. CHỌN THỜI GIAN */}
           <section className="form-section-card time-scheduler-section">
             <div className="section-title-wrapper">
-              <span className="section-icon">📅</span>
+              <FaCalendarDays className="section-icon" />
               <h3>2. Chọn thời gian</h3>
             </div>
             
@@ -321,64 +362,50 @@ export default function BookingPage() {
 
               {/* BÊN PHẢI: KHUNG GIỜ TRỐNG CHUẨN ĐẸP TỰA STITCH */}
               <div className="time-slots-picker-widget flex-1 bg-surface rounded-lg border border-outline-variant/30 p-md flex flex-col h-full">
-                <div className="slots-widget-header mb-md block">
+                <div className="slots-widget-header">
                   <div className="flex justify-between items-center flex-wrap gap-2">
-                    <h4 className="slots-widget-title font-label-md text-label-md font-bold text-on-surface">
-                      Khung giờ trống - {selectedDate.getDate().toString().padStart(2, '0')} Th{selectedDate.getMonth() + 1}
+                    <h4 className="slots-widget-title">
+                      Khung giờ trống -{" "}
+                      {selectedDate.getDate().toString().padStart(2, "0")} Th
+                      {selectedDate.getMonth() + 1}
                     </h4>
-                    <div className="bay-live-status flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                      <span className="text-[11px] text-gray-500">Bay 1 &amp; 2 đang sẵn sàng</span>
+
+                    <div className="bay-live-status">
+                      <span className="status-indicator-dot">●</span>
+                      Bay 1 & 2 đang sẵn sàng
                     </div>
                   </div>
                 </div>
                 
                 {/* Lưới chia đúng 2 cột (grid-cols-2) kèm gap chuẩn */}
-                <div className="slots-grid-container grid grid-cols-2 gap-3 overflow-y-auto max-h-[240px] pr-2 custom-scrollbar">
+                <div className="slots-grid-container">
                   {slots.map((slot) => {
                     const isSelected = selectedTime === slot.slotId;
                     const isDisabled = slot.available === false;
-                    
+
                     const isEco = slot.statusType === "ECO";
                     const isPeak = slot.statusType === "PEAK";
 
-                    // Cấu hình border và màu nền chuẩn chỉ cho từng trạng thái
-                    let btnClass = "flex flex-col items-center justify-center border border-gray-200 rounded-lg py-3 px-2 transition-all relative min-h-[62px] bg-white hover:border-blue-600";
-                    
-                    if (isSelected) {
-                      btnClass = "flex flex-col items-center justify-center border-2 border-blue-600 bg-blue-50/50 rounded-lg py-3 px-2 transition-all relative min-h-[62px]";
-                    } else if (isDisabled) {
-                      btnClass = "flex flex-col items-center justify-center border border-gray-100 bg-gray-50 rounded-lg py-3 px-2 opacity-40 cursor-not-allowed min-h-[62px]";
-                    }
+                    let className = "time-slot-pill-btn";
 
+                    if (isEco) className += " status-eco";
+                    if (isPeak) className += " status-peak";
+                    if (isSelected) className += " pill-selected";
                     return (
                       <button
                         key={slot.slotId}
                         type="button"
                         disabled={isDisabled}
-                        className={btnClass}
+                        className={className}
                         onClick={() => setSelectedTime(slot.slotId)}
                       >
-                        {/* Giờ chính - Đặt block rõ ràng để ép xuống dòng */}
-                        <span className={`block text-sm font-semibold tracking-wide ${isSelected ? "text-blue-600 font-bold" : "text-gray-800"}`}>
+                        <span className="slot-clock-text">
                           {slot.startTime}
                         </span>
-                        
-                        {/* Dòng subtext hiển thị trạng thái phía dưới */}
-                        <span className={`block text-[11px] mt-0.5 font-medium ${
-                          isSelected ? "text-blue-600/80 font-semibold" : 
-                          isEco ? "text-emerald-600 font-bold" : 
-                          isPeak ? "text-red-500 font-bold" : "text-gray-400"
-                        }`}>
+
+                        <span className="slot-status-subtext">
                           {isSelected ? "Đã chọn" : slot.statusLabel}
                         </span>
-
-                        {/* Tag "Gợi ý" đặt tuyệt đối chuẩn xác ở góc trên bên phải */}
-                        {isEco && !isSelected && !isDisabled && (
-                          <span className="absolute -top-2 right-2 bg-emerald-50 text-emerald-600 text-[9px] font-bold px-1.5 py-0.5 rounded border border-emerald-200 shadow-sm non-selectable">
-                            Gợi ý
-                          </span>
-                        )}
                       </button>
                     );
                   })}
@@ -390,7 +417,7 @@ export default function BookingPage() {
           {/* 3. THÔNG TIN XE */}
           <section className="form-section-card">
             <div className="section-title-wrapper">
-              <span className="section-icon">🚗</span>
+              <FaCarSide className="section-icon" />
               <h3>3. Thông tin xe</h3>
             </div>
             
@@ -408,19 +435,30 @@ export default function BookingPage() {
               <div className="form-field-group">
                 <label>Loại xe *</label>
                 <div className="vehicle-type-segmented-control">
-                  <button 
+                  <button
                     type="button"
-                    className={`segment-btn ${vehicleType === "4_seats" ? "segment-active" : ""}`}
+                    className={`segment-btn ${
+                      vehicleType === "4_seats"
+                        ? "segment-active"
+                        : ""
+                    }`}
                     onClick={() => setVehicleType("4_seats")}
                   >
-                    <span className="car-icon">🚗</span> Xe 4 chỗ
+                    <MdDirectionsCar className="car-icon" />
+                    Xe 4 chỗ
                   </button>
-                  <button 
+
+                  <button
                     type="button"
-                    className={`segment-btn ${vehicleType === "7_seats" ? "segment-active" : ""}`}
+                    className={`segment-btn ${
+                      vehicleType === "7_seats"
+                        ? "segment-active"
+                        : ""
+                    }`}
                     onClick={() => setVehicleType("7_seats")}
                   >
-                    <span className="car-icon">🚙</span> Xe 7 chỗ
+                    <MdAirportShuttle className="car-icon" />
+                    Xe 7 chỗ
                   </button>
                 </div>
               </div>

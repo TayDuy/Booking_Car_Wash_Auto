@@ -44,9 +44,30 @@ export async function verifyOtp(phone, otp) {
 }
 
 export function saveAuth(result){
-    localStorage.setItem("token", result.accessToken);
-    localStorage.setItem("username", result.username);
-    localStorage.setItem("role", result.role);
+    localStorage.setItem(
+      "token",
+      result.accessToken
+    );
+
+    localStorage.setItem(
+      "username",
+      result.user?.username || ""
+    );
+
+    localStorage.setItem(
+      "role",
+      result.user?.role || ""
+    );
+
+    localStorage.setItem(
+      "userId",
+      result.user?.userId || ""
+    );
+
+    localStorage.setItem(
+      "customerId",
+      result.user?.customerId || ""
+    );
 }
 
 export function logout(){

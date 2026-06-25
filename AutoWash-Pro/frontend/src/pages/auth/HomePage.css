@@ -37,13 +37,22 @@
 }
 
 .hero-system-badge {
-    background-color: #eff6ff;
-    color: #2563eb;
-    padding: 6px 14px;
-    border-radius: 100px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+
+    background: #dbeafe;
+    color: #1d4ed8;
+
+    padding: 8px 16px;
+    border-radius: 999px;
+
     font-size: 13px;
     font-weight: 600;
-    margin-bottom: 24px;
+}
+
+.badge-icon {
+    font-size: 18px;
 }
 
 .hero-main-title {
@@ -113,15 +122,17 @@
 .hero-image-wrapper {
     position: relative;
     width: 100%;
-    max-width: 520px;
-    border-radius: 16px;
+    max-width: 620px;
+    height: 600px;
+    border-radius: 18px;
     overflow: hidden;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
 }
 
 .hero-image-wrapper img {
     width: 100%;
-    height: auto;
-    display: block;
+    height: 100%;
     object-fit: cover;
 }
 
@@ -225,19 +236,32 @@
 
 .service-display-box {
     position: relative;
-    background-color: #ffffff;
-    border: 1px solid var(--border-card);
-    border-radius: 14px;
+
+    background: white;
+
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+
     padding: 28px;
+
+    min-height: 340px;
+
     display: flex;
     flex-direction: column;
-    align-items: flex-start;
-    transition: transform 0.2s, box-shadow 0.2s;
+
+    box-shadow: 0 4px 20px rgba(0, 82, 204, 0.05);
+
+    transition: all .25s ease;
 }
 
 .service-display-box:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.04);
+    transform: translateY(-6px);
+
+    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.08);
+}
+
+.service-icon-box .material-symbols-outlined {
+    font-size: 28px;
 }
 
 /* Custom border màu xanh dương đậm cho gói phổ biến như hình */
@@ -435,4 +459,20 @@
         flex-direction: column;
         gap: 30px;
     }
+}
+
+.service-icon-box svg {
+    font-size: 28px;
+}
+
+.icon-blue-light svg {
+    color: #0369a1;
+}
+
+.icon-indigo-light svg {
+    color: #4338ca;
+}
+
+.icon-green-light svg {
+    color: #15803d;
 }
