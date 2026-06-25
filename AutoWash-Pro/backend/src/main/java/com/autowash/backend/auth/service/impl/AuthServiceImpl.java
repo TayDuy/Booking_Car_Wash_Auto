@@ -191,7 +191,7 @@ public class AuthServiceImpl implements AuthService {
         String fullName = metadata != null && metadata.containsKey("full_name") ? (String) metadata.get("full_name"): "Khách hàng Google";
 
         //3.kiểm tra xem user này đã từng đăng nhập hệ thống bao giờ chưa ?
-        User user = userRepository.findByEmail(email).orElse(null);
+        User user = userRepository.findFirstByEmail(email).orElse(null);
         if (user == null) {
             // Khách mới toanh -> Tự động tạo tài khoản DB cho họ
             String randomUsername = "gg_" + java.util.UUID.randomUUID().toString().substring(0, 8);
