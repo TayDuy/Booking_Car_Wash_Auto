@@ -17,14 +17,11 @@ function Login({ onLoginSuccess }) {
     const normalizedRole = role?.toLowerCase();
 
     if (normalizedRole === "admin") {
-      console.log("GO ADMIN");
       navigate("/admin");
     } else if (normalizedRole === "employee") {
-      console.log("GO EMPLOYEE");
       navigate("/employee");
     } else {
-      console.log("GO HOME");
-      navigate("/home");
+      navigate("/");
     }
   }
 
@@ -37,7 +34,7 @@ function Login({ onLoginSuccess }) {
         if (onLoginSuccess) {
           onLoginSuccess();
         }
-        redirectByRole(data.data.role);
+        redirectByRole(data.data.user.role);
       } else {
         setErrorMessage(data.message);
       }
@@ -71,7 +68,7 @@ function Login({ onLoginSuccess }) {
           if (data.status === 200 || data.data) {
             saveAuth(data.data);
             if (onLoginSuccess) onLoginSuccess();
-            redirectByRole(data.data.role);
+            redirectByRole(data.data.user.role);
           } else {
             setErrorMessage(data.message || "Đăng nhập bằng Google thất bại trên Backend.");
           }

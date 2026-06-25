@@ -1,5 +1,9 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import {
+  Bell,
+  CircleHelp
+} from "lucide-react";
 import "./SiteHeader.css";
 
 export default function SiteHeader() {
@@ -57,14 +61,14 @@ export default function SiteHeader() {
         
         {/* ICON NOTIFICATION (THÔNG BÁO) */}
         <div className="icon-popover-container" ref={notificationRef}>
-          <button 
+          <button
             className={`action-btn-circle ${isOpenNotification ? "btn-active" : ""}`}
             onClick={() => {
               setIsOpenNotification(!isOpenNotification);
-              setIsOpenSupport(false); // Đóng support nếu đang mở
+              setIsOpenSupport(false);
             }}
           >
-            🔔
+            <Bell size={18} strokeWidth={2} />
             <span className="red-alert-dot"></span>
           </button>
 
@@ -88,14 +92,14 @@ export default function SiteHeader() {
 
         {/* ICON SUPPORT (TRỢ GIÚP) */}
         <div className="icon-popover-container" ref={supportRef}>
-          <button 
+          <button
             className={`action-btn-circle ${isOpenSupport ? "btn-active" : ""}`}
             onClick={() => {
               setIsOpenSupport(!isOpenSupport);
-              setIsOpenNotification(false); // Đóng notification nếu đang mở
+              setIsOpenNotification(false);
             }}
           >
-            ❓
+            <CircleHelp size={18} strokeWidth={2} />
           </button>
 
           {isOpenSupport && (
