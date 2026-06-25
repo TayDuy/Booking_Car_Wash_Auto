@@ -14,6 +14,9 @@ public interface RefreshTokenRepository extends JpaRepository<RefreshToken, Inte
     //Tìm kiếm Refresh Token trong Database dựa vào chuỗi token (dùng khi client gửi yêu cầu refresh)
     Optional<RefreshToken> findByToken(String token);
 
+    // Tìm refresh token theo user (để cập nhật token hiện có)
+    Optional<RefreshToken> findByUser(User user);
+
     //xóa tất cả token của một user(dùng khi user đăng xuất hoặc đổi mật khẩu )
     int deleteByUser(User user);
 
