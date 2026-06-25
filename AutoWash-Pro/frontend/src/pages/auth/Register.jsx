@@ -1,9 +1,18 @@
 import "./Register.css";
-import { useState } from "react";
-import { Link } from "react-router-dom";
-import { register, sendOtp, verifyOtp } from "../../api/authService";
+import { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import {
+  register,
+  sendOtp,
+  verifyOtp,
+  loginWithGoogle,
+  saveAuth,
+} from "../../api/authService";
+import { supabase } from "../../api/supabaseClient";
 
 function Register() {
+  const navigate = useNavigate();
+  
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
@@ -15,6 +24,18 @@ function Register() {
   const [otp, setOtp] = useState("");
   const [otpSent, setOtpSent] = useState(false);
   const [otpVerified, setOtpVerified] = useState(false);
+
+  function redirectByRole(role) {
+    const normalizedRole = role?.toLowerCase();
+
+    if (normalizedRole === "admin") {
+      navigate("/admin");
+    } else if (normalizedRole === "employee") {
+      navigate("/employee");
+    } else {
+      navigate("/");
+    }
+  }
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -73,6 +94,53 @@ function Register() {
       setErrorMessage("OTP không đúng hoặc đã hết hạn.");
     }
   }
+
+  async function handleGoogleRegister() {
+    try {
+      await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: window.location.origin + "/register",
+        },
+      });
+    } catch (error) {
+      console.log("Google register error:", error);
+      setErrorMessage("Đăng ký bằng Google thất bại.");
+    }
+  }
+
+  useEffect(() => {
+    console.log("Register page loaded, checking Google redirect...");
+
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (event === "SIGNED_IN" && session) {
+          try {
+            const supabaseToken = session.access_token;
+            const data = await loginWithGoogle(supabaseToken);
+
+            if (data.status === 200 || data.data) {
+              saveAuth(data.data);
+              redirectByRole(data.data.user.role);
+            } else {
+              setErrorMessage(
+                data.message || "Đăng ký bằng Google thất bại trên Backend."
+              );
+            }
+          } catch (error) {
+            console.error("Lỗi khi gửi Google token về Backend:", error);
+            setErrorMessage(
+              "Đăng ký bằng Google thất bại. Không thể xác thực với máy chủ."
+            );
+          }
+        }
+      }
+    );
+
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
+  }, []);
 
   return (
     <div className="register-page">
@@ -224,7 +292,7 @@ function Register() {
                 <span></span>
               </div>
 
-              <button type="button" className="register-google-btn">
+              <button type="button" className="register-google-btn" onClick={handleGoogleRegister}>
                 <img
                   src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
                   alt="Google"
