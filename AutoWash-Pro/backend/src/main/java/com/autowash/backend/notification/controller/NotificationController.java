@@ -185,7 +185,7 @@ public class NotificationController {
      * @throws EntityNotFoundException nếu email không tồn tại trong DB
      */
     private Integer resolveUserId(UserDetails currentUser) {
-        return userRepository.findByEmail(currentUser.getUsername())
+        return userRepository.findFirstByEmail(currentUser.getUsername())
                 .orElseThrow(() -> new EntityNotFoundException(
                         "User không tồn tại: " + currentUser.getUsername()))
                 .getId();

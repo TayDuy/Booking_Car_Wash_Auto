@@ -48,7 +48,6 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
                     .expriryDate(Instant.now().plusMillis(refreshTokenDurationMs))
                     .build();
         }
-        
         return refreshTokenRepository.save(refreshToken);
     }
 
