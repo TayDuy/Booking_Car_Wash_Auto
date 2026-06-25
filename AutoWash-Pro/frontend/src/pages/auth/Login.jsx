@@ -19,9 +19,11 @@ function Login({ onLoginSuccess }) {
     if (normalizedRole === "admin") {
       navigate("/admin");
     } else if (normalizedRole === "employee") {
+      console.log("GO EMPLOYEE");
       navigate("/employee");
     } else {
-      navigate("/");
+      console.log("GO BOOKING");
+      navigate("/booking");
     }
   }
 
