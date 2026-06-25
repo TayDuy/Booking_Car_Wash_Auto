@@ -1,39 +1,32 @@
 import { useState } from "react";
-import Login from "./pages/auth/Login";
-import{
-  getRole,
-  getUsername,
-  isLoggedIn,
-  logout,
-} from "./api/authService";
+import { useNavigate } from "react-router-dom";
+import { getRole, getUsername, isLoggedIn, logout } from "./api/authService";
 
-function App(){
+function App() {
   const [loggedIn, setLoggedIn] = useState(isLoggedIn());
-  
-  function handleLoginSuccess(){
-    setLoggedIn(true);
-  }
-  function handleLogout(){
+  const navigate = useNavigate();
+
+  function handleLogout() {
     logout();
     setLoggedIn(false);
+    navigate("/login");
   }
-  return(
-    <div className="container mt-5">
 
-    {loggedIn ? (
-      <div>
-        <h3> Đăng nhập thành công</h3>
-        <p>username: {getUsername()}</p>
+  if (!loggedIn) {
+    navigate("/login");
+    return null;
+  }
+
+  return (
+      <div className="container mt-5">
+        <h3>Đăng nhập thành công</h3>
+        <p>Username: {getUsername()}</p>
         <p>Role: {getRole()}</p>
-
         <button className="btn btn-danger" onClick={handleLogout}>
           Logout
         </button>
       </div>
-    ) : (
-      <Login onLoginSuccess={handleLoginSuccess} />
-    )}    
-    </div>
   );
 }
+
 export default App;
