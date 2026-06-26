@@ -9,13 +9,13 @@ import {
   MdDirectionsCar,
   MdAirportShuttle
 } from "react-icons/md";
-import { createBooking } from "../../api/bookingService";
 import SiteHeader from "./SiteHeader";
 import { useNavigate } from "react-router-dom";
 import { getActiveServices } from "../../api/servicePackageService";
 import { getBranches } from "../../api/branchService";
 import { getAvailableSlots } from "../../api/timeSlotService";
 import vehicleApi from "../../api/vehicleApi";
+import bookingApi from "../../api/bookingApi";
 
 // KHAI BÁO DỮ LIỆU MẪU RA NGOÀI COMPONENT ĐỂ TRÁNH LỖI REDECLARED IDENTIFIER
 const DEFAULT_SERVICES = [
@@ -125,12 +125,9 @@ export default function BookingPage() {
 
     const loadVehicles = async () => {
     try {
-      const response = await vehicleApi.list();
+      const res = await vehicleApi.list();
 
-      const vehicles =
-        response.data?.data ||
-        response.data ||
-        [];
+      setVehicles(res.data);
       if (vehicles.length > 0) {
         setVehicles(vehicles);
       }
@@ -226,33 +223,64 @@ export default function BookingPage() {
   }
 
   const handleBooking = async () => {
-    if (!selectedService) {
-      alert("Vui lòng chọn gói dịch vụ!");
-      return;
-    }
-    if (!agreeTerms) {
-      alert("Vui lòng xác nhận thông tin dịch vụ và điều khoản dịch vụ để tiếp tục!");
-      return;
-    }
-    try {
-      const bookingData = {
-        customerId: localStorage.getItem("customerId"),
-        vehicleId: selectedVehicleId || null,
-        vehicleType: vehicleType,
-        licensePlate: licensePlate,
-        slotId: selectedTime,
-        branchId: selectedBranch,
-        paymentMethod: paymentMethod,
-        note,
-        details: [{ serviceId: selectedService, quantity: 1 }]
-      };
 
-      await createBooking(bookingData);
-      alert("Đặt lịch thành công!");
-    } catch (error) {
-      alert(error.response?.data?.message || "Đặt lịch thất bại");
+    if(!selectedVehicleId){
+        alert("Vui lòng chọn xe");
+        return;
     }
-  };
+
+    if(!selectedService){
+        alert("Vui lòng chọn dịch vụ");
+        return;
+    }
+
+    if(!selectedTime){
+        alert("Vui lòng chọn khung giờ");
+        return;
+    }
+
+    if(!agreeTerms){
+        alert("Vui lòng xác nhận điều khoản");
+        return;
+    }
+
+    try{
+
+        const bookingData={
+
+            customerId:Number(localStorage.getItem("customerId")),
+            vehicleId:Number(selectedVehicleId),
+            slotId:Number(selectedTime),
+            branchId:Number(selectedBranch),
+            note,
+            details:[
+                {
+                    serviceId:Number(selectedService),
+                    quantity:1
+                }
+            ]
+
+        };
+
+        const res=await bookingApi.create(bookingData);
+
+        alert(res.data.message);
+
+        navigate("/my-bookings");
+
+    }
+    catch(err){
+
+        console.log(err);
+
+        alert(
+            err.response?.data?.message ||
+            "Đặt lịch thất bại"
+        );
+
+    }
+
+}
 
   return (
     <div className="booking-page">
