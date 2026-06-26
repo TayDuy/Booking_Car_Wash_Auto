@@ -16,6 +16,7 @@ import com.autowash.backend.customer.entity.Customer;
 import com.autowash.backend.customer.repository.CustomerRepository;
 import com.autowash.backend.employee.entity.Employee;
 import com.autowash.backend.employee.repository.EmployeeRepository;
+import com.autowash.backend.promotion.entity.Promotion;
 import com.autowash.backend.servicepackage.entity.ServicePackage;
 import com.autowash.backend.servicepackage.repository.ServicePackageRepository;
 import com.autowash.backend.timeslot.entity.TimeSlot;
@@ -84,39 +85,36 @@ public class BookingServiceImpl implements BookingService {
     @Transactional
     public BookingCreateResponseDTO createBooking(BookingCreateRequestDTO request) {
 
-        // Validate các entity liên quan
-        // FIX: RuntimeException -> ResourceNotFoundException (404 thay vì 500)
-        // FIX: ResourceNotFoundException nhận 3 tham số (resourceName, fieldName, fieldValue)
-        // → tự build message dạng "Customer not found with id: '5'"
         Customer customer = customerRepository.findById(request.getCustomerId())
                 .orElseThrow(() -> new ResourceNotFoundException("Customer", "id", request.getCustomerId()));
 
-        Vehicle vehicle = vehicleRepository.findById(request.getVehicleId())
-                .orElseThrow(() -> new ResourceNotFoundException("Vehicle", "id", request.getVehicleId()));
+        // ← Thay vehicleRepository.findById bằng logic check biển số
+        Vehicle vehicle = vehicleRepository.findByLicensePlate(request.getLicensePlate())
+                .orElseGet(() -> {
+                    // Sửa trong BookingServiceImpl.java chỗ tạo xe mới:
+                    Vehicle newVehicle = Vehicle.builder()
+                            .customer(customer)
+                            .licensePlate(request.getLicensePlate())
+                            .brand(request.getBrand())
+                            .model(request.getModel())   // ← THÊM dòng này
+                            .vehicleType(resolveVehicleType(request.getVehicleType()))
+                            .isActive(true)
+                            .build();
+                    return vehicleRepository.save(newVehicle);
+                });
 
-        // FIX: Dùng findByIdForUpdate thay vì findById
-        // → DB lock hàng time_slot ngay lúc SELECT, tránh 2 request đồng thời
-        //   cùng đọc slot còn chỗ rồi cùng đặt thành công (overbooking)
         TimeSlot slot = timeSlotRepository.findByIdForUpdate(request.getSlotId())
                 .orElseThrow(() -> new ResourceNotFoundException("TimeSlot", "id", request.getSlotId()));
 
-        // Kiểm tra còn chỗ — lúc này slot đã được lock nên kết quả chính xác
-        // FIX: RuntimeException -> BusinessException(CONFLICT, ...)
-        // → Đây là lỗi nghiệp vụ (hết chỗ), không phải lỗi hệ thống,
-        //   nên trả 409 Conflict kèm message để frontend hiển thị cho user,
-        //   thay vì 500 + log "Unhandled exception" gây nhiễu monitoring.
         if (!slot.hasCapacity()) {
-            // FIX: BusinessException nhận (message, httpStatus) - đúng thứ tự tham số
             throw new BusinessException("Slot đã đầy, vui lòng chọn khung giờ khác", HttpStatus.CONFLICT);
         }
 
         Branch branch = branchRepository.findById(request.getBranchId())
                 .orElseThrow(() -> new ResourceNotFoundException("Branch", "id", request.getBranchId()));
 
-        // Build danh sách BookingDetail từ request
         List<BookingDetail> details = new ArrayList<>();
         for (BookingCreateRequestDTO.BookingDetailItem item : request.getDetails()) {
-            // FIX: RuntimeException -> ResourceNotFoundException (404 thay vì 500)
             ServicePackage servicePackage = servicePackageRepository.findById(item.getServiceId())
                     .orElseThrow(() -> new ResourceNotFoundException("ServicePackage", "id", item.getServiceId()));
 
@@ -131,14 +129,9 @@ public class BookingServiceImpl implements BookingService {
                     .build());
         }
 
-        // FIX: Bỏ try-catch ObjectOptimisticLockingFailureException
-        // → Không cần nữa vì PESSIMISTIC_WRITE đã ngăn race condition từ đầu.
-        //   Chỉ cần tăng counter và save bình thường.
-        //   incrementBookings() trong entity tự chuyển status → full khi đủ chỗ.
         slot.incrementBookings();
         timeSlotRepository.save(slot);
 
-        // Tạo và lưu Booking
         Booking booking = Booking.builder()
                 .customer(customer)
                 .vehicle(vehicle)
@@ -153,14 +146,11 @@ public class BookingServiceImpl implements BookingService {
                 .build();
 
         Booking savedBooking = bookingRepository.save(booking);
-
-        // Gán booking vào từng detail rồi lưu
         details.forEach(d -> d.setBooking(savedBooking));
         bookingDetailRepository.saveAll(details);
 
         return bookingMapper.toCreateResponse(savedBooking, details);
     }
-
     // ── READ ─────────────────────────────────────────────────────────────────
 
     /** Lấy chi tiết một booking theo ID. */
@@ -290,6 +280,15 @@ public class BookingServiceImpl implements BookingService {
             case 3 -> 3;
             case 2 -> 2;
             default -> 1;
+        };
+    }
+
+    // Sửa lại đúng — dùng Vehicle.VehicleType không phải Promotion.VehicleType
+    private Vehicle.VehicleType resolveVehicleType(String vehicleType) {
+        return switch (vehicleType) {
+            case "4_seats" -> Vehicle.VehicleType.car;
+            case "7_seats" -> Vehicle.VehicleType.suv;
+            default -> Vehicle.VehicleType.car;
         };
     }
 }

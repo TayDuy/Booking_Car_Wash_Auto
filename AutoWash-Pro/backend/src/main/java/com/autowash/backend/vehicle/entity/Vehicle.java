@@ -27,7 +27,9 @@ import java.time.LocalDateTime;
 public class Vehicle {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "vehicle_seq")
+    @SequenceGenerator(name = "vehicle_seq", sequenceName = "vehicle_vehicle_id_seq", allocationSize = 1)
+    @Column(name = "vehicle_id")
     @EqualsAndHashCode.Include
     private Integer vehicleId;
 
@@ -47,9 +49,8 @@ public class Vehicle {
     @Column(name = "brand", nullable = false, length = 50)
     private String brand;
 
-    @NotBlank(message = "Dòng xe không được để trống")
     @Size(max = 50)
-    @Column(name = "model", nullable = false, length = 50)
+    @Column(name = "model", nullable = true, length = 50)
     private String model;
 
     @NotNull(message = "Loại xe không được null")
