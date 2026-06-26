@@ -21,7 +21,7 @@ function Login({ onLoginSuccess }) {
     } else if (normalizedRole === "employee") {
       navigate("/employee");
     } else {
-      navigate("/");
+      navigate("/home");
     }
   }
 
