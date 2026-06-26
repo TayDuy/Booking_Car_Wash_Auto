@@ -4,12 +4,11 @@ import {
   BrowserRouter,
   Routes,
   Route,
+  Navigate
 } from "react-router-dom";
 
 import "bootstrap/dist/css/bootstrap.min.css";
 import "./index.css";
-
-import App from "./App";
 import Login from "./pages/auth/Login";
 import Register from "./pages/auth/Register";
 import BookingPage from "./pages/auth/Booking";
@@ -24,31 +23,23 @@ ReactDOM.createRoot(
   <React.StrictMode>
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<App />} />
+
+        <Route path="/" element={<Navigate to="/login" />} />
+
         <Route path="/login" element={<Login />} />
-        <Route path="/home" element={<Home />}/>
-        <Route
-          path="/register"
-          element={<Register />}
-        />
-        <Route
-          path="/booking"
-          element={<BookingPage />}
-        />
-        <Route
-          path="/notifications"
-          element={<NotificationPage />}
-        />
 
-        <Route
-          path="/profile"
-          element={<ProfilePage />}
-        />
+        <Route path="/home" element={<Home />} />
 
-        <Route
-          path="/support"
-          element={<SupportPage />}
-        />
+        <Route path="/register" element={<Register />} />
+
+        <Route path="/booking" element={<BookingPage />} />
+
+        <Route path="/notifications" element={<NotificationPage />} />
+
+        <Route path="/profile" element={<ProfilePage />} />
+
+        <Route path="/support" element={<SupportPage />} />
+
       </Routes>
     </BrowserRouter>
   </React.StrictMode>

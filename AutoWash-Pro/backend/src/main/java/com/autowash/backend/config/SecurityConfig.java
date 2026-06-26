@@ -30,7 +30,7 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
     public SecurityConfig(CustomUserDetailsService userDetailsService,
-                          JwtAuthenticationFilter jwtAuthenticationFilter) {
+            JwtAuthenticationFilter jwtAuthenticationFilter) {
         this.userDetailsService = userDetailsService;
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
     }
@@ -62,8 +62,7 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
 
                 // Stateless session — không lưu session phía server
-                .sessionManagement(session ->
-                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
                 // Xử lý lỗi 401 / 403
                 .exceptionHandling(ex -> ex
@@ -75,9 +74,9 @@ public class SecurityConfig {
                         .accessDeniedHandler((request, response, accessDeniedException) -> {
                             response.setStatus(HttpServletResponse.SC_FORBIDDEN);
                             response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-                            response.getWriter().write("{\"status\": 403, \"message\": \"Bạn không có quyền truy cập\"}");
-                        })
-                )
+                            response.getWriter()
+                                    .write("{\"status\": 403, \"message\": \"Bạn không có quyền truy cập\"}");
+                        }))
 
                 // Phân quyền endpoint
                 .authorizeHttpRequests(auth -> auth
@@ -89,8 +88,13 @@ public class SecurityConfig {
                                 "/v3/api-docs/**",
                                 "/api/v1/auth/send-otp",
                                 "/api/v1/auth/verify-otp",
-                                "/api/v1/auth/google"
-                        ).permitAll()
+                                "/api/v1/auth/google",
+                                "/api/v1/branches/**",
+
+                                "/api/v1/service-packages/**",
+
+                                "/api/v1/time-slots/available")
+                        .permitAll()
 
                         // Admin only
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
@@ -99,8 +103,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/staff/**").hasAnyRole("STAFF", "ADMIN")
 
                         // Authenticated users
-                        .anyRequest().authenticated()
-                )
+                        .anyRequest().authenticated())
 
                 .authenticationProvider(authenticationProvider())
                 .addFilterBefore(jwtAuthenticationFilter,

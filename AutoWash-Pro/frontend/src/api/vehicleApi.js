@@ -1,17 +1,16 @@
 import axiosClient from "./axiosClient";
 
-const vehicleApi = {
-  list: (params) =>
-    axiosClient.get("/v1/vehicles", { params }),
+const vehicleApi={
 
-  get: (id) =>
-    axiosClient.get(`/v1/vehicles/${id}`),
+    list:()=>axiosClient.get("/vehicles"),
 
-  create: (payload) =>
-    axiosClient.post("/v1/vehicles", payload),
+    get:(id)=>axiosClient.get(`/vehicles/${id}`),
 
-  update: (id, payload) =>
-    axiosClient.put(`/v1/vehicles/${id}`, payload),
-};
+    create:(data)=>axiosClient.post("/vehicles",data),
+
+    update:(id,data)=>axiosClient.put(`/vehicles/${id}`,data),
+
+    delete:(id)=>axiosClient.delete(`/vehicles/${id}`)
+}
 
 export default vehicleApi;
