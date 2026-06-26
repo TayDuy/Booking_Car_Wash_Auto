@@ -15,6 +15,8 @@ public interface VehicleRepository extends JpaRepository<Vehicle, Integer> {
 
     List<Vehicle> findByCustomer_CustomerIdAndIsActiveTrue(Integer customerId);
 
+    List<Vehicle> findByCustomer_CustomerId(Integer customerId);
+
     List<Vehicle> findByCustomer_CustomerIdAndVehicleTypeAndIsActiveTrue(Integer customerId, VehicleType vehicleType);
 
     boolean existsByLicensePlate(String licensePlate);
