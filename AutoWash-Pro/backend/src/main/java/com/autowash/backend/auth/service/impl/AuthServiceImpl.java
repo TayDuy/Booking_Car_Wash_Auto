@@ -227,20 +227,25 @@ public class AuthServiceImpl implements AuthService {
 
     private LoginResponseDTO buildLoginResponse(String token, User user) {
         String fullName = "Unknown";
+        Integer customerId = null;
+
         if ("customer".equalsIgnoreCase(user.getRole())) {
-            fullName = customerRepository.findByUserId(user.getId())
-                    .map(Customer::getFullName)
-                    .orElse("Khách hàng");
+            Customer customer = customerRepository.findByUser_Id(user.getId()).orElse(null);
+            if (customer != null) {
+                fullName = customer.getFullName();
+                customerId = customer.getCustomerId();
+            }
         }
-        //tạo ra cái vé VIP (Refresh token)
+
         String refreshToken = refreshTokenService.createRefreshToken(user.getId()).getToken();
 
-        LoginResponseDTO.UserDto userDto=LoginResponseDTO.UserDto.builder()
+        LoginResponseDTO.UserDto userDto = LoginResponseDTO.UserDto.builder()
                 .userId(user.getId())
                 .username(user.getUsername())
                 .email(user.getEmail())
                 .fullName(fullName)
                 .role(user.getRole().toUpperCase())
+                .customerId(customerId)
                 .build();
 
         return LoginResponseDTO.builder()
