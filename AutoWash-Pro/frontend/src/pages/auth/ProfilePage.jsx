@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import customerApi from '../../api/customerApi';
 import vehicleApi from '../../api/vehicleApi';
 import bookingApi from '../../api/bookingApi';
+import { logout } from '../../api/authService';
 
 const ProfilePage = () => {
   const navigate = useNavigate();
@@ -101,6 +102,11 @@ const ProfilePage = () => {
     if (element) {
       element.scrollIntoView({ behavior: 'smooth' });
     }
+  };
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
   };
 
   const handleSave = async () => {
@@ -270,6 +276,10 @@ const ProfilePage = () => {
           <a className="nav-link active" href="#personal-info" onClick={(e) => { e.preventDefault(); handleScrollTo('personal-info'); }}>
             <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>settings</span>
             Cài đặt
+          </a>
+          <a className="nav-link" href="#logout" onClick={(e) => { e.preventDefault(); handleLogout(); }}>
+            <span className="material-symbols-outlined">logout</span>
+            Đăng xuất
           </a>
         </nav>
 

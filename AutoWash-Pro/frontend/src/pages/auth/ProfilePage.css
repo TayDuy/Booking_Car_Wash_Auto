@@ -545,7 +545,8 @@ a { text-decoration: none; }
   font-size: 14px;
   font-weight: 500;
   color: var(--on-surface-variant);
-  background-color: var(--surface-container-low);
+  background-color: var(--surface-container-lowest);
+  border-bottom: 1px solid rgba(195, 198, 214, 0.15);
 }
 
 .history-table td {
