@@ -1,7 +1,7 @@
 import "./Login.css";
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { login, saveAuth, loginWithGoogle } from "../../api/authService";
+import { login, saveAuth, loginWithGoogle, isLoggedIn, getRole } from "../../api/authService";
 import { supabase } from "../../api/supabaseClient";
 
 function Login({ onLoginSuccess }) {
@@ -9,6 +9,7 @@ function Login({ onLoginSuccess }) {
   const [password, setPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   function redirectByRole(role) {
@@ -29,9 +30,12 @@ function Login({ onLoginSuccess }) {
 
   async function handleSubmit(e) {
     e.preventDefault();
+    if (loading) return;
+    setErrorMessage("");
+    setLoading(true);
     try {
       const data = await login(username, password);
-      console.log("LOGIN RESPONSE:", JSON.stringify(data)); // ← thêm dòng này
+      console.log("LOGIN RESPONSE:", JSON.stringify(data));
       if (data.status === 200 || data.data) {
         saveAuth(data.data);
         if (onLoginSuccess) {
@@ -39,15 +43,19 @@ function Login({ onLoginSuccess }) {
         }
         redirectByRole(data.data.user.role);
       } else {
-        setErrorMessage(data.message);
+        setErrorMessage(data.message || "Đăng nhập thất bại. Kiểm tra lại username/password.");
       }
-    } catch {
+    } catch (err) {
+      console.error(err);
       setErrorMessage("Đăng nhập thất bại. Kiểm tra lại username/password.");
+    } finally {
+      setLoading(false);
     }
   }
 
   async function handleGoogleLogin() {
     try {
+      sessionStorage.setItem("isGoogleLoginClick", "true");
       await supabase.auth.signInWithOAuth({ 
         provider: 'google',
         options: {
@@ -61,9 +69,29 @@ function Login({ onLoginSuccess }) {
   }
 
   useEffect(() => {
+    if (isLoggedIn()) {
+      redirectByRole(getRole());
+      return;
+    }
+
     console.log("Login page loaded, checking Google redirect...");
     const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session) {
+        if (isLoggedIn()) return;
+
+        const isGoogleClick = sessionStorage.getItem("isGoogleLoginClick") === "true";
+        const hasAuthParams = window.location.hash.includes("access_token=") || window.location.search.includes("code=");
+
+        if (!isGoogleClick && !hasAuthParams) {
+          console.log("Stale Supabase session detected, signing out...");
+          await supabase.auth.signOut();
+          return;
+        }
+
+        sessionStorage.removeItem("isGoogleLoginClick");
+        setLoading(true);
+        setErrorMessage("");
+
         try {
           const supabaseToken = session.access_token;
           const data = await loginWithGoogle(supabaseToken);
@@ -78,6 +106,8 @@ function Login({ onLoginSuccess }) {
         } catch (error) {
           console.error("Lỗi khi gửi token về Backend:", error);
           setErrorMessage("Đăng nhập thất bại. Không thể xác thực với máy chủ.");
+        } finally {
+          setLoading(false);
         }
       }
     });
@@ -156,8 +186,8 @@ function Login({ onLoginSuccess }) {
               </a>
             </div>
 
-            <button type="submit" className="login-btn">
-              🚀 Sign In
+            <button type="submit" className="login-btn" disabled={loading}>
+              {loading ? "⌛ Đang đăng nhập..." : "🚀 Sign In"}
             </button>
             <div className="login-divider">            
               <div className="divider-line"></div>

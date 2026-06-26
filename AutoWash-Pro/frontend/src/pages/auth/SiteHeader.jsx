@@ -54,6 +54,12 @@ export default function SiteHeader() {
           Đặt lịch
         </button>
         <button>Ưu đãi</button>
+        <button 
+          className={location.pathname === "/bookings" ? "active-link" : ""} 
+          onClick={() => navigate("/bookings")}
+        >
+          Lịch sử
+        </button>
       </nav>
 
       {/* RIGHT ACTIONS */}

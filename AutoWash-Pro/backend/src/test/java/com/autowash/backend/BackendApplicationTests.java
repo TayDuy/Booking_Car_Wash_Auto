@@ -256,5 +256,24 @@ class BackendApplicationTests {
         });
         System.out.println("=== END PASSWORD UPDATE ===");
     }
+
+    @Test
+    void hashAllPlaintextPasswords() {
+        System.out.println("=== START HASHING ALL PLAINTEXT PASSWORDS ===");
+        java.util.List<User> users = userRepository.findAll();
+        int count = 0;
+        for (User user : users) {
+            String pass = user.getPassword();
+            if (pass != null && !pass.startsWith("$2a$") && !pass.startsWith("$2b$") && !pass.startsWith("$2y$")) {
+                String encoded = passwordEncoder.encode(pass);
+                user.setPassword(encoded);
+                userRepository.save(user);
+                System.out.println("Hashed password for user: " + user.getUsername() + " (Email: " + user.getEmail() + ")");
+                count++;
+            }
+        }
+        System.out.println("=== FINISHED. HASHED " + count + " PLAINTEXT PASSWORDS ===");
+    }
 }
+
 

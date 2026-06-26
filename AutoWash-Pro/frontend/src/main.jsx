@@ -19,6 +19,7 @@ import SupportPage from "./pages/auth/SupportPage";
 import HelpCenter from "./pages/helpcenter/Helpcenter";
 import CustomerNotificationPage from "./pages/customer/CustomerNotificationPage";
 import AdminNotificationPage from "./pages/admin/AdminNotificationPage";
+import BookingHistory from "./pages/auth/BookingHistory";
 
 ReactDOM.createRoot(
     document.getElementById("root")
@@ -32,6 +33,7 @@ ReactDOM.createRoot(
           <Route path="/booking"       element={<BookingPage />} />
           <Route path="/notifications" element={<NotificationPage />} />
           <Route path="/profile"       element={<ProfilePage />} />
+          <Route path="/bookings"      element={<BookingHistory />} />
           <Route path="/support"       element={<HelpCenter />} />
           <Route path="/support-old"   element={<SupportPage />} />
           <Route path="/customer/notifications" element={<CustomerNotificationPage />} />
