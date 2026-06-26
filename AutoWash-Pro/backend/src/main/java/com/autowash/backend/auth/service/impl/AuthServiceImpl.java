@@ -60,7 +60,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public LoginResponseDTO login(LoginRequestDTO request) {
         // Xác thực email + password qua Spring Security
         Authentication authentication = authenticationManager.authenticate(

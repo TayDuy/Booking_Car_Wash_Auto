@@ -274,6 +274,67 @@ class BackendApplicationTests {
         }
         System.out.println("=== FINISHED. HASHED " + count + " PLAINTEXT PASSWORDS ===");
     }
+
+    @Test
+    void testCheckHungdh() {
+        userRepository.findByUsernameOrEmail("hungdh", "hungdh@gmail.com").ifPresent(user -> {
+            System.out.println("=== USER FOUND ===");
+            System.out.println("Username: " + user.getUsername());
+            System.out.println("Email: " + user.getEmail());
+            System.out.println("Password Hash: " + user.getPassword());
+            System.out.println("Length: " + user.getPassword().length());
+            System.out.println("Matches '914411': " + passwordEncoder.matches("914411", user.getPassword()));
+            System.out.println("Matches '123456': " + passwordEncoder.matches("123456", user.getPassword()));
+        });
+    }
+
+    @Autowired
+    private com.autowash.backend.auth.service.AuthService authService;
+
+    @Autowired
+    private com.autowash.backend.auth.service.RefreshTokenService refreshTokenService;
+
+    @Test
+    void testRefreshTokenFlow() {
+        try {
+            // Lay 1 user
+            User user = userRepository.findAll().stream().findFirst().orElseThrow();
+            
+            // Tao refresh token
+            com.autowash.backend.auth.entity.RefreshToken rt = refreshTokenService.createRefreshToken(user.getId());
+            System.out.println("=== REFRESH TOKEN CREATED ===");
+            System.out.println("Token: " + rt.getToken());
+            System.out.println("Expiry Date: " + rt.getExpriryDate());
+            
+            // Thu verify
+            com.autowash.backend.auth.entity.RefreshToken verified = refreshTokenService.verifyExpiration(rt);
+            System.out.println("=== REFRESH TOKEN VERIFIED ===");
+            System.out.println("Verified Expiry: " + verified.getExpriryDate());
+            
+            // Thu find
+            com.autowash.backend.auth.entity.RefreshToken found = refreshTokenService.findByToken(rt.getToken());
+            System.out.println("=== REFRESH TOKEN FOUND ===");
+            System.out.println("Found ID: " + found.getId());
+        } catch (Exception e) {
+            e.printStackTrace();
+            org.junit.jupiter.api.Assertions.fail(e.getMessage());
+        }
+    }
+
+    @Test
+    void testLoginHungdh() {
+        try {
+            com.autowash.backend.auth.dto.LoginRequestDTO req = new com.autowash.backend.auth.dto.LoginRequestDTO();
+            req.setUsername("hungdh");
+            req.setPassword("914411");
+            com.autowash.backend.auth.dto.LoginResponseDTO resp = authService.login(req);
+            System.out.println("=== LOGIN SUCCESSFUL ===");
+            System.out.println("Token: " + resp.getAccessToken());
+        } catch (Exception e) {
+            System.out.println("=== LOGIN FAILED ===");
+            e.printStackTrace();
+        }
+    }
 }
 
 
