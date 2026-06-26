@@ -15,9 +15,7 @@ import { useNavigate } from "react-router-dom";
 import { getActiveServices } from "../../api/servicePackageService";
 import { getBranches } from "../../api/branchService";
 import { getAvailableSlots } from "../../api/timeSlotService";
-import vehicleApi from "../../api/vehicleApi";
 
-// KHAI BÁO DỮ LIỆU MẪU RA NGOÀI COMPONENT ĐỂ TRÁNH LỖI REDECLARED IDENTIFIER
 const DEFAULT_SERVICES = [
   {
     serviceId: 1,
@@ -64,20 +62,16 @@ export default function BookingPage() {
   const [services, setServices] = useState([]);
   const [branches, setBranches] = useState([]);
   const [slots, setSlots] = useState([]);
-  const [vehicles, setVehicles] = useState([]);
 
   const [selectedBranch, setSelectedBranch] = useState(null);
-  const [selectedVehicleId, setSelectedVehicleId] = useState("");
   const [vehicleType, setVehicleType] = useState("4_seats");
   const [note, setNote] = useState("");
-
   const [selectedService, setSelectedService] = useState(null);
   const [selectedTime, setSelectedTime] = useState(null);
-
   const [licensePlate, setLicensePlate] = useState("");
+  const [brand, setBrand] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("online");
   const [agreeTerms, setAgreeTerms] = useState(false);
-
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());
 
@@ -122,35 +116,15 @@ export default function BookingPage() {
       }
     };
     loadBranches();
-
-    const loadVehicles = async () => {
-      try {
-        const response = await vehicleApi.list();
-
-        const vehicles =
-            response.data?.data ||
-            response.data ||
-            [];
-        if (vehicles.length > 0) {
-          setVehicles(vehicles);
-        }
-      } catch (err) {
-        console.log(err);
-      }
-    };
-    loadVehicles();
   }, []);
 
   useEffect(() => {
-    // Bỏ dòng "if (!selectedBranch) return;" cũ đi
     const loadSlots = async () => {
-      // NẾU CHƯA CÓ CHI NHÁNH: Cứ lấy dữ liệu mẫu hiển thị giao diện trước đã
       if (!selectedBranch) {
         setSlots(MOCK_SLOTS_DATA);
         setSelectedTime(MOCK_SLOTS_DATA[2].slotId);
         return;
       }
-
       try {
         const date = selectedDate.toISOString().split("T")[0];
         const res = await getAvailableSlots(selectedBranch, date);
@@ -168,32 +142,12 @@ export default function BookingPage() {
           setSelectedTime(MOCK_SLOTS_DATA[2].slotId);
         }
       } catch (err) {
-        console.log("Lỗi API slots, chuyển sang dùng mock data:", err);
         setSlots(MOCK_SLOTS_DATA);
         setSelectedTime(MOCK_SLOTS_DATA[2].slotId);
       }
     };
     loadSlots();
   }, [selectedBranch, selectedDate]);
-
-  const handleVehicleChange = (vehicleId) => {
-    setSelectedVehicleId(vehicleId);
-
-    const selectedVehicle =
-        vehicles.find(
-            v => String(v.vehicleId) === String(vehicleId)
-        );
-
-    if(selectedVehicle){
-      setLicensePlate(
-          selectedVehicle.licensePlate || ""
-      );
-
-      setVehicleType(
-          selectedVehicle.vehicleType || "4_seats"
-      );
-    }
-  };
 
   const selectedServiceData = services.find(s => s.serviceId === selectedService);
   const selectedSlotData = slots.find(s => s.slotId === selectedTime);
@@ -217,47 +171,42 @@ export default function BookingPage() {
   const daysInMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
   const firstDay = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).getDay();
   const calendarDays = [];
-
-  for (let i = 0; i < firstDay; i++) {
-    calendarDays.push(null);
-  }
-  for (let i = 1; i <= daysInMonth; i++) {
-    calendarDays.push(i);
-  }
+  for (let i = 0; i < firstDay; i++) calendarDays.push(null);
+  for (let i = 1; i <= daysInMonth; i++) calendarDays.push(i);
 
   const handleBooking = async () => {
-    if (!selectedService) {
-      alert("Vui lòng chọn gói dịch vụ!");
-      return;
-    }
-    if (!agreeTerms) {
-      alert("Vui lòng xác nhận thông tin dịch vụ và điều khoản dịch vụ để tiếp tục!");
-      return;
-    }
+    if (!selectedService) { alert("Vui lòng chọn gói dịch vụ!"); return; }
+    if (!agreeTerms) { alert("Vui lòng xác nhận thông tin dịch vụ và điều khoản dịch vụ để tiếp tục!"); return; }
+
+    const customerIdRaw = localStorage.getItem("customerId");
+    if (!customerIdRaw) { alert("Không tìm thấy thông tin khách hàng. Vui lòng đăng nhập lại!"); return; }
+    if (!licensePlate.trim()) { alert("Vui lòng nhập biển số xe!"); return; }
+    if (!brand.trim()) { alert("Vui lòng nhập hãng xe!"); return; }
+    if (!selectedTime) { alert("Vui lòng chọn khung giờ!"); return; }
+    if (!selectedBranch) { alert("Vui lòng chọn chi nhánh!"); return; }
+
     try {
       const bookingData = {
-        customerId: localStorage.getItem("customerId"),
-        vehicleId: selectedVehicleId || null,
+        customerId: parseInt(customerIdRaw, 10),
+        licensePlate: licensePlate.trim(),
+        brand: brand.trim(),
         vehicleType: vehicleType,
-        licensePlate: licensePlate,
         slotId: selectedTime,
         branchId: selectedBranch,
-        paymentMethod: paymentMethod,
         note,
         details: [{ serviceId: selectedService, quantity: 1 }]
       };
-
       await createBooking(bookingData);
       alert("Đặt lịch thành công!");
+      navigate("/");
     } catch (error) {
-      alert(error.response?.data?.message || "Đặt lịch thất bại");
+      alert(error.response?.data?.message || "Đặt lịch thất bại. Vui lòng thử lại!");
     }
   };
 
   return (
       <div className="booking-page">
         <SiteHeader />
-
         <div className="booking-content-layout">
           <div className="booking-main-form">
             <div className="page-title-area">
@@ -271,9 +220,8 @@ export default function BookingPage() {
                 <FaDroplet className="section-icon" />
                 <h3>1. Chọn dịch vụ</h3>
               </div>
-
               <div className="services-card-grid">
-                {services.slice(0,3).map(service => (
+                {services.slice(0, 3).map(service => (
                     <div
                         key={service.serviceId}
                         className={`service-item-card ${selectedService === service.serviceId ? "active-card" : ""} ${service.isPopular ? "popular-card" : ""}`}
@@ -281,13 +229,7 @@ export default function BookingPage() {
                     >
                       {service.isPopular && <span className="popular-badge">PHỔ BIẾN</span>}
                       <div className="service-img-holder">
-                        <img
-                            src={
-                                service.imageUrl ||
-                                DEFAULT_SERVICES[0].imageUrl
-                            }
-                            alt={service.serviceName}
-                        />
+                        <img src={service.imageUrl || DEFAULT_SERVICES[0].imageUrl} alt={service.serviceName} />
                       </div>
                       <div className="service-details-box">
                         <div className="service-meta-header">
@@ -295,13 +237,11 @@ export default function BookingPage() {
                           <span className="service-price-label">{service.basePrice?.toLocaleString()}đ</span>
                         </div>
                         <p className="service-brief">{service.description}</p>
-
                         <ul className="service-feature-checklist">
                           {(service.features || []).map((feature, idx) => (
                               <li key={idx}><span>✓</span> {feature}</li>
                           ))}
                         </ul>
-
                         <div className="service-duration-info">
                           <span>⏱ {service.durationMinutes} phút</span>
                         </div>
@@ -317,26 +257,20 @@ export default function BookingPage() {
                 <FaCalendarDays className="section-icon" />
                 <h3>2. Chọn thời gian</h3>
               </div>
-
               <div className="scheduler-split-layout flex flex-col md:flex-row gap-gutter">
-                {/* BÊN TRÁI: LỊCH CHỌN NGÀY */}
                 <div className="calendar-card-widget flex-1 bg-surface rounded-lg border border-outline-variant/30 p-md">
                   <div className="calendar-control-header flex justify-between items-center mb-md">
                     <button type="button" className="calendar-arrow-btn p-1 hover:bg-surface-container-low rounded" onClick={previousMonth}>❮</button>
-                    <span className="calendar-month-title font-label-md text-label-md font-bold">Tháng {currentDate.getMonth() + 1}, {currentDate.getFullYear()}</span>
+                    <span className="calendar-month-title font-label-md text-label-md font-bold">
+                    Tháng {currentDate.getMonth() + 1}, {currentDate.getFullYear()}
+                  </span>
                     <button type="button" className="calendar-arrow-btn p-1 hover:bg-surface-container-low rounded" onClick={nextMonth}>❯</button>
                   </div>
-
                   <div className="calendar-weekdays-grid grid-cols-7 gap-1 text-center mb-2">
-                    <div className="text-xs font-medium text-on-surface-variant">CN</div>
-                    <div className="text-xs font-medium text-on-surface-variant">T2</div>
-                    <div className="text-xs font-medium text-on-surface-variant">T3</div>
-                    <div className="text-xs font-medium text-on-surface-variant">T4</div>
-                    <div className="text-xs font-medium text-on-surface-variant">T5</div>
-                    <div className="text-xs font-medium text-on-surface-variant">T6</div>
-                    <div className="text-xs font-medium text-on-surface-variant">T7</div>
+                    {["CN","T2","T3","T4","T5","T6","T7"].map(d => (
+                        <div key={d} className="text-xs font-medium text-on-surface-variant">{d}</div>
+                    ))}
                   </div>
-
                   <div className="calendar-days-numeric-grid grid-cols-7 gap-1 text-center font-body-md">
                     {calendarDays.map((day, index) => {
                       const isSelected = day &&
@@ -347,11 +281,7 @@ export default function BookingPage() {
                           <div
                               key={index}
                               className={`calendar-day-number-cell p-2 rounded cursor-pointer transition-colors ${day ? "clickable-day hover:bg-primary-container hover:text-on-primary-container" : "blank-day text-on-surface-variant opacity-50"} ${isSelected ? "day-selected-active bg-primary text-on-primary font-bold shadow-sm" : ""}`}
-                              onClick={() => {
-                                if (day) {
-                                  setSelectedDate(new Date(currentDate.getFullYear(), currentDate.getMonth(), day));
-                                }
-                              }}
+                              onClick={() => { if (day) setSelectedDate(new Date(currentDate.getFullYear(), currentDate.getMonth(), day)); }}
                           >
                             {day}
                           </div>
@@ -360,52 +290,30 @@ export default function BookingPage() {
                   </div>
                 </div>
 
-                {/* BÊN PHẢI: KHUNG GIỜ TRỐNG CHUẨN ĐẸP TỰA STITCH */}
                 <div className="time-slots-picker-widget flex-1 bg-surface rounded-lg border border-outline-variant/30 p-md flex flex-col h-full">
                   <div className="slots-widget-header">
                     <div className="flex justify-between items-center flex-wrap gap-2">
                       <h4 className="slots-widget-title">
-                        Khung giờ trống -{" "}
-                        {selectedDate.getDate().toString().padStart(2, "0")} Th
-                        {selectedDate.getMonth() + 1}
+                        Khung giờ trống - {selectedDate.getDate().toString().padStart(2, "0")} Th{selectedDate.getMonth() + 1}
                       </h4>
-
                       <div className="bay-live-status">
                         <span className="status-indicator-dot">●</span>
                         Bay 1 & 2 đang sẵn sàng
                       </div>
                     </div>
                   </div>
-
-                  {/* Lưới chia đúng 2 cột (grid-cols-2) kèm gap chuẩn */}
                   <div className="slots-grid-container">
                     {slots.map((slot) => {
                       const isSelected = selectedTime === slot.slotId;
                       const isDisabled = slot.available === false;
-
-                      const isEco = slot.statusType === "ECO";
-                      const isPeak = slot.statusType === "PEAK";
-
                       let className = "time-slot-pill-btn";
-
-                      if (isEco) className += " status-eco";
-                      if (isPeak) className += " status-peak";
+                      if (slot.statusType === "ECO") className += " status-eco";
+                      if (slot.statusType === "PEAK") className += " status-peak";
                       if (isSelected) className += " pill-selected";
                       return (
-                          <button
-                              key={slot.slotId}
-                              type="button"
-                              disabled={isDisabled}
-                              className={className}
-                              onClick={() => setSelectedTime(slot.slotId)}
-                          >
-                        <span className="slot-clock-text">
-                          {slot.startTime}
-                        </span>
-
-                            <span className="slot-status-subtext">
-                          {isSelected ? "Đã chọn" : slot.statusLabel}
-                        </span>
+                          <button key={slot.slotId} type="button" disabled={isDisabled} className={className} onClick={() => setSelectedTime(slot.slotId)}>
+                            <span className="slot-clock-text">{slot.startTime}</span>
+                            <span className="slot-status-subtext">{isSelected ? "Đã chọn" : slot.statusLabel}</span>
                           </button>
                       );
                     })}
@@ -420,7 +328,6 @@ export default function BookingPage() {
                 <FaCarSide className="section-icon" />
                 <h3>3. Thông tin xe</h3>
               </div>
-
               <div className="vehicle-inputs-row">
                 <div className="form-field-group">
                   <label>Biển số xe *</label>
@@ -431,39 +338,35 @@ export default function BookingPage() {
                       onChange={(e) => setLicensePlate(e.target.value)}
                   />
                 </div>
-
+                <div className="form-field-group">
+                  <label>Hãng xe *</label>
+                  <input
+                      type="text"
+                      placeholder="Ví dụ: Toyota, Honda, Mazda..."
+                      value={brand}
+                      onChange={(e) => setBrand(e.target.value)}
+                  />
+                </div>
                 <div className="form-field-group">
                   <label>Loại xe *</label>
                   <div className="vehicle-type-segmented-control">
                     <button
                         type="button"
-                        className={`segment-btn ${
-                            vehicleType === "4_seats"
-                                ? "segment-active"
-                                : ""
-                        }`}
+                        className={`segment-btn ${vehicleType === "4_seats" ? "segment-active" : ""}`}
                         onClick={() => setVehicleType("4_seats")}
                     >
-                      <MdDirectionsCar className="car-icon" />
-                      Xe 4 chỗ
+                      <MdDirectionsCar className="car-icon" /> Xe 4 chỗ
                     </button>
-
                     <button
                         type="button"
-                        className={`segment-btn ${
-                            vehicleType === "7_seats"
-                                ? "segment-active"
-                                : ""
-                        }`}
+                        className={`segment-btn ${vehicleType === "7_seats" ? "segment-active" : ""}`}
                         onClick={() => setVehicleType("7_seats")}
                     >
-                      <MdAirportShuttle className="car-icon" />
-                      Xe 7 chỗ
+                      <MdAirportShuttle className="car-icon" /> Xe 7 chỗ
                     </button>
                   </div>
                 </div>
               </div>
-
               <div className="form-field-group full-width-field">
                 <label>Yêu cầu đặc biệt (Không bắt buộc)</label>
                 <textarea
@@ -475,35 +378,25 @@ export default function BookingPage() {
             </section>
           </div>
 
-          {/* BÊN PHẢI: SIDEBAR TÓM TẮT ĐƠN HÀNG */}
+          {/* SIDEBAR */}
           <div className="booking-summary-sidebar">
             <div className="secure-checkout-badge">🛡 THANH TOÁN BẢO MẬT</div>
-
             <h3>Tóm tắt đơn hàng</h3>
-
             <div className="summary-billing-breakdown">
               <div className="billing-row prime-service">
                 <span className="service-title">{selectedServiceData ? selectedServiceData.serviceName : "Chưa chọn gói"}</span>
                 <span className="service-cost">{price.toLocaleString()}đ</span>
               </div>
-
               <div className="selected-datetime-preview">
-                <p>📅 {selectedDate.getDate()} {monthNames[selectedDate.getMonth()]}, {selectedDate.getFullYear()} {selectedSlotData && ` • 🕒 ${selectedSlotData.startTime}`}</p>
+                <p>📅 {selectedDate.getDate()} {monthNames[selectedDate.getMonth()]}, {selectedDate.getFullYear()}{selectedSlotData && ` • 🕒 ${selectedSlotData.startTime}`}</p>
               </div>
-
               <div className="billing-fees-list">
-                <div className="fee-line">
-                  <span>Giá cơ bản</span>
-                  <span>{price.toLocaleString()}đ</span>
-                </div>
+                <div className="fee-line"><span>Giá cơ bản</span><span>{price.toLocaleString()}đ</span></div>
                 <div className="fee-line">
                   <span>Phụ phí xe ({vehicleType === "4_seats" ? "4 chỗ" : "7 chỗ"})</span>
                   <span>{surcharge > 0 ? `+${surcharge.toLocaleString()}đ` : "Miễn phí"}</span>
                 </div>
-                <div className="fee-line">
-                  <span>Thuế VAT (8%)</span>
-                  <span>{tax.toLocaleString()}đ</span>
-                </div>
+                <div className="fee-line"><span>Thuế VAT (8%)</span><span>{tax.toLocaleString()}đ</span></div>
                 {paymentMethod === "online" && (
                     <div className="fee-line discount-line">
                       <span>Ưu đãi thanh toán online (5%)</span>
@@ -516,9 +409,7 @@ export default function BookingPage() {
                 </div>
               </div>
             </div>
-
             <hr className="divider" />
-
             <div className="grand-total-section">
               <span>Tổng cộng</span>
               <div className="total-amount-box">
@@ -526,18 +417,10 @@ export default function BookingPage() {
                 <small className="vat-inclusive-note">Đã bao gồm thuế & phí</small>
               </div>
             </div>
-
             <div className="payment-methods-selector">
               <h5>Phương thức thanh toán</h5>
-
               <label className={`method-option-card ${paymentMethod === "online" ? "method-active" : ""}`}>
-                <input
-                    type="radio"
-                    name="payment"
-                    value="online"
-                    checked={paymentMethod === "online"}
-                    onChange={() => setPaymentMethod("online")}
-                />
+                <input type="radio" name="payment" value="online" checked={paymentMethod === "online"} onChange={() => setPaymentMethod("online")} />
                 <div className="method-label-content">
                   <div className="method-text-main">Thanh toán trước (Online)</div>
                   <small>Giảm thêm 5% tổng hóa đơn</small>
@@ -548,37 +431,23 @@ export default function BookingPage() {
                   </div>
                 </div>
               </label>
-
               <label className={`method-option-card ${paymentMethod === "offline" ? "method-active" : ""}`}>
-                <input
-                    type="radio"
-                    name="payment"
-                    value="offline"
-                    checked={paymentMethod === "offline"}
-                    onChange={() => setPaymentMethod("offline")}
-                />
+                <input type="radio" name="payment" value="offline" checked={paymentMethod === "offline"} onChange={() => setPaymentMethod("offline")} />
                 <div className="method-label-content">
                   <div className="method-text-main">Thanh toán sau (Tại trạm)</div>
                   <small>Thanh toán khi hoàn tất dịch vụ</small>
                 </div>
               </label>
             </div>
-
             <div className="terms-confirmation-checkbox">
               <label>
-                <input
-                    type="checkbox"
-                    checked={agreeTerms}
-                    onChange={(e) => setAgreeTerms(e.target.checked)}
-                />
+                <input type="checkbox" checked={agreeTerms} onChange={(e) => setAgreeTerms(e.target.checked)} />
                 <span>Tôi xác nhận các thông tin dịch vụ, thời gian và biển số xe đã cung cấp là chính xác.</span>
               </label>
             </div>
-
             <button className="execute-booking-btn" onClick={handleBooking}>
               Xác nhận đặt lịch <span className="btn-icon">✓</span>
             </button>
-
             <p className="legal-policy-notice">
               Bằng cách xác nhận, bạn đồng ý với <a href="#">Điều khoản Dịch vụ</a> của chúng tôi.
             </p>
