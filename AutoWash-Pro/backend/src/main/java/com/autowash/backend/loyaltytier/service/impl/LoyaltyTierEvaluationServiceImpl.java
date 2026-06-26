@@ -46,7 +46,7 @@ public class LoyaltyTierEvaluationServiceImpl implements LoyaltyTierEvaluationSe
     @Override
     @Transactional
     public CustomerTierEvaluationResponseDTO evaluateCustomerTierByUserId(Integer userId) {
-        Customer customer = customerRepository.findByUserId(userId)
+        Customer customer = customerRepository.findByUser_Id(userId)  // ← fix
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Customer khong ton tai voi userId = " + userId
                 ));

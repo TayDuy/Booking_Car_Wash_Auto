@@ -32,41 +32,22 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User","id",userId));
 
-<<<<<<< HEAD
-        //Kiểm tra xem user đã có refresh token chưa, nếu có thì cập nhật, nếu chưa thì tạo mới
-        //Cách này tránh lỗi DataIntegrityViolationException do Hibernate thực thi insert trước delete
-        java.util.Optional<RefreshToken> existingTokenOpt = refreshTokenRepository.findByUser(user);
-        RefreshToken refreshToken;
-        
-        if (existingTokenOpt.isPresent()) {
-            refreshToken = existingTokenOpt.get();
-            refreshToken.setToken(UUID.randomUUID().toString());
-            refreshToken.setExpriryDate(Instant.now().plusMillis(refreshTokenDurationMs));
-        } else {
-            refreshToken = RefreshToken.builder()
-                    .user(user)
-                    .token(UUID.randomUUID().toString())
-                    .expriryDate(Instant.now().plusMillis(refreshTokenDurationMs))
-                    .build();
-        }
-        
-=======
-        // Try to find existing refresh token for user; update it to avoid unique-constraint failures under concurrency
+        // Kiểm tra xem user đã có refresh token chưa, nếu có thì cập nhật, nếu chưa thì tạo mới
+        // Cách này tránh lỗi DataIntegrityViolationException do Hibernate thực thi insert trước delete
         java.util.Optional<RefreshToken> existing = refreshTokenRepository.findByUser(user);
-        if(existing.isPresent()){
+        if (existing.isPresent()) {
             RefreshToken token = existing.get();
             token.setToken(UUID.randomUUID().toString());
             token.setExpriryDate(Instant.now().plusMillis(refreshTokenDurationMs));
             return refreshTokenRepository.save(token);
         }
 
-        // no existing token => create new one
+        // Không có token cũ => tạo mới
         RefreshToken refreshToken = RefreshToken.builder()
                 .user(user)
                 .token(UUID.randomUUID().toString())
-                .expriryDate(Instant.now().plusMillis(refreshTokenDurationMs))//set hạn sử dụng
+                .expriryDate(Instant.now().plusMillis(refreshTokenDurationMs)) // set hạn sử dụng
                 .build();
->>>>>>> origin/develop
         return refreshTokenRepository.save(refreshToken);
     }
 

@@ -31,6 +31,7 @@ public class Branch {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "branch_id")
     @EqualsAndHashCode.Include
     private Integer branchId;
 
@@ -79,11 +80,11 @@ public class Branch {
     private LocalDateTime updatedAt;
 
     public enum BranchStatus {
-        open, closed, maintenance
+        open, closed, maintenance, active
     }
 
     /** Chi nhánh có nhận booking mới không. */
     public boolean isAcceptingBookings() {
-        return BranchStatus.open.equals(this.status);
+        return BranchStatus.open.equals(this.status) || BranchStatus.active.equals(this.status);
     }
 }

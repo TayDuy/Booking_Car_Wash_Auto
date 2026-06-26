@@ -14,8 +14,15 @@ public class BookingCreateRequestDTO {
     @NotNull(message = "Customer ID không được null")
     private Integer customerId;
 
-    @NotNull(message = "Vehicle ID không được null")
-    private Integer vehicleId;
+    // ← bỏ vehicleId, thêm 3 field mới
+    @NotBlank(message = "Biển số xe không được để trống")
+    private String licensePlate;
+
+    @NotBlank(message = "Hãng xe không được để trống")
+    private String brand;
+
+    @NotBlank(message = "Loại xe không được để trống")
+    private String vehicleType; // "4_seats" hoặc "7_seats"
 
     @NotNull(message = "Slot ID không được null")
     private Integer slotId;
@@ -29,6 +36,8 @@ public class BookingCreateRequestDTO {
     @NotEmpty(message = "Phải chọn ít nhất 1 dịch vụ")
     @Valid
     private List<BookingDetailItem> details;
+
+    private String model;
 
     @Getter
     @Setter

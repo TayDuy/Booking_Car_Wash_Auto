@@ -1,6 +1,5 @@
 package com.autowash.backend.vehicle.service.impl;
 
-
 import com.autowash.backend.booking.enums.BookingStatus;
 import com.autowash.backend.booking.repository.BookingRepository;
 import com.autowash.backend.customer.entity.Customer;
@@ -21,7 +20,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-public class VehicleServiceImpl implements VehicleService{
+public class VehicleServiceImpl implements VehicleService {
 
     private final VehicleRepository vehicleRespository;
     private final CustomerRepository customerRepository;
@@ -29,7 +28,7 @@ public class VehicleServiceImpl implements VehicleService{
 
     @Override
     public List<VehicleResponse> getMyVehicles(Integer userId) {
-        Customer customer = customerRepository.findByUserId(userId)
+        Customer customer = customerRepository.findByUser_Id(userId)
                 .orElseThrow(() -> new BusinessException("Không tìm thấy khách hàng", HttpStatus.NOT_FOUND));
         return vehicleRespository.findByCustomer_CustomerIdAndIsActiveTrue(customer.getCustomerId())
                 .stream()
@@ -39,7 +38,7 @@ public class VehicleServiceImpl implements VehicleService{
 
     @Override
     public VehicleResponse addVehicle(Integer userId, VehicleRequest request) {
-        Customer customer = customerRepository.findByUserId(userId)
+        Customer customer = customerRepository.findByUser_Id(userId)
                 .orElseThrow(() -> new BusinessException("Không tìm thấy khách hàng", HttpStatus.NOT_FOUND));
         if (vehicleRespository.existsByLicensePlate(request.getLicensePlate())) {
             throw new BusinessException("Biển số xe này đã được đăng ký trong hệ thống");
@@ -60,11 +59,10 @@ public class VehicleServiceImpl implements VehicleService{
     @Override
     @Transactional
     public VehicleResponse updateVehicle(Integer userId, Integer vehicleId, VehicleRequest request) {
-        Customer customer = customerRepository.findByUserId(userId)
+        Customer customer = customerRepository.findByUser_Id(userId)
                 .orElseThrow(() -> new BusinessException("Không tìm thấy khách hàng", HttpStatus.NOT_FOUND));
         Vehicle vehicle = vehicleRespository.findByVehicleIdAndCustomer_CustomerId(vehicleId, customer.getCustomerId())
                 .orElseThrow(() -> new BusinessException("Không tìm thấy xe của bạn", HttpStatus.NOT_FOUND));
-        // Kiểm tra nếu đổi biển số thì biển số mới có bị trùng không
         if (!vehicle.getLicensePlate().equals(request.getLicensePlate())
                 && vehicleRespository.existsByLicensePlate(request.getLicensePlate())) {
             throw new BusinessException("Biển số xe mới đã bị trùng");
@@ -81,11 +79,10 @@ public class VehicleServiceImpl implements VehicleService{
     @Override
     @Transactional
     public void deleteVehicle(Integer userId, Integer vehicleId) {
-        Customer customer = customerRepository.findByUserId(userId)
+        Customer customer = customerRepository.findByUser_Id(userId)
                 .orElseThrow(() -> new BusinessException("Không tìm thấy khách hàng", HttpStatus.NOT_FOUND));
         Vehicle vehicle = vehicleRespository.findByVehicleIdAndCustomer_CustomerId(vehicleId, customer.getCustomerId())
                 .orElseThrow(() -> new BusinessException("Không tìm thấy xe của bạn", HttpStatus.NOT_FOUND));
-        // Chặn xóa nếu xe đang có lịch hẹn chưa xong (pending, confirmed, in_progress)
         List<BookingStatus> activeStatuses = List.of(
                 BookingStatus.pending,
                 BookingStatus.confirmed,
@@ -94,10 +91,10 @@ public class VehicleServiceImpl implements VehicleService{
         if (bookingRepository.existsByVehicle_VehicleIdAndStatusIn(vehicleId, activeStatuses)) {
             throw new BusinessException("Không thể xóa xe đang có lịch đặt chưa hoàn thành");
         }
-        // Xóa mềm (Soft Delete)
         vehicle.setIsActive(false);
         vehicleRespository.save(vehicle);
     }
+
     private VehicleResponse mapToResponse(Vehicle vehicle) {
         return VehicleResponse.builder()
                 .vehicleId(vehicle.getVehicleId())
