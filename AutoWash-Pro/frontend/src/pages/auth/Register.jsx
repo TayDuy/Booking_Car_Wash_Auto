@@ -1,9 +1,18 @@
-import "./Login.css";
-import { useState } from "react";
-import { Link } from "react-router-dom";
-import { register, sendOtp, verifyOtp } from "../../api/authService";
+import "./Register.css";
+import { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import {
+  register,
+  sendOtp,
+  verifyOtp,
+  loginWithGoogle,
+  saveAuth,
+} from "../../api/authService";
+import { supabase } from "../../api/supabaseClient";
 
 function Register() {
+  const navigate = useNavigate();
+  
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
@@ -15,6 +24,18 @@ function Register() {
   const [otp, setOtp] = useState("");
   const [otpSent, setOtpSent] = useState(false);
   const [otpVerified, setOtpVerified] = useState(false);
+
+  function redirectByRole(role) {
+    const normalizedRole = role?.toLowerCase();
+
+    if (normalizedRole === "admin") {
+      navigate("/admin");
+    } else if (normalizedRole === "employee") {
+      navigate("/employee");
+    } else {
+      navigate("/");
+    }
+  }
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -74,154 +95,232 @@ function Register() {
     }
   }
 
+  async function handleGoogleRegister() {
+    try {
+      await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: window.location.origin + "/register",
+        },
+      });
+    } catch (error) {
+      console.log("Google register error:", error);
+      setErrorMessage("Đăng ký bằng Google thất bại.");
+    }
+  }
+
+  useEffect(() => {
+    console.log("Register page loaded, checking Google redirect...");
+
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (event === "SIGNED_IN" && session) {
+          try {
+            const supabaseToken = session.access_token;
+            const data = await loginWithGoogle(supabaseToken);
+
+            if (data.status === 200 || data.data) {
+              saveAuth(data.data);
+              redirectByRole(data.data.user.role);
+            } else {
+              setErrorMessage(
+                data.message || "Đăng ký bằng Google thất bại trên Backend."
+              );
+            }
+          } catch (error) {
+            console.error("Lỗi khi gửi Google token về Backend:", error);
+            setErrorMessage(
+              "Đăng ký bằng Google thất bại. Không thể xác thực với máy chủ."
+            );
+          }
+        }
+      }
+    );
+
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
+  }, []);
+
   return (
-    <div className="login-page register-page">
-      <div className="login-main">
-        <div className="login-card register-card">
-          <div className="login-header">
-            <h1 className="login-title">
-              AutoWash Pro
-            </h1>
-            <p className="login-subtitle">
-              Create Your Account
-            </p>
-          </div>
-
-          {errorMessage && (
-            <div className="alert alert-danger">
-              {errorMessage}
+    <div className="register-page">
+      <div className="register-shell">
+        <main className="register-main">
+          <div className="register-card">
+            <div className="register-brand">
+              <div className="register-logo-icon">🚘</div>
+              <h2>WashFlow Pro</h2>
+              <p>Kiến tạo tương lai vận hành rửa xe thông minh</p>
+              <h1>Đăng ký tài khoản</h1>
             </div>
-          )}
 
-          <form onSubmit={handleSubmit}>
-            <div className="register-grid">
-              <div className="mb-3">
-                <label className="form-label fw-semibold d-block text-start">
-                  Full Name
-                </label>
-                <input
-                  type="text"
-                  className="login-input"
-                  placeholder="Nhập họ tên"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                />
+            {errorMessage && (
+              <div className="register-error">
+                {errorMessage}
               </div>
+            )}
 
-              <div className="mb-3">
-                <label className="form-label fw-semibold d-block text-start">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  className="login-input"
-                  placeholder="Nhập email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
-              </div>
-
-              <div className="mb-3">
-                <label className="form-label fw-semibold d-block text-start">
-                  Username
-                </label>
-                <input
-                  type="text"
-                  className="login-input"
-                  placeholder="Nhập username"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                />
-              </div>
-
-              <div className="mb-3">
-                <label className="form-label fw-semibold d-block text-start">
-                  Phone Number
-                </label>
-                <input
-                  type="tel"
-                  className="login-input"
-                  placeholder="Nhập phone"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                />
-              </div>
-
-              <div className="mb-3">
-                <label className="form-label fw-semibold d-block text-start">
-                  OTP Code
-                </label>
-                <input
-                  type="text"
-                  className="login-input"
-                  placeholder="Nhập mã OTP"
-                  value={otp}
-                  disabled={!otpSent || otpVerified}
-                  onChange={(e) => setOtp(e.target.value)}
-                />
-              </div>
-
-              <div className="mb-3">
-                <button
-                  type="button"
-                  className="otp-btn"
-                  onClick={otpSent ? handleVerifyOtp : handleSendOtp}
-                  disabled={otpVerified}
-                >
-                  {otpVerified ? "Đã xác minh" : otpSent ? "Xác minh OTP" : "Gửi OTP"}
-                </button>
-              </div>
-
-              <div className="mb-3">
-                <label className="form-label fw-semibold d-block text-start">
-                  Password
-                </label>
-                <div className="password-wrap">
+            <form onSubmit={handleSubmit} className="register-form">
+              <div className="register-field">
+                <label>👤 Họ và tên</label>
+                <div className="register-input-wrap">
                   <input
-                    type={showPassword ? "text" : "password"}
-                    className="login-input password-input"
-                    placeholder="Nhập mật khẩu"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    type="text"
+                    placeholder="Nhập họ và tên của bạn"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
                   />
-                  <button
-                    type="button"
-                    className="password-toggle"
-                    onClick={() => setShowPassword(!showPassword)}
-                  >
-                    {showPassword ? "🙈" : "👁"}
-                  </button>
                 </div>
               </div>
 
-              <div className="mb-4">
-                <label className="form-label fw-semibold d-block text-start">
-                  Confirm Password
-                </label>
-                <input
-                  type="password"
-                  className="login-input"
-                  placeholder="Nhập lại mật khẩu"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                />
+              <div className="register-row">
+                <div className="register-field">
+                  <label>✉ Địa chỉ Email</label>
+                  <div className="register-input-wrap">
+                    <input
+                      type="email"
+                      placeholder="email@example.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div className="register-field">
+                  <label>👤 Username</label>
+                  <div className="register-input-wrap">
+                    <input
+                      type="text"
+                      placeholder="Nhập username"
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                    />
+                  </div>
+                </div>
               </div>
-            </div>
 
-            <button type="submit" className="login-btn">
-              Đăng ký
-            </button>
+              <div className="register-row">
+                <div className="register-field">
+                  <label>📞 Số điện thoại</label>
+                  <div className="register-input-wrap">
+                    <input
+                      type="tel"
+                      placeholder="0123 456 789"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                    />
+                  </div>
+                </div>
 
-            <div className="register-footer">
-              <span className="register-footer-text">
-                Đã có tài khoản?
-              </span>
-              <Link to="/" className="register-footer-link">
-                Đăng nhập
-              </Link>
-            </div>
-          </form>
-        </div>
+                <div className="register-field">
+                  <label>🔐 Mã OTP</label>
+                  <div className="register-otp-wrap">
+                    <input
+                      type="text"
+                      placeholder="Nhập mã OTP"
+                      value={otp}
+                      disabled={!otpSent || otpVerified}
+                      onChange={(e) => setOtp(e.target.value)}
+                    />
+
+                    <button
+                      type="button"
+                      onClick={otpSent ? handleVerifyOtp : handleSendOtp}
+                      disabled={otpVerified}
+                    >
+                      {otpVerified ? "Đã xác minh" : otpSent ? "Xác minh" : "Gửi OTP"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="register-row">
+                <div className="register-field">
+                  <label>🔒 Mật khẩu</label>
+                  <div className="register-input-wrap">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      placeholder="••••••••"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                    />
+                    <button
+                      type="button"
+                      className="register-password-toggle"
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? "🙈" : "👁"}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="register-field">
+                  <label>🛡 Xác nhận mật khẩu</label>
+                  <div className="register-input-wrap">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      placeholder="••••••••"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                    />
+                    <button
+                      type="button"
+                      className="register-password-toggle"
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? "🙈" : "👁"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <label className="register-terms">
+                <input type="checkbox" />
+                <span>
+                  Tôi đồng ý với <a href="#">Điều khoản dịch vụ</a> và{" "}
+                  <a href="#">Chính sách bảo mật</a> của WashFlow Pro.
+                </span>
+              </label>
+
+              <button type="submit" className="register-submit-btn">
+                Đăng ký ngay <span>→</span>
+              </button>
+
+              <div className="register-divider">
+                <span></span>
+                <p>Hoặc đăng ký bằng</p>
+                <span></span>
+              </div>
+
+              <button type="button" className="register-google-btn" onClick={handleGoogleRegister}>
+                <img
+                  src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
+                  alt="Google"
+                />
+                Đăng ký bằng Google
+              </button>
+
+              <p className="register-login-link">
+                Đã có tài khoản?{" "}
+                <Link to="/login">
+                  Đăng nhập
+                </Link>
+              </p>
+            </form>
+          </div>
+        </main>
+
+        <footer className="register-footer">
+          <div className="register-footer-left">
+            <span>🛡 © 2024 WashFlow Pro. Tất cả các quyền được bảo lưu.</span>
+          </div>
+
+          <div className="register-footer-right">
+            <a href="#">Trung tâm hỗ trợ</a>
+            <a href="#">Quy định sử dụng</a>
+            <button type="button">Ngôn ngữ: Tiếng Việt</button>
+          </div>
+        </footer>
       </div>
     </div>
   );

@@ -1,7 +1,7 @@
 import "./Login.css";
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { login, saveAuth, loginWithGoogle } from "../../api/authService";
+import { login, saveAuth, loginWithGoogle, isLoggedIn, getRole } from "../../api/authService";
 import { supabase } from "../../api/supabaseClient";
 
 function Login({ onLoginSuccess }) {
@@ -9,6 +9,7 @@ function Login({ onLoginSuccess }) {
   const [password, setPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   function redirectByRole(role) {
@@ -17,7 +18,6 @@ function Login({ onLoginSuccess }) {
     const normalizedRole = role?.toLowerCase();
 
     if (normalizedRole === "admin") {
-      console.log("GO ADMIN");
       navigate("/admin");
     } else if (normalizedRole === "employee") {
       console.log("GO EMPLOYEE");
@@ -30,24 +30,32 @@ function Login({ onLoginSuccess }) {
 
   async function handleSubmit(e) {
     e.preventDefault();
+    if (loading) return;
+    setErrorMessage("");
+    setLoading(true);
     try {
       const data = await login(username, password);
+      console.log("LOGIN RESPONSE:", JSON.stringify(data));
       if (data.status === 200 || data.data) {
         saveAuth(data.data);
         if (onLoginSuccess) {
           onLoginSuccess();
         }
-        redirectByRole(data.data.role);
+        redirectByRole(data.data.user.role);
       } else {
-        setErrorMessage(data.message);
+        setErrorMessage(data.message || "Đăng nhập thất bại. Kiểm tra lại username/password.");
       }
-    } catch {
+    } catch (err) {
+      console.error(err);
       setErrorMessage("Đăng nhập thất bại. Kiểm tra lại username/password.");
+    } finally {
+      setLoading(false);
     }
   }
 
   async function handleGoogleLogin() {
     try {
+      sessionStorage.setItem("isGoogleLoginClick", "true");
       await supabase.auth.signInWithOAuth({ 
         provider: 'google',
         options: {
@@ -61,9 +69,29 @@ function Login({ onLoginSuccess }) {
   }
 
   useEffect(() => {
+    if (isLoggedIn()) {
+      redirectByRole(getRole());
+      return;
+    }
+
     console.log("Login page loaded, checking Google redirect...");
     const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session) {
+        if (isLoggedIn()) return;
+
+        const isGoogleClick = sessionStorage.getItem("isGoogleLoginClick") === "true";
+        const hasAuthParams = window.location.hash.includes("access_token=") || window.location.search.includes("code=");
+
+        if (!isGoogleClick && !hasAuthParams) {
+          console.log("Stale Supabase session detected, signing out...");
+          await supabase.auth.signOut();
+          return;
+        }
+
+        sessionStorage.removeItem("isGoogleLoginClick");
+        setLoading(true);
+        setErrorMessage("");
+
         try {
           const supabaseToken = session.access_token;
           const data = await loginWithGoogle(supabaseToken);
@@ -71,13 +99,15 @@ function Login({ onLoginSuccess }) {
           if (data.status === 200 || data.data) {
             saveAuth(data.data);
             if (onLoginSuccess) onLoginSuccess();
-            redirectByRole(data.data.role);
+            redirectByRole(data.data.user.role);
           } else {
             setErrorMessage(data.message || "Đăng nhập bằng Google thất bại trên Backend.");
           }
         } catch (error) {
           console.error("Lỗi khi gửi token về Backend:", error);
           setErrorMessage("Đăng nhập thất bại. Không thể xác thực với máy chủ.");
+        } finally {
+          setLoading(false);
         }
       }
     });
@@ -88,51 +118,41 @@ function Login({ onLoginSuccess }) {
   }, []);
 
   return (
-    <div className="login-page login-only-page">
-      <div className="login-main">    
+    <div className="login-page">
+      <main className="login-main">
         <div className="login-card">
-          <div className="login-header">
-            <h1 className="login-title">           
-              WashFlow Pro
-            </h1>
-            <p className="login-subtitle">
-              PRECISION AUTOMATION DASHBOARD
-            </p>            
+          <div className="login-brand">
+            <h1>WashFlow Pro</h1>
+            <p>Precision Automation Dashboard</p>
           </div>
 
           {errorMessage && (
-            <div className="alert alert-danger">
+            <div className="login-error">
               {errorMessage}
             </div>
           )}
 
-          <form onSubmit={handleSubmit}>
-            <div className="mb-3">
-              <label className="form-label d-block text-start fw-bold">
-                Email Address
-              </label>
-              <div className="username-wrap">
-                <span className="username-icon">✉</span>
+          <form onSubmit={handleSubmit} className="login-form">
+            <div className="form-group">
+              <label>Email Address</label>
+              <div className="input-wrapper">
+                <span className="input-icon">✉</span>
                 <input
                   type="text"
-                  className="login-input username-input"
-                  placeholder="manager@washflowpro.com"
+                  placeholder="manager@washflow.pro"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                 />
               </div>
             </div>
 
-            <div className="mb-3">
-              <label className="form-label d-block text-start fw-bold">
-                Password
-              </label>
-              <div className="password-wrap">
-                <span className="password-icon">🔒</span>
+            <div className="form-group">
+              <label>Password</label>
+              <div className="input-wrapper">
+                <span className="input-icon">🔒</span>
                 <input
                   type={showPassword ? "text" : "password"}
-                  className="login-input password-input"
-                  placeholder="Nhập password"
+                  placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                 />
@@ -146,46 +166,82 @@ function Login({ onLoginSuccess }) {
               </div>
             </div>
 
-            <div className="d-flex justify-content-between align-items-center mt-3">
-              <div>
-                <input type="checkbox" className="form-check-input me-2" />
+            <div className="login-options">
+              <label className="remember-box">
+                <input type="checkbox" />
                 <span>Remember me</span>
-              </div>
-              <a href="#" className="text-decoration-none fw-semibold">
-                Forgot Password?
-              </a>
+              </label>
+
+              <button type="button" className="forgot-btn">
+                Forgot password?
+              </button>
             </div>
 
-            <button type="submit" className="login-btn">
-              🚀 Sign In
+            <button type="submit" className="login-btn" disabled={loading}>
+              {loading ? "⌛ Đang đăng nhập..." : "🚀 Sign In"}
             </button>
-            <div className="login-divider">            
-              <div className="divider-line"></div>
-              <span className="divider-text">OR CONTINUE WITH</span>
-              <div className="divider-line"></div>                
-            </div>
-            <button 
+          </form>
+
+          <div className="divider">
+            <span></span>
+            <p>OR CONTINUE WITH</p>
+            <span></span>
+          </div>
+
+          <div className="social-login">
+            <button
               type="button"
-              className="google-btn"
               onClick={handleGoogleLogin}
             >
               <img
                 src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
                 alt="Google"
-                style={{width: "40px", height: "40px", marginRight: "8px"}}
               />
-              Đăng nhập với Google
+              Google
             </button>
-          </form>
 
-          <div className="text-center mt-4">          
-            <span>Chưa có tài khoản? </span>
-            <Link to="/register" className="fw-bold text-decoration-none">
-              Đăng ký ngay
+            <button type="button">
+              <span>▦</span>
+              Apple
+            </button>
+          </div>
+
+          <p className="register-link">
+            Don&apos;t have an account?{" "}
+            <Link to="/register">
+              Create an account
             </Link>
+          </p>
+        </div>
+      </main>
+
+      <footer className="login-footer">
+        <div className="footer-brand">
+          <h3>WashFlow Pro</h3>
+          <p>© 2024 WashFlow Pro Automation.</p>
+          <p>All rights reserved.</p>
+        </div>
+
+        <div className="footer-column">
+          <h4>Company</h4>
+          <button type="button">Contact Us</button>
+          <button type="button">Privacy Policy</button>
+        </div>
+
+        <div className="footer-column">
+          <h4>Legal</h4>
+          <button type="button">Terms of Service</button>
+          <button type="button">Support</button>
+        </div>
+
+        <div className="footer-column">
+          <h4>Connect</h4>
+          <div className="connect-icons">
+            <button type="button">⌯</button>
+            <button type="button">✤</button>
           </div>
         </div>
-      </div>  
+      </footer>
     </div>
   );
 }
