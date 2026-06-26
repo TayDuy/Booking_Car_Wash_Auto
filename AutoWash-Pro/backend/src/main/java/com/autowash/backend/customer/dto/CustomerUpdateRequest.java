@@ -12,13 +12,15 @@ import java.time.LocalDate;
 public class CustomerUpdateRequest {
     @NotBlank(message = "Tên không được để trống")
     @Size(min = 2, max = 100,message = "Tên không được vượt quá 100 ký tự")
-    @Pattern(regexp = "^[\\p{L} .'-]+$", message ="Tên không được chứa số hoặc kí tự đặc biệt")
+    @Pattern(regexp = "^[\\p{L}\\p{N} .'-]+$", message ="Tên chỉ được chứa chữ cái, số, dấu cách và dấu chấm")
     private String fullName;
 
     @Past(message = "Ngày sinh phải là một ngày trong quá khứ")
     private LocalDate dateOfBirth;
 
-    @Pattern(regexp = "^(male|female)$", message = "Giới tính phải là male hoặc female (viết thường)")
+    @Pattern(regexp = "^(male|female|Nam|Nữ|Khác)$", message = "Giới tính không hợp lệ")
     private String gender;
 
+    private String phone;
+    private String email;
 }

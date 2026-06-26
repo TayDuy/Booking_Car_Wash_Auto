@@ -1,8 +1,7 @@
 import axios from 'axios'
 
 const axiosClient = axios.create({
-  baseURL: 'http://localhost:8080/api',
-    // baseURL: 'http://localhost:5000/api',
+  baseURL: 'http://localhost:8080/api/v1',
   headers: {
     'Content-Type': 'application/json',
     Accept: 'application/json',
@@ -24,10 +23,13 @@ axiosClient.interceptors.response.use(
   (error) => {
     if (error.response && error.response.status === 401) {
       localStorage.removeItem('token')
-      // optional: redirect to login handled by app
+      if (window.location.pathname !== '/auth/login') {
+        window.location.href = '/auth/login'
+      }
     }
     return Promise.reject(error)
   }
 )
+
 
 export default axiosClient

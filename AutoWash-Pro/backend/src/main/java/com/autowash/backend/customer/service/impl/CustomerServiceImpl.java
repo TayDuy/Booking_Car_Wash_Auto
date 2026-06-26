@@ -34,7 +34,14 @@ public class CustomerServiceImpl implements CustomerService{
         //chỉ cập nhật những trường hợp được phép
         customer.setFullName(request.getFullName());
         customer.setDateOfBirth(request.getDateOfBirth());
-        customer.setGender(request.getGender());
+        customer.setGender(translateGenderToEnglish(request.getGender()));
+
+        // Cập nhật số điện thoại và email của User liên kết
+        if (customer.getUser() != null) {
+            customer.getUser().setPhone(request.getPhone());
+            customer.getUser().setEmail(request.getEmail());
+        }
+
         Customer updateCustomer = customerRepository.save(customer);
         return mapToResponse(updateCustomer);
     }
@@ -42,9 +49,13 @@ public class CustomerServiceImpl implements CustomerService{
     // Hàm phụ trợ để chuyển từ Entity sang DTO
     private CustomerProfileResponse mapToResponse(Customer customer) {
         return CustomerProfileResponse.builder()
+                .customerId(customer.getCustomerId())
+                .username(customer.getUser().getUsername())
+                .email(customer.getUser().getEmail())
+                .phone(customer.getUser().getPhone())
                 .fullName(customer.getFullName())
                 .dateOfBirth(customer.getDateOfBirth())
-                .gender(customer.getGender())
+                .gender(translateGenderToVietnamese(customer.getGender()))
                 .totalPoints(customer.getTotalPoints())
                 .totalVisits(customer.getTotalVisits())
                 .totalSpending(customer.getTotalSpending())
@@ -52,4 +63,21 @@ public class CustomerServiceImpl implements CustomerService{
                 .joinedAt(customer.getJoinedAt())
                 .build();
     }
+
+    private String translateGenderToEnglish(String gender) {
+        if (gender == null) return null;
+        if ("Nam".equalsIgnoreCase(gender)) return "male";
+        if ("Nữ".equalsIgnoreCase(gender)) return "female";
+        if ("Khác".equalsIgnoreCase(gender)) return "other";
+        return gender;
+    }
+
+    private String translateGenderToVietnamese(String gender) {
+        if (gender == null) return null;
+        if ("male".equalsIgnoreCase(gender)) return "Nam";
+        if ("female".equalsIgnoreCase(gender)) return "Nữ";
+        if ("other".equalsIgnoreCase(gender)) return "Khác";
+        return gender;
+    }
 }
+

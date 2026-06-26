@@ -204,14 +204,15 @@ const handleBooking = async () => {
             ❓
           </button>
 
-          <div
+          <img
             className="avatar"
+            src="/car_avatar.png"
+            alt="Avatar"
             onClick={() =>
               navigate("/profile")
             }
-          >
-            H
-          </div>
+            style={{ cursor: "pointer", objectFit: "cover" }}
+          />
 
         </div>
       </header>
