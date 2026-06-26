@@ -31,6 +31,7 @@ function Login({ onLoginSuccess }) {
     e.preventDefault();
     try {
       const data = await login(username, password);
+      console.log("LOGIN RESPONSE:", JSON.stringify(data)); // ← thêm dòng này
       if (data.status === 200 || data.data) {
         saveAuth(data.data);
         if (onLoginSuccess) {

@@ -9,6 +9,7 @@ import AdminRoutes from './AdminRoutes'
 
 import LoginPage from '../features/auth/pages/LoginPage'
 import RegisterPage from '../features/auth/pages/RegisterPage'
+import HelpCenter from '../pages/helpcenter/Helpcenter'
 
 function AppRoutes() {
   return (
@@ -29,6 +30,8 @@ function AppRoutes() {
           <Route path="/admin/*" element={<DashboardLayout />}>
             <Route path="/*" element={<AdminRoutes />} />
           </Route>
+
+          <Route path="/support" element={<HelpCenter />} />
 
           <Route path="/" element={<Navigate to="/customer/home" replace />} />
         </Routes>

@@ -1,19 +1,27 @@
+import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { isLoggedIn } from "../../api/authService";
+import AdminNotificationPage from "../admin/AdminNotificationPage.jsx";
+import CustomerNotificationPage from "../customer/CustomerNotificationPage";
+
 export default function NotificationPage() {
-  return (
-    <div className="container mt-5">
-      <h1>Notifications</h1>
+    const navigate = useNavigate();
+    const [role, setRole] = useState(null);
 
-      <div className="card p-3 mt-3">
-        Appointment Reminder
-      </div>
+    useEffect(() => {
+        if (!isLoggedIn()) {
+            navigate("/login");
+            return;
+        }
+        const storedRole = (localStorage.getItem("role") || "").toLowerCase();
+        setRole(storedRole);
+    }, []);
 
-      <div className="card p-3 mt-3">
-        Summer Promotion
-      </div>
+    if (role === null) return null;
 
-      <div className="card p-3 mt-3">
-        Membership Updated
-      </div>
-    </div>
-  );
+    if (role === "admin" || role === "staff") {
+        return <AdminNotificationPage />;
+    }
+
+    return <CustomerNotificationPage />;
 }
