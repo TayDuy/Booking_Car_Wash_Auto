@@ -425,7 +425,7 @@ const ProfilePage = () => {
                     <span className="material-symbols-outlined text-primary">history</span>
                     Lịch sử đặt lịch
                   </h3>
-                  <button className="link-primary">Xem tất cả</button>
+                  <button className="link-primary" onClick={() => navigate('/bookings')}>Xem tất cả</button>
                 </div>
                 <div className="table-wrapper">
                   <table className="history-table">

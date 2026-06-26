@@ -50,6 +50,11 @@ export function saveAuth(result){
     );
 
     localStorage.setItem(
+      "refreshToken",
+      result.refreshToken || ""
+    );
+
+    localStorage.setItem(
       "username",
       result.user?.username || ""
     );
@@ -72,8 +77,11 @@ export function saveAuth(result){
 
 export function logout(){
     localStorage.removeItem("token");
+    localStorage.removeItem("refreshToken");
     localStorage.removeItem("username");
     localStorage.removeItem("role");
+    localStorage.removeItem("userId");
+    localStorage.removeItem("customerId");
 }
 
 export function isLoggedIn(){
