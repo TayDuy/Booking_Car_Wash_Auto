@@ -12,7 +12,7 @@ export default function LoginPage() {
     e.preventDefault()
     setLoading(true)
     try {
-      await auth.login({ email, password })
+      await auth.login({ username: email, password })
       // redirect handled by routes or app
     } catch (err) {
       console.error(err)
