@@ -1,39 +1,37 @@
-import { useState } from "react";
-import Login from "./pages/auth/Login";
-import{
-  getRole,
-  getUsername,
-  isLoggedIn,
-  logout,
-} from "./api/authService";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { getRole, getUsername, isLoggedIn, logout } from "./api/authService";
 
-function App(){
-  const [loggedIn, setLoggedIn] = useState(isLoggedIn());
-  
-  function handleLoginSuccess(){
-    setLoggedIn(true);
-  }
-  function handleLogout(){
-    logout();
-    setLoggedIn(false);
-  }
-  return(
-    <div className="container mt-5">
+function App() {
+    const [loggedIn, setLoggedIn] = useState(isLoggedIn());
+    const navigate = useNavigate();
 
-    {loggedIn ? (
-      <div>
-        <h3> Đăng nhập thành công</h3>
-        <p>username: {getUsername()}</p>
-        <p>Role: {getRole()}</p>
+    function handleLogout() {
+        logout();
+        setLoggedIn(false);
+        navigate("/login");
+    }
 
-        <button className="btn btn-danger" onClick={handleLogout}>
-          Logout
-        </button>
-      </div>
-    ) : (
-      <Login onLoginSuccess={handleLoginSuccess} />
-    )}    
-    </div>
-  );
+    useEffect(() => {
+        if (!loggedIn) {
+            navigate("/login");
+        }
+    }, [loggedIn, navigate]);
+
+    if (!loggedIn) {
+        return null;
+    }
+
+    return (
+        <div className="container mt-5">
+            <h3>Đăng nhập thành công</h3>
+            <p>Username: {getUsername()}</p>
+            <p>Role: {getRole()}</p>
+            <button className="btn btn-danger" onClick={handleLogout}>
+                Logout
+            </button>
+        </div>
+    );
 }
+
 export default App;
