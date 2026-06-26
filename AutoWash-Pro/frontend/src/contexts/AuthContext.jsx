@@ -20,7 +20,7 @@ export function AuthProvider({ children }) {
 
   const login = async (credentials) => {
     const res = await authApi.login(credentials)
-    const jwt = res.data?.token
+    const jwt = res.data?.data?.accessToken  // Backend wraps in ApiResponse with 'data' field
     setToken(jwt)
     return res
   }

@@ -55,7 +55,7 @@ public class PromotionServiceImpl implements PromotionService {
         LoyaltyTier tier = resolveTier(dto.getTargetTierId());
 
         // Resolve email → User entity
-        User creator = userRepository.findFirstByEmail(createdByEmail)
+        User creator = userRepository.findByEmail(createdByEmail)
                 .orElseThrow(() -> new EntityNotFoundException(
                         "User không tồn tại: " + createdByEmail));
 

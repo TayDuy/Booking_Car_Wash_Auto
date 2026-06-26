@@ -13,25 +13,23 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
-public class CustomerServiceImpl implements CustomerService{
+public class CustomerServiceImpl implements CustomerService {
 
     private final CustomerRepository customerRepository;
 
     @Override
     public CustomerProfileResponse getCustomerProfile(Integer userId) {
-        Customer customer = customerRepository.findByUserId(userId)
+        Customer customer = customerRepository.findByUser_Id(userId)  // ← fix
                 .orElseThrow(() -> new BusinessException("Không tìm thấy khách hàng", HttpStatus.NOT_FOUND));
-        return  mapToResponse(customer);
+        return mapToResponse(customer);
     }
 
     @Override
     @Transactional
     public CustomerProfileResponse updateCustomerProfile(Integer userId, CustomerUpdateRequest request) {
-
-        Customer customer = customerRepository.findByUserId(userId)
+        Customer customer = customerRepository.findByUser_Id(userId)  // ← fix
                 .orElseThrow(() -> new BusinessException("Không tìm thấy khách hàng", HttpStatus.NOT_FOUND));
 
-        //chỉ cập nhật những trường hợp được phép
         customer.setFullName(request.getFullName());
         customer.setDateOfBirth(request.getDateOfBirth());
         customer.setGender(translateGenderToEnglish(request.getGender()));
@@ -46,7 +44,6 @@ public class CustomerServiceImpl implements CustomerService{
         return mapToResponse(updateCustomer);
     }
 
-    // Hàm phụ trợ để chuyển từ Entity sang DTO
     private CustomerProfileResponse mapToResponse(Customer customer) {
         return CustomerProfileResponse.builder()
                 .customerId(customer.getCustomerId())
@@ -63,7 +60,6 @@ public class CustomerServiceImpl implements CustomerService{
                 .joinedAt(customer.getJoinedAt())
                 .build();
     }
-
     private String translateGenderToEnglish(String gender) {
         if (gender == null) return null;
         if ("Nam".equalsIgnoreCase(gender)) return "male";
@@ -80,4 +76,3 @@ public class CustomerServiceImpl implements CustomerService{
         return gender;
     }
 }
-
