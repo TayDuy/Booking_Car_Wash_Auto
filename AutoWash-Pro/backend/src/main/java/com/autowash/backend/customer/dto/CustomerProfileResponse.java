@@ -11,6 +11,10 @@ import java.time.LocalDateTime;
 @Builder
 public class CustomerProfileResponse {
 
+    private Integer customerId;
+    private String username;
+    private String email;
+    private String phone;
     private String fullName;
     private LocalDate dateOfBirth;
     private String gender;

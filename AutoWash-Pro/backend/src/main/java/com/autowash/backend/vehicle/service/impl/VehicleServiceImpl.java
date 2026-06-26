@@ -31,7 +31,7 @@ public class VehicleServiceImpl implements VehicleService{
     public List<VehicleResponse> getMyVehicles(Integer userId) {
         Customer customer = customerRepository.findByUserId(userId)
                 .orElseThrow(() -> new BusinessException("Không tìm thấy khách hàng", HttpStatus.NOT_FOUND));
-        return vehicleRespository.findByCustomer_CustomerIdAndIsActiveTrue(customer.getCustomerId())
+        return vehicleRespository.findByCustomer_CustomerId(customer.getCustomerId())
                 .stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
@@ -41,12 +41,13 @@ public class VehicleServiceImpl implements VehicleService{
     public VehicleResponse addVehicle(Integer userId, VehicleRequest request) {
         Customer customer = customerRepository.findByUserId(userId)
                 .orElseThrow(() -> new BusinessException("Không tìm thấy khách hàng", HttpStatus.NOT_FOUND));
-        if (vehicleRespository.existsByLicensePlate(request.getLicensePlate())) {
+        String normalizedPlate = request.getLicensePlate().trim().toUpperCase();
+        if (vehicleRespository.existsByLicensePlate(normalizedPlate)) {
             throw new BusinessException("Biển số xe này đã được đăng ký trong hệ thống");
         }
         Vehicle vehicle = Vehicle.builder()
                 .customer(customer)
-                .licensePlate(request.getLicensePlate())
+                .licensePlate(normalizedPlate)
                 .brand(request.getBrand())
                 .model(request.getModel())
                 .vehicleType(request.getVehicleType())
@@ -64,12 +65,14 @@ public class VehicleServiceImpl implements VehicleService{
                 .orElseThrow(() -> new BusinessException("Không tìm thấy khách hàng", HttpStatus.NOT_FOUND));
         Vehicle vehicle = vehicleRespository.findByVehicleIdAndCustomer_CustomerId(vehicleId, customer.getCustomerId())
                 .orElseThrow(() -> new BusinessException("Không tìm thấy xe của bạn", HttpStatus.NOT_FOUND));
+        
+        String normalizedPlate = request.getLicensePlate().trim().toUpperCase();
         // Kiểm tra nếu đổi biển số thì biển số mới có bị trùng không
-        if (!vehicle.getLicensePlate().equals(request.getLicensePlate())
-                && vehicleRespository.existsByLicensePlate(request.getLicensePlate())) {
+        if (!vehicle.getLicensePlate().equals(normalizedPlate)
+                && vehicleRespository.existsByLicensePlate(normalizedPlate)) {
             throw new BusinessException("Biển số xe mới đã bị trùng");
         }
-        vehicle.setLicensePlate(request.getLicensePlate());
+        vehicle.setLicensePlate(normalizedPlate);
         vehicle.setBrand(request.getBrand());
         vehicle.setModel(request.getModel());
         vehicle.setVehicleType(request.getVehicleType());
@@ -77,6 +80,7 @@ public class VehicleServiceImpl implements VehicleService{
         vehicle.setNickname(request.getNickname());
         return mapToResponse(vehicleRespository.save(vehicle));
     }
+
 
     @Override
     @Transactional
@@ -98,6 +102,30 @@ public class VehicleServiceImpl implements VehicleService{
         vehicle.setIsActive(false);
         vehicleRespository.save(vehicle);
     }
+    @Override
+    @Transactional
+    public VehicleResponse toggleActive(Integer userId, Integer vehicleId) {
+        Customer customer = customerRepository.findByUserId(userId)
+                .orElseThrow(() -> new BusinessException("Không tìm thấy khách hàng", HttpStatus.NOT_FOUND));
+        Vehicle vehicle = vehicleRespository.findByVehicleIdAndCustomer_CustomerId(vehicleId, customer.getCustomerId())
+                .orElseThrow(() -> new BusinessException("Không tìm thấy xe của bạn", HttpStatus.NOT_FOUND));
+
+        if (vehicle.getIsActive()) {
+            List<BookingStatus> activeStatuses = List.of(
+                    BookingStatus.pending,
+                    BookingStatus.confirmed,
+                    BookingStatus.in_progress
+            );
+            if (bookingRepository.existsByVehicle_VehicleIdAndStatusIn(vehicleId, activeStatuses)) {
+                throw new BusinessException("Không thể ngừng hoạt động xe đang có lịch đặt chưa hoàn thành");
+            }
+            vehicle.setIsActive(false);
+        } else {
+            vehicle.setIsActive(true);
+        }
+        return mapToResponse(vehicleRespository.save(vehicle));
+    }
+
     private VehicleResponse mapToResponse(Vehicle vehicle) {
         return VehicleResponse.builder()
                 .vehicleId(vehicle.getVehicleId())
@@ -107,6 +135,7 @@ public class VehicleServiceImpl implements VehicleService{
                 .vehicleType(vehicle.getVehicleType())
                 .color(vehicle.getColor())
                 .nickname(vehicle.getNickname())
+                .isActive(vehicle.getIsActive())
                 .build();
     }
 }

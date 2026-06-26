@@ -10,4 +10,5 @@ public interface VehicleService {
     VehicleResponse addVehicle(Integer userId, VehicleRequest request);
     VehicleResponse updateVehicle(Integer userId, Integer vehicleId, VehicleRequest request);
     void deleteVehicle(Integer userId, Integer vehicleId);
+    VehicleResponse toggleActive(Integer userId, Integer vehicleId);
 }
