@@ -121,7 +121,8 @@ function Login({ onLoginSuccess }) {
     <div className="login-page">
       <main className="login-main">
         <div className="login-card">
-          <div className="login-brand">
+          <div className="login-brand" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <img src="/logo.png" alt="WashFlow Pro Logo" style={{ height: '80px', width: 'auto', marginBottom: '8px' }} />
             <h1>WashFlow Pro</h1>
             <p>Precision Automation Dashboard</p>
           </div>

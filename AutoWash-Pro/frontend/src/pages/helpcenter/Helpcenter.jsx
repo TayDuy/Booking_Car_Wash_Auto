@@ -223,12 +223,22 @@ export default function HelpCenter() {
                         <span className="wf-status__chip">API: 99.9% Hoạt động</span>
                         <span className="wf-status__chip">Trạng thái: Ổn định</span>
                     </div>
-
-                    <footer className="wf-footer">
-                        © 2024 WashFlow Pro | Trợ giúp và hỗ trợ khách hàng
-                    </footer>
                 </main>
             </div>
+
+            {/* Footer */}
+            <footer className="global-footer-bar">
+                <div className="footer-brand-info">
+                    <h4>WashFlow Pro</h4>
+                    <p>© 2026 WashFlow Pro Automation. Tất cả quyền được bảo lưu.</p>
+                </div>
+                <div className="footer-nav-links">
+                    <a href="#">Liên hệ</a>
+                    <a href="#">Chính sách bảo mật</a>
+                    <a href="#">Điều khoản dịch vụ</a>
+                    <a href="#">Hỗ trợ</a>
+                </div>
+            </footer>
         </div>
     );
 }

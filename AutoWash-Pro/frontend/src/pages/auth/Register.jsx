@@ -147,8 +147,8 @@ function Register() {
       <div className="register-shell">
         <main className="register-main">
           <div className="register-card">
-            <div className="register-brand">
-              <div className="register-logo-icon">🚘</div>
+            <div className="register-brand" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <img src="/logo.png" alt="WashFlow Pro Logo" style={{ height: '80px', width: 'auto', marginBottom: '8px' }} />
               <h2>WashFlow Pro</h2>
               <p>Kiến tạo tương lai vận hành rửa xe thông minh</p>
               <h1>Đăng ký tài khoản</h1>
