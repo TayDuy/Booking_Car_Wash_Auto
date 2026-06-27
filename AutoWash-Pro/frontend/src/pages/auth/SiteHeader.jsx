@@ -1,138 +1,106 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import {
-  Bell,
-  CircleHelp
-} from "lucide-react";
+import { Bell, CircleHelp } from "lucide-react";
 import "./SiteHeader.css";
+import { countUnread, subscribeSSE } from "../../api/notificationService";
 
 export default function SiteHeader() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // State quản lý việc hiển thị thông tin bên trong của 2 cụm chức năng
-  const [isOpenNotification, setIsOpenNotification] = useState(false);
-  const [isOpenSupport, setIsOpenSupport] = useState(false);
+  // Số thông báo chưa đọc — chỉ dùng để hiện badge đỏ trên chuông
+  const [unreadCount, setUnreadCount] = useState(0);
 
-  const notificationRef = useRef(null);
-  const supportRef = useRef(null);
-
-  // Xử lý đóng các khung popover tự động khi click chuột ra ngoài vùng icon
-  useEffect(() => {
-    function handleClickOutside(event) {
-      if (notificationRef.current && !notificationRef.current.contains(event.target)) {
-        setIsOpenNotification(false);
-      }
-      if (supportRef.current && !supportRef.current.contains(event.target)) {
-        setIsOpenSupport(false);
-      }
+  const loadUnreadCount = useCallback(async () => {
+    try {
+      const res = await countUnread();
+      setUnreadCount(res?.count ?? 0);
+    } catch (err) {
+      console.error("Lỗi lấy số thông báo chưa đọc:", err);
     }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  useEffect(() => {
+    loadUnreadCount();
+
+    // Đăng ký SSE để badge tự cập nhật real-time khi có thông báo mới
+    let es;
+    try {
+      es = subscribeSSE(() => {
+        loadUnreadCount();
+      });
+    } catch (err) {
+      console.warn("SSE không khả dụng:", err);
+    }
+    return () => es?.close?.();
+  }, [loadUnreadCount]);
+
   return (
-    <header className="custom-app-header">
-      {/* BRAND LOGO - Click vào cũng về Trang chủ */}
-      <div className="header-logo" onClick={() => navigate("/")}>
-        <span className="logo-icon">🧼</span>
-        <span className="logo-text">WashFlow Pro</span>
-      </div>
-
-      {/* NAVIGATION - ĐÃ ĐƯỢC KHÔI PHỤC "TRANG CHỦ" */}
-      <nav className="header-navigation">
-        <button 
-          className={location.pathname === "/" ? "active-link" : ""} 
-          onClick={() => navigate("/")}
-        >
-          Trang chủ
-        </button>
-        <button 
-          className={location.pathname === "/booking" ? "active-link" : ""} 
-          onClick={() => navigate("/booking")}
-        >
-          Đặt lịch
-        </button>
-        <button>Ưu đãi</button>
-        <button 
-          className={location.pathname === "/bookings" ? "active-link" : ""} 
-          onClick={() => navigate("/bookings")}
-        >
-          Lịch sử
-        </button>
-      </nav>
-
-      {/* RIGHT ACTIONS */}
-      <div className="header-actions-group">
-        
-        {/* ICON NOTIFICATION (THÔNG BÁO) */}
-        <div className="icon-popover-container" ref={notificationRef}>
-          <button
-            className={`action-btn-circle ${isOpenNotification ? "btn-active" : ""}`}
-            onClick={() => {
-              setIsOpenNotification(!isOpenNotification);
-              setIsOpenSupport(false);
-            }}
-          >
-            <Bell size={18} strokeWidth={2} />
-            <span className="red-alert-dot"></span>
-          </button>
-
-          {isOpenNotification && (
-            <div className="dropdown-popover-box alignment-right">
-              <div className="popover-arrow"></div>
-              <div className="popover-header">Thông báo</div>
-              
-              <div className="popover-body-content">
-                {/* BẠN CỦA BẠN SẼ CODE LOGIC HOẶC MAP DATA THÔNG BÁO Ở ĐÂY */}
-                <div className="placeholder-item">
-                  <p>Hệ thống thông báo tự động sẵn sàng.</p>
-                  <span>Vừa xong</span>
-                </div>
-              </div>
-              
-              <div className="popover-footer-action">Xem tất cả</div>
-            </div>
-          )}
+      <header className="custom-app-header">
+        {/* BRAND LOGO - Click vào cũng về Trang chủ */}
+        <div className="header-logo" onClick={() => navigate("/")}>
+          <span className="logo-icon">🧼</span>
+          <span className="logo-text">WashFlow Pro</span>
         </div>
 
-        {/* ICON SUPPORT (TRỢ GIÚP) */}
-        <div className="icon-popover-container" ref={supportRef}>
+        {/* NAVIGATION - ĐÃ ĐƯỢC KHÔI PHỤC "TRANG CHỦ" */}
+        <nav className="header-navigation">
           <button
-            className={`action-btn-circle ${isOpenSupport ? "btn-active" : ""}`}
-            onClick={() => {
-              setIsOpenSupport(!isOpenSupport);
-              setIsOpenNotification(false);
-            }}
+              className={location.pathname === "/" ? "active-link" : ""}
+              onClick={() => navigate("/")}
+          >
+            Trang chủ
+          </button>
+          <button
+              className={location.pathname === "/booking" ? "active-link" : ""}
+              onClick={() => navigate("/booking")}
+          >
+            Đặt lịch
+          </button>
+          <button>Ưu đãi</button>
+          <button
+              className={location.pathname === "/bookings" ? "active-link" : ""}
+              onClick={() => navigate("/bookings")}
+          >
+            Lịch sử
+          </button>
+        </nav>
+
+        {/* RIGHT ACTIONS */}
+        <div className="header-actions-group">
+
+          {/* ICON NOTIFICATION (THÔNG BÁO) — bấm vào đi thẳng sang trang /notifications */}
+          <button
+              className={`action-btn-circle ${location.pathname === "/notifications" ? "btn-active" : ""}`}
+              onClick={() => navigate("/notifications")}
+              aria-label="Thông báo"
+          >
+            <Bell size={18} strokeWidth={2} />
+            {unreadCount > 0 && (
+                <span className="red-alert-dot red-alert-dot--count">
+              {unreadCount > 9 ? "9+" : unreadCount}
+            </span>
+            )}
+          </button>
+
+          {/* ICON SUPPORT (TRỢ GIÚP) — bấm vào đi thẳng sang trang /support */}
+          <button
+              className={`action-btn-circle ${location.pathname === "/support" ? "btn-active" : ""}`}
+              onClick={() => navigate("/support")}
+              aria-label="Trợ giúp"
           >
             <CircleHelp size={18} strokeWidth={2} />
           </button>
 
-          {isOpenSupport && (
-            <div className="dropdown-popover-box alignment-right">
-              <div className="popover-arrow"></div>
-              <div className="popover-header">Trung tâm hỗ trợ</div>
-              
-              <div className="popover-body-content">
-                {/* BẠN CỦA BẠN SẼ CODE TÍNH NĂNG CHAT/HOTLINE/SUPPORT Ở ĐÂY */}
-                <div className="support-item-placeholder">
-                  <p>☎️ Hotline: 1900 8888</p>
-                  <small>Hỗ trợ kỹ thuật và phản hồi dịch vụ 24/7</small>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
+          {/* PROFILE USER AVATAR */}
+          <div className="profile-user-avatar" onClick={() => navigate("/profile")} style={{ cursor: "pointer" }}>
+            <img
+                src="/car_avatar.png"
+                alt="User Avatar"
+            />
+          </div>
 
-        {/* PROFILE USER AVATAR */}
-        <div className="profile-user-avatar" onClick={() => navigate("/profile")} style={{ cursor: "pointer" }}>
-          <img 
-            src="/car_avatar.png" 
-            alt="User Avatar" 
-          />
         </div>
-
-      </div>
-    </header>
+      </header>
   );
 }
