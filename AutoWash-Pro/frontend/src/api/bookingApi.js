@@ -1,23 +1,11 @@
-import axiosClient from "./axiosClient";
+import axiosClient from './axiosClient'
 
 const bookingApi = {
-  list: (params) => axiosClient.get("/staff/bookings", { params }),
-
+  list: (params) => axiosClient.get('/bookings', { params }),
   get: (id) => axiosClient.get(`/bookings/${id}`),
+  create: (payload) => axiosClient.post('/bookings', payload),
+  update: (id, payload) => axiosClient.put(`/bookings/${id}`, payload),
+  cancel: (id) => axiosClient.delete(`/bookings/${id}`),
+}
 
-  create: (payload) => axiosClient.post("/bookings", payload),
-
-  myBookings: (customerId) =>
-    axiosClient.get(`/bookings/my/${customerId}`),
-
-  cancel: (id) =>
-    axiosClient.delete(`/bookings/${id}/cancel`),
-
-  update: (id, payload) =>
-    axiosClient.put(`/staff/bookings/${id}`, payload),
-
-  complete: (id) =>
-    axiosClient.patch(`/staff/bookings/${id}/complete`),
-};
-
-export default bookingApi;
+export default bookingApi

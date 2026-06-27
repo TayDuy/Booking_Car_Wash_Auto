@@ -9,12 +9,12 @@ import {
   MdDirectionsCar,
   MdAirportShuttle
 } from "react-icons/md";
+import { createBooking } from "../../api/bookingService";
 import SiteHeader from "./SiteHeader";
 import { useNavigate } from "react-router-dom";
 import { getActiveServices } from "../../api/servicePackageService";
 import { getBranches } from "../../api/branchService";
 import { getAvailableSlots } from "../../api/timeSlotService";
-import vehicleApi from "../../api/vehicleApi";
 
 const DEFAULT_SERVICES = [
   {
@@ -116,23 +116,6 @@ export default function BookingPage() {
       }
     };
     loadBranches();
-
-    const loadVehicles = async () => {
-    try {
-      const response = await vehicleApi.list();
-
-      const vehicles =
-        response.data?.data ||
-        response.data ||
-        [];
-      if (vehicles.length > 0) {
-        setVehicles(vehicles);
-      }
-    } catch (err) {
-      console.log(err);
-    }
-  };
-    loadVehicles();
   }, []);
 
   useEffect(() => {
@@ -192,34 +175,34 @@ export default function BookingPage() {
   for (let i = 1; i <= daysInMonth; i++) calendarDays.push(i);
 
   const handleBooking = async () => {
-    if (!selectedService) {
-      alert("Vui lòng chọn gói dịch vụ!");
-      return;
-    }
-    if (!agreeTerms) {
-      alert("Vui lòng xác nhận thông tin dịch vụ và điều khoản dịch vụ để tiếp tục!");
-      return;
-    }
+    if (!selectedService) { alert("Vui lòng chọn gói dịch vụ!"); return; }
+    if (!agreeTerms) { alert("Vui lòng xác nhận thông tin dịch vụ và điều khoản dịch vụ để tiếp tục!"); return; }
+
+    const customerIdRaw = localStorage.getItem("customerId");
+    if (!customerIdRaw) { alert("Không tìm thấy thông tin khách hàng. Vui lòng đăng nhập lại!"); return; }
+    if (!licensePlate.trim()) { alert("Vui lòng nhập biển số xe!"); return; }
+    if (!brand.trim()) { alert("Vui lòng nhập hãng xe!"); return; }
+    if (!selectedTime) { alert("Vui lòng chọn khung giờ!"); return; }
+    if (!selectedBranch) { alert("Vui lòng chọn chi nhánh!"); return; }
+
     try {
       const bookingData = {
-        customerId: localStorage.getItem("customerId"),
-        vehicleId: selectedVehicleId || null,
+        customerId: parseInt(customerIdRaw, 10),
+        licensePlate: licensePlate.trim(),
+        brand: brand.trim(),
         vehicleType: vehicleType,
-        licensePlate: licensePlate,
         slotId: selectedTime,
         branchId: selectedBranch,
-        paymentMethod: paymentMethod,
         note,
         details: [{ serviceId: selectedService, quantity: 1 }]
       };
-
       await createBooking(bookingData);
       alert("Đặt lịch thành công!");
+      navigate("/");
     } catch (error) {
-      alert(error.response?.data?.message || "Đặt lịch thất bại");
+      alert(error.response?.data?.message || "Đặt lịch thất bại. Vui lòng thử lại!");
     }
-
-}
+  };
 
   return (
       <div className="booking-page">
@@ -405,7 +388,7 @@ export default function BookingPage() {
                 <span className="service-cost">{price.toLocaleString()}đ</span>
               </div>
               <div className="selected-datetime-preview">
-                <p>📅 {selectedDate.getDate()} {monthNames[selectedDate.getMonth()]}, {selectedDate.getFullYear()}{selectedSlotData && ` • 🕒 ${selectedSlotData.startTime}`}</p>
+                <p>{selectedDate.getDate()} {monthNames[selectedDate.getMonth()]}, {selectedDate.getFullYear()}{selectedSlotData && ` • ${selectedSlotData.startTime}`}</p>
               </div>
               <div className="billing-fees-list">
                 <div className="fee-line"><span>Giá cơ bản</span><span>{price.toLocaleString()}đ</span></div>
