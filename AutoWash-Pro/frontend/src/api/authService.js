@@ -2,13 +2,12 @@ import axios from "axios";
 
 const API_URL = "http://localhost:8080/api/v1/auth";
 
-export async function login(email, password){
-    const response = await axios.post(`${API_URL}/login`,{
-        email,
-        password
+export async function login(username, password){
+    const respone = await axios.post(`${API_URL}/login`,{
+        username: username,
+        password: password,
     });
-
-    return response.data;
+    return respone.data;
 }
 
 export async function loginWithGoogle(supabaseToken) {
@@ -45,16 +44,30 @@ export async function verifyOtp(phone, otp) {
 }
 
 export function saveAuth(result){
+    localStorage.setItem(
+      "token",
+      result.accessToken
+    );
 
-    localStorage.setItem("token", result.accessToken);
+    localStorage.setItem(
+      "username",
+      result.user?.username || ""
+    );
 
-    localStorage.setItem("userId", result.userId);
+    localStorage.setItem(
+      "role",
+      result.user?.role || ""
+    );
 
-    localStorage.setItem("email", result.email);
+    localStorage.setItem(
+      "userId",
+      result.user?.userId || ""
+    );
 
-    localStorage.setItem("role", result.role);
-
-    localStorage.setItem("fullName", result.fullName);
+    localStorage.setItem(
+      "customerId",
+      result.user?.customerId || ""
+    );
 }
 
 export function logout(){

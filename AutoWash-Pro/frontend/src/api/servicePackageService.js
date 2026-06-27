@@ -1,4 +1,9 @@
 import axiosClient from "./axiosClient";
 
-export const getActiveServices = () =>
-    axiosClient.get("/service-packages/active");
+const API_URL = "http://localhost:8080/api/v1";
+
+export const getActiveServices = async () => {
+  return axiosClient.get(
+    `${API_URL}/service-packages/active`
+  );
+};
