@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
     Search, Bell, HelpCircle, Settings, Droplet,
@@ -6,7 +6,8 @@ import {
     Plus, LogOut, Mail, Star, ShieldX, Wrench,
     MessageCircle, Phone, Clock, Eye, ArrowRight,
 } from "lucide-react";
-import "./HelpCenter.css";
+import "./Helpcenter.css";
+import SupportChatWidget from "../../supportchatwidget/Supportchatwidget";
 
 /* ── Data ─────────────────────────────────────────────────────────────────── */
 
@@ -77,13 +78,17 @@ function ArticleCard({ icon: Icon, iconBg, title, description, readTime, views }
     );
 }
 
-function ContactCard({ icon: Icon, iconBg, title, subtitle, cta, variant }) {
+function ContactCard({ icon: Icon, iconBg, title, subtitle, cta, variant, onClick }) {
     return (
         <article className="wf-contact-card">
             <span className={`wf-contact-card__icon ${iconBg}`}><Icon size={20} /></span>
             <h3 className="wf-contact-card__title">{title}</h3>
             <p className="wf-contact-card__subtitle">{subtitle}</p>
-            <button className={`wf-contact-card__btn wf-contact-card__btn--${variant}`} type="button">
+            <button
+                className={`wf-contact-card__btn wf-contact-card__btn--${variant}`}
+                type="button"
+                onClick={onClick}
+            >
                 {cta}
             </button>
         </article>
@@ -94,6 +99,21 @@ function ContactCard({ icon: Icon, iconBg, title, subtitle, cta, variant }) {
 
 export default function HelpCenter() {
     const navigate = useNavigate();
+    const [searchValue, setSearchValue] = useState("");
+    const [chatOpen, setChatOpen] = useState(false);
+    const [chatInitialMessage, setChatInitialMessage] = useState(null);
+
+    function handleSearchKeyDown(e) {
+        if (e.key === "Enter" && searchValue.trim()) {
+            setChatInitialMessage(searchValue.trim());
+            setChatOpen(true);
+        }
+    }
+
+    function openEmptyChat() {
+        setChatInitialMessage(null);
+        setChatOpen(true);
+    }
 
     return (
         <div className="wf-app">
@@ -120,7 +140,7 @@ export default function HelpCenter() {
                     <button className="wf-icon-btn" aria-label="Thông báo" type="button" onClick={() => navigate("/notifications")}>
                         <Bell size={18} />
                     </button>
-                    <button className="wf-icon-btn" aria-label="Trợ giúp" type="button">
+                    <button className="wf-icon-btn" aria-label="Trợ giúp" type="button" onClick={openEmptyChat}>
                         <HelpCircle size={18} />
                     </button>
                     <button className="wf-icon-btn" aria-label="Cài đặt" type="button">
@@ -154,7 +174,7 @@ export default function HelpCenter() {
                         <Plus size={16} /> Đặt lịch mới
                     </button>
                     <div className="wf-sidebar__footer">
-                        <button className="wf-sidebar__help-btn" type="button">
+                        <button className="wf-sidebar__help-btn" type="button" onClick={openEmptyChat}>
                             <HelpCircle size={16} /> Hỗ trợ
                         </button>
                         <button className="wf-sidebar__logout-btn" type="button" onClick={() => navigate("/login")}>
@@ -173,7 +193,14 @@ export default function HelpCenter() {
                         </p>
                         <div className="wf-search">
                             <Search size={18} className="wf-search__icon" />
-                            <input className="wf-search__input" type="text" placeholder="Tìm kiếm trợ giúp..." />
+                            <input
+                                className="wf-search__input"
+                                type="text"
+                                placeholder="Tìm kiếm trợ giúp..."
+                                value={searchValue}
+                                onChange={(e) => setSearchValue(e.target.value)}
+                                onKeyDown={handleSearchKeyDown}
+                            />
                             <span className="wf-search__kbd"><kbd>CMD</kbd><kbd>K</kbd></span>
                         </div>
                     </section>
@@ -211,7 +238,13 @@ export default function HelpCenter() {
                             Vẫn cần hỗ trợ? Liên hệ với chúng tôi
                         </h2>
                         <div className="wf-contact-grid">
-                            {CONTACT_OPTIONS.map(opt => <ContactCard key={opt.title} {...opt} />)}
+                            {CONTACT_OPTIONS.map(opt => (
+                                <ContactCard
+                                    key={opt.title}
+                                    {...opt}
+                                    onClick={opt.title === "Chat với chúng tôi" ? openEmptyChat : undefined}
+                                />
+                            ))}
                         </div>
                     </section>
 
@@ -229,6 +262,12 @@ export default function HelpCenter() {
                     </footer>
                 </main>
             </div>
+
+            <SupportChatWidget
+                open={chatOpen}
+                onClose={() => setChatOpen(false)}
+                initialMessage={chatInitialMessage}
+            />
         </div>
     );
 }
