@@ -63,7 +63,7 @@ public class Branch {
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
     @Builder.Default
-    private BranchStatus status = BranchStatus.OPEN;
+    private BranchStatus status = BranchStatus.active;
 
     @OneToMany(mappedBy = "branch", fetch = FetchType.LAZY)
     private List<Employee> staffList;
@@ -80,11 +80,11 @@ public class Branch {
     private LocalDateTime updatedAt;
 
     public enum BranchStatus {
-        OPEN, CLOSED, MAINTENANCE, ACTIVE
+        active, inactive
     }
 
     /** Chi nhánh có nhận booking mới không. */
     public boolean isAcceptingBookings() {
-        return BranchStatus.OPEN.equals(this.status) || BranchStatus.ACTIVE.equals(this.status);
+        return BranchStatus.active.equals(this.status);
     }
 }
