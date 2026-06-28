@@ -1,4 +1,4 @@
-import "./Login.css";
+import "./Register.css";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { register, sendOtp, verifyOtp } from "../../api/authService";
@@ -75,93 +75,99 @@ function Register() {
   }
 
   return (
-    <div className="login-page register-page">
-      <div className="login-main">
-        <div className="login-card register-card">
-          <div className="login-header">
-            <h1 className="login-title">
-              AutoWash Pro
-            </h1>
-            <p className="login-subtitle">
-              Create Your Account
-            </p>
+    <div className="register-layout">
+      <main className="register-page">
+        <div className="register-card">
+          <div className="register-header">
+            <div className="brand-row">
+              <div className="register-logo">💧</div>
+              <h1 className="register-title">WashFlow Pro</h1>
+            </div>
+
+            <p className="register-subtitle">Create your account</p>
           </div>
 
           {errorMessage && (
-            <div className="alert alert-danger">
+            <div className="register-error">
               {errorMessage}
             </div>
           )}
 
-          <form onSubmit={handleSubmit}>
+          <form className="register-form" onSubmit={handleSubmit}>
             <div className="register-grid">
-              <div className="mb-3">
-                <label className="form-label fw-semibold d-block text-start">
-                  Full Name
-                </label>
-                <input
-                  type="text"
-                  className="login-input"
-                  placeholder="Nhập họ tên"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                />
+              <div className="form-group">
+                <label className="form-label">Full Name</label>
+                <div className="input-row">
+                  <span className="input-icon">👤</span>
+                  <input
+                    type="text"
+                    className="register-input"
+                    placeholder="Nhập họ tên"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                  />
+                </div>
               </div>
 
-              <div className="mb-3">
-                <label className="form-label fw-semibold d-block text-start">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  className="login-input"
-                  placeholder="Nhập email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
+              <div className="form-group">
+                <label className="form-label">Email</label>
+                <div className="input-row">
+                  <span className="input-icon">✉</span>
+                  <input
+                    type="email"
+                    className="register-input"
+                    placeholder="Nhập email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                  />
+                </div>
               </div>
 
-              <div className="mb-3">
-                <label className="form-label fw-semibold d-block text-start">
-                  Username
-                </label>
-                <input
-                  type="text"
-                  className="login-input"
-                  placeholder="Nhập username"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                />
+              <div className="form-group">
+                <label className="form-label">Username</label>
+                <div className="input-row">
+                  <span className="input-icon">@</span>
+                  <input
+                    type="text"
+                    className="register-input"
+                    placeholder="Nhập username"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                  />
+                </div>
               </div>
 
-              <div className="mb-3">
-                <label className="form-label fw-semibold d-block text-start">
-                  Phone Number
-                </label>
-                <input
-                  type="tel"
-                  className="login-input"
-                  placeholder="Nhập phone"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                />
+              <div className="form-group">
+                <label className="form-label">Phone Number</label>
+                <div className="input-row">
+                  <span className="input-icon">☎</span>
+                  <input
+                    type="tel"
+                    className="register-input"
+                    placeholder="Nhập phone"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                  />
+                </div>
               </div>
 
-              <div className="mb-3">
-                <label className="form-label fw-semibold d-block text-start">
-                  OTP Code
-                </label>
-                <input
-                  type="text"
-                  className="login-input"
-                  placeholder="Nhập mã OTP"
-                  value={otp}
-                  disabled={!otpSent || otpVerified}
-                  onChange={(e) => setOtp(e.target.value)}
-                />
+              <div className="form-group">
+                <label className="form-label">OTP Code</label>
+                <div className="input-row">
+                  <span className="input-icon">#</span>
+                  <input
+                    type="text"
+                    className="register-input"
+                    placeholder="Nhập mã OTP"
+                    value={otp}
+                    disabled={!otpSent || otpVerified}
+                    onChange={(e) => setOtp(e.target.value)}
+                  />
+                </div>
               </div>
 
-              <div className="mb-3">
+              <div className="form-group otp-group">
+                <label className="form-label invisible-label">OTP Action</label>
                 <button
                   type="button"
                   className="otp-btn"
@@ -172,18 +178,18 @@ function Register() {
                 </button>
               </div>
 
-              <div className="mb-3">
-                <label className="form-label fw-semibold d-block text-start">
-                  Password
-                </label>
-                <div className="password-wrap">
+              <div className="form-group">
+                <label className="form-label">Password</label>
+                <div className="input-row">
+                  <span className="input-icon">🔒</span>
                   <input
                     type={showPassword ? "text" : "password"}
-                    className="login-input password-input"
+                    className="register-input"
                     placeholder="Nhập mật khẩu"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                   />
+
                   <button
                     type="button"
                     className="password-toggle"
@@ -194,35 +200,33 @@ function Register() {
                 </div>
               </div>
 
-              <div className="mb-4">
-                <label className="form-label fw-semibold d-block text-start">
-                  Confirm Password
-                </label>
-                <input
-                  type="password"
-                  className="login-input"
-                  placeholder="Nhập lại mật khẩu"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                />
+              <div className="form-group">
+                <label className="form-label">Confirm Password</label>
+                <div className="input-row">
+                  <span className="input-icon">🔐</span>
+                  <input
+                    type="password"
+                    className="register-input"
+                    placeholder="Nhập lại mật khẩu"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                  />
+                </div>
               </div>
             </div>
 
-            <button type="submit" className="login-btn">
-              Đăng ký
+            <button type="submit" className="register-btn">
+              <span>Đăng ký</span>
+              <span>→</span>
             </button>
 
             <div className="register-footer">
-              <span className="register-footer-text">
-                Đã có tài khoản?
-              </span>
-              <Link to="/" className="register-footer-link">
-                Đăng nhập
-              </Link>
+              <span>Đã có tài khoản? </span>
+              <Link to="/">Đăng nhập</Link>
             </div>
           </form>
         </div>
-      </div>
+      </main>
     </div>
   );
 }
