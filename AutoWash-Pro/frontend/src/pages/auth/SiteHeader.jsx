@@ -57,7 +57,12 @@ export default function SiteHeader() {
           >
             Đặt lịch
           </button>
-          <button>Ưu đãi</button>
+          <button
+              className={location.pathname === "/subscription" ? "active-link" : ""}
+              onClick={() => navigate("/subscription")}
+          >
+            Ưu đãi thành viên
+          </button>
           <button
               className={location.pathname === "/bookings" ? "active-link" : ""}
               onClick={() => navigate("/bookings")}

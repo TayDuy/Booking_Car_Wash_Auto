@@ -15,6 +15,7 @@ import Register from "./pages/auth/Register";
 import BookingPage from "./pages/auth/Booking";
 import NotificationPage from "./pages/auth/NotificationPage";
 import ProfilePage from "./pages/auth/ProfilePage";
+import SubscriptionPage from "./subscriptionpage/SubscriptionPage";
 import SupportPage from "./pages/auth/SupportPage";
 import HelpCenter from "./pages/helpcenter/Helpcenter";
 import CustomerNotificationPage from "./pages/customer/CustomerNotificationPage";
@@ -33,6 +34,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(
           <Route path="/booking"       element={<BookingPage />} />
           <Route path="/notifications" element={<NotificationPage />} />
           <Route path="/profile"       element={<ProfilePage />} />
+          <Route path="/subscription" element={<SubscriptionPage />} />
           <Route path="/bookings"      element={<BookingHistory />} />
           <Route path="/support"       element={<HelpCenter />} />
           <Route path="/support-old"   element={<SupportPage />} />
