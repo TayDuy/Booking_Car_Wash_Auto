@@ -95,7 +95,7 @@ public class BranchServiceImpl implements BranchService {
 
         // Client có thể không truyền status khi tạo mới → mặc định OPEN
         if (branch.getStatus() == null) {
-            branch.setStatus(BranchStatus.open);
+            branch.setStatus(BranchStatus.OPEN);
         }
 
         Branch saved = branchRepository.save(branch);
@@ -161,7 +161,7 @@ public class BranchServiceImpl implements BranchService {
     @Transactional
     public void softDelete(Integer branchId) {
         Branch branch = getOrThrow(branchId);
-        branch.setStatus(BranchStatus.closed);  // Đánh dấu không hoạt động, không xóa row
+        branch.setStatus(BranchStatus.CLOSED);  // Đánh dấu không hoạt động, không xóa row
         branchRepository.save(branch);
         log.info("[Branch] Soft-delete – id={} → status=CLOSED", branchId);
     }

@@ -50,7 +50,7 @@ export default function ManageCatalog() {
     // Các biến tạm lưu dữ liệu người dùng gõ vào form trong Modal
     const [branchName, setBranchName] = useState("");
     const [branchAddress, setBranchAddress] = useState("");
-    const [branchStatus, setBranchStatus] = useState("open");
+    const [branchStatus, setBranchStatus] = useState("OPEN");
 
     const [bayName, setBayName] = useState("");
     const [bayStatus, setBayStatus] = useState("available");
@@ -116,7 +116,7 @@ export default function ManageCatalog() {
         setModalType("branch_add");
         setBranchName("");
         setBranchAddress("");
-        setBranchStatus("open");
+        setBranchStatus("OPEN");
         setShowModal(true);
     };
 
@@ -126,7 +126,7 @@ export default function ManageCatalog() {
         setEditingItem(branch);
         setBranchName(branch.branchName);
         setBranchAddress(branch.address);
-        setBranchStatus(branch.status?.toLowerCase());
+        setBranchStatus(branch.status?.toUpperCase());
         setShowModal(true);
     };
 
@@ -137,7 +137,7 @@ export default function ManageCatalog() {
             const data = {
                 branchName: branchName,
                 address: branchAddress,
-                status: branchStatus?.toLowerCase(),
+                status: branchStatus?.toUpperCase(),
                 phone: editingItem?.phone || "0901234567"
             };
             if (modalType === "branch_add") {
@@ -599,9 +599,9 @@ export default function ManageCatalog() {
                                 <div className="mc-form-group">
                                     <label>Trạng thái</label>
                                     <select value={branchStatus} onChange={(e) => setBranchStatus(e.target.value)}>
-                                        <option value="open">Mở cửa hoạt động (OPEN)</option>
-                                        <option value="closed">Đóng cửa (CLOSED)</option>
-                                        <option value="maintenance">Bảo trì kỹ thuật (MAINTENANCE)</option>
+                                        <option value="OPEN">Mở cửa hoạt động (OPEN)</option>
+                                        <option value="CLOSED">Đóng cửa (CLOSED)</option>
+                                        <option value="MAINTENANCE">Bảo trì kỹ thuật (MAINTENANCE)</option>
                                     </select>
                                 </div>
                                 <div className="mc-modal-footer">
