@@ -15,4 +15,5 @@ public class VehicleResponse {
     private Vehicle.VehicleType vehicleType;
     private String color;
     private String nickname;
+    private Boolean isActive;
 }

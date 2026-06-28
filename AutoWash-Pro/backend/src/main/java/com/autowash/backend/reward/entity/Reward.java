@@ -35,7 +35,7 @@ public class Reward {
     @EqualsAndHashCode.Include
     private Integer rewardId;
 
-    @NotBlank(message = "Tên reward không được để trống")
+    @NotBlank(message = "Tên Reward không được để trống")
     @Size(max = 100)
     @Column(name = "reward_name", nullable = false, length = 100)
     private String rewardName;

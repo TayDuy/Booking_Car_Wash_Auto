@@ -12,6 +12,7 @@ import jakarta.validation.constraints.*;
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
 
@@ -38,7 +39,7 @@ import java.time.LocalDateTime;
  */
 @Entity
 @Table(name = "booking")
-@EntityListeners(AbstractMethodError.class)
+@EntityListeners(AuditingEntityListener.class)
 @Getter
 @Setter
 @NoArgsConstructor
@@ -51,7 +52,9 @@ import java.time.LocalDateTime;
 public class Booking {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "booking_seq")
+    @SequenceGenerator(name = "booking_seq", sequenceName = "booking_booking_id_seq", allocationSize = 1)
+    @Column(name = "booking_id")
     @EqualsAndHashCode.Include
     private Integer bookingId;
 

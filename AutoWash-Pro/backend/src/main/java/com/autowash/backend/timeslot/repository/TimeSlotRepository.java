@@ -2,13 +2,16 @@ package com.autowash.backend.timeslot.repository;
 
 import com.autowash.backend.timeslot.entity.TimeSlot;
 import com.autowash.backend.timeslot.entity.TimeSlot.SlotStatus;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface TimeSlotRepository extends JpaRepository<TimeSlot, Integer> {
@@ -40,4 +43,8 @@ public interface TimeSlotRepository extends JpaRepository<TimeSlot, Integer> {
     boolean existsByWashBay_BayIdAndSlotDateAndStartTime(
             Integer bayId, LocalDate slotDate, java.time.LocalTime startTime
     );
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT ts FROM TimeSlot ts WHERE ts.slotId = :slotId")
+    Optional<TimeSlot> findByIdForUpdate(@Param("slotId") Integer slotId);
+
 }

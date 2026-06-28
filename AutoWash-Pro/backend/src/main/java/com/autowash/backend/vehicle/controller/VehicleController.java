@@ -51,4 +51,12 @@ public class VehicleController {
         vehicleService.deleteVehicle(userDetails.getId(), vehicleId);
         return ResponseEntity.noContent().build();
     }
+
+    // Bật tắt trạng thái hoạt động của xe
+    @PutMapping("/{vehicleId}/toggle-active")
+    public ResponseEntity<VehicleResponse> toggleActive(
+            @org.springframework.security.core.annotation.AuthenticationPrincipal com.autowash.backend.security.CustomUserDetails userDetails,
+            @PathVariable Integer vehicleId) {
+        return ResponseEntity.ok(vehicleService.toggleActive(userDetails.getId(), vehicleId));
+    }
 }
