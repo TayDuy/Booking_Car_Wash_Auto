@@ -18,7 +18,7 @@ function Login({ onLoginSuccess }) {
     const normalizedRole = role?.toLowerCase();
 
     if (normalizedRole === "admin") {
-      navigate("/admin");
+      navigate("/admin/catalog");
     } else if (normalizedRole === "employee") {
       console.log("GO EMPLOYEE");
       navigate("/employee");
