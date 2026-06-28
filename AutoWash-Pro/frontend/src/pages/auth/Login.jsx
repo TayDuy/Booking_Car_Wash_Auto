@@ -1,86 +1,137 @@
 import "./Login.css";
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { login, saveAuth } from "../../api/authService";
-import { signInWithPopup, getRedirectResult } from "firebase/auth";
-import { auth, googleProvider } from "../../firebase/firebaseConfig";
+import {
+  login,
+  saveAuth,
+  loginWithGoogle,
+  isLoggedIn,
+} from "../../api/authService";
+import { supabase } from "../../api/supabaseClient";
 
 function Login({ onLoginSuccess }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+
   const navigate = useNavigate();
 
   function redirectByRole(role) {
-    console.log("ROLE =", role);
-
     const normalizedRole = role?.toLowerCase();
 
     if (normalizedRole === "admin") {
-      console.log("GO ADMIN");
       navigate("/admin");
     } else if (normalizedRole === "employee") {
-      console.log("GO EMPLOYEE");
       navigate("/employee");
     } else {
-      console.log("GO BOOKING");
       navigate("/booking");
     }
   }
 
   async function handleSubmit(e) {
     e.preventDefault();
+
+    if (loading) return;
+
+    setErrorMessage("");
+    setLoading(true);
+
     try {
       const data = await login(username, password);
+
       if (data.status === 200 || data.data) {
         saveAuth(data.data);
+
         if (onLoginSuccess) {
           onLoginSuccess();
         }
-        redirectByRole(data.data.role);
+
+        redirectByRole(data.data.user.role);
       } else {
-        setErrorMessage(data.message);
+        setErrorMessage(
+          data.message || "Đăng nhập thất bại. Kiểm tra lại username/password."
+        );
       }
-    } catch {
+    } catch (err) {
+      console.error(err);
       setErrorMessage("Đăng nhập thất bại. Kiểm tra lại username/password.");
+    } finally {
+      setLoading(false);
     }
   }
 
   async function handleGoogleLogin() {
     try {
-      const result = await signInWithPopup(auth, googleProvider);
-      const googleToken = await result.user.getIdToken();
-      saveAuth({
-        accessToken: googleToken,
-        username: result.user.email,
-        role: "customer",
+      sessionStorage.setItem("isGoogleLoginClick", "true");
+
+      await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: window.location.origin + "/login",
+        },
       });
-      if (onLoginSuccess) {
-        onLoginSuccess();
-      }
-      redirectByRole("customer");
     } catch (error) {
       console.log("Google login error:", error);
-      alert("Đăng nhập Google thất bại!");
+      setErrorMessage("Đăng nhập Google thất bại!");
     }
   }
 
   useEffect(() => {
-    console.log("Login page loaded, checking Google redirect...");
-    async function checkGoogleRedirect() {
-      try {
-        const result = await getRedirectResult(auth);
-        console.log("Redirect result:", result);
-        if (result) {
-          console.log("Google user:", result.user);
-          alert("Đăng nhập Google thành công: " + result.user.email);
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (event === "SIGNED_IN" && session) {
+          if (isLoggedIn()) return;
+
+          const isGoogleClick =
+            sessionStorage.getItem("isGoogleLoginClick") === "true";
+
+          const hasAuthParams =
+            window.location.hash.includes("access_token=") ||
+            window.location.search.includes("code=");
+
+          if (!isGoogleClick && !hasAuthParams) {
+            await supabase.auth.signOut();
+            return;
+          }
+
+          sessionStorage.removeItem("isGoogleLoginClick");
+          setLoading(true);
+          setErrorMessage("");
+
+          try {
+            const supabaseToken = session.access_token;
+            const data = await loginWithGoogle(supabaseToken);
+
+            if (data.status === 200 || data.data) {
+              saveAuth(data.data);
+
+              if (onLoginSuccess) {
+                onLoginSuccess();
+              }
+
+              redirectByRole(data.data.user.role);
+            } else {
+              setErrorMessage(
+                data.message || "Đăng nhập bằng Google thất bại trên Backend."
+              );
+            }
+          } catch (error) {
+            console.error("Lỗi khi gửi token về Backend:", error);
+            setErrorMessage(
+              "Đăng nhập thất bại. Không thể xác thực với máy chủ."
+            );
+          } finally {
+            setLoading(false);
+          }
         }
-      } catch (error) {
-        console.log("Google redirect error:", error);
       }
-    }
-    checkGoogleRedirect();
+    );
+
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
   }, []);
 
   return (
@@ -92,8 +143,15 @@ function Login({ onLoginSuccess }) {
               <div className="login-logo">💧</div>
               <h1 className="login-title">WashFlow Pro</h1>
             </div>
+
             <p className="login-subtitle">Precision Automation Dashboard</p>
           </div>
+
+          {errorMessage && (
+            <div className="login-error">
+              {errorMessage}
+            </div>
+          )}
 
           <form className="login-form" onSubmit={handleSubmit}>
             <div className="form-group">
@@ -145,8 +203,8 @@ function Login({ onLoginSuccess }) {
               </a>
             </div>
 
-            <button type="submit" className="login-btn">
-              <span>Sign In</span>
+            <button type="submit" className="login-btn" disabled={loading}>
+              <span>{loading ? "Signing in..." : "Sign In"}</span>
               <span>→</span>
             </button>
 
@@ -160,12 +218,13 @@ function Login({ onLoginSuccess }) {
               type="button"
               className="google-btn"
               onClick={handleGoogleLogin}
+              disabled={loading}
             >
               <img
                 src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
                 alt="Google"
-                className="google-logo"                
-              />              
+                className="google-logo"
+              />
               <span>Continue with Google</span>
             </button>
           </form>

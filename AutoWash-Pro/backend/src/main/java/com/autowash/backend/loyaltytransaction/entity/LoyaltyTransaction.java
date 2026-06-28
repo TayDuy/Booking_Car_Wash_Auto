@@ -9,6 +9,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Entity
+@Table(name = "loyalty_transaction")
 @Data
 @Builder
 @NoArgsConstructor
@@ -19,7 +20,7 @@ public class LoyaltyTransaction {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long loyaltyTransactionId;
 
-    private Long customerId;
+    private Integer customerId;
 
     private Long paymentId;
 

@@ -88,7 +88,9 @@ public class SecurityConfig {
                                 "/swagger-ui/**",
                                 "/v3/api-docs/**",
                                 "/api/v1/auth/send-otp",
-                                "/api/v1/auth/verify-otp"
+                                "/api/v1/auth/verify-otp",
+                                "/api/v1/auth/google",
+                                "/api/v1/auth/refresh"
                         ).permitAll()
 
                         // Admin only

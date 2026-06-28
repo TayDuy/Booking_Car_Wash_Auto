@@ -4,6 +4,8 @@ import { Link } from "react-router-dom";
 import { register, sendOtp, verifyOtp } from "../../api/authService";
 
 function Register() {
+  const navigate = useNavigate();
+
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
@@ -15,6 +17,18 @@ function Register() {
   const [otp, setOtp] = useState("");
   const [otpSent, setOtpSent] = useState(false);
   const [otpVerified, setOtpVerified] = useState(false);
+
+  function redirectByRole(role) {
+    const normalizedRole = role?.toLowerCase();
+
+    if (normalizedRole === "admin") {
+      navigate("/admin");
+    } else if (normalizedRole === "employee") {
+      navigate("/employee");
+    } else {
+      navigate("/");
+    }
+  }
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -73,6 +87,53 @@ function Register() {
       setErrorMessage("OTP không đúng hoặc đã hết hạn.");
     }
   }
+
+  async function handleGoogleRegister() {
+    try {
+      await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: window.location.origin + "/register",
+        },
+      });
+    } catch (error) {
+      console.log("Google register error:", error);
+      setErrorMessage("Đăng ký bằng Google thất bại.");
+    }
+  }
+
+  useEffect(() => {
+    console.log("Register page loaded, checking Google redirect...");
+
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (event === "SIGNED_IN" && session) {
+          try {
+            const supabaseToken = session.access_token;
+            const data = await loginWithGoogle(supabaseToken);
+
+            if (data.status === 200 || data.data) {
+              saveAuth(data.data);
+              redirectByRole(data.data.user.role);
+            } else {
+              setErrorMessage(
+                data.message || "Đăng ký bằng Google thất bại trên Backend."
+              );
+            }
+          } catch (error) {
+            console.error("Lỗi khi gửi Google token về Backend:", error);
+            setErrorMessage(
+              "Đăng ký bằng Google thất bại. Không thể xác thực với máy chủ."
+            );
+          }
+        }
+      }
+    );
+
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
+  }, []);
 
   return (
     <div className="register-layout">

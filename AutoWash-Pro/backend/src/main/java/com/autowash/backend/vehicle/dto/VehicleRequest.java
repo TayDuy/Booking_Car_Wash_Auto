@@ -11,7 +11,7 @@ import lombok.Data;
 public class VehicleRequest {
 
     @NotBlank(message = "Biển số xe không được để trống")
-    @Pattern(regexp = "^[0-9]{2}[A-Z]-[0-9]{4,5}$", message = "Biển số xe sai định dạng (VD: 30A-12345)")
+    @Pattern(regexp = "^[0-9]{2}[a-zA-Z]-[0-9]{3,5}(\\.[0-9]{1,2})?$", message = "Biển số xe sai định dạng (VD: 30A-12345)")
     private String licensePlate;
 
     @NotBlank(message = "Hãng xe không được để trống")

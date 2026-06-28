@@ -84,4 +84,26 @@ public interface PromotionService {
      * @return kết quả gồm applicable, discountAmount, finalAmount
      */
     PromotionApplyResponseDTO applyPromotion(PromotionApplyRequestDTO request);
+
+    /**
+     * Lấy lịch sử sử dụng của một promotion.
+     *
+     * @param promotionId ID của promotion
+     * @return danh sách lịch sử sử dụng promotion
+     */
+    List<PromotionUseResponseDTO> getPromotionUses(Integer promotionId);
+
+    /**
+     * Lấy lịch sử promotion mà một customer đã sử dụng.
+     *
+     * @param customerId ID của customer
+     * @return danh sách promotion customer đã dùng
+     */
+    List<PromotionUseResponseDTO> getCustomerPromotionUses(Integer customerId);
+    /**
+     * Tự động chuyển các promotion đã hết hạn nhưng còn active sang expired.
+     *
+     * @return số lượng promotion đã được cập nhật
+     */
+    int expireExpiredPromotions();
 }

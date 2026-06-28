@@ -173,4 +173,17 @@ public class PromotionController {
         promotionService.deactivate(id);
         return ResponseEntity.noContent().build();
     }
+    /**
+     * Chạy thủ công batch expire promotion.
+     *
+     * POST /api/v1/promotions/expire-expired
+     */
+    @PostMapping("/expire-expired")
+    public ResponseEntity<String> expireExpiredPromotions() {
+        int expiredCount = promotionService.expireExpiredPromotions();
+
+        return ResponseEntity.ok(
+                "Expired promotions updated: " + expiredCount
+        );
+    }
 }

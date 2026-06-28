@@ -10,6 +10,13 @@ export async function login(username, password){
     return respone.data;
 }
 
+export async function loginWithGoogle(supabaseToken) {
+    const response = await axios.post(`${API_URL}/google`, {
+        supabaseToken: supabaseToken
+    });
+    return response.data;
+}
+
 export async function register(username, password, email, fullName, phone){
     const respone = await axios.post(`${API_URL}/register`,{
         username: username,
@@ -37,15 +44,44 @@ export async function verifyOtp(phone, otp) {
 }
 
 export function saveAuth(result){
-    localStorage.setItem("token", result.accessToken);
-    localStorage.setItem("username", result.username);
-    localStorage.setItem("role", result.role);
+    localStorage.setItem(
+      "token",
+      result.accessToken
+    );
+
+    localStorage.setItem(
+      "refreshToken",
+      result.refreshToken || ""
+    );
+
+    localStorage.setItem(
+      "username",
+      result.user?.username || ""
+    );
+
+    localStorage.setItem(
+      "role",
+      result.user?.role || ""
+    );
+
+    localStorage.setItem(
+      "userId",
+      result.user?.userId || ""
+    );
+
+    localStorage.setItem(
+      "customerId",
+      result.user?.customerId || ""
+    );
 }
 
 export function logout(){
     localStorage.removeItem("token");
+    localStorage.removeItem("refreshToken");
     localStorage.removeItem("username");
     localStorage.removeItem("role");
+    localStorage.removeItem("userId");
+    localStorage.removeItem("customerId");
 }
 
 export function isLoggedIn(){

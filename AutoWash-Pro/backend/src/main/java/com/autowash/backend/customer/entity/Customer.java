@@ -1,5 +1,6 @@
 package com.autowash.backend.customer.entity;
 
+import com.autowash.backend.loyaltytier.entity.LoyaltyTier;
 import com.autowash.backend.user.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
@@ -36,7 +37,7 @@ public class Customer {
     @Column(name = "gender", length = 10)
     private String gender;
 
-    @Column(name = "tier_id", nullable = false, insertable = false, updatable = false)
+    @Column(name = "tier_id")
     private Integer tierId;
 
     @Column(name = "total_points", nullable = false, insertable = false, updatable = false)

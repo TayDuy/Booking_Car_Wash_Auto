@@ -1,5 +1,9 @@
 package com.autowash.backend.reward.service.impl;
 
+import com.autowash.backend.loyaltytransaction.entity.LoyaltyTransaction;
+import com.autowash.backend.loyaltytransaction.repository.LoyaltyTransactionRepository;
+import com.autowash.backend.reward.dto.RedeemRewardRequestDTO;
+import com.autowash.backend.reward.dto.RedeemRewardResponseDTO;
 import com.autowash.backend.reward.dto.RewardRequestDTO;
 import com.autowash.backend.reward.dto.RewardResponseDTO;
 import com.autowash.backend.reward.entity.Reward;
@@ -11,8 +15,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
+
 
 /**
  * Implementation của {@link RewardService}.
@@ -28,6 +35,7 @@ public class RewardServiceImpl implements RewardService {
 
     private final RewardRepository rewardRepository;
     private final RewardMapper rewardMapper;
+    private final LoyaltyTransactionRepository loyaltyTransactionRepository;
 
     /**
      * {@inheritDoc}
@@ -96,6 +104,86 @@ public class RewardServiceImpl implements RewardService {
         rewardRepository.save(reward);
     }
 
+    @Override
+    public List<RewardResponseDTO> getRedeemableRewards(Integer customerId, String vehicleType) {
+        Integer currentPoints = getCurrentPoints(customerId);
+
+        Reward.RewardStatus activeStatus = parseEnumIgnoreCase(Reward.RewardStatus.class, "active");
+        Reward.RewardVehicleType requestedVehicleType =
+                parseEnumIgnoreCase(Reward.RewardVehicleType.class, vehicleType);
+
+        return rewardRepository.findAll()
+                .stream()
+                .filter(reward -> reward.getStatus().equals(activeStatus))
+                .filter(reward -> reward.getRequiredPoints() <= currentPoints)
+                .filter(reward -> isVehicleMatched(reward.getVehicleType(), requestedVehicleType))
+                .map(rewardMapper::toResponse)
+                .toList();
+    }
+
+    // Chuc nang khi bam customer bam nut "Doi reward"
+    /*
+        1. Tìm reward theo id
+        2. Kiểm tra reward active
+        3. Kiểm tra loại xe
+        4. Lấy điểm hiện tại
+        5. Kiểm tra đủ điểm
+        6. Tính điểm sau khi trừ
+        7. Tạo LoyaltyTransaction mới
+        8. Lưu database
+        9. Trả response
+    */
+    @Override
+    @Transactional
+    public RedeemRewardResponseDTO redeemReward(Integer rewardId, RedeemRewardRequestDTO dto) {
+        Reward reward = findOrThrow(rewardId);
+
+        Reward.RewardStatus activeStatus = parseEnumIgnoreCase(Reward.RewardStatus.class, "active");
+
+        if (!reward.getStatus().equals(activeStatus)) {
+            throw new IllegalArgumentException("Reward hiện không còn hoạt động");
+        }
+
+        Reward.RewardVehicleType requestedVehicleType =
+                parseEnumIgnoreCase(Reward.RewardVehicleType.class, dto.vehicleType());
+
+        if (!isVehicleMatched(reward.getVehicleType(), requestedVehicleType)) {
+            throw new IllegalArgumentException("Reward không áp dụng cho loại xe này");
+        }
+
+        Integer balanceBefore = getCurrentPoints(dto.customerId());
+        Integer requiredPoints = reward.getRequiredPoints();
+
+        if (balanceBefore < requiredPoints) {
+            throw new IllegalArgumentException("Không đủ điểm để đổi reward này");
+        }
+
+        Integer balanceAfter = balanceBefore - requiredPoints;
+
+        LoyaltyTransaction transaction = new LoyaltyTransaction();
+        transaction.setCustomerId(dto.customerId());
+        transaction.setPaymentId(null);
+        transaction.setTransactionType("redeem");
+        transaction.setPoints(-requiredPoints);
+        transaction.setBalanceBefore(balanceBefore);
+        transaction.setBalanceAfter(balanceAfter);
+        transaction.setExpiredAt(null);
+        transaction.setCreatedAt(LocalDateTime.now());
+        transaction.setNote("Redeemed reward: " + reward.getRewardName());
+
+        loyaltyTransactionRepository.save(transaction);
+
+        return new RedeemRewardResponseDTO(
+                "Redeem reward successfully",
+                dto.customerId(),
+                reward.getRewardId(),
+                reward.getRewardName(),
+                requiredPoints,
+                balanceBefore,
+                balanceAfter
+        );
+    }
+
     // ── Private helpers ───────────────────────────────────────────────────────
 
     /**
@@ -111,4 +199,34 @@ public class RewardServiceImpl implements RewardService {
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Reward không tồn tại, id=" + id));
     }
+
+    private Integer getCurrentPoints(Integer customerId) {
+        return loyaltyTransactionRepository
+                .findTopByCustomerIdOrderByCreatedAtDesc(customerId)
+                .map(LoyaltyTransaction::getBalanceAfter)
+                .orElse(0);
+    }
+
+    private boolean isVehicleMatched(Reward.RewardVehicleType rewardVehicleType,
+                                     Reward.RewardVehicleType requestedVehicleType) {
+        boolean exactMatch = rewardVehicleType.equals(requestedVehicleType);
+
+        boolean bothMatch = Arrays.stream(Reward.RewardVehicleType.values())
+                .filter(type -> type.name().equalsIgnoreCase("both"))
+                .findFirst()
+                .map(rewardVehicleType::equals)
+                .orElse(false);
+
+        return exactMatch || bothMatch;
+    }
+
+    private <E extends Enum<E>> E parseEnumIgnoreCase(Class<E> enumClass, String value) {
+        return Arrays.stream(enumClass.getEnumConstants())
+                .filter(e -> e.name().equalsIgnoreCase(value))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Giá trị không hợp lệ: " + value
+                ));
+        }
+
 }
