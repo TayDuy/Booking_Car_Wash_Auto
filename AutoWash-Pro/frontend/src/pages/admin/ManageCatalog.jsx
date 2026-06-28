@@ -50,7 +50,8 @@ export default function ManageCatalog() {
     // Các biến tạm lưu dữ liệu người dùng gõ vào form trong Modal
     const [branchName, setBranchName] = useState("");
     const [branchAddress, setBranchAddress] = useState("");
-    const [branchStatus, setBranchStatus] = useState("OPEN");
+    const [branchStatus, setBranchStatus] = useState("active");
+    const [branchCapacity, setBranchCapacity] = useState(1);
 
     const [bayName, setBayName] = useState("");
     const [bayStatus, setBayStatus] = useState("available");
@@ -116,7 +117,8 @@ export default function ManageCatalog() {
         setModalType("branch_add");
         setBranchName("");
         setBranchAddress("");
-        setBranchStatus("OPEN");
+        setBranchStatus("active");
+        setBranchCapacity(1);
         setShowModal(true);
     };
 
@@ -126,7 +128,8 @@ export default function ManageCatalog() {
         setEditingItem(branch);
         setBranchName(branch.branchName);
         setBranchAddress(branch.address);
-        setBranchStatus(branch.status?.toUpperCase());
+        setBranchStatus(branch.status?.toLowerCase());
+        setBranchCapacity(branch.capacity || 1);
         setShowModal(true);
     };
 
@@ -137,8 +140,9 @@ export default function ManageCatalog() {
             const data = {
                 branchName: branchName,
                 address: branchAddress,
-                status: branchStatus?.toUpperCase(),
-                phone: editingItem?.phone || "0901234567"
+                status: branchStatus?.toLowerCase(),
+                phone: editingItem?.phone || "0901234567",
+                capacity: parseInt(branchCapacity) || 1
             };
             if (modalType === "branch_add") {
                 await createBranch(data);
@@ -388,6 +392,7 @@ export default function ManageCatalog() {
                                         <th>ID</th>
                                         <th>Tên chi nhánh</th>
                                         <th>Địa chỉ</th>
+                                        <th>Sức chứa</th>
                                         <th>Trạng thái</th>
                                         <th className="text-right">Thao tác</th>
                                     </tr>
@@ -398,9 +403,10 @@ export default function ManageCatalog() {
                                             <td><strong>#{b.branchId}</strong></td>
                                             <td>{b.branchName}</td>
                                             <td>{b.address}</td>
+                                            <td>{b.capacity || 1} xe</td>
                                             <td>
-                                                <span className={`mc-badge mc-badge--${b.status?.toLowerCase() === 'active' ? 'open' : b.status?.toLowerCase()}`}>
-                                                    {b.status?.toLowerCase() === "open" || b.status?.toLowerCase() === "active" ? "Mở cửa" : b.status?.toLowerCase() === "closed" ? "Đóng cửa" : "Bảo trì"}
+                                                <span className={`mc-badge mc-badge--${b.status?.toLowerCase() === 'active' ? 'open' : b.status?.toLowerCase() === 'inactive' ? 'closed' : b.status?.toLowerCase()}`}>
+                                                    {b.status?.toLowerCase() === "open" || b.status?.toLowerCase() === "active" ? "Mở cửa" : b.status?.toLowerCase() === "closed" || b.status?.toLowerCase() === "inactive" ? "Đóng cửa" : "Bảo trì"}
                                                 </span>
                                             </td>
                                             <td className="text-right mc-actions">
@@ -599,10 +605,21 @@ export default function ManageCatalog() {
                                 <div className="mc-form-group">
                                     <label>Trạng thái</label>
                                     <select value={branchStatus} onChange={(e) => setBranchStatus(e.target.value)}>
-                                        <option value="OPEN">Mở cửa hoạt động (OPEN)</option>
-                                        <option value="CLOSED">Đóng cửa (CLOSED)</option>
-                                        <option value="MAINTENANCE">Bảo trì kỹ thuật (MAINTENANCE)</option>
+                                        <option value="active">Mở cửa hoạt động (ACTIVE)</option>
+                                        <option value="inactive">Đóng cửa (INACTIVE)</option>
                                     </select>
+                                </div>
+                                <div className="mc-form-group">
+                                    <label>Sức chứa tối đa (Số xe có thể phục vụ cùng lúc)</label>
+                                    <input
+                                        type="number"
+                                        required
+                                        min="1"
+                                        max="100"
+                                        placeholder="Ví dụ: 4"
+                                        value={branchCapacity}
+                                        onChange={(e) => setBranchCapacity(e.target.value)}
+                                    />
                                 </div>
                                 <div className="mc-modal-footer">
                                     <button type="button" className="mc-btn mc-btn--secondary" onClick={() => setShowModal(false)}>Hủy</button>
