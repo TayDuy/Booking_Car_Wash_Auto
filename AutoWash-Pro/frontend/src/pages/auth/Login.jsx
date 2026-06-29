@@ -22,7 +22,7 @@ function Login({ onLoginSuccess }) {
     const normalizedRole = role?.toLowerCase();
 
     if (normalizedRole === "admin") {
-      navigate("/admin");
+      navigate("/admin/catalog");
     } else if (normalizedRole === "employee") {
       navigate("/employee");
     } else {
@@ -138,13 +138,10 @@ function Login({ onLoginSuccess }) {
     <div className="login-layout">
       <main className="login-page">
         <div className="login-card">
-          <div className="login-header">
-            <div className="brand-row">
-              <div className="login-logo">💧</div>
-              <h1 className="login-title">WashFlow Pro</h1>
-            </div>
-
-            <p className="login-subtitle">Precision Automation Dashboard</p>
+          <div className="login-brand" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <img src="/logo.png" alt="WashFlow Pro Logo" style={{ height: '80px', width: 'auto', marginBottom: '8px' }} />
+            <h1>WashFlow Pro</h1>
+            <p>Precision Automation Dashboard</p>
           </div>
 
           {errorMessage && (

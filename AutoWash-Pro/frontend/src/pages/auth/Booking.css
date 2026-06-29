@@ -760,48 +760,6 @@
     text-decoration: none;
 }
 
-/* ====================================================================
-   FOOTER THANH LỊCH ĐỒNG BỘ THEO MOCKUP
-   ==================================================================== */
-.booking-footer-bar {
-    margin-top: auto;
-    background: #ffffff;
-    border-top: 1px solid var(--border-color);
-    padding: 24px 40px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    box-sizing: border-box;
-}
-
-.footer-brand-info h4 {
-    margin: 0 0 4px 0;
-    font-size: 16px;
-    font-weight: 700;
-    color: var(--accent-color);
-}
-
-.footer-brand-info p {
-    margin: 0;
-    font-size: 13px;
-    color: var(--text-muted);
-}
-
-.footer-nav-links {
-    display: flex;
-    gap: 24px;
-}
-
-.footer-nav-links a {
-    text-decoration: none;
-    color: var(--text-muted);
-    font-size: 13px;
-    transition: color 0.2s;
-}
-
-.footer-nav-links a:hover {
-    color: var(--accent-color);
-}
 
 /* ====================================================================
    ĐÁP ỨNG THIẾT BỊ DI ĐỘNG (RESPONSIVE VIEW)
@@ -834,11 +792,7 @@
         grid-template-columns: 1fr;
     }
 
-    .booking-footer-bar {
-        flex-direction: column;
-        gap: 16px;
-        text-align: center;
-    }
+
 }
 
 /* CSS ĐỊNH DẠNG KHU VỰC CHỌN THỜI ĐIỂM CHÍNH XÁC */

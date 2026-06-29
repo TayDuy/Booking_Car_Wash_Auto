@@ -242,8 +242,9 @@ const ProfilePage = () => {
     <div className="profile-page-wrapper">
       {/* Sidebar Navigation Shell */}
       <aside className="sidebar">
-        <div className="sidebar-header">
-          <h1 className="logo-text">WashFlow Pro</h1>
+        <div className="sidebar-header" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <img src="/logo.png" alt="Logo" style={{ height: '48px', width: 'auto' }} />
+          <h1 className="logo-text" style={{ fontSize: '20px' }}>WashFlow Pro</h1>
         </div>
         
         <div className="sidebar-profile">
@@ -281,12 +282,12 @@ const ProfilePage = () => {
             <span className="material-symbols-outlined">logout</span>
             Đăng xuất
           </a>
-        </nav>
 
-        <button className="btn-book" onClick={() => navigate('/booking')}>
-          <span className="material-symbols-outlined icon-small">add</span>
-          Đặt lịch ngay
-        </button>
+          <button className="btn-book" onClick={() => navigate('/booking')}>
+            <span className="material-symbols-outlined icon-small">add</span>
+            Đặt lịch ngay
+          </button>
+        </nav>
       </aside>
 
       {/* Main Content Area */}
@@ -587,6 +588,20 @@ const ProfilePage = () => {
             </div>
           </div>
         </div>
+
+        {/* Footer */}
+        <footer className="global-footer-bar">
+          <div className="footer-brand-info">
+            <h4>WashFlow Pro</h4>
+            <p>© 2026 WashFlow Pro Automation. Tất cả quyền được bảo lưu.</p>
+          </div>
+          <div className="footer-nav-links">
+            <a href="#">Liên hệ</a>
+            <a href="#">Chính sách bảo mật</a>
+            <a href="#">Điều khoản dịch vụ</a>
+            <a href="#">Hỗ trợ</a>
+          </div>
+        </footer>
       </main>
 
       {/* Add Vehicle Modal Overlay */}

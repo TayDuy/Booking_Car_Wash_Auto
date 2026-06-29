@@ -16,6 +16,7 @@ const SIDEBAR_NAV = [
     { id: "inventory", label: "Kho hàng", icon: Archive },
     { id: "marketing", label: "Tiếp thị", icon: Megaphone },
     { id: "notifications", label: "Thông báo", icon: Bell, active: true },
+    { id: "catalog", label: "Chi nhánh & Dịch vụ", icon: Settings },
 ];
 
 const FILTERS = [
@@ -188,11 +189,21 @@ export default function AdminNotificationPage() {
         }catch(err){ console.error('create', err); }
     }
 
+    const handleSidebarClick = (id) => {
+        if (id === "catalog") {
+            navigate("/admin/catalog");
+        } else if (id === "notifications") {
+            navigate("/admin/notifications");
+        } else {
+            alert("Chức năng đang phát triển!");
+        }
+    };
+
     return (
         <div className="an-app">
             <aside className="an-sidebar">
                 <div className="an-brand">
-                    <div className="an-brand__logo"><Car size={20} /></div>
+                    <img src="/logo.png" alt="WashFlow Pro" style={{ height: "36px", width: "auto", alignSelf: "center" }} />
                     <div>
                         <h1>WashFlow Pro</h1>
                         <p>Bảng điều khiển Admin</p>
@@ -201,7 +212,11 @@ export default function AdminNotificationPage() {
 
                 <nav className="an-sidebar__nav">
                     {SIDEBAR_NAV.map(({ id, label, icon: Icon, active }) => (
-                        <button key={id} className={`an-sidebar__item ${active ? "is-active" : ""}`}>
+                        <button 
+                            key={id} 
+                            className={`an-sidebar__item ${active ? "is-active" : ""}`}
+                            onClick={() => handleSidebarClick(id)}
+                        >
                             <Icon size={18} />
                             <span>{label}</span>
                         </button>

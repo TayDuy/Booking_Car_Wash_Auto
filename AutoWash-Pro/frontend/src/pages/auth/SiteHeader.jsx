@@ -34,32 +34,27 @@ export default function SiteHeader() {
   return (
     <header className="custom-app-header">
       {/* BRAND LOGO - Click vào cũng về Trang chủ */}
-      <div className="header-logo" onClick={() => navigate("/")}>
-        <span className="logo-icon">🧼</span>
+      <div className="header-logo" onClick={() => navigate("/")} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <img src="/logo.png" alt="Logo" style={{ height: '48px', width: 'auto' }} />
         <span className="logo-text">WashFlow Pro</span>
       </div>
 
       {/* NAVIGATION - ĐÃ ĐƯỢC KHÔI PHỤC "TRANG CHỦ" */}
       <nav className="header-navigation">
-        <button 
-          className={location.pathname === "/" ? "active-link" : ""} 
-          onClick={() => navigate("/")}
+        <button
+          className={location.pathname === "/home" ? "active-link" : ""}
+          onClick={() => navigate("/home")}
         >
           Trang chủ
         </button>
-        <button 
-          className={location.pathname === "/booking" ? "active-link" : ""} 
+
+        <button
+          className={location.pathname === "/booking" ? "active-link" : ""}
           onClick={() => navigate("/booking")}
         >
           Đặt lịch
         </button>
         <button>Ưu đãi</button>
-        <button 
-          className={location.pathname === "/bookings" ? "active-link" : ""} 
-          onClick={() => navigate("/bookings")}
-        >
-          Lịch sử
-        </button>
       </nav>
 
       {/* RIGHT ACTIONS */}
