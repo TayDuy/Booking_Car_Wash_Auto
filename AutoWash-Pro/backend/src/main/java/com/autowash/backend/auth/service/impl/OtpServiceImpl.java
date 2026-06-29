@@ -71,4 +71,10 @@ public class OtpServiceImpl implements OtpService {
         return optRepository.existsByPhoneAndVerifiedTrue(phone);
     }
 
+    @Override
+    @Transactional
+    public void clearVerification(String phone) {
+        optRepository.deleteByPhoneAndVerifiedTrue(phone);
+    }
+
 }

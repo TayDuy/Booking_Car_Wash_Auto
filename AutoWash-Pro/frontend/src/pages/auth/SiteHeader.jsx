@@ -34,8 +34,8 @@ export default function SiteHeader() {
   return (
     <header className="custom-app-header">
       {/* BRAND LOGO - Click vào cũng về Trang chủ */}
-      <div className="header-logo" onClick={() => navigate("/")}>
-        <span className="logo-icon">🧼</span>
+      <div className="header-logo" onClick={() => navigate("/")} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <img src="/logo.png" alt="Logo" style={{ height: '48px', width: 'auto' }} />
         <span className="logo-text">WashFlow Pro</span>
       </div>
 

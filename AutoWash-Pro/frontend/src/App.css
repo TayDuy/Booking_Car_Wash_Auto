@@ -7,6 +7,8 @@
   background: #f8f9fb;
   color: #191c1e;
   font-family: Inter, Arial, sans-serif;
+  display: flex;
+  flex-direction: column;
 }
 
 /* NAVBAR */
