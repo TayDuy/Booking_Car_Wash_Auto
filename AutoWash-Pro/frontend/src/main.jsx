@@ -20,6 +20,7 @@ import HelpCenter from "./pages/helpcenter/Helpcenter";
 import CustomerNotificationPage from "./pages/customer/CustomerNotificationPage";
 import AdminNotificationPage from "./pages/admin/AdminNotificationPage";
 import BookingHistory from "./pages/auth/BookingHistory";
+import ManageCatalog from "./pages/admin/ManageCatalog";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
     <React.StrictMode>
@@ -39,6 +40,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(
           
           <Route path="/customer/notifications" element={<CustomerNotificationPage />} />
           <Route path="/admin/notifications"    element={<AdminNotificationPage />} />
+          <Route path="/admin/catalog" element={<ManageCatalog />} />
         </Routes>
       </BrowserRouter>
     </React.StrictMode>

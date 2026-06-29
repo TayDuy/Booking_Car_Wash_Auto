@@ -1,9 +1,9 @@
-import axios from "axios";
+import axiosClient from "./axiosClient";
 
-const API_URL = "http://localhost:8080/api/v1/auth";
+const API_URL = "/auth";
 
 export async function login(username, password){
-    const respone = await axios.post(`${API_URL}/login`,{
+    const respone = await axiosClient.post(`${API_URL}/login`,{
         username: username,
         password: password,
     });
@@ -11,14 +11,14 @@ export async function login(username, password){
 }
 
 export async function loginWithGoogle(supabaseToken) {
-    const response = await axios.post(`${API_URL}/google`, {
+    const response = await axiosClient.post(`${API_URL}/google`, {
         supabaseToken: supabaseToken
     });
     return response.data;
 }
 
 export async function register(username, password, email, fullName, phone){
-    const respone = await axios.post(`${API_URL}/register`,{
+    const respone = await axiosClient.post(`${API_URL}/register`,{
         username: username,
         password: password,
         email: email,
@@ -29,14 +29,14 @@ export async function register(username, password, email, fullName, phone){
 }
 
 export async function sendOtp(phone){
-    const respone = await axios.post(`${API_URL}/send-otp`,{
+    const respone = await axiosClient.post(`${API_URL}/send-otp`,{
         phone: phone,
     });
     return respone.data;
 }
 
 export async function verifyOtp(phone, otp) {
-    const respone = await axios.post(`${API_URL}/verify-otp`,{
+    const respone = await axiosClient.post(`${API_URL}/verify-otp`,{
         phone: phone,
         otp: otp
     });

@@ -1,0 +1,1037 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AutoWash Pro - Logo Motion Showcase</title>
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
+  
+  <style>
+    /* CSS Variables for design system */
+    :root {
+      --bg-color: #0b0c10;
+      --card-bg: rgba(26, 29, 38, 0.7);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --primary: #0066ff;
+      --secondary: #00d4ff;
+      --accent: #33ffff;
+      --text: #f3f4f6;
+      --text-muted: #9ca3af;
+      --speed-multiplier: 1;
+      
+      /* Animation timing tokens */
+      --duration-swoosh: calc(0.9s * var(--speed-multiplier));
+      --duration-drop: calc(1.0s * var(--speed-multiplier));
+      --duration-car: calc(1.0s * var(--speed-multiplier));
+      --duration-wheel: calc(1.0s * var(--speed-multiplier));
+      --duration-sheen: calc(0.6s * var(--speed-multiplier));
+      
+      --delay-swoosh: calc(0s * var(--speed-multiplier));
+      --delay-drop: calc(0.3s * var(--speed-multiplier));
+      --delay-car: calc(0.6s * var(--speed-multiplier));
+      --delay-wheel: calc(0.6s * var(--speed-multiplier));
+      --delay-sheen: calc(1.4s * var(--speed-multiplier));
+    }
+
+    /* Base Styling */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    /* Ambient animated background blobs */
+    .bg-blob {
+      position: absolute;
+      width: 400px;
+      height: 400px;
+      border-radius: 50%;
+      filter: blur(100px);
+      z-index: -1;
+      opacity: 0.15;
+      animation: float 20s infinite alternate ease-in-out;
+    }
+    
+    .blob-1 {
+      background: var(--primary);
+      top: 10%;
+      left: 10%;
+    }
+    
+    .blob-2 {
+      background: var(--secondary);
+      bottom: 10%;
+      right: 10%;
+      animation-delay: -5s;
+    }
+
+    @keyframes float {
+      0% { transform: translate(0, 0) scale(1); }
+      100% { transform: translate(50px, 30px) scale(1.2); }
+    }
+
+    /* Header */
+    header {
+      margin-top: 40px;
+      margin-bottom: 20px;
+      text-align: center;
+      z-index: 10;
+    }
+
+    header h1 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 2.5rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      background: linear-gradient(135deg, #ffffff 30%, var(--secondary) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 8px;
+    }
+
+    header p {
+      font-size: 1rem;
+      color: var(--text-muted);
+      font-weight: 300;
+    }
+
+    /* Main Grid */
+    .container {
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap: 30px;
+      max-width: 1200px;
+      width: 90%;
+      margin-bottom: 60px;
+      z-index: 10;
+    }
+
+    @media (max-width: 900px) {
+      .container {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Logo Card Display */
+    .logo-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 24px;
+      backdrop-filter: blur(16px);
+      padding: 40px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .logo-container {
+      width: 100%;
+      max-width: 450px;
+      aspect-ratio: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 16px;
+      background-color: #0c0f17;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      position: relative;
+    }
+
+    /* Grid Overlay (QA tool) */
+    .logo-container::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-size: 40px 40px;
+      background-image: 
+        linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.3s;
+      border-radius: 15px;
+    }
+
+    .logo-container.show-grid::before {
+      opacity: 1;
+    }
+
+    .logo-container.show-grid::after {
+      content: '';
+      position: absolute;
+      width: 100%;
+      height: 1px;
+      background: rgba(0, 212, 255, 0.15);
+      top: 50%;
+      left: 0;
+    }
+    
+    /* SVG Element */
+    .logo-container svg {
+      width: 100%;
+      height: 100%;
+      overflow: visible;
+    }
+
+    /* ==========================================================================
+       ANIMATIONS & KEYFRAMES (THE HEART OF PIXEL2MOTION)
+       ========================================================================== */
+    
+    /* 1. Swoosh Main */
+    .animating #swoosh-main {
+      animation: swoosh-in var(--duration-swoosh) var(--delay-swoosh) var(--ease-overshoot) both;
+      transform-origin: 480px 410px;
+    }
+
+    @keyframes swoosh-in {
+      0% {
+        transform: scale(0) rotate(-140deg);
+        opacity: 0;
+      }
+      70% {
+        transform: scale(1.05) rotate(5deg);
+        opacity: 1;
+      }
+      100% {
+        transform: scale(1) rotate(0deg);
+        opacity: 1;
+      }
+    }
+
+    /* 2. Swoosh Accent */
+    .animating #swoosh-accent {
+      animation: swoosh-accent-in var(--duration-swoosh) var(--delay-swoosh) var(--ease-overshoot) both;
+      transform-origin: 600px 300px;
+    }
+
+    @keyframes swoosh-accent-in {
+      0% {
+        transform: scale(0) translate(-30px, 30px);
+        opacity: 0;
+      }
+      40% {
+        transform: scale(0) translate(-30px, 30px);
+        opacity: 0;
+      }
+      100% {
+        transform: scale(1) translate(0, 0);
+        opacity: 0.8;
+      }
+    }
+
+    /* 3. Water Drop */
+    .animating #water-drop {
+      animation: water-drop-in var(--duration-drop) var(--delay-drop) both;
+      transform-origin: 400px 510px; /* Sits on bottom base */
+    }
+
+    @keyframes water-drop-in {
+      0% {
+        transform: translateY(-350px) scaleY(1.4) scaleX(0.7);
+        opacity: 0;
+      }
+      45% {
+        transform: translateY(15px) scaleY(0.75) scaleX(1.25);
+        opacity: 1;
+      }
+      65% {
+        transform: translateY(-8px) scaleY(1.15) scaleX(0.85);
+      }
+      82% {
+        transform: translateY(3px) scaleY(0.95) scaleX(1.05);
+      }
+      100% {
+        transform: translateY(0) scaleY(1) scaleX(1);
+        opacity: 1;
+      }
+    }
+
+    /* 4. Water Drop Highlight */
+    .animating #water-drop-highlight {
+      animation: fade-in var(--duration-drop) var(--delay-drop) ease-out both;
+    }
+
+    @keyframes fade-in {
+      0% { opacity: 0; }
+      80% { opacity: 0; }
+      100% { opacity: 1; }
+    }
+
+    /* 5. Car Body */
+    .animating #car-body,
+    .animating #car-windows {
+      animation: car-slide-in var(--duration-car) var(--delay-car) var(--ease-slide-out) both;
+    }
+
+    @keyframes car-slide-in {
+      0% {
+        transform: translateX(-500px);
+        opacity: 0;
+      }
+      100% {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+
+    /* 6. Wheels (Slide + Roll) */
+    .animating #wheel-rear {
+      animation: wheel-roll-rear var(--duration-wheel) var(--delay-wheel) var(--ease-slide-out) both;
+      transform-origin: 280px 560px;
+    }
+
+    .animating #wheel-front {
+      animation: wheel-roll-front var(--duration-wheel) var(--delay-wheel) var(--ease-slide-out) both;
+      transform-origin: 620px 560px;
+    }
+
+    @keyframes wheel-roll-rear {
+      0% {
+        transform: translateX(-500px) rotate(-360deg);
+        opacity: 0;
+      }
+      100% {
+        transform: translateX(0) rotate(0deg);
+        opacity: 1;
+      }
+    }
+
+    @keyframes wheel-roll-front {
+      0% {
+        transform: translateX(-500px) rotate(-360deg);
+        opacity: 0;
+      }
+      100% {
+        transform: translateX(0) rotate(0deg);
+        opacity: 1;
+      }
+    }
+
+    /* 7. Sheen Shimmer Loop (Continuous after entry) */
+    .animating #swoosh-main {
+      position: relative;
+    }
+    
+    /* Easing Tokens */
+    :root {
+      --ease-overshoot: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      --ease-slide-out: cubic-bezier(0.25, 1, 0.5, 1);
+    }
+
+    /* Bounding Box Wireframe (Diagnostic Mode) */
+    .logo-container.diagnostic svg * {
+      stroke-dasharray: none !important;
+    }
+    
+    .logo-container.diagnostic path,
+    .logo-container.diagnostic circle {
+      stroke: #33ffff !important;
+      stroke-width: 1.5px !important;
+      fill: rgba(0, 102, 255, 0.05) !important;
+      filter: none !important;
+    }
+    
+    .logo-container.diagnostic #car-windows {
+      fill: rgba(255, 255, 255, 0.1) !important;
+    }
+
+    /* Controls Panel */
+    .controls {
+      width: 100%;
+      margin-top: 25px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .btn-group {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+    }
+
+    .btn {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: var(--text);
+      padding: 12px 24px;
+      border-radius: 12px;
+      font-size: 0.95rem;
+      font-weight: 500;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(255, 255, 255, 0.2);
+      transform: translateY(-2px);
+    }
+
+    .btn:active {
+      transform: translateY(0);
+    }
+
+    .btn.primary {
+      background: var(--primary);
+      border-color: rgba(255, 255, 255, 0.1);
+      font-weight: 600;
+    }
+
+    .btn.primary:hover {
+      background: #1a75ff;
+      box-shadow: 0 0 15px rgba(0, 102, 255, 0.4);
+    }
+
+    .btn.active {
+      background: rgba(0, 212, 255, 0.2);
+      border-color: var(--secondary);
+      color: var(--secondary);
+    }
+
+    /* Speed Selector Tabs */
+    .speed-tabs {
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      padding: 4px;
+      border-radius: 12px;
+      display: flex;
+      justify-content: center;
+      align-self: center;
+    }
+
+    .speed-tab {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .speed-tab.active {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text);
+    }
+
+    /* Scrubber slider */
+    .scrubber-container {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      width: 100%;
+    }
+
+    .scrubber-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .scrubber {
+      width: 100%;
+      height: 6px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 3px;
+      outline: none;
+      cursor: pointer;
+      appearance: none;
+    }
+
+    .scrubber::-webkit-slider-thumb {
+      appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--secondary);
+      cursor: pointer;
+      box-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
+      transition: transform 0.1s;
+    }
+
+    .scrubber::-webkit-slider-thumb:hover {
+      transform: scale(1.2);
+    }
+
+    /* Side Config & Spec Panel */
+    .spec-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 24px;
+      backdrop-filter: blur(16px);
+      padding: 30px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+      display: flex;
+      flex-direction: column;
+      gap: 25px;
+    }
+
+    .spec-card h2 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.5rem;
+      font-weight: 700;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      padding-bottom: 12px;
+      color: var(--secondary);
+    }
+
+    .spec-item {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .spec-title {
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    .spec-value {
+      font-size: 0.95rem;
+      line-height: 1.5;
+    }
+
+    /* Component List/Toggles */
+    .component-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .component-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 10px;
+      font-size: 0.9rem;
+    }
+
+    .component-row span {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .badge {
+      font-size: 0.75rem;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 700;
+    }
+    
+    .badge.swoosh { background: rgba(0, 212, 255, 0.15); color: var(--secondary); }
+    .badge.drop { background: rgba(0, 102, 255, 0.15); color: #66a3ff; }
+    .badge.car { background: rgba(255, 255, 255, 0.08); color: var(--text); }
+
+    /* Custom Switch button */
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 44px;
+      height: 22px;
+    }
+
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(255, 255, 255, 0.1);
+      transition: .3s;
+      border-radius: 22px;
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 16px;
+      width: 16px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: .3s;
+      border-radius: 50%;
+    }
+
+    input:checked + .slider {
+      background-color: var(--primary);
+    }
+
+    input:checked + .slider:before {
+      transform: translateX(22px);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Ambient lights -->
+  <div class="bg-blob blob-1"></div>
+  <div class="bg-blob blob-2"></div>
+
+  <header>
+    <h1>AutoWash Pro</h1>
+    <p>Đặc tả & Trình diễn chuyển động Logo thông minh</p>
+  </header>
+
+  <div class="container">
+    
+    <!-- LEFT PANEL: Logo and Motion controls -->
+    <div class="logo-card">
+      <div class="logo-container animating" id="logoFrame">
+        <!-- INLINED SVG LOGO FOR DIRECT CSS ANIMATION INTERACTION -->
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" id="logoSvg">
+          <defs>
+            <!-- Water Drop Gradient -->
+            <linearGradient id="dropGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stop-color="#00d4ff" />
+              <stop offset="60%" stop-color="#0055ff" />
+              <stop offset="100%" stop-color="#0022aa" />
+            </linearGradient>
+
+            <!-- Water Drop Highlight Gradient -->
+            <linearGradient id="highlightGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#ffffff" stop-opacity="0.6" />
+              <stop offset="100%" stop-color="#00d4ff" stop-opacity="0" />
+            </linearGradient>
+
+            <!-- Swoosh Gradient -->
+            <linearGradient id="swooshGrad" x1="0%" y1="100%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="#0055ff" />
+              <stop offset="50%" stop-color="#00d4ff" />
+              <stop offset="100%" stop-color="#33ffff" />
+            </linearGradient>
+
+            <!-- Car Body Gradient -->
+            <linearGradient id="carGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="#0033cc" />
+              <stop offset="70%" stop-color="#0066ff" />
+              <stop offset="100%" stop-color="#00a3ff" />
+            </linearGradient>
+
+            <!-- Shadow Filter -->
+            <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+              <feGaussianBlur stdDeviation="8" result="blur" />
+              <feComposite in="SourceGraphic" in2="blur" operator="over" />
+            </filter>
+          </defs>
+
+          <g transform="translate(0, 0)">
+            <!-- 1. WATER DROP (Background Layer) -->
+            <path id="water-drop" d="M 400 170 
+                     C 320 280, 240 370, 270 450 
+                     C 290 490, 340 510, 400 510 
+                     C 460 510, 510 490, 530 450 
+                     C 560 370, 480 280, 400 170 Z" 
+                  fill="url(#dropGrad)" />
+
+            <!-- Water Drop Left Inner Highlight -->
+            <path id="water-drop-highlight" d="M 400 190 
+                     C 340 290, 275 370, 295 440 
+                     C 310 475, 350 490, 400 490 
+                     C 360 490, 325 470, 320 440 
+                     C 305 380, 360 300, 400 190 Z" 
+                  fill="url(#highlightGrad)" />
+
+            <!-- 2. CAR BODY (Middle Layer) -->
+            <path id="car-body" d="M 180 500 
+                     C 170 500, 160 510, 160 520
+                     C 160 540, 180 560, 210 560
+                     H 230
+                     C 230 520, 330 520, 330 560
+                     H 570
+                     C 570 520, 670 520, 670 560
+                     H 700
+                     C 730 560, 750 545, 750 525
+                     C 750 510, 720 495, 680 480
+                     C 610 455, 520 440, 460 440
+                     C 380 440, 290 455, 230 480
+                     C 200 490, 190 500, 180 500 Z" 
+                  fill="url(#carGrad)" />
+
+            <!-- Windows (Dark transparent glass on top of car body) -->
+            <path id="car-windows" d="M 330 455 
+                     C 370 448, 440 448, 480 452 
+                     C 490 453, 500 460, 495 470 
+                     C 490 480, 450 485, 410 485 
+                     C 360 485, 335 480, 325 472 
+                     C 320 465, 325 456, 330 455 Z" 
+                  fill="#0c0e12" />
+            
+            <!-- Window Pillar -->
+            <path d="M 410 452 L 415 485" stroke="url(#carGrad)" stroke-width="6" />
+
+            <!-- 3. WHEELS -->
+            <g id="wheel-rear">
+              <circle cx="280" cy="560" r="50" fill="#0c0e12" stroke="url(#carGrad)" stroke-width="8" />
+              <circle cx="280" cy="560" r="22" fill="#00d4ff" />
+              <circle cx="280" cy="560" r="9" fill="#0c0e12" />
+            </g>
+
+            <g id="wheel-front">
+              <circle cx="620" cy="560" r="50" fill="#0c0e12" stroke="url(#carGrad)" stroke-width="8" />
+              <circle cx="620" cy="560" r="22" fill="#00d4ff" />
+              <circle cx="620" cy="560" r="9" fill="#0c0e12" />
+            </g>
+
+            <!-- 4. SWOOSH / WAVE (Foremost Layer) -->
+            <path id="swoosh-main" d="M 210 500
+                     C 250 515, 320 535, 420 535
+                     C 550 535, 660 480, 710 400
+                     C 745 340, 715 280, 640 280
+                     C 590 280, 540 310, 510 350
+                     C 540 320, 580 300, 620 300
+                     C 680 300, 710 340, 680 390
+                     C 640 450, 540 505, 420 505
+                     C 320 505, 250 490, 210 470 Z" 
+                  fill="url(#swooshGrad)" filter="url(#glow)" />
+
+            <!-- Secondary Upper Swoosh Accent -->
+            <path id="swoosh-accent" d="M 520 320
+                     C 550 285, 600 260, 660 260
+                     C 680 260, 695 265, 700 275
+                     C 700 285, 680 290, 660 290
+                     C 610 290, 570 310, 540 340 Z" 
+                  fill="#33ffff" opacity="0.8" />
+          </g>
+        </svg>
+      </div>
+
+      <!-- Controls UI -->
+      <div class="controls">
+        <div class="btn-group">
+          <button class="btn primary" id="playBtn">Pause</button>
+          <button class="btn" id="replayBtn">Replay</button>
+        </div>
+
+        <div class="speed-tabs">
+          <button class="speed-tab" data-speed="0.25">0.25x</button>
+          <button class="speed-tab" data-speed="0.5">0.5x</button>
+          <button class="speed-tab active" data-speed="1">1.0x</button>
+          <button class="speed-tab" data-speed="2">2.0x</button>
+        </div>
+
+        <!-- Scrubber for stage debugging -->
+        <div class="scrubber-container">
+          <div class="scrubber-label">
+            <span>Dòng thời gian (Timeline Scrubber)</span>
+            <span id="scrubberVal">Đang chạy tự động</span>
+          </div>
+          <input type="range" min="0" max="100" value="0" class="scrubber" id="timelineScrubber">
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT PANEL: Spec and QA options -->
+    <div class="spec-card">
+      <h2>Bảng điều khiển QA & Kỹ thuật</h2>
+      
+      <!-- Component Visibility Toggles -->
+      <div class="spec-item">
+        <div class="spec-title">Bật/Tắt Các Bộ Phận (QA Layer Audit)</div>
+        <div class="component-list">
+          <div class="component-row">
+            <span><div class="badge swoosh">Swoosh</div> Sóng nước Cyan</span>
+            <label class="switch">
+              <input type="checkbox" checked data-target="swoosh-main,swoosh-accent">
+              <span class="slider"></span>
+            </label>
+          </div>
+          <div class="component-row">
+            <span><div class="badge drop">Drop</div> Giọt nước nền</span>
+            <label class="switch">
+              <input type="checkbox" checked data-target="water-drop,water-drop-highlight">
+              <span class="slider"></span>
+            </label>
+          </div>
+          <div class="component-row">
+            <span><div class="badge car">Car</div> Thân xe & Bánh xe</span>
+            <label class="switch">
+              <input type="checkbox" checked data-target="car-body,car-windows,wheel-rear,wheel-front">
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- QA Tools Toggles -->
+      <div class="spec-item">
+        <div class="spec-title">Chế độ kiểm tra đồ họa (QA Visual Modes)</div>
+        <div class="component-list">
+          <div class="component-row">
+            <span>Hiển thị Lưới tọa độ (Grid)</span>
+            <label class="switch">
+              <input type="checkbox" id="gridToggle">
+              <span class="slider"></span>
+            </label>
+          </div>
+          <div class="component-row">
+            <span>Chế độ Khung dây (Diagnostic/Wireframe)</span>
+            <label class="switch">
+              <input type="checkbox" id="wireframeToggle">
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Specifications text info -->
+      <div class="spec-item">
+        <div class="spec-title">Đặc tính kỹ thuật (SVG Specs)</div>
+        <div style="font-size: 0.85rem; line-height: 1.6; display: flex; flex-direction: column; gap: 8px; margin-top: 5px;">
+          <div>📐 <strong>Khung nhìn (viewBox)</strong>: <code>0 0 800 800</code> (Chính giữa: 400, 400)</div>
+          <div>🎨 <strong>Màu sắc chủ đạo</strong>:
+            <span style="color: #00d4ff;">● Cyan (#00d4ff)</span>, 
+            <span style="color: #0055ff;">● Blue (#0055ff)</span>, 
+            <span style="color: #33ffff;">● Light Cyan (#33ffff)</span>
+          </div>
+          <div>🔄 <strong>Liên kết khung cuối (Final Frame Contract)</strong>: Đảm bảo khi kết thúc animation, các path trả về đúng vị trí tĩnh tuyệt đối, tránh hiện tượng giật hình hoặc lệch pixel.</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    // Elements
+    const logoFrame = document.getElementById('logoFrame');
+    const playBtn = document.getElementById('playBtn');
+    const replayBtn = document.getElementById('replayBtn');
+    const timelineScrubber = document.getElementById('timelineScrubber');
+    const scrubberVal = document.getElementById('scrubberVal');
+    const gridToggle = document.getElementById('gridToggle');
+    const wireframeToggle = document.getElementById('wireframeToggle');
+    
+    let isPlaying = true;
+    let speed = 1.0;
+    let animTimer = null;
+    let animationDuration = 1800; // base duration in ms
+    let startTime = Date.now();
+
+    // 1. Play / Pause logic
+    function setPlayState(play) {
+      isPlaying = play;
+      if (isPlaying) {
+        logoFrame.classList.add('animating');
+        // Resume CSS animations
+        document.querySelectorAll('#logoSvg *').forEach(el => {
+          el.style.animationPlayState = 'running';
+        });
+        playBtn.innerText = 'Pause';
+        playBtn.classList.add('primary');
+        scrubberVal.innerText = 'Đang chạy tự động';
+        
+        // Restart the slider updating loop
+        startTime = Date.now() - (parseFloat(timelineScrubber.value) / 100 * animationDuration * speed);
+        updateTimelineSlider();
+      } else {
+        // Pause CSS animations
+        document.querySelectorAll('#logoSvg *').forEach(el => {
+          el.style.animationPlayState = 'paused';
+        });
+        playBtn.innerText = 'Play';
+        playBtn.classList.remove('primary');
+        scrubberVal.innerText = `Tạm dừng (${timelineScrubber.value}%)`;
+        cancelAnimationFrame(animTimer);
+      }
+    }
+
+    playBtn.addEventListener('click', () => {
+      setPlayState(!isPlaying);
+    });
+
+    // 2. Replay logic
+    function replay() {
+      logoFrame.classList.remove('animating');
+      // trigger reflow
+      void logoFrame.offsetWidth;
+      
+      // Reset slider
+      timelineScrubber.value = 0;
+      
+      // Remove manual inline animation styles (used during scrubbing)
+      document.querySelectorAll('#logoSvg *').forEach(el => {
+        el.style.animationDelay = '';
+        el.style.animationPlayState = '';
+      });
+
+      logoFrame.classList.add('animating');
+      startTime = Date.now();
+      setPlayState(true);
+    }
+    
+    replayBtn.addEventListener('click', replay);
+
+    // 3. Speed selection logic
+    document.querySelectorAll('.speed-tab').forEach(tab => {
+      tab.addEventListener('click', (e) => {
+        document.querySelector('.speed-tab.active').classList.remove('active');
+        e.target.classList.add('active');
+        
+        const newSpeed = parseFloat(e.target.getAttribute('data-speed'));
+        
+        // Calculate current progress before changing speed
+        const currentProgress = timelineScrubber.value / 100;
+        
+        // Update CSS custom variable
+        speed = 1 / newSpeed;
+        document.documentElement.style.setProperty('--speed-multiplier', speed);
+        
+        // Adjust start time to keep relative position
+        startTime = Date.now() - (currentProgress * animationDuration * speed);
+        
+        // Reset animations to apply new speeds
+        const wasPlaying = isPlaying;
+        replay();
+        if (!wasPlaying) setPlayState(false);
+      });
+    });
+
+    // 4. Scrubbing Logic
+    // We can scrub a CSS animation by setting animation-delay to a negative value.
+    // e.g. animation-delay: -500ms will freeze the animation at 500ms.
+    function scrubToPercent(percent) {
+      setPlayState(false);
+      scrubberVal.innerText = `Cắt cảnh: ${percent}%`;
+      
+      const totalTimeSec = animationDuration / 1000;
+      const targetTimeSec = (percent / 100) * totalTimeSec;
+      
+      // Map elements to their individual delays and durations
+      const anims = [
+        { id: 'swoosh-main', delay: 0, duration: 0.9 },
+        { id: 'swoosh-accent', delay: 0, duration: 0.9 },
+        { id: 'water-drop', delay: 0.3, duration: 1.0 },
+        { id: 'water-drop-highlight', delay: 0.3, duration: 1.0 },
+        { id: 'car-body', delay: 0.6, duration: 1.0 },
+        { id: 'car-windows', delay: 0.6, duration: 1.0 },
+        { id: 'wheel-rear', delay: 0.6, duration: 1.0 },
+        { id: 'wheel-front', delay: 0.6, duration: 1.0 }
+      ];
+      
+      anims.forEach(anim => {
+        const el = document.getElementById(anim.id);
+        if (el) {
+          // If scrubber is ahead of delay, set negative delay
+          if (targetTimeSec >= anim.delay) {
+            const progressInAnim = targetTimeSec - anim.delay;
+            if (progressInAnim <= anim.duration) {
+              el.style.animationDelay = `-${progressInAnim}s`;
+            } else {
+              el.style.animationDelay = `-${anim.duration}s`; // clamp to end
+            }
+          } else {
+            el.style.animationDelay = `0s`; // reset to start
+          }
+          el.style.animationPlayState = 'paused';
+        }
+      });
+    }
+
+    timelineScrubber.addEventListener('input', (e) => {
+      scrubToPercent(e.target.value);
+    });
+
+    // Loop to update scrubber during auto-play
+    function updateTimelineSlider() {
+      if (!isPlaying) return;
+      
+      const elapsed = Date.now() - startTime;
+      const totalDuration = animationDuration * speed;
+      const progressPercent = Math.min((elapsed / totalDuration) * 100, 100);
+      
+      timelineScrubber.value = progressPercent.toFixed(1);
+      
+      if (progressPercent >= 100) {
+        scrubberVal.innerText = 'Hoàn thành (100%)';
+        cancelAnimationFrame(animTimer);
+        // Turn play button to "Replay" mode if finished
+        isPlaying = false;
+        playBtn.innerText = 'Play';
+        playBtn.classList.remove('primary');
+      } else {
+        animTimer = requestAnimationFrame(updateTimelineSlider);
+      }
+    }
+
+    // Start loop
+    startTime = Date.now();
+    updateTimelineSlider();
+
+    // 5. Visibility Layer Toggles
+    document.querySelectorAll('.component-list input[type="checkbox"][data-target]').forEach(chk => {
+      chk.addEventListener('change', (e) => {
+        const targets = e.target.getAttribute('data-target').split(',');
+        const isVisible = e.target.checked;
+        targets.forEach(id => {
+          const el = document.getElementById(id);
+          if (el) {
+            el.style.display = isVisible ? '' : 'none';
+          }
+        });
+      });
+    });
+
+    // 6. QA Visual Toggles
+    gridToggle.addEventListener('change', (e) => {
+      if (e.target.checked) {
+        logoFrame.classList.add('show-grid');
+      } else {
+        logoFrame.classList.remove('show-grid');
+      }
+    });
+
+    wireframeToggle.addEventListener('change', (e) => {
+      if (e.target.checked) {
+        logoFrame.classList.add('diagnostic');
+      } else {
+        logoFrame.classList.remove('diagnostic');
+      }
+    });
+  </script>
+</body>
+</html>

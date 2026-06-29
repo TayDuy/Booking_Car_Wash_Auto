@@ -454,7 +454,7 @@ export default function BookingPage() {
           </div>
         </div>
 
-        <footer className="booking-footer-bar">
+        <footer className="global-footer-bar">
           <div className="footer-brand-info">
             <h4>WashFlow Pro</h4>
             <p>© 2026 WashFlow Pro Automation. Tất cả quyền được bảo lưu.</p>
