@@ -57,6 +57,7 @@ a { text-decoration: none; }
 .profile-page-wrapper {
   display: flex;
   min-height: 100vh;
+  background-color: var(--surface);
 }
 
 /* Sidebar */
@@ -158,7 +159,7 @@ a { text-decoration: none; }
 }
 
 .btn-book {
-  margin-top: auto;
+  margin-top: var(--spacing-md);
   margin-left: var(--spacing-sm);
   margin-right: var(--spacing-sm);
   background-color: var(--primary);
@@ -185,6 +186,8 @@ a { text-decoration: none; }
   margin-left: 256px;
   min-height: 100vh;
   width: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 /* Topbar */
@@ -1039,4 +1042,12 @@ a { text-decoration: none; }
 .vehicle-status-toggle:active {
   transform: translateY(0);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+}
+
+/* Full Width Footer overlapping the sidebar bottom */
+.profile-page-wrapper .global-footer-bar {
+  margin-left: -256px;
+  padding-left: calc(256px + var(--spacing-desktop));
+  position: relative;
+  z-index: 50; /* Render on top of fixed sidebar */
 }

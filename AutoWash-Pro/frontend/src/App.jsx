@@ -8,7 +8,10 @@ function App() {
     <div className="home-page">
       {/* NAVBAR */}
       <header className="home-navbar">
-        <div className="home-logo">WashFlow Pro</div>
+        <div className="home-logo" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <img src="/logo.png" alt="Logo" style={{ height: '48px', width: 'auto' }} />
+          <span>WashFlow Pro</span>
+        </div>
 
         <nav className="home-menu">
           <a href="#services">Dịch vụ</a>
@@ -38,7 +41,7 @@ function App() {
         <section className="hero-section">
           <div className="hero-left">
             <div className="hero-badge">
-              ⚡ Hệ thống tự động 100%
+              ✨ Hệ thống tự động 100%
             </div>
 
             <h1>
@@ -75,7 +78,7 @@ function App() {
           <div className="hero-right">
             <div className="wash-image-card">
               <img
-                src="/public/HomePage.png"
+                src="/HomePage.png"
                 alt="Dịch vụ rửa xe tự động"
                 className="hero-car-image"
               />
@@ -151,6 +154,20 @@ function App() {
           </div>
         </section>
       </main>
+
+      {/* Footer */}
+      <footer className="global-footer-bar">
+        <div className="footer-brand-info">
+          <h4>WashFlow Pro</h4>
+          <p>© 2026 WashFlow Pro Automation. Tất cả quyền được bảo lưu.</p>
+        </div>
+        <div className="footer-nav-links">
+          <a href="#">Liên hệ</a>
+          <a href="#">Chính sách bảo mật</a>
+          <a href="#">Điều khoản dịch vụ</a>
+          <a href="#">Hỗ trợ</a>
+        </div>
+      </footer>
     </div>
   );
 }

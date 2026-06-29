@@ -76,9 +76,9 @@ public class SecurityConfig {
                             // 403 — đã đăng nhập nhưng không đủ quyền
                             response.setStatus(HttpServletResponse.SC_FORBIDDEN);
                             response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-                            response.getWriter().write("{\"status\": 403, \"message\": \"Bạn không có quyền truy cập\"}");
-                        })
-                )
+                            response.getWriter()
+                                    .write("{\"status\": 403, \"message\": \"Bạn không có quyền truy cập\"}");
+                        }))
 
                 .authorizeHttpRequests(auth -> auth
 
@@ -87,14 +87,16 @@ public class SecurityConfig {
                         // /api/v1/support/chat KHÔNG nằm ở đây — yêu cầu phải đăng nhập.
                         // Frontend tự động gắn token qua axiosClient request interceptor.
                         .requestMatchers(
-                                "/api/v1/auth/login",       // Đăng nhập bằng email/password
-                                "/api/v1/auth/register",    // Đăng ký tài khoản mới
-                                "/api/v1/auth/send-otp",    // Gửi mã OTP xác minh email
-                                "/api/v1/auth/verify-otp",  // Xác minh mã OTP
-                                "/api/v1/auth/google",      // Đăng nhập bằng Google OAuth2
-                                "/api/v1/auth/refresh",     // Lấy access token mới từ refresh token
-                                "/swagger-ui/**",           // Swagger UI (chỉ dùng khi dev/test)
-                                "/v3/api-docs/**"           // OpenAPI spec (chỉ dùng khi dev/test)
+                                "/api/v1/auth/login",                      // Đăng nhập bằng email/password
+                                "/api/v1/auth/register",                   // Đăng ký tài khoản mới
+                                "/api/v1/auth/send-otp",                   // Gửi mã OTP xác minh email
+                                "/api/v1/auth/verify-otp",                 // Xác minh mã OTP
+                                "/api/v1/auth/google",                     // Đăng nhập bằng Google OAuth2
+                                "/api/v1/auth/refresh",                    // Lấy access token mới từ refresh token
+                                "/api/v1/auth/forgot-password/request",    // Gửi OTP quên mật khẩu
+                                "/api/v1/auth/forgot-password/reset",      // Đặt lại mật khẩu mới
+                                "/swagger-ui/**",                          // Swagger UI (chỉ dùng khi dev/test)
+                                "/v3/api-docs/**"                          // OpenAPI spec (chỉ dùng khi dev/test)
                         ).permitAll()
 
                         // ─── Admin only ────────────────────────────────────────────────────

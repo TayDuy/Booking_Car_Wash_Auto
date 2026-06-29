@@ -242,8 +242,9 @@ const ProfilePage = () => {
       <div className="profile-page-wrapper">
         {/* Sidebar Navigation Shell */}
         <aside className="sidebar">
-          <div className="sidebar-header">
-            <h1 className="logo-text">WashFlow Pro</h1>
+          <div className="sidebar-header" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <img src="/logo.png" alt="Logo" style={{ height: '48px', width: 'auto' }} />
+            <h1 className="logo-text" style={{ fontSize: '20px' }}>WashFlow Pro</h1>
           </div>
 
           <div className="sidebar-profile">
@@ -281,12 +282,12 @@ const ProfilePage = () => {
               <span className="material-symbols-outlined">logout</span>
               Đăng xuất
             </a>
-          </nav>
 
-          <button className="btn-book" onClick={() => navigate('/booking')}>
-            <span className="material-symbols-outlined icon-small">add</span>
-            Đặt lịch ngay
-          </button>
+            <button className="btn-book" onClick={() => navigate('/booking')}>
+              <span className="material-symbols-outlined icon-small">add</span>
+              Đặt lịch ngay
+            </button>
+          </nav>
         </aside>
 
         {/* Main Content Area */}
@@ -396,31 +397,31 @@ const ProfilePage = () => {
                             <div key={vehicle.vehicleId} className="vehicle-card card-shadow group">
                               <div className="vehicle-info">
                                 <div className="vehicle-icon-box bg-cyan">
-                            <span className="material-symbols-outlined text-secondary" style={{ fontSize: '32px' }}>
-                              {vehicle.vehicleType === 'suv' ? 'airport_shuttle' : 'directions_car'}
-                            </span>
+                          <span className="material-symbols-outlined text-secondary" style={{ fontSize: '32px' }}>
+                            {vehicle.vehicleType === 'suv' ? 'airport_shuttle' : 'directions_car'}
+                          </span>
                                 </div>
                                 <div>
                                   <h4 className="vehicle-name">{vehicle.brand} {vehicle.model}</h4>
                                   <span className="vehicle-plate">{vehicle.licensePlate}</span>
                                   <span style={{ fontSize: '12px', color: 'var(--on-surface-variant)', marginLeft: '8px', fontWeight: 'bold' }}>
-                              ({vehicle.vehicleType === 'suv' ? 'Xe 7 chỗ' : 'Xe 4 chỗ'})
-                            </span>
+                            ({vehicle.vehicleType === 'suv' ? 'Xe 7 chỗ' : 'Xe 4 chỗ'})
+                          </span>
                                 </div>
                               </div>
                               <div className="vehicle-footer">
                                 <span className="vehicle-date">{vehicle.color ? `Màu: ${vehicle.color}` : 'Chưa nhập màu'}</span>
                                 <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <button
-                                className={`vehicle-status-toggle ${vehicle.isActive ? 'active' : 'inactive'}`}
-                                onClick={() => handleToggleActive(vehicle.vehicleId, vehicle.isActive)}
-                            >
-                              <span className="material-symbols-outlined icon-small">
-                                {vehicle.isActive ? 'check_circle' : 'do_not_disturb_on'}
-                              </span>
-                              {vehicle.isActive ? 'Đang hoạt động' : 'Ngừng hoạt động'}
-                            </button>
-                          </span>
+                          <button
+                              className={`vehicle-status-toggle ${vehicle.isActive ? 'active' : 'inactive'}`}
+                              onClick={() => handleToggleActive(vehicle.vehicleId, vehicle.isActive)}
+                          >
+                            <span className="material-symbols-outlined icon-small">
+                              {vehicle.isActive ? 'check_circle' : 'do_not_disturb_on'}
+                            </span>
+                            {vehicle.isActive ? 'Đang hoạt động' : 'Ngừng hoạt động'}
+                          </button>
+                        </span>
                               </div>
                             </div>
                         ))
@@ -506,9 +507,9 @@ const ProfilePage = () => {
                                     </div>
                                   </td>
                                   <td>
-                                <span className={`status-badge ${badgeClass}`}>
-                                  <span className={`dot ${dotClass}`}></span> {textViet}
-                                </span>
+                              <span className={`status-badge ${badgeClass}`}>
+                                <span className={`dot ${dotClass}`}></span> {textViet}
+                              </span>
                                   </td>
                                   <td className="text-right font-bold text-dark">{amountString}</td>
                                 </tr>
@@ -587,6 +588,20 @@ const ProfilePage = () => {
               </div>
             </div>
           </div>
+
+          {/* Footer */}
+          <footer className="global-footer-bar">
+            <div className="footer-brand-info">
+              <h4>WashFlow Pro</h4>
+              <p>© 2026 WashFlow Pro Automation. Tất cả quyền được bảo lưu.</p>
+            </div>
+            <div className="footer-nav-links">
+              <a href="#">Liên hệ</a>
+              <a href="#">Chính sách bảo mật</a>
+              <a href="#">Điều khoản dịch vụ</a>
+              <a href="#">Hỗ trợ</a>
+            </div>
+          </footer>
         </main>
 
         {/* Add Vehicle Modal Overlay */}

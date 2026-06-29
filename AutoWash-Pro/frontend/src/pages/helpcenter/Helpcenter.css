@@ -130,9 +130,6 @@ button { font-family: inherit; cursor: pointer; }
 .wf-status__text { font-size: 0.88rem; font-weight: 500; color: var(--wf-text); flex: 1; }
 .wf-status__chip { font-size: 0.78rem; font-weight: 600; color: var(--wf-text-muted); background: var(--wf-bg); padding: 5px 10px; border-radius: 999px; }
 
-/* ── Footer ── */
-.wf-footer { text-align: center; font-size: 0.8rem; color: var(--wf-text-faint); padding: 24px 0 8px; }
-
 /* ── Responsive ── */
 @media (max-width: 960px) {
     .wf-header__nav, .wf-sidebar { display: none; }
