@@ -20,6 +20,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.util.StringUtils;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -42,6 +43,8 @@ public class AuthServiceImpl implements AuthService {
     private final OtpService otpService;
     private final LoyaltyTierRepository loyaltyTierRepository;
     private final RefreshTokenService refreshTokenService;
+
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(AuthServiceImpl.class);
 
     @org.springframework.beans.factory.annotation.Value("${supabase.url}")
     private String supabaseUrl;
@@ -133,6 +136,16 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public void logout(String token) {
+        if (StringUtils.hasText(token)) {
+            try {
+                Integer userId = jwtTokenProvider.getUserIdFromToken(token);
+                if (userId != null) {
+                    refreshTokenService.deleteByUserId(userId);
+                }
+            } catch (Exception e) {
+                log.warn("Không thể xóa refresh token khi logout: {}", e.getMessage());
+            }
+        }
         SecurityContextHolder.clearContext();
     }
 
@@ -205,7 +218,7 @@ public class AuthServiceImpl implements AuthService {
     public void requestForgotPasswordOtp(String phone, String requestIp) {
         String normalizedPhone = normalizePhone(phone);
 
-        if (findUserByPhone(phone).isEmpty()) {
+        if (findUserByPhone(normalizedPhone).isEmpty()) {
             return;
         }
 
@@ -217,10 +230,10 @@ public class AuthServiceImpl implements AuthService {
     public void verifyAndResetPassword(String phone, String otp, String newPassword) {
         String normalizedPhone = normalizePhone(phone);
 
-        otpService.verifyOtp(normalizedPhone, otp.trim(), OtpService.PURPOSE_PASSWORD_RESET);
-
-        User user = findUserByPhone(phone)
+        User user = findUserByPhone(normalizedPhone)
                 .orElseThrow(() -> new BusinessException("Khong tim thay nguoi dung", HttpStatus.NOT_FOUND));
+
+        otpService.verifyOtp(normalizedPhone, otp.trim(), OtpService.PURPOSE_PASSWORD_RESET);
 
         user.setPassword(passwordEncoder.encode(newPassword));
         userRepository.save(user);
@@ -260,15 +273,27 @@ public class AuthServiceImpl implements AuthService {
     }
 
     private Optional<User> findUserByPhone(String phone) {
-        String trimmedPhone = phone == null ? "" : phone.trim();
-        String normalizedPhone = normalizePhone(trimmedPhone);
+        if (phone == null || phone.trim().isEmpty()) {
+            return Optional.empty();
+        }
+        String normalizedPhone = normalizePhone(phone.trim());
 
         Optional<User> user = userRepository.findByPhone(normalizedPhone);
-        if (user.isPresent() || normalizedPhone.equals(trimmedPhone)) {
+        if (user.isPresent()) {
             return user;
         }
 
-        return userRepository.findByPhone(trimmedPhone);
+        if (normalizedPhone.startsWith("+84") && normalizedPhone.length() == 12) {
+            String legacyFormat = "0" + normalizedPhone.substring(3);
+            if (!legacyFormat.equals(phone.trim())) {
+                user = userRepository.findByPhone(legacyFormat);
+                if (user.isPresent()) {
+                    return user;
+                }
+            }
+        }
+
+        return userRepository.findByPhone(phone.trim());
     }
 
     private String normalizePhone(String phone) {
