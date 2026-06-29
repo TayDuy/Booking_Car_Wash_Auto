@@ -19,15 +19,12 @@ import SupportPage from "./pages/auth/SupportPage";
 import HelpCenter from "./pages/helpcenter/Helpcenter";
 import CustomerNotificationPage from "./pages/customer/CustomerNotificationPage";
 import AdminNotificationPage from "./pages/admin/AdminNotificationPage";
-import BookingHistory from "./pages/auth/BookingHistory";
-import ManageCatalog from "./pages/admin/ManageCatalog";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
     <React.StrictMode>
       <BrowserRouter>
         <Routes>
           <Route path="/"              element={<App />} />
-
           <Route path="/login"         element={<Login />} />
           <Route path="/register"      element={<Register />} />
 
