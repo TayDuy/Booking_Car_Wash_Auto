@@ -90,7 +90,9 @@ public class SecurityConfig {
                                 "/api/v1/auth/send-otp",
                                 "/api/v1/auth/verify-otp",
                                 "/api/v1/auth/google",
-                                "/api/v1/auth/refresh"
+                                "/api/v1/auth/refresh",
+                                "/api/v1/auth/forgot-password/request",
+                                "/api/v1/auth/forgot-password/reset"
                         ).permitAll()
 
                         // Admin only

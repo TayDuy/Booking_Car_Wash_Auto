@@ -8,6 +8,7 @@ import com.autowash.backend.auth.service.RefreshTokenService;
 import com.autowash.backend.common.dto.ApiResponse;
 import com.autowash.backend.security.JwtTokenProvider;
 import com.autowash.backend.user.entity.User;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -97,8 +98,9 @@ public class AuthController {
      * Body: { "phone": "0912345678" }
      */
     @PostMapping("/send-otp")
-    public ResponseEntity<ApiResponse<Void>> sendOtp(@Valid @RequestBody OtpRequestDTO request){
-        otpService.sendOtp(request.getPhone());
+    public ResponseEntity<ApiResponse<Void>> sendOtp(@Valid @RequestBody OtpRequestDTO request,
+                                                     HttpServletRequest httpRequest){
+        otpService.sendOtp(request.getPhone(), OtpService.PURPOSE_GENERAL, getClientIp(httpRequest));
         return ResponseEntity.ok(ApiResponse.success("Mã otp đã được gửi", null));
     }
 
@@ -156,9 +158,10 @@ public class AuthController {
 
     @PostMapping("/forgot-password/request")
     public ResponseEntity<ApiResponse<Void>> requestForgotPassword(
-            @Valid @RequestBody ForgotPasswordRequestDTO request) {
-        authService.requestForgotPasswordOtp(request.getPhone());
-        return ResponseEntity.ok(ApiResponse.success("Mã OTP phục hồi đã được gửi thành công", null));
+            @Valid @RequestBody ForgotPasswordRequestDTO request,
+            HttpServletRequest httpRequest) {
+        authService.requestForgotPasswordOtp(request.getPhone(), getClientIp(httpRequest));
+        return ResponseEntity.ok(ApiResponse.success("Nếu số điện thoại hợp lệ, mã OTP phục hồi sẽ được gửi", null));
     }
 
     @PostMapping("/forgot-password/reset")
@@ -166,6 +169,14 @@ public class AuthController {
             @Valid @RequestBody ForgotPasswordResetDTO request) {
         authService.verifyAndResetPassword(request.getPhone(), request.getOtp(), request.getNewPassword());
         return ResponseEntity.ok(ApiResponse.success("Đặt lại mật khẩu thành công", null));
+    }
+
+    private String getClientIp(HttpServletRequest request) {
+        String forwardedFor = request.getHeader("X-Forwarded-For");
+        if (StringUtils.hasText(forwardedFor)) {
+            return forwardedFor.split(",")[0].trim();
+        }
+        return request.getRemoteAddr();
     }
 
 }
