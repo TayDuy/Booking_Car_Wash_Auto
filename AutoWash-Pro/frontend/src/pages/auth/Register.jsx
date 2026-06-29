@@ -139,12 +139,9 @@ function Register() {
     <div className="register-layout">
       <main className="register-page">
         <div className="register-card">
-          <div className="register-header">
-            <div className="brand-row">
-              <div className="register-logo">💧</div>
-              <h1 className="register-title">WashFlow Pro</h1>
-            </div>
-
+          <div className="register-header" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '32px' }}>
+            <img src="/logo.png" alt="WashFlow Pro Logo" style={{ height: '80px', width: 'auto', marginBottom: '8px' }} />
+            <h1 className="register-title">WashFlow Pro</h1>
             <p className="register-subtitle">Create your account</p>
           </div>
 

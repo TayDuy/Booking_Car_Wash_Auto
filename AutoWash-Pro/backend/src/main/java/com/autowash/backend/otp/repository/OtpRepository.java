@@ -12,4 +12,6 @@ public interface OtpRepository extends JpaRepository<OtpVerification, Integer> {
     //kiểm tra phone đã verify chưa
     boolean existsByPhoneAndVerifiedTrue(String phone);
 
+    void deleteByPhoneAndVerifiedTrue(String phone);
+
 }
