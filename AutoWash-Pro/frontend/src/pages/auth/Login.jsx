@@ -195,9 +195,12 @@ function Login({ onLoginSuccess }) {
                 <span>Remember me</span>
               </label>
 
-              <a href="#" className="forgot-link">
+              <Link
+                to="/forgot-password"
+                className="forgot-link"
+              >
                 Forgot password?
-              </a>
+              </Link>
             </div>
 
             <button type="submit" className="login-btn" disabled={loading}>
