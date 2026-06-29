@@ -115,31 +115,27 @@ public class AuthController {
     }
 
     @PostMapping("/refresh")
-    public ResponseEntity<TokenRefreshResponseDTO> refreshJwtToken(
+    public ResponseEntity<ApiResponse<TokenRefreshResponseDTO>> refreshJwtToken(
         @Valid @RequestBody TokenRefreshRequestDTO request
     ){
         String requestRefreshToken = request.getRefreshToken();
 
-        //tìm thẻ trong DB
         RefreshToken refreshToken = refreshTokenService.findByToken(requestRefreshToken);
 
-        //kiểm tra xem còn hạn hay không ?
         refreshTokenService.verifyExpiration(refreshToken);
 
-        //lấy thông tin của cái thẻ ra
         User user = refreshToken.getUser();
 
-        // in ra cái thẻ normal mới
-        String token = tokenProvider.generateToken(user.getEmail(),user.getId());
+        RefreshToken rotatedToken = refreshTokenService.createRefreshToken(user.getId());
 
-        //gửi tra fontend thẻ bth mới với cả thẻ vip cũ
+        String token = tokenProvider.generateToken(user.getEmail(), user.getId());
 
         TokenRefreshResponseDTO responseDTO = TokenRefreshResponseDTO.builder()
                 .accessToken(token)
-                .refreshToken(requestRefreshToken)
+                .refreshToken(rotatedToken.getToken())
                 .build();
 
-        return ResponseEntity.ok(responseDTO);
+        return ResponseEntity.ok(ApiResponse.success("Refresh token thành công", responseDTO));
     }
 
     /**

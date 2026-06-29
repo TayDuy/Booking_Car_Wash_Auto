@@ -30,7 +30,7 @@ public class OtpVerification {
     private String otpCode;
 
     @Builder.Default
-    @Column(nullable = false, length = 30)
+    @Column(nullable = false, length = 30, columnDefinition = "varchar(30) default 'GENERAL' not null")
     private String purpose = "GENERAL";
 
     @Builder.Default
@@ -38,7 +38,7 @@ public class OtpVerification {
     private Boolean verified = false;
 
     @Builder.Default
-    @Column(name = "attempt_count", nullable = false)
+    @Column(name = "attempt_count", nullable = false, columnDefinition = "integer default 0 not null")
     private Integer attemptCount = 0;
 
     @Column(name = "request_ip", length = 45)
