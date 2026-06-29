@@ -1,9 +1,9 @@
-import axios from "axios";
+import axiosClient from "./axiosClient";
 
-const API_URL = "http://localhost:8080/api/v1/auth";
+const API_URL = "/auth";
 
-export async function login(username, password){
-    const respone = await axios.post(`${API_URL}/login`,{
+export async function login(username, password) {
+    const respone = await axiosClient.post(`${API_URL}/login`, {
         username: username,
         password: password,
     });
@@ -11,14 +11,14 @@ export async function login(username, password){
 }
 
 export async function loginWithGoogle(supabaseToken) {
-    const response = await axios.post(`${API_URL}/google`, {
+    const response = await axiosClient.post(`${API_URL}/google`, {
         supabaseToken: supabaseToken
     });
     return response.data;
 }
 
-export async function register(username, password, email, fullName, phone){
-    const respone = await axios.post(`${API_URL}/register`,{
+export async function register(username, password, email, fullName, phone) {
+    const respone = await axiosClient.post(`${API_URL}/register`, {
         username: username,
         password: password,
         email: email,
@@ -28,54 +28,70 @@ export async function register(username, password, email, fullName, phone){
     return respone.data;
 }
 
-export async function sendOtp(phone){
-    const respone = await axios.post(`${API_URL}/send-otp`,{
+export async function sendOtp(phone) {
+    const respone = await axiosClient.post(`${API_URL}/send-otp`, {
         phone: phone,
     });
     return respone.data;
 }
 
 export async function verifyOtp(phone, otp) {
-    const respone = await axios.post(`${API_URL}/verify-otp`,{
+    const respone = await axiosClient.post(`${API_URL}/verify-otp`, {
         phone: phone,
         otp: otp
     });
     return respone.data;
 }
 
-export function saveAuth(result){
+export async function requestForgotPassword(phone) {
+    const respone = await axiosClient.post(`${API_URL}/forgot-password/request`, {
+        phone: phone,
+    });
+    return respone.data;
+}
+
+export async function resetForgotPassword(phone, otp, newPassword) {
+    const respone = await axiosClient.post(`${API_URL}/forgot-password/reset`, {
+        phone: phone,
+        otp: otp,
+        newPassword: newPassword,
+    });
+    return respone.data;
+}
+
+export function saveAuth(result) {
     localStorage.setItem(
-      "token",
-      result.accessToken
+        "token",
+        result.accessToken
     );
 
     localStorage.setItem(
-      "refreshToken",
-      result.refreshToken || ""
+        "refreshToken",
+        result.refreshToken || ""
     );
 
     localStorage.setItem(
-      "username",
-      result.user?.username || ""
+        "username",
+        result.user?.username || ""
     );
 
     localStorage.setItem(
-      "role",
-      result.user?.role || ""
+        "role",
+        result.user?.role || ""
     );
 
     localStorage.setItem(
-      "userId",
-      result.user?.userId || ""
+        "userId",
+        result.user?.userId || ""
     );
 
     localStorage.setItem(
-      "customerId",
-      result.user?.customerId || ""
+        "customerId",
+        result.user?.customerId || ""
     );
 }
 
-export function logout(){
+export function logout() {
     localStorage.removeItem("token");
     localStorage.removeItem("refreshToken");
     localStorage.removeItem("username");
@@ -84,14 +100,14 @@ export function logout(){
     localStorage.removeItem("customerId");
 }
 
-export function isLoggedIn(){
+export function isLoggedIn() {
     return localStorage.getItem("token") !== null;
 }
 
-export function getUsername(){
+export function getUsername() {
     return localStorage.getItem("username");
 }
 
-export function getRole(){
+export function getRole() {
     return localStorage.getItem("role");
 }
