@@ -388,7 +388,7 @@ export default function BookingPage() {
                 <span className="service-cost">{price.toLocaleString()}đ</span>
               </div>
               <div className="selected-datetime-preview">
-                <p>📅 {selectedDate.getDate()} {monthNames[selectedDate.getMonth()]}, {selectedDate.getFullYear()}{selectedSlotData && ` • 🕒 ${selectedSlotData.startTime}`}</p>
+                <p>{selectedDate.getDate()} {monthNames[selectedDate.getMonth()]}, {selectedDate.getFullYear()}{selectedSlotData && ` • ${selectedSlotData.startTime}`}</p>
               </div>
               <div className="billing-fees-list">
                 <div className="fee-line"><span>Giá cơ bản</span><span>{price.toLocaleString()}đ</span></div>
