@@ -11,6 +11,8 @@ import LoginPage from '../features/auth/pages/LoginPage'
 import RegisterPage from '../features/auth/pages/RegisterPage'
 import HelpCenter from '../pages/helpcenter/Helpcenter'
 
+import UnauthorizedPage from "../pages/UnauthorizedPage";
+
 function AppRoutes() {
   return (
     <BrowserRouter>
@@ -34,6 +36,8 @@ function AppRoutes() {
           <Route path="/support" element={<HelpCenter />} />
 
           <Route path="/" element={<Navigate to="/customer/home" replace />} />
+
+          <Route path="/unauthorized" element={<UnauthorizedPage />} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>

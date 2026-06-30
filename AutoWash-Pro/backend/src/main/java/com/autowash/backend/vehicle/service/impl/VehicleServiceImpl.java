@@ -35,6 +35,14 @@ public class VehicleServiceImpl implements VehicleService {
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }
+    
+    @Override
+    public List<VehicleResponse> getAllVehicles() {
+        return vehicleRespository.findAll()
+            .stream()
+            .map(this::mapToResponse)
+            .toList();
+    }
 
     @Override
     public VehicleResponse addVehicle(Integer userId, VehicleRequest request) {
@@ -125,6 +133,8 @@ public class VehicleServiceImpl implements VehicleService {
     private VehicleResponse mapToResponse(Vehicle vehicle) {
         return VehicleResponse.builder()
                 .vehicleId(vehicle.getVehicleId())
+                .customerId(vehicle.getCustomer() != null ? vehicle.getCustomer().getCustomerId() : null)
+                .customerName(vehicle.getCustomer() != null ? vehicle.getCustomer().getFullName() : null)
                 .licensePlate(vehicle.getLicensePlate())
                 .brand(vehicle.getBrand())
                 .model(vehicle.getModel())
