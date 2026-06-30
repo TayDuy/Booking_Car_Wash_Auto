@@ -5,8 +5,8 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import "./CustomerNotificationPage.css";
-import { getAll, markAsRead, markAllRead } from '../../api/notificationService';
-import { isLoggedIn } from '../../api/authService';
+import { getAll, markAsRead, markAllRead } from "../../../api/notificationService";
+import { isLoggedIn } from '../../../api/authService';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 

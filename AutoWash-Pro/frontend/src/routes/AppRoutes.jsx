@@ -17,7 +17,7 @@ import HomePage from "../features/customer/pages/HomePage";
 import BookingHistoryPage from "../features/customer/pages/BookingHistoryPage";
 import ProfilePage from "../features/customer/pages/ProfilePage";
 import CustomerNotificationPage from "../features/customer/pages/CustomerNotificationPage";
-import SupportPage from "../features/customer/pages/SupportPage";
+import SupportPage from "../features/customer/pages/Helpcenter";
 
 import BookingPage from "../features/booking/pages/BookingPage";
 import BookingDetailPage from "../features/booking/pages/BookingDetailPage";

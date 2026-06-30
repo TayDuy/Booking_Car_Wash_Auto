@@ -6,8 +6,8 @@ import {
     AlertTriangle, Star, ThumbsUp, Clock,
 } from "lucide-react";
 import "./AdminNotificationPage.css";
-import { getAll, createNotification, markAllRead, markAsRead, subscribeSSE, getUnread, countUnread } from '../../api/notificationService';
-import { isLoggedIn, logout as clearAuth, getRole } from '../../api/authService';
+import { getAll, createNotification, markAllRead, markAsRead, subscribeSSE, getUnread, countUnread } from '../../../api/notificationService';
+import { isLoggedIn, logout as clearAuth, getRole } from '../../../api/authService';
 
 const SIDEBAR_NAV = [
     { id: "dashboard", label: "Bảng điều khiển", icon: LayoutGrid },
