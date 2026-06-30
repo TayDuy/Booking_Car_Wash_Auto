@@ -10,6 +10,7 @@ import {
   MdAirportShuttle
 } from "react-icons/md";
 import { createBooking } from "../../api/bookingService";
+import customerApi from "../../api/customerApi";
 import SiteHeader from "./SiteHeader";
 import { useNavigate } from "react-router-dom";
 import { getActiveServices } from "../../api/servicePackageService";
@@ -46,22 +47,12 @@ const DEFAULT_SERVICES = [
   }
 ];
 
-const MOCK_SLOTS_DATA = [
-  { slotId: 101, startTime: "09:00 sáng", statusType: "ECO", statusLabel: "GIỜ ECO", available: true },
-  { slotId: 102, startTime: "09:30 sáng", statusType: "NORMAL", statusLabel: "Còn 3 chỗ", available: true },
-  { slotId: 103, startTime: "10:00 sáng", statusType: "NORMAL", statusLabel: "Còn 2 chỗ", available: true },
-  { slotId: 104, startTime: "10:30 sáng", statusType: "PEAK", statusLabel: "GIỜ CAO ĐIỂM", available: true },
-  { slotId: 105, startTime: "11:00 sáng", statusType: "NORMAL", statusLabel: "Còn 1 chỗ", available: true },
-  { slotId: 106, startTime: "11:30 sáng", statusType: "FULL", statusLabel: "Hết chỗ", available: false },
-  { slotId: 107, startTime: "12:00 sáng", available: true },
-  { slotId: 108, startTime: "12:30 trưa", available: true },
-];
-
 export default function BookingPage() {
   const navigate = useNavigate();
   const [services, setServices] = useState([]);
   const [branches, setBranches] = useState([]);
   const [slots, setSlots] = useState([]);
+  const [slotsError, setSlotsError] = useState(null);
 
   const [selectedBranch, setSelectedBranch] = useState(null);
   const [vehicleType, setVehicleType] = useState("4_seats");
@@ -70,6 +61,8 @@ export default function BookingPage() {
   const [selectedTime, setSelectedTime] = useState(null);
   const [licensePlate, setLicensePlate] = useState("");
   const [brand, setBrand] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [phone, setPhone] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("online");
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -116,13 +109,28 @@ export default function BookingPage() {
       }
     };
     loadBranches();
+
+    const loadProfile = async () => {
+      try {
+        const res = await customerApi.profile();
+        if (res.data) {
+          setFullName(res.data.fullName || "");
+          setPhone(res.data.phone || "");
+        }
+      } catch (err) {
+        console.log(err);
+      }
+    };
+    loadProfile();
   }, []);
 
   useEffect(() => {
     const loadSlots = async () => {
+      // Chưa xác định được chi nhánh (đang load chi nhánh) → chưa có gì để chọn.
       if (!selectedBranch) {
-        setSlots(MOCK_SLOTS_DATA);
-        setSelectedTime(MOCK_SLOTS_DATA[2].slotId);
+        setSlots([]);
+        setSelectedTime(null);
+        setSlotsError(null);
         return;
       }
       try {
@@ -137,13 +145,18 @@ export default function BookingPage() {
           }));
           setSlots(formattedSlots);
           setSelectedTime(formattedSlots[0].slotId);
+          setSlotsError(null);
         } else {
-          setSlots(MOCK_SLOTS_DATA);
-          setSelectedTime(MOCK_SLOTS_DATA[2].slotId);
+          // KHÔNG dùng MOCK_SLOTS_DATA nữa — slot giả có thể trùng ID với slot thật
+          // đã hết hạn ngày trong DB, gây lỗi 500 khi đặt lịch (validate slotDate).
+          setSlots([]);
+          setSelectedTime(null);
+          setSlotsError("Chi nhánh này chưa có khung giờ trống cho ngày đã chọn. Vui lòng chọn chi nhánh hoặc ngày khác.");
         }
       } catch (err) {
-        setSlots(MOCK_SLOTS_DATA);
-        setSelectedTime(MOCK_SLOTS_DATA[2].slotId);
+        setSlots([]);
+        setSelectedTime(null);
+        setSlotsError("Không tải được khung giờ trống. Vui lòng thử lại hoặc chọn ngày/chi nhánh khác.");
       }
     };
     loadSlots();
@@ -180,6 +193,8 @@ export default function BookingPage() {
 
     const customerIdRaw = localStorage.getItem("customerId");
     if (!customerIdRaw) { alert("Không tìm thấy thông tin khách hàng. Vui lòng đăng nhập lại!"); return; }
+    if (!fullName.trim()) { alert("Vui lòng nhập họ và tên!"); return; }
+    if (!phone.trim()) { alert("Vui lòng nhập số điện thoại!"); return; }
     if (!licensePlate.trim()) { alert("Vui lòng nhập biển số xe!"); return; }
     if (!brand.trim()) { alert("Vui lòng nhập hãng xe!"); return; }
     if (!selectedTime) { alert("Vui lòng chọn khung giờ!"); return; }
@@ -196,9 +211,11 @@ export default function BookingPage() {
         note,
         details: [{ serviceId: selectedService, quantity: 1 }]
       };
-      await createBooking(bookingData);
-      alert("Đặt lịch thành công!");
-      navigate("/");
+      const result = await createBooking(bookingData);
+      const bookingId = result?.data?.bookingId || result?.data?.id || result?.data?.data?.bookingId;
+      console.log("Booking result:", result?.data);
+      console.log("Navigating to /payment with bookingId:", bookingId);
+      navigate("/payment", { state: { bookingId } });
     } catch (error) {
       alert(error.response?.data?.message || "Đặt lịch thất bại. Vui lòng thử lại!");
     }
@@ -303,20 +320,26 @@ export default function BookingPage() {
                     </div>
                   </div>
                   <div className="slots-grid-container">
-                    {slots.map((slot) => {
-                      const isSelected = selectedTime === slot.slotId;
-                      const isDisabled = slot.available === false;
-                      let className = "time-slot-pill-btn";
-                      if (slot.statusType === "ECO") className += " status-eco";
-                      if (slot.statusType === "PEAK") className += " status-peak";
-                      if (isSelected) className += " pill-selected";
-                      return (
-                          <button key={slot.slotId} type="button" disabled={isDisabled} className={className} onClick={() => setSelectedTime(slot.slotId)}>
-                            <span className="slot-clock-text">{slot.startTime}</span>
-                            <span className="slot-status-subtext">{isSelected ? "Đã chọn" : slot.statusLabel}</span>
-                          </button>
-                      );
-                    })}
+                    {slots.length === 0 ? (
+                        <div className="slots-empty-state">
+                          {slotsError || "Đang tải khung giờ..."}
+                        </div>
+                    ) : (
+                        slots.map((slot) => {
+                          const isSelected = selectedTime === slot.slotId;
+                          const isDisabled = slot.available === false;
+                          let className = "time-slot-pill-btn";
+                          if (slot.statusType === "ECO") className += " status-eco";
+                          if (slot.statusType === "PEAK") className += " status-peak";
+                          if (isSelected) className += " pill-selected";
+                          return (
+                              <button key={slot.slotId} type="button" disabled={isDisabled} className={className} onClick={() => setSelectedTime(slot.slotId)}>
+                                <span className="slot-clock-text">{slot.startTime}</span>
+                                <span className="slot-status-subtext">{isSelected ? "Đã chọn" : slot.statusLabel}</span>
+                              </button>
+                          );
+                        })
+                    )}
                   </div>
                 </div>
               </div>
@@ -330,21 +353,46 @@ export default function BookingPage() {
               </div>
               <div className="vehicle-inputs-row">
                 <div className="form-field-group">
+                  <label>Họ và tên *</label>
+                  <input
+                      type="text"
+                      placeholder="Nguyễn Văn A"
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                  />
+                </div>
+                <div className="form-field-group">
+                  <label>Số điện thoại *</label>
+                  <input
+                      type="text"
+                      placeholder="090 123 4567"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                  />
+                </div>
+              </div>
+              <div className="form-field-group full-width-field">
+                <label>Chi nhánh *</label>
+                <select
+                    value={selectedBranch || ""}
+                    onChange={(e) => setSelectedBranch(Number(e.target.value))}
+                >
+                  {branches.length === 0 && <option value="">Đang tải chi nhánh...</option>}
+                  {branches.map((b) => (
+                      <option key={b.branchId} value={b.branchId}>
+                        {b.branchName}{b.address ? ` - ${b.address}` : ""}
+                      </option>
+                  ))}
+                </select>
+              </div>
+              <div className="vehicle-inputs-row">
+                <div className="form-field-group">
                   <label>Biển số xe *</label>
                   <input
                       type="text"
                       placeholder="Ví dụ: 30A-123.45"
                       value={licensePlate}
                       onChange={(e) => setLicensePlate(e.target.value)}
-                  />
-                </div>
-                <div className="form-field-group">
-                  <label>Hãng xe *</label>
-                  <input
-                      type="text"
-                      placeholder="Ví dụ: Toyota, Honda, Mazda..."
-                      value={brand}
-                      onChange={(e) => setBrand(e.target.value)}
                   />
                 </div>
                 <div className="form-field-group">
@@ -366,6 +414,15 @@ export default function BookingPage() {
                     </button>
                   </div>
                 </div>
+              </div>
+              <div className="form-field-group full-width-field">
+                <label>Hãng xe *</label>
+                <input
+                    type="text"
+                    placeholder="Ví dụ: Toyota, Honda, Mazda..."
+                    value={brand}
+                    onChange={(e) => setBrand(e.target.value)}
+                />
               </div>
               <div className="form-field-group full-width-field">
                 <label>Yêu cầu đặc biệt (Không bắt buộc)</label>

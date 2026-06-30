@@ -43,12 +43,60 @@ export async function markAllRead(){
 }
 
 export function subscribeSSE(onMessage){
-  const token = localStorage.getItem('token');
-  const headers = token ? `?token=${token}` : '';
-  const es = new EventSource(`${BASE}/stream${headers}`);
-  es.onmessage = (e) => {
-    try{ const d = JSON.parse(e.data); onMessage(d); }catch(err){ console.warn('SSE parse', err); }
+  let es = null;
+  let closed = false;
+  let retryCount = 0;
+  const MAX_RETRIES = 3;
+
+  function open(){
+    const token = localStorage.getItem('token');
+    const headers = token ? `?token=${token}` : '';
+    es = new EventSource(`${BASE}/stream${headers}`);
+
+    es.onmessage = (e) => {
+      try{ const d = JSON.parse(e.data); onMessage(d); }catch(err){ console.warn('SSE parse', err); }
+    };
+
+    es.onopen = () => { retryCount = 0; };
+
+    es.onerror = async (err) => {
+      console.warn('SSE error', err);
+      if (closed) return;
+      es.close();
+
+      if (retryCount >= MAX_RETRIES) {
+        console.warn('SSE: đã thử lại tối đa số lần, dừng kết nối.');
+        return;
+      }
+      retryCount += 1;
+
+      // Token hết hạn (15 phút) → gọi /auth/refresh để lấy token mới rồi mở lại kết nối,
+      // thay vì giữ nguyên token cũ và bị 401 lặp lại liên tục.
+      const refreshToken = localStorage.getItem('refreshToken');
+      if (!refreshToken) return;
+
+      try {
+        const res = await axios.post('http://localhost:8080/api/v1/auth/refresh', { refreshToken });
+        const { accessToken, refreshToken: newRefreshToken } = res.data.data;
+        localStorage.setItem('token', accessToken);
+        if (newRefreshToken) localStorage.setItem('refreshToken', newRefreshToken);
+
+        if (!closed) {
+          setTimeout(open, 500);
+        }
+      } catch (refreshErr) {
+        console.warn('SSE: refresh token thất bại, dừng kết nối thông báo real-time.', refreshErr);
+      }
+    };
+  }
+
+  open();
+
+  // Trả về object có .close() giống EventSource để chỗ gọi (SiteHeader) dùng được như cũ
+  return {
+    close(){
+      closed = true;
+      es?.close?.();
+    }
   };
-  es.onerror = (err) => { console.warn('SSE error', err); };
-  return es;
 }
