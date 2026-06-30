@@ -67,10 +67,7 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
     @Override
     @Transactional
     public void deleteByUserId(Integer userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User","id",userId));
-        refreshTokenRepository.deleteByUser(user);
-
+        refreshTokenRepository.deleteByUser_Id(userId);
     }
 
     @Override

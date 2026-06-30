@@ -7,15 +7,20 @@ import com.autowash.backend.auth.service.AuthService;
 import com.autowash.backend.auth.service.OtpService;
 import com.autowash.backend.auth.service.RefreshTokenService;
 import com.autowash.backend.common.exception.BusinessException;
+import com.autowash.backend.customer.entity.Customer;
+import com.autowash.backend.customer.repository.CustomerRepository;
 import com.autowash.backend.loyaltytier.repository.LoyaltyTierRepository;
 import com.autowash.backend.security.CustomUserDetails;
 import com.autowash.backend.security.JwtTokenProvider;
-import com.autowash.backend.customer.repository.CustomerRepository;
-import com.autowash.backend.customer.entity.Customer;
 import com.autowash.backend.user.entity.User;
 import com.autowash.backend.user.repository.UserRepository;
-import org.springframework.http.*;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.util.StringUtils;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -25,6 +30,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.Map;
+import java.util.Optional;
 
 @Service
 public class AuthServiceImpl implements AuthService {
@@ -38,6 +44,8 @@ public class AuthServiceImpl implements AuthService {
     private final LoyaltyTierRepository loyaltyTierRepository;
     private final RefreshTokenService refreshTokenService;
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(AuthServiceImpl.class);
+
     @org.springframework.beans.factory.annotation.Value("${supabase.url}")
     private String supabaseUrl;
 
@@ -48,7 +56,10 @@ public class AuthServiceImpl implements AuthService {
                            UserRepository userRepository,
                            PasswordEncoder passwordEncoder,
                            JwtTokenProvider jwtTokenProvider,
-                           CustomerRepository customerRepository, OtpService otpService, LoyaltyTierRepository loyaltyTierRepository,RefreshTokenService refreshTokenService) {
+                           CustomerRepository customerRepository,
+                           OtpService otpService,
+                           LoyaltyTierRepository loyaltyTierRepository,
+                           RefreshTokenService refreshTokenService) {
         this.authenticationManager = authenticationManager;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
@@ -56,13 +67,12 @@ public class AuthServiceImpl implements AuthService {
         this.customerRepository = customerRepository;
         this.otpService = otpService;
         this.loyaltyTierRepository = loyaltyTierRepository;
-        this.refreshTokenService =refreshTokenService;
+        this.refreshTokenService = refreshTokenService;
     }
 
     @Override
     @Transactional
     public LoginResponseDTO login(LoginRequestDTO request) {
-        // Xác thực email + password qua Spring Security
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
                         request.getUsername().trim().toLowerCase(),
@@ -70,18 +80,13 @@ public class AuthServiceImpl implements AuthService {
                 )
         );
 
-        // Lưu vào SecurityContext (tùy chọn với stateless JWT)
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
-        // Lấy thông tin user
         CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
         User user = userRepository.findById(userDetails.getId())
-                .orElseThrow(() -> new BusinessException("Không tìm thấy người dùng",
-                        HttpStatus.NOT_FOUND));
+                .orElseThrow(() -> new BusinessException("Khong tim thay nguoi dung", HttpStatus.NOT_FOUND));
 
-        // Tạo token
         String token = jwtTokenProvider.generateToken(authentication);
-
         return buildLoginResponse(token, user);
     }
 
@@ -89,75 +94,64 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     public LoginResponseDTO register(RegisterRequestDTO request) {
         String normalizedEmail = request.getEmail().trim().toLowerCase();
+        String normalizedPhone = normalizePhone(request.getPhone());
 
-        // Kiểm tra email đã tồn tại
         if (userRepository.existsByEmail(normalizedEmail)) {
-            throw new BusinessException("Email '" + normalizedEmail + "' đã được sử dụng");
+            throw new BusinessException("Email '" + normalizedEmail + "' da duoc su dung");
         }
 
-        // Kiểm tra username đã tồn tại
         if (userRepository.existsByUsername(request.getUsername())) {
-            throw new BusinessException("Tài khoản '" + request.getUsername() + "' đã được sử dụng");
+            throw new BusinessException("Tai khoan '" + request.getUsername() + "' da duoc su dung");
         }
 
-        // Kiểm tra số điện thoại đã tồn tại
-        if (userRepository.existsByPhone(request.getPhone())) {
-            throw new BusinessException("Số điện thoại '" + request.getPhone()
-                    + "' đã được sử dụng");
+        if (userRepository.existsByPhone(normalizedPhone)) {
+            throw new BusinessException("So dien thoai '" + normalizedPhone + "' da duoc su dung");
         }
 
-        //kiểm tra phone đã được xác minh
-        if(!otpService.isPhoneVerified(request.getPhone())){
-            throw new BusinessException("số điện thoại chưa được xác minh OTP");
+        if (!otpService.isPhoneVerified(normalizedPhone)) {
+            throw new BusinessException("So dien thoai chua duoc xac minh OTP");
         }
 
-        // Tạo user mới (mặc định role CUSTOMER)
         User newUser = User.builder()
-                .username(request.getUsername()) // <-- Lấy username từ form Đăng ký
+                .username(request.getUsername())
                 .email(normalizedEmail)
                 .password(passwordEncoder.encode(request.getPassword()))
-                .phone(request.getPhone() != null ? request.getPhone().trim() : "")
+                .phone(normalizedPhone)
                 .role("customer")
                 .status("active")
                 .build();
 
         User savedUser = userRepository.save(newUser);
 
-        // Tạo thông tin khách hàng (Customer)
         Customer newCustomer = Customer.builder()
-                .user(savedUser)   // lỗi nè
-                .fullName(request.getFullName() != null
-                        ? request.getFullName().trim()
-                        : "")
+                .user(savedUser)
+                .fullName(request.getFullName() != null ? request.getFullName().trim() : "")
                 .tierId(1)
                 .build();
         customerRepository.save(newCustomer);
 
-        // Auto-login: tạo token ngay sau khi đăng ký
         String token = jwtTokenProvider.generateToken(savedUser.getEmail(), savedUser.getId());
-
         return buildLoginResponse(token, savedUser);
     }
 
     @Override
     public void logout(String token) {
-        /*
-         * JWT là stateless — client tự xóa token.
-         * Nếu cần server-side invalidation (bảo mật cao hơn),
-         * thêm token vào Redis blacklist tại đây.
-         *
-         * Ví dụ mở rộng:
-         *   long expiry = jwtTokenProvider.getExpirationFromToken(token);
-         *   redisTemplate.opsForValue().set("blacklist:" + token, "1",
-         *       expiry, TimeUnit.MILLISECONDS);
-         */
+        if (StringUtils.hasText(token)) {
+            try {
+                Integer userId = jwtTokenProvider.getUserIdFromToken(token);
+                if (userId != null) {
+                    refreshTokenService.deleteByUserId(userId);
+                }
+            } catch (Exception e) {
+                log.warn("Không thể xóa refresh token khi logout: {}", e.getMessage());
+            }
+        }
         SecurityContextHolder.clearContext();
     }
 
     @Override
     @Transactional
     public LoginResponseDTO loginWithGoogle(String supabaseToken) {
-        //1.Dùng RestTemplate như 1 cái điện thoại để gọi cho Supabase
         RestTemplate restTemplate = new RestTemplate();
         HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth(supabaseToken);
@@ -170,24 +164,24 @@ public class AuthServiceImpl implements AuthService {
             ResponseEntity<Map> supabaseResponse = restTemplate.exchange(
                     supabaseUrl + "/auth/v1/user",
                     HttpMethod.GET,
-                    entity, Map.class
+                    entity,
+                    Map.class
             );
             body = supabaseResponse.getBody();
         } catch (Exception e) {
-            throw new BusinessException("Token Google không hợp lệ hoặc đã bị chỉnh sửa!!", HttpStatus.UNAUTHORIZED);
+            throw new BusinessException("Token Google khong hop le hoac da bi chinh sua", HttpStatus.UNAUTHORIZED);
         }
 
         if (body == null || !body.containsKey("email")) {
-            throw new BusinessException("Không lấy được mail từ Google!", HttpStatus.BAD_REQUEST);
+            throw new BusinessException("Khong lay duoc email tu Google", HttpStatus.BAD_REQUEST);
         }
 
         String email = (String) body.get("email");
         Map<String, Object> metadata = (Map<String, Object>) body.get("user_metadata");
         String fullName = metadata != null && metadata.containsKey("full_name")
                 ? (String) metadata.get("full_name")
-                : "Khách hàng Google";
+                : "Khach hang Google";
 
-        // 3. Kiểm tra user đã tồn tại chưa
         User user = userRepository.findByEmail(email).orElse(null);
         if (user == null) {
             try {
@@ -208,56 +202,44 @@ public class AuthServiceImpl implements AuthService {
                         .tierId(1)
                         .build();
                 customerRepository.save(customer);
-
             } catch (org.springframework.dao.DataIntegrityViolationException e) {
-                // Race condition: request khác đã tạo user này trước trong lúc ta đang insert.
-                // Quay lại lấy bản ghi mà request kia vừa tạo thành công, không throw lỗi vô lý cho client.
                 user = userRepository.findByEmail(email)
                         .orElseThrow(() -> new BusinessException(
-                                "Lỗi đồng thời khi đăng nhập Google, vui lòng thử lại",
+                                "Loi dong thoi khi dang nhap Google, vui long thu lai",
                                 HttpStatus.CONFLICT));
             }
         }
 
-        // 4. Sinh token
         String token = jwtTokenProvider.generateToken(email, user.getId());
         return buildLoginResponse(token, user);
     }
 
     @Override
-    public void requestForgotPasswordOtp(String phone) {
-        //kiểm tra sdt đã đăng kí chưa
-        userRepository.findByPhone(phone.trim())
-                .orElseThrow(()-> new BusinessException("Số điện thoại này chưa được đăng kí trong hệ thống", HttpStatus.NOT_FOUND));
+    public void requestForgotPasswordOtp(String phone, String requestIp) {
+        String normalizedPhone = normalizePhone(phone);
 
-        //Sinh và gửi OTP
-        otpService.sendOtp(phone.trim());
+        if (findUserByPhone(normalizedPhone).isEmpty()) {
+            return;
+        }
 
-
-
+        otpService.sendOtp(normalizedPhone, OtpService.PURPOSE_PASSWORD_RESET, requestIp);
     }
 
     @Override
     @Transactional
     public void verifyAndResetPassword(String phone, String otp, String newPassword) {
-        String trimmerPhone = phone.trim();
+        String normalizedPhone = normalizePhone(phone);
 
-        //Xác minh otp trực tiếp (Nếu sai hoặc hết hạn sẽ ném lỗi ra ngay)
-        otpService.verifyOtp(trimmerPhone, otp.trim());
+        User user = findUserByPhone(normalizedPhone)
+                .orElseThrow(() -> new BusinessException("Khong tim thay nguoi dung", HttpStatus.NOT_FOUND));
 
-        //tìm tài khoản người dùng
-        User user = userRepository.findByPhone(trimmerPhone)
-                .orElseThrow(() -> new BusinessException("Không tìm thấy người dùng", HttpStatus.NOT_FOUND));
+        otpService.verifyOtp(normalizedPhone, otp.trim(), OtpService.PURPOSE_PASSWORD_RESET);
 
-        //mã hóa và lưu mật khẩu mới
         user.setPassword(passwordEncoder.encode(newPassword));
         userRepository.save(user);
-
-        //dọn dẹp otp sau khi sử dụng
-        otpService.clearVerification(trimmerPhone);
-
+        refreshTokenService.deleteByUserId(user.getId());
+        otpService.clearVerification(normalizedPhone, OtpService.PURPOSE_PASSWORD_RESET);
     }
-
 
     private LoginResponseDTO buildLoginResponse(String token, User user) {
         String fullName = "Unknown";
@@ -288,5 +270,37 @@ public class AuthServiceImpl implements AuthService {
                 .tokenType("Bearer")
                 .user(userDto)
                 .build();
+    }
+
+    private Optional<User> findUserByPhone(String phone) {
+        if (phone == null || phone.trim().isEmpty()) {
+            return Optional.empty();
+        }
+        String normalizedPhone = normalizePhone(phone.trim());
+
+        Optional<User> user = userRepository.findByPhone(normalizedPhone);
+        if (user.isPresent()) {
+            return user;
+        }
+
+        if (normalizedPhone.startsWith("+84") && normalizedPhone.length() == 12) {
+            String legacyFormat = "0" + normalizedPhone.substring(3);
+            if (!legacyFormat.equals(phone.trim())) {
+                user = userRepository.findByPhone(legacyFormat);
+                if (user.isPresent()) {
+                    return user;
+                }
+            }
+        }
+
+        return userRepository.findByPhone(phone.trim());
+    }
+
+    private String normalizePhone(String phone) {
+        String trimmed = phone == null ? "" : phone.trim();
+        if (trimmed.startsWith("0") && trimmed.length() == 10) {
+            return "+84" + trimmed.substring(1);
+        }
+        return trimmed;
     }
 }
