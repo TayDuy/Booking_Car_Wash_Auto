@@ -1,43 +1,119 @@
-import React from 'react'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-import { AuthProvider } from '../contexts/AuthContext'
-import AuthLayout from '../layouts/AuthLayout'
-import MainLayout from '../layouts/MainLayout'
-import DashboardLayout from '../layouts/DashboardLayout'
-import CustomerRoutes from './CustomerRoutes'
-import AdminRoutes from './AdminRoutes'
+import { Routes, Route, Navigate } from "react-router-dom";
 
-import LoginPage from '../features/auth/pages/LoginPage'
-import RegisterPage from '../features/auth/pages/RegisterPage'
-import HelpCenter from '../pages/helpcenter/Helpcenter'
+import ProtectedRoute from "./ProtectedRoute";
+
+import LandingPage from "../features/landing/pages/LandingPage";
+
+import AuthLayout from "../layouts/AuthLayout";
+import CustomerLayout from "../layouts/CustomerLayout";
+import AdminLayout from "../layouts/AdminLayout";
+import ManagerLayout from "../layouts/ManagerLayout";
+
+import LoginPage from "../features/auth/pages/LoginPage";
+import RegisterPage from "../features/auth/pages/RegisterPage";
+import ForgotPasswordPage from "../features/auth/pages/ForgotPasswordPage";
+
+import HomePage from "../features/customer/pages/HomePage";
+import BookingHistoryPage from "../features/customer/pages/BookingHistoryPage";
+import ProfilePage from "../features/customer/pages/ProfilePage";
+import CustomerNotificationPage from "../features/customer/pages/CustomerNotificationPage";
+import SupportPage from "../features/customer/pages/SupportPage";
+
+import BookingPage from "../features/booking/pages/BookingPage";
+import BookingDetailPage from "../features/booking/pages/BookingDetailPage";
+import BookingSuccessPage from "../features/booking/pages/BookingSuccessPage";
+
+import PromotionListPage from "../features/promotion/pages/PromotionListPage";
+
+import AdminDashboardPage from "../features/admin/pages/AdminDashboardPage";
+import ManageBookingsPage from "../features/admin/pages/ManageBookingsPage";
+import ManageCustomersPage from "../features/admin/pages/ManageCustomersPage";
+import ManagePromotionsPage from "../features/admin/pages/ManagePromotionsPage";
+import ManageVehiclesPage from "../features/admin/pages/ManageVehiclesPage";
+import AdminNotificationPage from "../features/admin/pages/AdminNotificationPage";
+import ReportsPage from "../features/admin/pages/ReportsPage";
+
+import ManagerDashboardPage from "../features/manager/pages/ManagerDashboardPage";
+import ManagerBookingsPage from "../features/manager/pages/ManagerBookingsPage";
+import ManagerStaffPage from "../features/manager/pages/ManagerStaffPage";
+import ManagerRevenuePage from "../features/manager/pages/ManagerRevenuePage";
+import ManagerServiceStatusPage from "../features/manager/pages/ManagerServiceStatusPage";
 
 function AppRoutes() {
   return (
-    <BrowserRouter>
-      <AuthProvider>
-        <Routes>
-          
-          <Route path="/auth" element={<AuthLayout />}>
-            <Route index element={<Navigate to="login" replace />} />
-            <Route path="login" element={<LoginPage />} />
-            <Route path="register" element={<RegisterPage />} />
-          </Route>
+    <Routes>
+      {/* Landing page */}
+      <Route path="/" element={<LandingPage />} />
 
-          <Route path="/customer/*" element={<MainLayout />}>
-            <Route path="/*" element={<CustomerRoutes />} />
-          </Route>
+      {/* Auth routes */}
+      <Route path="/auth" element={<AuthLayout />}>
+        <Route index element={<Navigate to="login" replace />} />
+        <Route path="login" element={<LoginPage />} />
+        <Route path="register" element={<RegisterPage />} />
+        <Route path="forgot-password" element={<ForgotPasswordPage />} />
+      </Route>
 
-          <Route path="/admin/*" element={<DashboardLayout />}>
-            <Route path="/*" element={<AdminRoutes />} />
-          </Route>
+      {/* Customer routes */}
+      <Route
+        path="/customer"
+        element={
+          <ProtectedRoute allowedRoles={["CUSTOMER", "USER"]}>
+            <CustomerLayout />
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<Navigate to="home" replace />} />
+        <Route path="home" element={<HomePage />} />
+        <Route path="booking" element={<BookingPage />} />
+        <Route path="booking/success" element={<BookingSuccessPage />} />
+        <Route path="booking/:bookingId" element={<BookingDetailPage />} />
+        <Route path="history" element={<BookingHistoryPage />} />
+        <Route path="promotions" element={<PromotionListPage />} />
+        <Route path="profile" element={<ProfilePage />} />
+        <Route path="notifications" element={<CustomerNotificationPage />} />
+        <Route path="support" element={<SupportPage />} />
+      </Route>
 
-          <Route path="/support" element={<HelpCenter />} />
+      {/* Admin routes */}
+      <Route
+        path="/admin"
+        element={
+          <ProtectedRoute allowedRoles={["ADMIN"]}>
+            <AdminLayout />
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<Navigate to="dashboard" replace />} />
+        <Route path="dashboard" element={<AdminDashboardPage />} />
+        <Route path="bookings" element={<ManageBookingsPage />} />
+        <Route path="customers" element={<ManageCustomersPage />} />
+        <Route path="promotions" element={<ManagePromotionsPage />} />
+        <Route path="vehicles" element={<ManageVehiclesPage />} />
+        <Route path="notifications" element={<AdminNotificationPage />} />
+        <Route path="reports" element={<ReportsPage />} />
+      </Route>
 
-          <Route path="/" element={<Navigate to="/customer/home" replace />} />
-        </Routes>
-      </AuthProvider>
-    </BrowserRouter>
-  )
+      {/* Manager routes */}
+      <Route
+        path="/manager"
+        element={
+          <ProtectedRoute allowedRoles={["MANAGER"]}>
+            <ManagerLayout />
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<Navigate to="dashboard" replace />} />
+        <Route path="dashboard" element={<ManagerDashboardPage />} />
+        <Route path="bookings" element={<ManagerBookingsPage />} />
+        <Route path="staff" element={<ManagerStaffPage />} />
+        <Route path="revenue" element={<ManagerRevenuePage />} />
+        <Route path="service-status" element={<ManagerServiceStatusPage />} />
+      </Route>
+
+      {/* Not found */}
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  );
 }
 
-export default AppRoutes
+export default AppRoutes;
