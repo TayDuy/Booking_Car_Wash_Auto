@@ -114,7 +114,7 @@ function ForgotPassword() {
               <h1 className="forgot-title">WashFlow Pro</h1>
             </div>
 
-            <p className="forgot-subtitle">Reset your password</p>
+            <p className="forgot-subtitle">Cập Nhật Mật Khẩu</p>
           </div>
 
           {errorMessage && (
@@ -131,7 +131,7 @@ function ForgotPassword() {
 
           <form className="forgot-form" onSubmit={handleResetPassword}>
             <div className="form-group">
-              <label className="form-label">Phone Number</label>
+              <label className="form-label">Số Điện Thoại</label>
 
               <div className="input-row">
                 <span className="input-icon">☎</span>
@@ -156,7 +156,7 @@ function ForgotPassword() {
             </button>
 
             <div className="form-group">
-              <label className="form-label">OTP Code</label>
+              <label className="form-label">Mã OTP</label>
 
               <div className="input-row">
                 <span className="input-icon">#</span>
@@ -172,7 +172,7 @@ function ForgotPassword() {
             </div>
 
             <div className="form-group">
-              <label className="form-label">New Password</label>
+              <label className="form-label">Mật Khẩu Mới</label>
 
               <div className="input-row">
                 <span className="input-icon">🔒</span>
@@ -188,7 +188,7 @@ function ForgotPassword() {
             </div>
 
             <div className="form-group">
-              <label className="form-label">Confirm Password</label>
+              <label className="form-label">Nhập Lại Mật Khẩu</label>
 
               <div className="input-row">
                 <span className="input-icon">🔐</span>
@@ -208,13 +208,13 @@ function ForgotPassword() {
               className="forgot-btn"
               disabled={!otpSent || loading}
             >
-              <span>{loading ? "Đang đặt lại..." : "Reset Password"}</span>
+              <span>{loading ? "Đang đặt lại..." : "Cập nhật Mật Khẩu"}</span>
               <span>→</span>
             </button>
           </form>
 
           <div className="forgot-footer">
-            <Link to="/login">← Back to Login</Link>
+            <Link to="/login">← Quay về trang Đăng Nhập</Link>
           </div>
         </div>
       </main>

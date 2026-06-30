@@ -1,43 +1,11 @@
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
-import { logoutFromServer } from "../api/authService";
+import { Outlet } from "react-router-dom";
+import SiteHeader from "../components/layout/SiteHeader";
 import "./CustomerLayout.css";
 
 function CustomerLayout() {
-  const navigate = useNavigate();
-
-  const handleLogout = async () => {
-    await logoutFromServer();
-    navigate("/");
-  };
-
   return (
     <div className="customer-layout">
-      <header className="customer-header">
-        <div className="app-container customer-header-inner">
-          <NavLink to="/customer/home" className="customer-brand">
-            <div className="customer-brand-icon">W</div>
-            <span>WashFlow Pro</span>
-          </NavLink>
-
-          <nav className="customer-nav">
-            <NavLink to="/customer/home">Trang chủ</NavLink>
-            <NavLink to="/customer/booking">Đặt lịch</NavLink>
-            <NavLink to="/customer/promotions">Ưu đãi</NavLink>
-            <NavLink to="/customer/history">Lịch sử</NavLink>
-            <NavLink to="/customer/profile">Hồ sơ</NavLink>
-          </nav>
-
-          <div className="customer-actions">
-            <NavLink to="/customer/notifications" className="notification-btn">
-              🔔
-            </NavLink>
-
-            <button className="logout-btn" type="button" onClick={handleLogout}>
-              Đăng xuất
-            </button>
-          </div>
-        </div>
-      </header>
+      <SiteHeader />
 
       <main className="customer-main">
         <Outlet />
@@ -51,10 +19,10 @@ function CustomerLayout() {
           </div>
 
           <div className="customer-footer-links">
-            <NavLink to="/customer/home">Trang chủ</NavLink>
-            <NavLink to="/customer/booking">Đặt lịch</NavLink>
-            <NavLink to="/customer/promotions">Ưu đãi</NavLink>
-            <NavLink to="/customer/support">Hỗ trợ</NavLink>
+            <a href="/customer/home">Trang chủ</a>
+            <a href="/customer/booking">Đặt lịch</a>
+            <a href="/customer/promotions">Ưu đãi</a>
+            <a href="/customer/support">Hỗ trợ</a>
           </div>
         </div>
       </footer>

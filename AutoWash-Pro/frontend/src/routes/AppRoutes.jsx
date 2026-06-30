@@ -21,7 +21,7 @@ import SupportPage from "../features/customer/pages/Helpcenter";
 
 import BookingPage from "../features/booking/pages/BookingPage";
 import BookingDetailPage from "../features/booking/pages/BookingDetailPage";
-import BookingSuccessPage from "../features/landing/BookingSuccessPage.jsx";
+import BookingSuccessPage from "../features/booking/pages/BookingSuccessPage";
 
 import PromotionListPage from "../features/promotion/pages/PromotionListPage";
 

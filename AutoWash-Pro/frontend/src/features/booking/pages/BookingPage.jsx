@@ -10,7 +10,6 @@ import {
   MdAirportShuttle
 } from "react-icons/md";
 import { createBooking } from "../../../api/bookingService";
-import SiteHeader from "../../../components/layout/SiteHeader";
 import { useNavigate } from "react-router-dom";
 import { getActiveServices } from "../../../api/servicePackageService";
 import { getBranches } from "../../../api/branchService";
@@ -198,7 +197,7 @@ export default function BookingPage() {
       };
       await createBooking(bookingData);
       alert("Đặt lịch thành công!");
-      navigate("/");
+      navigate("/customer/booking/success");
     } catch (error) {
       alert(error.response?.data?.message || "Đặt lịch thất bại. Vui lòng thử lại!");
     }
@@ -206,7 +205,6 @@ export default function BookingPage() {
 
   return (
       <div className="booking-page">
-        <SiteHeader />
         <div className="booking-content-layout">
           <div className="booking-main-form">
             <div className="page-title-area">
@@ -453,19 +451,6 @@ export default function BookingPage() {
             </p>
           </div>
         </div>
-
-        <footer className="global-footer-bar">
-          <div className="footer-brand-info">
-            <h4>WashFlow Pro</h4>
-            <p>© 2026 WashFlow Pro Automation. Tất cả quyền được bảo lưu.</p>
-          </div>
-          <div className="footer-nav-links">
-            <a href="#">Liên hệ</a>
-            <a href="#">Chính sách bảo mật</a>
-            <a href="#">Điều khoản dịch vụ</a>
-            <a href="#">Hỗ trợ</a>
-          </div>
-        </footer>
       </div>
   );
 }
