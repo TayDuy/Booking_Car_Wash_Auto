@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import "../booking/pages/BookingSuccessPage.css";
+import "./BookingSuccessPage.css";
 
 function BookingSuccessPage() {
   const bookingDraft = JSON.parse(localStorage.getItem("bookingDraft") || "{}");
