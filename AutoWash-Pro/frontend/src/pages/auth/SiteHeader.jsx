@@ -42,8 +42,8 @@ export default function SiteHeader() {
       {/* NAVIGATION - ĐÃ ĐƯỢC KHÔI PHỤC "TRANG CHỦ" */}
       <nav className="header-navigation">
         <button
-          className={location.pathname === "/home" ? "active-link" : ""}
-          onClick={() => navigate("/home")}
+          className={location.pathname === "/" ? "active-link" : ""}
+          onClick={() => navigate("/")}
         >
           Trang chủ
         </button>

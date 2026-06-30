@@ -3,7 +3,6 @@ package com.autowash.backend.timeslot.entity;
 import com.autowash.backend.branch.entity.Branch;
 import com.autowash.backend.washbay.entity.WashBay;
 import jakarta.persistence.*;
-import jakarta.validation.constraints.FutureOrPresent;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
@@ -64,7 +63,6 @@ public class TimeSlot {
 
         /** Ngày của slot — dùng @Column, không phải @JoinColumn vì đây là giá trị thường, không phải FK. */
         @NotNull(message = "Ngày không được null")
-        @FutureOrPresent(message = "Ngày slot phải là hôm nay hoặc tương lai")
         @Column(name = "slot_date", nullable = false)
         private LocalDate slotDate;
 

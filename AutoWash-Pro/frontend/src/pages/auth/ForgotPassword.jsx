@@ -8,7 +8,7 @@ import {
 } from "../../api/authService";
 
 function ForgotPassword() {
-  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
   const [otp, setOtp] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -21,8 +21,8 @@ function ForgotPassword() {
   const navigate = useNavigate();
 
   async function handleSendOtp() {
-    if (!phone.trim()) {
-      setErrorMessage("Vui lòng nhập số điện thoại.");
+    if (!email.trim()) {
+      setErrorMessage("Vui lòng nhập email.");
       return;
     }
 
@@ -34,7 +34,7 @@ function ForgotPassword() {
     setConfirmPassword("");
 
     try {
-      const data = await requestForgotPassword(phone.trim());
+      const data = await requestForgotPassword(email.trim());
 
       setOtpSent(true);
       setSuccessMessage(data.message || "Mã OTP phục hồi đã được gửi.");
@@ -56,7 +56,7 @@ function ForgotPassword() {
       return;
     }
 
-    if (!phone.trim() || !otp.trim() || !newPassword || !confirmPassword) {
+    if (!email.trim() || !otp.trim() || !newPassword || !confirmPassword) {
       setErrorMessage("Vui lòng nhập đầy đủ thông tin.");
       return;
     }
@@ -82,7 +82,7 @@ function ForgotPassword() {
 
     try {
       const data = await resetForgotPassword(
-        phone.trim(),
+        email.trim(),
         otp.trim(),
         newPassword
       );
@@ -131,17 +131,17 @@ function ForgotPassword() {
 
           <form className="forgot-form" onSubmit={handleResetPassword}>
             <div className="form-group">
-              <label className="form-label">Phone Number</label>
+              <label className="form-label">Email</label>
 
               <div className="input-row">
-                <span className="input-icon">☎</span>
+                <span className="input-icon">✉</span>
                 <input
-                  type="tel"
+                  type="email"
                   className="forgot-input"
-                  placeholder="Nhập số điện thoại"
-                  value={phone}
+                  placeholder="Nhập email"
+                  value={email}
                   disabled={loading}
-                  onChange={(e) => setPhone(e.target.value)}
+                  onChange={(e) => setEmail(e.target.value)}
                 />
               </div>
             </div>

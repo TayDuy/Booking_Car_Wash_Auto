@@ -28,31 +28,31 @@ export async function register(username, password, email, fullName, phone) {
     return respone.data;
 }
 
-export async function sendOtp(phone) {
+export async function sendOtp(email) {
     const respone = await axiosClient.post(`${API_URL}/send-otp`, {
-        phone: phone,
+        email: email,
     });
     return respone.data;
 }
 
-export async function verifyOtp(phone, otp) {
+export async function verifyOtp(email, otp) {
     const respone = await axiosClient.post(`${API_URL}/verify-otp`, {
-        phone: phone,
+        email: email,
         otp: otp
     });
     return respone.data;
 }
 
-export async function requestForgotPassword(phone) {
+export async function requestForgotPassword(email) {
     const respone = await axiosClient.post(`${API_URL}/forgot-password/request`, {
-        phone: phone,
+        email: email,
     });
     return respone.data;
 }
 
-export async function resetForgotPassword(phone, otp, newPassword) {
+export async function resetForgotPassword(email, otp, newPassword) {
     const respone = await axiosClient.post(`${API_URL}/forgot-password/reset`, {
-        phone: phone,
+        email: email,
         otp: otp,
         newPassword: newPassword,
     });

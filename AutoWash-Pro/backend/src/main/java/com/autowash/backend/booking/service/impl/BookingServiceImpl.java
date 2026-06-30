@@ -38,6 +38,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@lombok.extern.slf4j.Slf4j
 public class BookingServiceImpl implements BookingService {
 
     private final BookingRepository bookingRepository;
@@ -49,6 +50,7 @@ public class BookingServiceImpl implements BookingService {
     private final EmployeeRepository employeeRepository;
     private final ServicePackageRepository servicePackageRepository;
     private final BookingMapper bookingMapper;
+    private final com.autowash.backend.mail.service.MailService mailService;
 
     // ── CREATE ──────────────────────────────────────────────────────────────
 
@@ -148,6 +150,34 @@ public class BookingServiceImpl implements BookingService {
         Booking savedBooking = bookingRepository.save(booking);
         details.forEach(d -> d.setBooking(savedBooking));
         bookingDetailRepository.saveAll(details);
+
+        // Gửi email xác nhận đặt lịch bất đồng bộ
+        try {
+            String toEmail = customer.getUser() != null ? customer.getUser().getEmail() : null;
+            if (toEmail != null) {
+                String serviceNames = details.stream()
+                        .map(d -> d.getService().getServiceName())
+                        .collect(Collectors.joining(", "));
+                BigDecimal totalPrice = details.stream()
+                        .map(BookingDetail::getSubTotal)
+                        .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+                mailService.sendBookingConfirmationEmail(
+                        toEmail,
+                        customer.getFullName(),
+                        savedBooking.getBookingCode(),
+                        branch.getBranchName(),
+                        branch.getAddress(),
+                        serviceNames,
+                        slot.getSlotDate(),
+                        slot.getStartTime(),
+                        slot.getEndTime(),
+                        totalPrice
+                );
+            }
+        } catch (Exception e) {
+            log.error("Lỗi khi kích hoạt gửi email xác nhận đặt lịch: {}", e.getMessage(), e);
+        }
 
         return bookingMapper.toCreateResponse(savedBooking, details);
     }

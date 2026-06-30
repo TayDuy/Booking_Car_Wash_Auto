@@ -1,7 +1,8 @@
 import "./Register.css";
-import { useState } from "react";
-import { Link } from "react-router-dom";
-import { register, sendOtp, verifyOtp } from "../../api/authService";
+import { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { register, sendOtp, verifyOtp, loginWithGoogle, saveAuth } from "../../api/authService";
+import { supabase } from "../../api/supabaseClient";
 
 function Register() {
   const navigate = useNavigate();
@@ -17,6 +18,7 @@ function Register() {
   const [otp, setOtp] = useState("");
   const [otpSent, setOtpSent] = useState(false);
   const [otpVerified, setOtpVerified] = useState(false);
+  const [sendingOtp, setSendingOtp] = useState(false);
 
   function redirectByRole(role) {
     const normalizedRole = role?.toLowerCase();
@@ -59,17 +61,22 @@ function Register() {
   }
 
   async function handleSendOtp() {
-    if (!phone) {
-      setErrorMessage("Vui lòng nhập số điện thoại trước.");
+    if (!email) {
+      setErrorMessage("Vui lòng nhập email trước.");
       return;
     }
+    if (sendingOtp) return;
+    setSendingOtp(true);
+    setErrorMessage("");
     try {
-      await sendOtp(phone);
+      await sendOtp(email);
       setOtpSent(true);
-      setErrorMessage("")
+      setErrorMessage("");
       alert("Mã OTP đã được gửi.");
     } catch (error) {
       setErrorMessage("Gửi OTP thất bại.");
+    } finally {
+      setSendingOtp(false);
     }
   }
 
@@ -79,7 +86,7 @@ function Register() {
       return;
     }
     try {
-      await verifyOtp(phone, otp);
+      await verifyOtp(email, otp);
       setOtpVerified(true);
       setErrorMessage("");
       alert("Xác minh OTP thành công.");
@@ -230,9 +237,9 @@ function Register() {
                   type="button"
                   className="otp-btn"
                   onClick={otpSent ? handleVerifyOtp : handleSendOtp}
-                  disabled={otpVerified}
+                  disabled={otpVerified || sendingOtp}
                 >
-                  {otpVerified ? "Đã xác minh" : otpSent ? "Xác minh OTP" : "Gửi OTP"}
+                  {otpVerified ? "Đã xác minh" : sendingOtp ? "Đang gửi..." : otpSent ? "Xác minh OTP" : "Gửi OTP"}
                 </button>
               </div>
 

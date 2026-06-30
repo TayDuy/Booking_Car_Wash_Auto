@@ -11,6 +11,7 @@ const ProfilePage = () => {
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [showAddVehicleModal, setShowAddVehicleModal] = useState(false);
+  const [activeTab, setActiveTab] = useState('settings');
   
   const [user, setUser] = useState({
     customerId: null,
@@ -102,6 +103,16 @@ const ProfilePage = () => {
     if (element) {
       element.scrollIntoView({ behavior: 'smooth' });
     }
+  };
+
+  const handleScrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setActiveTab('dashboard');
+  };
+
+  const handleScrollToSection = (id, tabName) => {
+    handleScrollTo(id);
+    setActiveTab(tabName);
   };
 
   const handleLogout = () => {
@@ -242,7 +253,7 @@ const ProfilePage = () => {
     <div className="profile-page-wrapper">
       {/* Sidebar Navigation Shell */}
       <aside className="sidebar">
-        <div className="sidebar-header" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div className="sidebar-header" onClick={() => navigate("/")} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
           <img src="/logo.png" alt="Logo" style={{ height: '48px', width: 'auto' }} />
           <h1 className="logo-text" style={{ fontSize: '20px' }}>WashFlow Pro</h1>
         </div>
@@ -258,24 +269,28 @@ const ProfilePage = () => {
         </div>
 
         <nav className="sidebar-nav">
-          <a className="nav-link" href="/booking" onClick={(e) => { e.preventDefault(); navigate('/booking'); }}>
+          <a className="nav-link" href="/" onClick={(e) => { e.preventDefault(); navigate('/'); }}>
+            <span className="material-symbols-outlined">home</span>
+            Trang chủ
+          </a>
+          <a className={`nav-link ${activeTab === 'dashboard' ? 'active' : ''}`} href="#dashboard" onClick={(e) => { e.preventDefault(); handleScrollToTop(); }}>
             <span className="material-symbols-outlined">dashboard</span>
             Bảng điều khiển
           </a>
-          <a className="nav-link" href="#vehicles" onClick={(e) => { e.preventDefault(); handleScrollTo('vehicles'); }}>
+          <a className={`nav-link ${activeTab === 'vehicles' ? 'active' : ''}`} href="#vehicles" onClick={(e) => { e.preventDefault(); handleScrollToSection('vehicles', 'vehicles'); }}>
             <span className="material-symbols-outlined">directions_car</span>
             Xe của tôi
           </a>
-          <a className="nav-link" href="#history" onClick={(e) => { e.preventDefault(); handleScrollTo('history'); }}>
+          <a className={`nav-link ${activeTab === 'history' ? 'active' : ''}`} href="#history" onClick={(e) => { e.preventDefault(); handleScrollToSection('history', 'history'); }}>
             <span className="material-symbols-outlined">history</span>
             Lịch sử rửa xe
           </a>
-          <a className="nav-link" href="#subscription" onClick={(e) => { e.preventDefault(); handleScrollTo('subscription'); }}>
+          <a className={`nav-link ${activeTab === 'subscription' ? 'active' : ''}`} href="#subscription" onClick={(e) => { e.preventDefault(); handleScrollToSection('subscription', 'subscription'); }}>
             <span className="material-symbols-outlined">payments</span>
             Gói đăng ký
           </a>
-          <a className="nav-link active" href="#personal-info" onClick={(e) => { e.preventDefault(); handleScrollTo('personal-info'); }}>
-            <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>settings</span>
+          <a className={`nav-link ${activeTab === 'settings' ? 'active' : ''}`} href="#personal-info" onClick={(e) => { e.preventDefault(); handleScrollToSection('personal-info', 'settings'); }}>
+            <span className="material-symbols-outlined" style={{ fontVariationSettings: activeTab === 'settings' ? "'FILL' 1" : "'FILL' 0" }}>settings</span>
             Cài đặt
           </a>
           <a className="nav-link" href="#logout" onClick={(e) => { e.preventDefault(); handleLogout(); }}>

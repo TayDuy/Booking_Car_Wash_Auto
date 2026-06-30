@@ -8,19 +8,19 @@ import java.util.Optional;
 
 public interface OtpRepository extends JpaRepository<OtpVerification, Integer> {
 
-    Optional<OtpVerification> findTopByPhoneAndVerifiedFalseOrderByCreatedAtDesc(String phone);
+    Optional<OtpVerification> findTopByEmailAndVerifiedFalseOrderByCreatedAtDesc(String email);
 
-    Optional<OtpVerification> findTopByPhoneAndPurposeAndVerifiedFalseOrderByCreatedAtDesc(String phone, String purpose);
+    Optional<OtpVerification> findTopByEmailAndPurposeAndVerifiedFalseOrderByCreatedAtDesc(String email, String purpose);
 
-    boolean existsByPhoneAndVerifiedTrue(String phone);
+    boolean existsByEmailAndVerifiedTrue(String email);
 
-    boolean existsByPhoneAndPurposeAndVerifiedTrue(String phone, String purpose);
+    boolean existsByEmailAndPurposeAndVerifiedTrue(String email, String purpose);
 
-    void deleteByPhoneAndVerifiedTrue(String phone);
+    void deleteByEmailAndVerifiedTrue(String email);
 
-    void deleteByPhoneAndPurposeAndVerifiedTrue(String phone, String purpose);
+    void deleteByEmailAndPurposeAndVerifiedTrue(String email, String purpose);
 
-    long countByPhoneAndPurposeAndCreatedAtAfter(String phone, String purpose, LocalDateTime createdAt);
+    long countByEmailAndPurposeAndCreatedAtAfter(String email, String purpose, LocalDateTime createdAt);
 
     long countByRequestIpAndPurposeAndCreatedAtAfter(String requestIp, String purpose, LocalDateTime createdAt);
 }
