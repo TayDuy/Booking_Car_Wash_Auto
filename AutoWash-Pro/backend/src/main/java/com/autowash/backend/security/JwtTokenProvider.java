@@ -81,7 +81,7 @@ public class JwtTokenProvider {
         } catch (MalformedJwtException e) {
             logger.error("JWT không hợp lệ: {}", e.getMessage());
         } catch (ExpiredJwtException e) {
-            logger.error("JWT đã hết hạn: {}", e.getMessage());
+            logger.warn("JWT đã hết hạn: {}", e.getMessage());
         } catch (UnsupportedJwtException e) {
             logger.error("JWT không được hỗ trợ: {}", e.getMessage());
         } catch (IllegalArgumentException e) {
