@@ -7,6 +7,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/customers")
@@ -28,5 +29,10 @@ public class CustomerController {
             @org.springframework.security.core.annotation.AuthenticationPrincipal com.autowash.backend.security.CustomUserDetails userDetails,
             @Valid @RequestBody CustomerUpdateRequest request) {
         return ResponseEntity.ok(customerService.updateCustomerProfile(userDetails.getId(), request));
+    }
+
+    @GetMapping
+    public ResponseEntity<List<CustomerProfileResponse>> getAllCustomers() {
+        return ResponseEntity.ok(customerService.getAllCustomers());
     }
 }

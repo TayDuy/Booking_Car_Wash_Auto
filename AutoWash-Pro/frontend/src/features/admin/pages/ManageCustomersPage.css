@@ -1,0 +1,179 @@
+.manage-page {
+  max-width: 1480px;
+  margin: 0 auto;
+}
+
+.manage-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.manage-header h1 {
+  margin: 0;
+  font-size: 28px;
+  color: #111827;
+}
+
+.manage-header p {
+  margin: 6px 0 0;
+  color: #64748b;
+}
+
+.refresh-btn {
+  height: 42px;
+  padding: 0 16px;
+  border: none;
+  border-radius: 12px;
+  background: #0052cc;
+  color: white;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.manage-toolbar {
+  display: flex;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.manage-search {
+  flex: 1;
+  height: 46px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 14px;
+  border: 1px solid #d7dce4;
+  border-radius: 12px;
+  background: white;
+  color: #64748b;
+}
+
+.manage-search input {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 14px;
+}
+
+.manage-filter {
+  width: 220px;
+  height: 46px;
+  padding: 0 12px;
+  border: 1px solid #d7dce4;
+  border-radius: 12px;
+  background: white;
+  color: #334155;
+  font-weight: 600;
+}
+
+.manage-card {
+  padding: 20px;
+  border: 1px solid #e5e7eb;
+  border-radius: 18px;
+  background: white;
+  box-shadow: 0 14px 40px rgba(16, 24, 40, 0.05);
+}
+
+.booking-table-wrap {
+  overflow-x: auto;
+}
+
+.booking-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.booking-table th {
+  padding: 14px 12px;
+  text-align: left;
+  color: #64748b;
+  font-size: 13px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.booking-table td {
+  padding: 16px 12px;
+  font-size: 14px;
+  color: #111827;
+  border-bottom: 1px solid #eef2f7;
+}
+
+.status-badge {
+  display: inline-flex;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: capitalize;
+}
+
+.status-badge.success {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.status-badge.warning {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.status-badge.danger {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.status-badge.info {
+  background: #dbeafe;
+  color: #0052cc;
+}
+
+.action-group {
+  display: flex;
+  gap: 8px;
+}
+
+.action-btn {
+  width: 34px;
+  height: 34px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.action-btn.view {
+  background: #eaf2ff;
+  color: #0052cc;
+}
+
+.action-btn.cancel {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.empty-state {
+  min-height: 220px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: #64748b;
+  font-weight: 600;
+}
+
+@media (max-width: 760px) {
+  .manage-header,
+  .manage-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .manage-filter {
+    width: 100%;
+  }
+}
