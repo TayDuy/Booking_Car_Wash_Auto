@@ -51,6 +51,7 @@
 
 .home-actions-top {
   display: flex;
+  align-items: center;
   gap: 12px;
 }
 
@@ -60,6 +61,9 @@
   border-radius: 10px;
   font-weight: 700;
   cursor: pointer;
+  white-space: nowrap;
+  line-height: 1.2;
+  font-size: 14px;
 }
 
 .login-btn {
@@ -172,8 +176,8 @@
   overflow: hidden;
   position: relative;
   background:
-    radial-gradient(circle at 20% 20%, rgba(80, 220, 255, 0.45), transparent 30%),
-    linear-gradient(135deg, #dbeafe, #eff6ff 40%, #ffffff);
+          radial-gradient(circle at 20% 20%, rgba(80, 220, 255, 0.45), transparent 30%),
+          linear-gradient(135deg, #dbeafe, #eff6ff 40%, #ffffff);
   box-shadow: 0 4px 28px rgba(0, 82, 204, 0.12);
   border: 1px solid rgba(195, 198, 214, 0.7);
 }

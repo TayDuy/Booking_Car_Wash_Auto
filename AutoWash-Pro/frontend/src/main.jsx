@@ -23,12 +23,14 @@ import BookingHistory from "./pages/auth/BookingHistory";
 import ManageCatalog from "./pages/admin/ManageCatalog";
 import DashboardLayout from "./layouts/DashboardLayout";
 import AdminDashboardPage from "./features/admin/pages/AdminDashboardPage";
+import PaymentPage from "./pages/payment/PaymentPage";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
     <React.StrictMode>
         <BrowserRouter>
             <Routes>
                 <Route path="/" element={<App />} />
+                <Route path="/payment" element={<PaymentPage />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/forgot-password" element={<ForgotPassword />} />
                 <Route path="/register" element={<Register />} />

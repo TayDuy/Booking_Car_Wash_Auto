@@ -3,7 +3,9 @@ import { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 
 function PaymentPage() {
-    const [bookingId, setBookingId] = useState(100);
+    const location = useLocation();
+    const bookingIdFromBookingPage = location.state?.bookingId;
+    const [bookingId, setBookingId] = useState(bookingIdFromBookingPage ? String(bookingIdFromBookingPage) : "");
     const [paymentMethod, setPaymentMethod] = useState("");
     const [promotionId, setPromotionId] = useState("");
     const [rewardId, setRewardId] = useState("");
@@ -14,14 +16,7 @@ function PaymentPage() {
     const [accountHolder, setAccountHolder] = useState("");
     const [bankName, setBankName] = useState("");
     const [isLoading, setIsLoading] = useState(false);
-    const location = useLocation();
-    const bookingIdFromBookingPage = location.state?.bookingId;
     const [bookingDetail, setBookingDetail] = useState(null);
-    useEffect(() => {
-        if (bookingIdFromBookingPage) {
-            setBookingId(String(bookingIdFromBookingPage));
-        }
-    }, [bookingIdFromBookingPage]);
     async function handleCreatePayment() {
 
         if (!bookingId) {
