@@ -4,6 +4,7 @@ import { Link, useNavigate } from "react-router-dom";
 import {
   requestForgotPassword,
   resetForgotPassword,
+  logout,
 } from "../../api/authService";
 
 function ForgotPassword() {
@@ -28,6 +29,9 @@ function ForgotPassword() {
     setLoading(true);
     setErrorMessage("");
     setSuccessMessage("");
+    setOtp("");
+    setNewPassword("");
+    setConfirmPassword("");
 
     try {
       const data = await requestForgotPassword(phone.trim());
@@ -47,6 +51,11 @@ function ForgotPassword() {
   async function handleResetPassword(e) {
     e.preventDefault();
 
+    if (!otpSent) {
+      setErrorMessage("Vui lòng gửi mã OTP trước.");
+      return;
+    }
+
     if (!phone.trim() || !otp.trim() || !newPassword || !confirmPassword) {
       setErrorMessage("Vui lòng nhập đầy đủ thông tin.");
       return;
@@ -54,6 +63,11 @@ function ForgotPassword() {
 
     if (newPassword.length < 8) {
       setErrorMessage("Mật khẩu mới phải có ít nhất 8 ký tự.");
+      return;
+    }
+
+    if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(newPassword)) {
+      setErrorMessage("Mật khẩu phải chứa ít nhất 1 chữ hoa, 1 chữ thường và 1 số.");
       return;
     }
 
@@ -76,6 +90,7 @@ function ForgotPassword() {
       setSuccessMessage(data.message || "Đặt lại mật khẩu thành công.");
 
       setTimeout(() => {
+        logout();
         navigate("/login");
       }, 1200);
     } catch (error) {
