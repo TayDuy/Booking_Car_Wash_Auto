@@ -25,6 +25,4 @@ public interface AuthService {
     void logout(String token);
 
     LoginResponseDTO loginWithGoogle(String supabaseToken);
-    void requestForgotPasswordOtp(String phone);
-    void verifyAndResetPassword(String phone, String otp, String newPassword);
 }

@@ -1,20 +1,20 @@
-import React from 'react'
-import { Navigate } from 'react-router-dom'
-import useAuth from '../hooks/useAuth'
+import { Navigate } from "react-router-dom";
 
-// allowedRoles: array of role names that can access children
-export default function ProtectedRoute({ children, allowedRoles = [] }) {
-  const auth = useAuth()
-  const token = auth?.token
-  const user = auth?.user
+function ProtectedRoute({ children, allowedRoles }) {
+  const token =
+    localStorage.getItem("token") || localStorage.getItem("accessToken");
+
+  const role = localStorage.getItem("role");
 
   if (!token) {
-    return <Navigate to="/auth/login" replace />
+    return <Navigate to="/" replace />;
   }
 
-  if (allowedRoles.length && user && !allowedRoles.includes(user.role)) {
-    return <Navigate to="/auth/login" replace />
+  if (allowedRoles && !allowedRoles.includes(role)) {
+    return <Navigate to="/" replace />;
   }
 
-  return children
+  return children;
 }
+
+export default ProtectedRoute;

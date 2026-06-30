@@ -1,89 +1,106 @@
-import axios from "axios";
+import axiosClient from "./axiosClient";
 
-const API_URL = "http://localhost:8080/api/v1/auth";
+export async function login(username, password) {
+  const response = await axiosClient.post("/auth/login", {
+    username,
+    password,
+  });
 
-export async function login(username, password){
-    const respone = await axios.post(`${API_URL}/login`,{
-        username: username,
-        password: password,
-    });
-    return respone.data;
+  return response.data.data;
 }
 
-export async function loginWithGoogle(supabaseToken) {
-    const response = await axios.post(`${API_URL}/google`, {
-        supabaseToken: supabaseToken
-    });
-    return response.data;
+export async function register(username, password, email, fullName, phone) {
+  const response = await axiosClient.post("/auth/register", {
+    username,
+    password,
+    email,
+    fullName,
+    phone,
+  });
+
+  return response.data.data;
 }
 
-export async function register(username, password, email, fullName, phone){
-    const respone = await axios.post(`${API_URL}/register`,{
-        username: username,
-        password: password,
-        email: email,
-        fullName: fullName,
-        phone: phone
-    });
-    return respone.data;
-}
+export async function sendOtp(phone) {
+  const response = await axiosClient.post("/auth/send-otp", {
+    phone,
+  });
 
-export async function sendOtp(phone){
-    const respone = await axios.post(`${API_URL}/send-otp`,{
-        phone: phone,
-    });
-    return respone.data;
+  return response.data;
 }
 
 export async function verifyOtp(phone, otp) {
-    const respone = await axios.post(`${API_URL}/verify-otp`,{
-        phone: phone,
-        otp: otp
-    });
-    return respone.data;
+  const response = await axiosClient.post("/auth/verify-otp", {
+    phone,
+    otp,
+  });
+
+  return response.data;
 }
 
-export function saveAuth(result){
-    localStorage.setItem(
-      "token",
-      result.accessToken
-    );
+export async function loginWithGoogle(supabaseToken) {
+  const response = await axiosClient.post("/auth/google", {
+    supabaseToken,
+  });
 
-    localStorage.setItem(
-      "username",
-      result.user?.username || ""
-    );
-
-    localStorage.setItem(
-      "role",
-      result.user?.role || ""
-    );
-
-    localStorage.setItem(
-      "userId",
-      result.user?.userId || ""
-    );
-
-    localStorage.setItem(
-      "customerId",
-      result.user?.customerId || ""
-    );
+  return response.data.data;
 }
 
-export function logout(){
-    localStorage.removeItem("token");
-    localStorage.removeItem("username");
-    localStorage.removeItem("role");
+export async function logoutFromServer() {
+  try {
+    await axiosClient.post("/auth/logout");
+  } catch (error) {
+    console.warn("Logout server error:", error);
+  } finally {
+    logout();
+  }
 }
 
-export function isLoggedIn(){
-    return localStorage.getItem("token") !== null;
+export function saveAuth(result) {
+  console.log("saveAuth result:", result);
+
+  const accessToken = result?.accessToken || "";
+  const refreshToken = result?.refreshToken || "";
+  const user = result?.user || {};
+
+  localStorage.setItem("token", accessToken);
+  localStorage.setItem("accessToken", accessToken);
+  localStorage.setItem("refreshToken", refreshToken);
+
+  localStorage.setItem("username", user?.username || "");
+  localStorage.setItem("role", String(user?.role || "").toUpperCase());
+  localStorage.setItem("userId", user?.userId || "");
+  localStorage.setItem("customerId", user?.customerId || "");
 }
 
-export function getUsername(){
-    return localStorage.getItem("username");
+export function logout() {
+  localStorage.removeItem("token");
+  localStorage.removeItem("accessToken");
+  localStorage.removeItem("refreshToken");
+  localStorage.removeItem("username");
+  localStorage.removeItem("role");
+  localStorage.removeItem("userId");
+  localStorage.removeItem("customerId");
 }
 
-export function getRole(){
-    return localStorage.getItem("role");
+export function isLoggedIn() {
+  return Boolean(
+    localStorage.getItem("token") || localStorage.getItem("accessToken")
+  );
+}
+
+export function getUsername() {
+  return localStorage.getItem("username");
+}
+
+export function getRole() {
+  return localStorage.getItem("role");
+}
+
+export function getUserId() {
+  return localStorage.getItem("userId");
+}
+
+export function getCustomerId() {
+  return localStorage.getItem("customerId");
 }

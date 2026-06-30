@@ -224,47 +224,13 @@ public class AuthServiceImpl implements AuthService {
         return buildLoginResponse(token, user);
     }
 
-    @Override
-    public void requestForgotPasswordOtp(String phone) {
-        //kiểm tra sdt đã đăng kí chưa
-        userRepository.findByPhone(phone.trim())
-                .orElseThrow(()-> new BusinessException("Số điện thoại này chưa được đăng kí trong hệ thống", HttpStatus.NOT_FOUND));
-
-        //Sinh và gửi OTP
-        otpService.sendOtp(phone.trim());
-
-
-
-    }
-
-    @Override
-    @Transactional
-    public void verifyAndResetPassword(String phone, String otp, String newPassword) {
-        String trimmerPhone = phone.trim();
-
-        //Xác minh otp trực tiếp (Nếu sai hoặc hết hạn sẽ ném lỗi ra ngay)
-        otpService.verifyOtp(trimmerPhone, otp.trim());
-
-        //tìm tài khoản người dùng
-        User user = userRepository.findByPhone(trimmerPhone)
-                .orElseThrow(() -> new BusinessException("Không tìm thấy người dùng", HttpStatus.NOT_FOUND));
-
-        //mã hóa và lưu mật khẩu mới
-        user.setPassword(passwordEncoder.encode(newPassword));
-        userRepository.save(user);
-
-        //dọn dẹp otp sau khi sử dụng
-        otpService.clearVerification(trimmerPhone);
-
-    }
-
 
     private LoginResponseDTO buildLoginResponse(String token, User user) {
         String fullName = "Unknown";
         Integer customerId = null;
 
         if ("customer".equalsIgnoreCase(user.getRole())) {
-            Customer customer = customerRepository.findByUser_Id(user.getId()).orElse(null);
+            Customer customer = customerRepository.findByUserId(user.getId()).orElse(null);
             if (customer != null) {
                 fullName = customer.getFullName();
                 customerId = customer.getCustomerId();

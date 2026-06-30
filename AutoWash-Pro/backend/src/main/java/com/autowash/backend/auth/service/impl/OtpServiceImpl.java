@@ -54,14 +54,14 @@ public class OtpServiceImpl implements OtpService {
         if(record.getExpiresAt().isBefore(LocalDateTime.now())){
             throw new BusinessException("Mã OTP đã hết hạn, vui lòng gửi lại!!!");
         }
-            //3.So sánh mã
-            if(!record.getOtpCode().equals(otp)){
-                throw new BusinessException("Mã otp không đúng!!!");
-            }
+        //3.So sánh mã
+        if(!record.getOtpCode().equals(otp)){
+            throw new BusinessException("Mã otp không đúng!!!");
+        }
 
-            //4.đánh dấu đã verify
-            record.setVerified(true);
-            optRepository.save(record);
+        //4.đánh dấu đã verify
+        record.setVerified(true);
+        optRepository.save(record);
 
         return true;
     }
@@ -69,12 +69,6 @@ public class OtpServiceImpl implements OtpService {
     @Override
     public boolean isPhoneVerified(String phone) {
         return optRepository.existsByPhoneAndVerifiedTrue(phone);
-    }
-
-    @Override
-    @Transactional
-    public void clearVerification(String phone) {
-        optRepository.deleteByPhoneAndVerifiedTrue(phone);
     }
 
 }

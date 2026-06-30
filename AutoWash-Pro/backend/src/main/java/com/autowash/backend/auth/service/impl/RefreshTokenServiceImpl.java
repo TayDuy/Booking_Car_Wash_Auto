@@ -3,10 +3,8 @@ package com.autowash.backend.auth.service.impl;
 import com.autowash.backend.auth.entity.RefreshToken;
 import com.autowash.backend.auth.repository.RefreshTokenRepository;
 import com.autowash.backend.auth.service.RefreshTokenService;
-import com.autowash.backend.common.exception.BusinessException;
 import com.autowash.backend.common.exception.ResourceNotFoundException;
 import com.autowash.backend.user.entity.User;
-import org.springframework.http.HttpStatus;
 import com.autowash.backend.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -38,7 +36,7 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
         //Cách này tránh lỗi DataIntegrityViolationException do Hibernate thực thi insert trước delete
         java.util.Optional<RefreshToken> existingTokenOpt = refreshTokenRepository.findByUser(user);
         RefreshToken refreshToken;
-        
+
         if (existingTokenOpt.isPresent()) {
             refreshToken = existingTokenOpt.get();
             refreshToken.setToken(UUID.randomUUID().toString());
@@ -59,7 +57,7 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
         //nếu thời hạn token bé hơn thời gian hiện tại => đã hêt hạn
         if(token.getExpriryDate().compareTo(Instant.now())<0){
             refreshTokenRepository.delete(token);//xóa cho sạch DB
-            throw new BusinessException("Refresh token đã hết hạn. Vui lòng đăng nhập lại", HttpStatus.UNAUTHORIZED);
+            throw new RuntimeException("Refresh token đã hết hạn.  Vui lòng đăng nhập lại");
         }
         return token;//nếu còn hạn thì trả về bth
     }
@@ -76,6 +74,6 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
     @Override
     public RefreshToken findByToken(String token) {
         return refreshTokenRepository.findByToken(token)
-                .orElseThrow(()->new BusinessException("Refresh token không tồn tại trong hệ thống!", HttpStatus.UNAUTHORIZED));
+                .orElseThrow(()->new RuntimeException("Refresh token không tồn tại trong hệ thống!"));
     }
 }

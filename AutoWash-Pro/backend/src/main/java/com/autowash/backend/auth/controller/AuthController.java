@@ -114,7 +114,7 @@ public class AuthController {
 
     @PostMapping("/refresh")
     public ResponseEntity<TokenRefreshResponseDTO> refreshJwtToken(
-        @Valid @RequestBody TokenRefreshRequestDTO request
+            @Valid @RequestBody TokenRefreshRequestDTO request
     ){
         String requestRefreshToken = request.getRefreshToken();
 
@@ -154,18 +154,6 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.success("Đăng nhập Google thành công!!!",response));
     }
 
-    @PostMapping("/forgot-password/request")
-    public ResponseEntity<ApiResponse<Void>> requestForgotPassword(
-            @Valid @RequestBody ForgotPasswordRequestDTO request) {
-        authService.requestForgotPasswordOtp(request.getPhone());
-        return ResponseEntity.ok(ApiResponse.success("Mã OTP phục hồi đã được gửi thành công", null));
-    }
 
-    @PostMapping("/forgot-password/reset")
-    public ResponseEntity<ApiResponse<Void>> resetForgotPassword(
-            @Valid @RequestBody ForgotPasswordResetDTO request) {
-        authService.verifyAndResetPassword(request.getPhone(), request.getOtp(), request.getNewPassword());
-        return ResponseEntity.ok(ApiResponse.success("Đặt lại mật khẩu thành công", null));
-    }
 
 }
