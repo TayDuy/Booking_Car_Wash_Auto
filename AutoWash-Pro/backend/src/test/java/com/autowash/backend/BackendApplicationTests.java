@@ -40,6 +40,16 @@ class BackendApplicationTests {
         }
     }
 
+    @Test
+    void testCheckBranchTable() {
+        try {
+            java.util.List<java.util.Map<String, Object>> rows = jdbcTemplate.queryForList("SELECT * FROM branch");
+            System.out.println("=== BRANCH RECORDS IN DATABASE: " + rows);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
 
 
 
@@ -333,6 +343,85 @@ class BackendApplicationTests {
         } catch (Exception e) {
             System.out.println("=== LOGIN FAILED ===");
             e.printStackTrace();
+        }
+    }
+
+    @Autowired
+    private com.autowash.backend.branch.repository.BranchRepository branchRepository;
+
+    @Autowired
+    private com.autowash.backend.washbay.repository.WashBayRepository washBayRepository;
+
+    @Autowired
+    private com.autowash.backend.timeslot.repository.TimeSlotRepository timeSlotRepository;
+
+    @Test
+    void testSeedDatabaseForBooking() {
+        try {
+            System.out.println("=== RUNNING SEED DATABASE FOR BOOKING ===");
+            if (branchRepository.count() == 0) {
+                com.autowash.backend.branch.entity.Branch branch = com.autowash.backend.branch.entity.Branch.builder()
+                        .branchName("WashFlow Pro Quận 7")
+                        .address("123 Nguyễn Thị Thập, Quận 7, HCM")
+                        .phone("02873008888")
+                        .capacity(2)
+                        .status(com.autowash.backend.branch.entity.Branch.BranchStatus.active)
+                        .build();
+                branch = branchRepository.save(branch);
+
+                com.autowash.backend.washbay.entity.WashBay washBay = com.autowash.backend.washbay.entity.WashBay.builder()
+                        .branch(branch)
+                        .bayName("Khoang rửa 01")
+                        .status(com.autowash.backend.washbay.entity.WashBay.BayStatus.available)
+                        .capacity(1)
+                        .build();
+                washBay = washBayRepository.save(washBay);
+
+                // Create slots for today and next 5 days
+                java.time.LocalDate today = java.time.LocalDate.now();
+                for (int d = 0; d < 6; d++) {
+                    java.time.LocalDate slotDate = today.plusDays(d);
+                    for (int hour = 8; hour <= 17; hour++) {
+                        java.time.LocalTime startTime = java.time.LocalTime.of(hour, 0);
+                        java.time.LocalTime endTime = startTime.plusMinutes(45);
+                        
+                        com.autowash.backend.timeslot.entity.TimeSlot slot = com.autowash.backend.timeslot.entity.TimeSlot.builder()
+                                .branch(branch)
+                                .washBay(washBay)
+                                .slotDate(slotDate)
+                                .startTime(startTime)
+                                .endTime(endTime)
+                                .maxCapacity(1)
+                                .currentBookings(0)
+                                .status(com.autowash.backend.timeslot.entity.TimeSlot.SlotStatus.open)
+                                .build();
+                        timeSlotRepository.save(slot);
+                    }
+                }
+                System.out.println("=== SEED DATABASE COMPLETED ===");
+            } else {
+                System.out.println("=== DATABASE ALREADY HAS BRANCHES ===");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            org.junit.jupiter.api.Assertions.fail(e.getMessage());
+        }
+    }
+
+    @Autowired
+    private com.autowash.backend.branch.service.BranchService branchService;
+
+    @Test
+    void testBranchServiceFindAll() {
+        try {
+            java.util.List<com.autowash.backend.branch.dto.BranchResponseDTO> list = branchService.findAll(null);
+            System.out.println("=== BRANCH SERVICE FINDALL SIZE: " + list.size());
+            for (com.autowash.backend.branch.dto.BranchResponseDTO dto : list) {
+                System.out.println("Branch: id=" + dto.getBranchId() + ", name=" + dto.getBranchName() + ", status=" + dto.getStatus());
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            org.junit.jupiter.api.Assertions.fail(e.getMessage());
         }
     }
 }
