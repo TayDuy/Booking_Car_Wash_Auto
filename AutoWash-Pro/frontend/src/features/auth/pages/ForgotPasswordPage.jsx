@@ -1,11 +1,11 @@
-import "./ForgotPassword.css";
+import "./ForgotPasswordPage.css";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   requestForgotPassword,
   resetForgotPassword,
   logout,
-} from "../../api/authService";
+} from "../../../api/authService";
 
 function ForgotPassword() {
   const [phone, setPhone] = useState("");

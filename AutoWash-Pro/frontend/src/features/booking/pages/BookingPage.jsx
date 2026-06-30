@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import "./Booking.css";
+import "./BookingPage.css";
 import {
   FaDroplet,
   FaCalendarDays,
@@ -9,12 +9,12 @@ import {
   MdDirectionsCar,
   MdAirportShuttle
 } from "react-icons/md";
-import { createBooking } from "../../api/bookingService";
-import SiteHeader from "./SiteHeader";
+import { createBooking } from "../../../api/bookingService";
+import SiteHeader from "../../../components/layout/SiteHeader";
 import { useNavigate } from "react-router-dom";
-import { getActiveServices } from "../../api/servicePackageService";
-import { getBranches } from "../../api/branchService";
-import { getAvailableSlots } from "../../api/timeSlotService";
+import { getActiveServices } from "../../../api/servicePackageService";
+import { getBranches } from "../../../api/branchService";
+import { getAvailableSlots } from "../../../api/timeSlotService";
 
 const DEFAULT_SERVICES = [
   {

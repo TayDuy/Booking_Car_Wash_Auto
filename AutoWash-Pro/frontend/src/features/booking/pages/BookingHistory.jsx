@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import SiteHeader from './SiteHeader';
-import customerApi from '../../api/customerApi';
-import bookingApi from '../../api/bookingApi';
+import customerApi from '../../../api/customerApi';
+import bookingApi from '../../../api/bookingApi';
 import './BookingHistory.css';
 
 // ── Status config ────────────────────────────────────────────
