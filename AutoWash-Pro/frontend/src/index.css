@@ -35,6 +35,11 @@
   font-family: "Hanken Grotesk", Arial, sans-serif;
   color: var(--color-text);
   background-color: var(--color-bg);
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 * {
@@ -231,6 +236,50 @@ img {
   color: var(--color-primary);
 }
 
+/* ====================================================================
+   GLOBAL CLEAN SYSTEM FOOTER
+   ==================================================================== */
+.global-footer-bar {
+  margin-top: auto;
+  background: #ffffff;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  padding: 24px 40px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.global-footer-bar .footer-brand-info h4 {
+  margin: 0 0 4px 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: #003d9b;
+}
+
+.global-footer-bar .footer-brand-info p {
+  margin: 0;
+  font-size: 13px;
+  color: #6b6375;
+}
+
+.global-footer-bar .footer-nav-links {
+  display: flex;
+  gap: 24px;
+}
+
+.global-footer-bar .footer-nav-links a {
+  text-decoration: none;
+  color: #6b6375;
+  font-size: 13px;
+  transition: color 0.2s;
+}
+
+.global-footer-bar .footer-nav-links a:hover {
+  color: #003d9b;
+}
+
 @media (max-width: 768px) {
   .page-section {
     padding: 48px 0;
@@ -242,5 +291,11 @@ img {
 
   .app-container {
     width: min(100% - 24px, var(--container-width));
+  }
+
+  .global-footer-bar {
+    flex-direction: column;
+    gap: 16px;
+    text-align: center;
   }
 }

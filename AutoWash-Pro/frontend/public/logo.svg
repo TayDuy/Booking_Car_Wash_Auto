@@ -1,0 +1,149 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 400" id="logo-root">
+  <!--
+    AutoWash Pro — Minimal Side-View Supercar
+    pixel2motion Phase 2: Few-curve analytic paths (Level 3)
+    Semantic parts with stable IDs for animation targeting.
+  -->
+  <defs>
+    <!-- Car body gradient (matches source: dark blue → bright blue, left to right) -->
+    <linearGradient id="carGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#0033aa"/>
+      <stop offset="100%" stop-color="#00aaff"/>
+    </linearGradient>
+
+    <!-- Headlight glow -->
+    <filter id="glowLight" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="4" result="b"/>
+      <feComposite in="SourceGraphic" in2="b" operator="over"/>
+    </filter>
+  </defs>
+
+  <!-- ============================================================
+       MAIN CAR GROUP — all parts inside one transform-friendly g
+       ============================================================ -->
+  <g id="car-main" transform="translate(0,0)">
+
+    <!-- #car-body: Main silhouette outline
+         Drawn as a single closed path: underbody → nose → hood → roof → rear → trunk → tail → underbody
+         pathLength="1" for draw-on animation readiness.
+         Direction: starts bottom-left, traces clockwise = natural left-to-right draw direction. -->
+    <path id="car-body"
+          pathLength="1"
+          d="
+            M 100,280
+            C 100,280  110,270  130,265
+            L 145,260
+            C 155,258  165,250  175,245
+            C 185,240  200,235  215,230
+            L 240,228
+            C 260,226  270,210  285,195
+            C 300,180  320,168  345,160
+            C 370,152  400,148  430,148
+            L 470,150
+            C 500,152  530,158  555,170
+            C 575,178  590,188  605,200
+            C 615,208  625,218  635,228
+            L 650,238
+            C 658,242  668,250  675,258
+            L 685,265
+            C 690,268  695,272  700,278
+            L 700,280
+            Z
+          "
+          fill="url(#carGrad)"
+          stroke="none"/>
+
+    <!-- #car-window: Cabin glass cutout (negative space) -->
+    <path id="car-window"
+          d="
+            M 340,175
+            C 350,170  370,165  395,163
+            L 440,165
+            C 470,168  495,175  510,185
+            L 500,210
+            L 430,208
+            L 370,210
+            L 335,212
+            Z
+          "
+          fill="#0b0c10"
+          stroke="none"/>
+
+    <!-- #car-window-divider: Pillar between windows -->
+    <line id="car-window-divider"
+          x1="430" y1="164" x2="430" y2="209"
+          stroke="#0b0c10" stroke-width="4"/>
+
+    <!-- #side-vent: Side air intake (angular slash) -->
+    <path id="side-vent"
+          d="
+            M 530,205
+            L 580,215
+            L 620,230
+            L 600,235
+            L 555,225
+            L 525,215
+            Z
+          "
+          fill="#0b0c10"
+          stroke="none"/>
+
+    <!-- #rear-spoiler: Rear wing accent -->
+    <path id="rear-spoiler"
+          pathLength="1"
+          d="
+            M 670,242
+            C 675,235  682,228  690,225
+            L 710,220
+            C 715,218  718,215  715,212
+          "
+          fill="none"
+          stroke="url(#carGrad)"
+          stroke-width="5"
+          stroke-linecap="round"/>
+
+    <!-- #wheel-rear: Rear wheel well -->
+    <g id="wheel-rear">
+      <path d="M 195,280 C 195,252  230,232  260,232 C 290,232  320,252  320,280"
+            fill="#0b0c10" stroke="none"/>
+      <circle cx="258" cy="272" r="28" fill="#0b0c10" stroke="url(#carGrad)" stroke-width="4"/>
+      <circle cx="258" cy="272" r="12" fill="#0b0c10" stroke="url(#carGrad)" stroke-width="2.5"/>
+    </g>
+
+    <!-- #wheel-front: Front wheel well -->
+    <g id="wheel-front">
+      <path d="M 535,280 C 535,252  570,232  600,232 C 630,232  660,252  660,280"
+            fill="#0b0c10" stroke="none"/>
+      <circle cx="598" cy="272" r="28" fill="#0b0c10" stroke="url(#carGrad)" stroke-width="4"/>
+      <circle cx="598" cy="272" r="12" fill="#0b0c10" stroke="url(#carGrad)" stroke-width="2.5"/>
+    </g>
+
+    <!-- #headlight: Front headlight accent slit -->
+    <path id="headlight"
+          d="M 680,258 Q 695,255  705,262"
+          fill="none"
+          stroke="#ffffff"
+          stroke-width="3"
+          stroke-linecap="round"
+          filter="url(#glowLight)"/>
+
+    <!-- #taillight: Rear taillight accent slit -->
+    <path id="taillight"
+          d="M 115,262 Q 105,258  100,265"
+          fill="none"
+          stroke="#ff3344"
+          stroke-width="3"
+          stroke-linecap="round"
+          filter="url(#glowLight)"/>
+
+    <!-- #ground-line: Speed/ground reference line -->
+    <line id="ground-line"
+          x1="80" y1="285" x2="720" y2="285"
+          stroke="url(#carGrad)"
+          stroke-width="2"
+          stroke-linecap="round"
+          opacity="0.3"
+          pathLength="1"/>
+
+  </g>
+</svg>
