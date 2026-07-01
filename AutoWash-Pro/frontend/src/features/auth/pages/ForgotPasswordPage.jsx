@@ -6,27 +6,29 @@ import {
   resetForgotPassword,
   logout,
 } from "../../../api/authService";
+import OtpInput from "../../../components/common/OtpInput";
 
 function ForgotPassword() {
-  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
   const [otp, setOtp] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
   const [otpSent, setOtpSent] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [loadingOtp, setLoadingOtp] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
 
   const navigate = useNavigate();
 
   async function handleSendOtp() {
-    if (!phone.trim()) {
-      setErrorMessage("Vui lòng nhập số điện thoại.");
+    if (!email.trim()) {
+      setErrorMessage("Vui lòng nhập địa chỉ email.");
       return;
     }
 
-    setLoading(true);
+    setLoadingOtp(true);
     setErrorMessage("");
     setSuccessMessage("");
     setOtp("");
@@ -34,17 +36,17 @@ function ForgotPassword() {
     setConfirmPassword("");
 
     try {
-      const data = await requestForgotPassword(phone.trim());
+      const data = await requestForgotPassword(email.trim());
 
       setOtpSent(true);
-      setSuccessMessage(data.message || "Mã OTP phục hồi đã được gửi.");
+      setSuccessMessage(data.message || "Mã OTP phục hồi đã được gửi đến email của bạn.");
     } catch (error) {
       console.error(error);
       setErrorMessage(
         error.response?.data?.message || "Gửi OTP thất bại. Vui lòng thử lại."
       );
     } finally {
-      setLoading(false);
+      setLoadingOtp(false);
     }
   }
 
@@ -56,7 +58,7 @@ function ForgotPassword() {
       return;
     }
 
-    if (!phone.trim() || !otp.trim() || !newPassword || !confirmPassword) {
+    if (!email.trim() || !otp.trim() || !newPassword || !confirmPassword) {
       setErrorMessage("Vui lòng nhập đầy đủ thông tin.");
       return;
     }
@@ -82,7 +84,7 @@ function ForgotPassword() {
 
     try {
       const data = await resetForgotPassword(
-        phone.trim(),
+        email.trim(),
         otp.trim(),
         newPassword
       );
@@ -91,7 +93,7 @@ function ForgotPassword() {
 
       setTimeout(() => {
         logout();
-        navigate("/login");
+        navigate("/auth/login");
       }, 1200);
     } catch (error) {
       console.error(error);
@@ -131,17 +133,17 @@ function ForgotPassword() {
 
           <form className="forgot-form" onSubmit={handleResetPassword}>
             <div className="form-group">
-              <label className="form-label">Số Điện Thoại</label>
+              <label className="form-label">Email</label>
 
               <div className="input-row">
-                <span className="input-icon">☎</span>
+                <span className="input-icon">✉</span>
                 <input
-                  type="tel"
+                  type="email"
                   className="forgot-input"
-                  placeholder="Nhập số điện thoại"
-                  value={phone}
-                  disabled={loading}
-                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="Nhập địa chỉ email"
+                  value={email}
+                  disabled={loading || loadingOtp}
+                  onChange={(e) => setEmail(e.target.value)}
                 />
               </div>
             </div>
@@ -149,10 +151,10 @@ function ForgotPassword() {
             <button
               type="button"
               className="otp-send-btn"
-              disabled={loading}
+              disabled={loading || loadingOtp}
               onClick={handleSendOtp}
             >
-              {loading ? "Đang xử lý..." : otpSent ? "Gửi lại OTP" : "Gửi OTP"}
+              {loadingOtp ? "Đang xử lý..." : otpSent ? "Gửi lại OTP" : "Gửi OTP"}
             </button>
 
             <div className="form-group">
@@ -160,13 +162,12 @@ function ForgotPassword() {
 
               <div className="input-row">
                 <span className="input-icon">#</span>
-                <input
-                  type="text"
-                  className="forgot-input"
-                  placeholder="Nhập mã OTP"
+                <OtpInput
                   value={otp}
-                  disabled={!otpSent || loading}
-                  onChange={(e) => setOtp(e.target.value)}
+                  onChange={setOtp}
+                  disabled={!otpSent || loading || loadingOtp}
+                  placeholder="Nhập mã OTP"
+                  className="forgot-input"
                 />
               </div>
             </div>
@@ -181,7 +182,7 @@ function ForgotPassword() {
                   className="forgot-input"
                   placeholder="Nhập mật khẩu mới"
                   value={newPassword}
-                  disabled={!otpSent || loading}
+                  disabled={!otpSent || loading || loadingOtp}
                   onChange={(e) => setNewPassword(e.target.value)}
                 />
               </div>
@@ -197,7 +198,7 @@ function ForgotPassword() {
                   className="forgot-input"
                   placeholder="Nhập lại mật khẩu mới"
                   value={confirmPassword}
-                  disabled={!otpSent || loading}
+                  disabled={!otpSent || loading || loadingOtp}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                 />
               </div>
@@ -206,7 +207,7 @@ function ForgotPassword() {
             <button
               type="submit"
               className="forgot-btn"
-              disabled={!otpSent || loading}
+              disabled={!otpSent || loading || loadingOtp}
             >
               <span>{loading ? "Đang đặt lại..." : "Cập nhật Mật Khẩu"}</span>
               <span>→</span>
@@ -214,7 +215,7 @@ function ForgotPassword() {
           </form>
 
           <div className="forgot-footer">
-            <Link to="/login">← Quay về trang Đăng Nhập</Link>
+            <Link to="/auth/login">← Quay về trang Đăng Nhập</Link>
           </div>
         </div>
       </main>

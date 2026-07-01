@@ -1,5 +1,5 @@
 import React, { createContext, useState, useEffect } from 'react'
-import authApi from '../api/authApi'
+import { login as apiLogin, logout as apiLogout, saveAuth } from '../api/authService'
 
 export const AuthContext = createContext(null)
 
@@ -26,9 +26,9 @@ export function AuthProvider({ children }) {
   }, [token])
 
   const login = async (credentials) => {
-    const res = await authApi.login(credentials)
-    const data = res.data?.data
+    const data = await apiLogin(credentials.username, credentials.password)
     if (data) {
+      saveAuth(data)
       setToken(data.accessToken)
       setUser({
         userId: data.user.userId,
@@ -37,18 +37,13 @@ export function AuthProvider({ children }) {
         customerId: data.user.customerId
       })
     }
-    return res
+    return data
   }
 
   const logout = () => {
+    apiLogout()
     setToken(null)
     setUser(null)
-    localStorage.removeItem('token')
-    localStorage.removeItem('refreshToken')
-    localStorage.removeItem('username')
-    localStorage.removeItem('role')
-    localStorage.removeItem('userId')
-    localStorage.removeItem('customerId')
   }
 
   return (

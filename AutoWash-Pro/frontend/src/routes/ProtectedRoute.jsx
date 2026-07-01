@@ -1,17 +1,17 @@
 import { Navigate } from "react-router-dom";
+import useAuth from "../hooks/useAuth";
 
 function ProtectedRoute({ children, allowedRoles }) {
-  const token =
-    localStorage.getItem("token") || localStorage.getItem("accessToken");
-
-  const role = localStorage.getItem("role");
+  const auth = useAuth();
+  const token = auth?.token;
+  const user = auth?.user;
 
   if (!token) {
     return <Navigate to="/" replace />;
   }
 
   if (allowedRoles && allowedRoles.length) {
-    const userRoleUpper = role?.toUpperCase();
+    const userRoleUpper = user?.role?.toUpperCase();
     const hasRole = allowedRoles.some(r => r.toUpperCase() === userRoleUpper);
     if (!hasRole) {
       return <Navigate to="/" replace />;

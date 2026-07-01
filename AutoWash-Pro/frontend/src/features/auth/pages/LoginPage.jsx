@@ -2,10 +2,12 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { login, loginWithGoogle, saveAuth } from "../../../api/authService";
 import { supabase } from "../../../api/supabaseClient";
+import useAuth from "../../../hooks/useAuth";
 import "./LoginPage.css";
 
 function LoginPage() {
   const navigate = useNavigate();
+  const auth = useAuth();
 
   const [formData, setFormData] = useState({
     username: "",
@@ -46,6 +48,15 @@ function LoginPage() {
     console.log("Login success result:", result);
 
     saveAuth(result);
+    if (auth) {
+      auth.setToken(result.accessToken);
+      auth.setUser({
+        userId: result.user?.userId,
+        username: result.user?.username,
+        role: result.user?.role,
+        customerId: result.user?.customerId
+      });
+    }
 
     const savedToken =
       localStorage.getItem("token") || localStorage.getItem("accessToken");
