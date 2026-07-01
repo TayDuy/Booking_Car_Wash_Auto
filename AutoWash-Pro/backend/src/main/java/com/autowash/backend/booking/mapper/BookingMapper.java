@@ -57,6 +57,9 @@ public class BookingMapper {
                 .startTime(booking.getStartTime())
                 .endTime(booking.getEndTime())
                 .note(booking.getNote())
+                .checkInAt(booking.getCheckInAt())
+                .completedAt(booking.getCompleteAt())
+                .loyaltyPointGranted(booking.getLoyaltyPointGranted())
                 .updatedAt(booking.getUpdatedAt())
                 .totalAmount(sumTotal(details))
                 // Customer — phone qua User

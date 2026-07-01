@@ -16,7 +16,8 @@ import com.autowash.backend.customer.entity.Customer;
 import com.autowash.backend.customer.repository.CustomerRepository;
 import com.autowash.backend.employee.entity.Employee;
 import com.autowash.backend.employee.repository.EmployeeRepository;
-import com.autowash.backend.promotion.entity.Promotion;
+import com.autowash.backend.loyaltytransaction.dto.LoyaltyBalanceResponseDTO;
+import com.autowash.backend.loyaltytransaction.service.LoyaltyTransactionService;
 import com.autowash.backend.servicepackage.entity.ServicePackage;
 import com.autowash.backend.servicepackage.repository.ServicePackageRepository;
 import com.autowash.backend.timeslot.entity.TimeSlot;
@@ -53,6 +54,7 @@ public class BookingServiceImpl implements BookingService {
     private final ServicePackageRepository servicePackageRepository;
     private final BookingMapper bookingMapper;
     private final com.autowash.backend.mail.service.MailService mailService;
+    private final LoyaltyTransactionService loyaltyTransactionService;
 
     // ── CREATE ──────────────────────────────────────────────────────────────
 
@@ -301,9 +303,43 @@ public class BookingServiceImpl implements BookingService {
     }
 
     /**
-     * Hoàn thành booking — chuyển sang "completed".
-     * Chỉ được gọi khi booking đang ở trạng thái pending hoặc in_progress.
-     * Sau bước này client mới được tạo Payment cho booking.
+     * Staff/Admin xác nhận booking: pending -> confirmed.
+     */
+    @Override
+    public BookingResponseDTO confirmBooking(Integer bookingId) {
+        Booking booking = findBookingOrThrow(bookingId);
+
+        if (!BookingStatus.pending.equals(booking.getStatus())) {
+            throw new BusinessException("Chỉ booking pending mới được xác nhận", HttpStatus.BAD_REQUEST);
+        }
+
+        booking.setStatus(BookingStatus.confirmed);
+
+        Booking saved = bookingRepository.save(booking);
+        return bookingMapper.toResponse(saved, bookingDetailRepository.findByBooking(saved));
+    }
+
+    /**
+     * Nhân viên check-in khi khách đã tới chi nhánh: confirmed -> in_progress.
+     */
+    @Override
+    public BookingResponseDTO checkInBooking(Integer bookingId) {
+        Booking booking = findBookingOrThrow(bookingId);
+
+        if (!BookingStatus.confirmed.equals(booking.getStatus())) {
+            throw new BusinessException("Chỉ booking confirmed mới được check-in", HttpStatus.BAD_REQUEST);
+        }
+
+        booking.setStatus(BookingStatus.in_progress);
+        booking.setCheckInAt(LocalDateTime.now());
+
+        Booking saved = bookingRepository.save(booking);
+        return bookingMapper.toResponse(saved, bookingDetailRepository.findByBooking(saved));
+    }
+
+    /**
+     * Hoàn thành booking: in_progress -> completed.
+     * Đây là điểm trigger cộng loyalty point và đánh giá lại tier.
      */
     @Override
     @Transactional
@@ -321,9 +357,48 @@ public class BookingServiceImpl implements BookingService {
         }
 
         booking.setStatus(BookingStatus.completed);
+        booking.setCompleteAt(LocalDateTime.now());
 
         Booking saved = bookingRepository.save(booking);
+
+        grantLoyaltyPointIfNeeded(saved);
+
         return bookingMapper.toResponse(saved, bookingDetailRepository.findByBooking(saved));
+    }
+    /**
+     * Chỉ cộng điểm một lần khi booking hoàn thaành.
+     */
+
+    private void grantLoyaltyPointIfNeeded(Booking booking) {
+        if (Boolean.TRUE.equals(booking.getLoyaltyPointGranted())) {
+            return;
+        }
+
+        List<BookingDetail> details = bookingDetailRepository.findByBooking(booking);
+        BigDecimal totalAmount = details.stream()
+                .map(BookingDetail::getSubTotal)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        loyaltyTransactionService.earnPointsFromCompleteBooking(booking, totalAmount);
+
+        updateCustomerLoyaltyStats(booking.getCustomer(), totalAmount);
+    }
+
+    private void updateCustomerLoyaltyStats(Customer customer, BigDecimal totalAmount) {
+        Integer currentVisits = customer.getTotalVisits() != null ? customer.getTotalVisits() : 0;
+        BigDecimal currentSpending = customer.getTotalSpending() != null
+                ? customer.getTotalSpending()
+                : BigDecimal.ZERO;
+
+        customer.setTotalVisits(currentVisits + 1);
+        customer.setTotalSpending(currentSpending.add(totalAmount));
+
+        LoyaltyBalanceResponseDTO balance =
+                loyaltyTransactionService.getCustomerBalance(customer.getCustomerId());
+
+        customer.setTotalPoints(Integer.valueOf(balance.getCurrentPoints()));
+
+        customerRepository.save(customer);
     }
 
     // ── HELPERS ──────────────────────────────────────────────────────────────

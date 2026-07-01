@@ -139,7 +139,7 @@ public class BookingController {
      * /api/v1/staff/bookings
      */
     @GetMapping("/staff/bookings")
-    @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
+    @PreAuthorize("hasAnyRole('STAFF','ADMIN', 'MANAGER')")
     public ResponseEntity<List<BookingSummaryResponseDTO>> getAllBookings() {
 
         return ResponseEntity.ok(
@@ -154,7 +154,7 @@ public class BookingController {
      * /api/v1/staff/bookings/{bookingId}
      */
     @PutMapping("/staff/bookings/{bookingId}")
-    @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
+    @PreAuthorize("hasAnyRole('STAFF','ADMIN','MANAGER')")
     public ResponseEntity<BookingResponseDTO> updateBooking(
             @PathVariable Integer bookingId,
             @Valid @RequestBody BookingUpdateRequestDTO request
@@ -175,7 +175,7 @@ public class BookingController {
      * /api/v1/staff/bookings/{bookingId}/cancel
      */
     @DeleteMapping("/staff/bookings/{bookingId}/cancel")
-    @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
+    @PreAuthorize("hasAnyRole('STAFF','ADMIN','MANAGER')")
     public ResponseEntity<BookingResponseDTO> cancelBookingByStaff(
             @PathVariable Integer bookingId
     ) {
@@ -186,19 +186,47 @@ public class BookingController {
     }
 
     /**
+     * STAFF / ADMIN / MANAGER xác nhận booking
+     *
+     * PATCH:
+     * /api/v1/staff/bookings/{bookingId}/confirm
+     */
+    @PatchMapping("/staff/bookings/{bookingId}/confirm")
+    @PreAuthorize("hasAnyRole('STAFF','ADMIN','MANAGER')")
+    public ResponseEntity<BookingResponseDTO> confirmBooking(
+            @PathVariable Integer bookingId
+    ) {
+        return ResponseEntity.ok(bookingService.confirmBooking(bookingId));
+    }
+
+    /**
+     * STAFF / ADMIN / MANAGER check-in xe khi khách tới chi nhánh
+     *
+     * PATCH:
+     * /api/v1/staff/bookings/{bookingId}/check-in
+     */
+    @PatchMapping("/staff/bookings/{bookingId}/check-in")
+    @PreAuthorize("hasAnyRole('STAFF','ADMIN','MANAGER')")
+    public ResponseEntity<BookingResponseDTO> checkInBooking(
+            @PathVariable Integer bookingId
+    ) {
+        return ResponseEntity.ok(bookingService.checkInBooking(bookingId));
+    }
+
+    /**
      * STAFF / ADMIN hoàn thành booking
      *
      * PATCH:
      * /api/v1/staff/bookings/{bookingId}/complete
      */
     @PatchMapping("/staff/bookings/{bookingId}/complete")
-    @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
+    @PreAuthorize("hasAnyRole('STAFF','ADMIN', 'MANAGER')")
     public ResponseEntity<BookingResponseDTO> completeBooking(
             @PathVariable Integer bookingId
     ) {
-
         return ResponseEntity.ok(
                 bookingService.completeBooking(bookingId)
         );
     }
+
 }
