@@ -1,17 +1,22 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Bell, CircleHelp } from "lucide-react";
+import { Bell, CircleHelp, User, LayoutDashboard, Car, History, LogOut, Gift } from "lucide-react";
+import useAuth from "../../hooks/useAuth";
 import "./SiteHeader.css";
 
 export default function SiteHeader() {
   const navigate = useNavigate();
   const location = useLocation();
+  const auth = useAuth();
+  const user = auth?.user;
 
   const [isOpenNotification, setIsOpenNotification] = useState(false);
   const [isOpenSupport, setIsOpenSupport] = useState(false);
+  const [isOpenProfile, setIsOpenProfile] = useState(false);
 
   const notificationRef = useRef(null);
   const supportRef = useRef(null);
+  const profileRef = useRef(null);
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -24,6 +29,10 @@ export default function SiteHeader() {
 
       if (supportRef.current && !supportRef.current.contains(event.target)) {
         setIsOpenSupport(false);
+      }
+
+      if (profileRef.current && !profileRef.current.contains(event.target)) {
+        setIsOpenProfile(false);
       }
     }
 
@@ -99,6 +108,7 @@ export default function SiteHeader() {
             onClick={() => {
               setIsOpenNotification(!isOpenNotification);
               setIsOpenSupport(false);
+              setIsOpenProfile(false);
             }}
           >
             <Bell size={18} strokeWidth={2} />
@@ -135,6 +145,7 @@ export default function SiteHeader() {
             onClick={() => {
               setIsOpenSupport(!isOpenSupport);
               setIsOpenNotification(false);
+              setIsOpenProfile(false);
             }}
           >
             <CircleHelp size={18} strokeWidth={2} />
@@ -162,12 +173,124 @@ export default function SiteHeader() {
           )}
         </div>
 
-        <div
-          className="profile-user-avatar"
-          onClick={() => navigate("/customer/profile")}
-          style={{ cursor: "pointer" }}
-        >
-          <img src="/car_avatar.png" alt="User Avatar" />
+        <div className="icon-popover-container" ref={profileRef}>
+          <div
+            className={`profile-user-avatar ${isOpenProfile ? "avatar-active" : ""}`}
+            onClick={() => {
+              setIsOpenProfile(!isOpenProfile);
+              setIsOpenNotification(false);
+              setIsOpenSupport(false);
+            }}
+            style={{ cursor: "pointer" }}
+          >
+            <img src="/car_avatar.png" alt="User Avatar" />
+          </div>
+
+          {isOpenProfile && (
+            <div className="dropdown-popover-box profile-dropdown alignment-right">
+              <div className="popover-arrow"></div>
+              
+              {/* User Card */}
+              <div className="profile-dropdown-card">
+                <div className="profile-dropdown-avatar">
+                  <img src="/car_avatar.png" alt="User Avatar" />
+                </div>
+                <div className="profile-dropdown-info">
+                  <div className="profile-dropdown-name">
+                    {user?.fullName || user?.username || "Khách Hàng"}
+                  </div>
+                  <div className="profile-dropdown-role">Thành viên</div>
+                </div>
+              </div>
+
+              <div 
+                className="profile-dropdown-view-btn"
+                onClick={() => {
+                  setIsOpenProfile(false);
+                  navigate("/customer/profile");
+                }}
+              >
+                <User size={16} />
+                <span>Xem trang cá nhân</span>
+              </div>
+
+              <div className="profile-dropdown-divider"></div>
+
+              {/* Menu Options */}
+              <div className="profile-dropdown-menu">
+                <div 
+                  className="profile-menu-item"
+                  onClick={() => {
+                    setIsOpenProfile(false);
+                    navigate("/customer/profile#personal-info");
+                    // Scroll to section helper
+                    const el = document.getElementById("personal-info");
+                    if (el) el.scrollIntoView({ behavior: "smooth" });
+                  }}
+                >
+                  <LayoutDashboard size={16} />
+                  <span>Bảng điều khiển</span>
+                </div>
+
+                <div 
+                  className="profile-menu-item"
+                  onClick={() => {
+                    setIsOpenProfile(false);
+                    navigate("/customer/profile#my-vehicles");
+                    const el = document.getElementById("my-vehicles");
+                    if (el) el.scrollIntoView({ behavior: "smooth" });
+                  }}
+                >
+                  <Car size={16} />
+                  <span>Xe của tôi</span>
+                </div>
+
+                <div 
+                  className="profile-menu-item"
+                  onClick={() => {
+                    setIsOpenProfile(false);
+                    navigate("/customer/history");
+                  }}
+                >
+                  <History size={16} />
+                  <span>Lịch sử rửa xe</span>
+                </div>
+
+                <div 
+                  className="profile-menu-item"
+                  onClick={() => {
+                    setIsOpenProfile(false);
+                    navigate("/customer/promotions");
+                  }}
+                >
+                  <Gift size={16} />
+                  <span>Ưu đãi của tôi</span>
+                </div>
+
+                <div 
+                  className="profile-menu-item logout-item"
+                  onClick={async () => {
+                    setIsOpenProfile(false);
+                    try {
+                      const { logoutFromServer } = await import("../../api/authService");
+                      await logoutFromServer();
+                    } catch (err) {
+                      console.error("Logout error:", err);
+                    }
+                    navigate("/auth/login");
+                  }}
+                >
+                  <LogOut size={16} />
+                  <span>Đăng xuất</span>
+                </div>
+              </div>
+
+              <div className="profile-dropdown-divider"></div>
+              <div className="profile-dropdown-footer">
+                Quyền riêng tư · Điều khoản · WashFlow © 2026
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </header>

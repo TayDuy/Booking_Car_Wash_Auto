@@ -10,6 +10,7 @@ export function AuthProvider({ children }) {
     return {
       userId: localStorage.getItem('userId'),
       username: localStorage.getItem('username'),
+      fullName: localStorage.getItem('fullName'),
       role: localStorage.getItem('role'),
       customerId: localStorage.getItem('customerId'),
     }
@@ -33,6 +34,7 @@ export function AuthProvider({ children }) {
       setUser({
         userId: data.user.userId,
         username: data.user.username,
+        fullName: data.user.fullName,
         role: data.user.role,
         customerId: data.user.customerId
       })
