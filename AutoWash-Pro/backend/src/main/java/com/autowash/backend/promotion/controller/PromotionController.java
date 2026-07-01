@@ -179,6 +179,7 @@ public class PromotionController {
      * POST /api/v1/promotions/expire-expired
      */
     @PostMapping("/expire-expired")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<String> expireExpiredPromotions() {
         int expiredCount = promotionService.expireExpiredPromotions();
 

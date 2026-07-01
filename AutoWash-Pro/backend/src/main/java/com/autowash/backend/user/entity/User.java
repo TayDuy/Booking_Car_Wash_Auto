@@ -12,7 +12,8 @@ import java.time.LocalDateTime;
 @Table(name = "account")
 @NoArgsConstructor
 @AllArgsConstructor
-@Data //co toan bo get set roi
+@Getter
+@Setter
 @ToString
 @Builder
 public class User {

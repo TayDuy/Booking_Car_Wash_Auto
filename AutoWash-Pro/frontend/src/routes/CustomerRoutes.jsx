@@ -12,7 +12,7 @@ function CustomerRoutes() {
       <Route path="home" element={<HomePage />} />
       <Route
         path="profile"
-        element={<ProtectedRoute allowedRoles={["Customer", "Staff", "Manager", "Admin"]}><ProfilePage /></ProtectedRoute>}
+        element={<ProtectedRoute allowedRoles={["CUSTOMER", "STAFF", "ADMIN"]}><ProfilePage /></ProtectedRoute>}
       />
       <Route path="bookings" element={<BookingHistoryPage />} />
     </Routes>
