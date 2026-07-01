@@ -21,17 +21,17 @@ export async function register(username, password, email, fullName, phone) {
   return response.data.data;
 }
 
-export async function sendOtp(phone) {
+export async function sendOtp(email) {
   const response = await axiosClient.post("/auth/send-otp", {
-    phone,
+    email,
   });
 
   return response.data;
 }
 
-export async function verifyOtp(phone, otp) {
+export async function verifyOtp(email, otp) {
   const response = await axiosClient.post("/auth/verify-otp", {
-    phone,
+    email,
     otp,
   });
 
@@ -56,16 +56,16 @@ export async function logoutFromServer() {
   }
 }
 
-export async function requestForgotPassword(phone) {
+export async function requestForgotPassword(email) {
   const response = await axiosClient.post("/auth/forgot-password/request", {
-    phone: phone,
+    email: email,
   });
   return response.data;
 }
 
-export async function resetForgotPassword(phone, otp, newPassword) {
+export async function resetForgotPassword(email, otp, newPassword) {
   const response = await axiosClient.post("/auth/forgot-password/reset", {
-    phone: phone,
+    email: email,
     otp: otp,
     newPassword: newPassword,
   });
