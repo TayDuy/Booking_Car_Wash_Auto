@@ -1,7 +1,14 @@
 import "./Register.css";
-import { useState } from "react";
-import { Link } from "react-router-dom";
-import { register, sendOtp, verifyOtp } from "../../api/authService";
+import { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import {
+  register,
+  sendOtp,
+  verifyOtp,
+  loginWithGoogle,
+  saveAuth,
+} from "../../api/authService";
+import { supabase } from "../../api/supabaseClient";
 
 function Register() {
   const navigate = useNavigate();
