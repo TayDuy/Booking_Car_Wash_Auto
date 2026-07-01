@@ -28,7 +28,7 @@ public class MailServiceImpl implements MailService {
     @Override
     @Async
     public void sendOtpEmail(String toEmail, String otpCode, String purpose) {
-        log.info("Bắt đầu gửi email OTP bất đồng bộ đến {}", toEmail);
+        log.info("Bắt đầu gửi email OTP bất đồng bộ đến {} - MÃ OTP THẬT: {}", toEmail, otpCode);
         try {
             SimpleMailMessage message = new SimpleMailMessage();
             message.setTo(toEmail);
