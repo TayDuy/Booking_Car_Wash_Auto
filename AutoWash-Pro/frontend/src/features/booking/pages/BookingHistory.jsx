@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import SiteHeader from './SiteHeader';
+import SiteHeader from '../../../components/layout/SiteHeader';
 import customerApi from '../../../api/customerApi';
 import bookingApi from '../../../api/bookingApi';
 import './BookingHistory.css';
