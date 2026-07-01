@@ -16,4 +16,6 @@ public class OtpVerifyDTO {
     @Size(min = 6, max = 6, message ="OTP phải đúng 6 số")
     private String otp;
 
+    private String purpose;
+
 }

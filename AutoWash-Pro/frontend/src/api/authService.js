@@ -29,10 +29,11 @@ export async function sendOtp(email) {
   return response.data;
 }
 
-export async function verifyOtp(email, otp) {
+export async function verifyOtp(email, otp, purpose = "GENERAL") {
   const response = await axiosClient.post("/auth/verify-otp", {
     email,
     otp,
+    purpose,
   });
 
   return response.data;

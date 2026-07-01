@@ -110,7 +110,11 @@ public class AuthController {
      */
     @PostMapping("/verify-otp")
     public ResponseEntity<ApiResponse<Void>> verifyOtp(@Valid@RequestBody OtpVerifyDTO request){
-        otpService.verifyOtp(request.getEmail(), request.getOtp());
+        String purpose = request.getPurpose();
+        if (purpose == null || purpose.trim().isEmpty()) {
+            purpose = com.autowash.backend.auth.service.OtpService.PURPOSE_GENERAL;
+        }
+        otpService.verifyOtp(request.getEmail(), request.getOtp(), purpose);
         return ResponseEntity.ok(ApiResponse.success("Xác minh OTP thành công", null));
     }
 
