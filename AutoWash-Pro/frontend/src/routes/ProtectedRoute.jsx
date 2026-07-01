@@ -12,8 +12,12 @@ export default function ProtectedRoute({ children, allowedRoles = [] }) {
     return <Navigate to="/auth/login" replace />
   }
 
-  if (allowedRoles.length && user && !allowedRoles.includes(user.role)) {
-  return <Navigate to="/unauthorized" replace />
+  if (allowedRoles.length && user) {
+    const userRoleUpper = user.role?.toUpperCase();
+    const hasRole = allowedRoles.some(role => role.toUpperCase() === userRoleUpper);
+    if (!hasRole) {
+      return <Navigate to="/unauthorized" replace />
+    }
   }
 
   return children

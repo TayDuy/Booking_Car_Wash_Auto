@@ -13,6 +13,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import com.autowash.backend.security.CustomUserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -80,11 +82,12 @@ public class BookingController {
     @GetMapping("/bookings/my/{customerId}")
     @PreAuthorize("hasRole('CUSTOMER')")
     public ResponseEntity<List<BookingSummaryResponseDTO>> getMyBookings(
-            @PathVariable Integer customerId
+            @PathVariable Integer customerId,
+            @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
 
         return ResponseEntity.ok(
-                bookingService.getBookingsByCustomer(customerId)
+                bookingService.getBookingsByCustomer(customerId, userDetails.getId())
         );
     }
 
@@ -97,11 +100,12 @@ public class BookingController {
     @GetMapping("/bookings/{bookingId}")
     @PreAuthorize("hasRole('CUSTOMER')")
     public ResponseEntity<BookingResponseDTO> getBookingById(
-            @PathVariable Integer bookingId
+            @PathVariable Integer bookingId,
+            @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
 
         return ResponseEntity.ok(
-                bookingService.getBookingById(bookingId)
+                bookingService.getBookingById(bookingId, userDetails.getId())
         );
     }
 
@@ -114,11 +118,12 @@ public class BookingController {
     @DeleteMapping("/bookings/{bookingId}/cancel")
     @PreAuthorize("hasRole('CUSTOMER')")
     public ResponseEntity<BookingResponseDTO> cancelBooking(
-            @PathVariable Integer bookingId
+            @PathVariable Integer bookingId,
+            @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
 
         return ResponseEntity.ok(
-                bookingService.cancelBooking(bookingId)
+                bookingService.cancelBooking(bookingId, userDetails.getId())
         );
     }
 
@@ -175,7 +180,7 @@ public class BookingController {
     ) {
 
         return ResponseEntity.ok(
-                bookingService.cancelBooking(bookingId)
+                bookingService.cancelBooking(bookingId, null)
         );
     }
 

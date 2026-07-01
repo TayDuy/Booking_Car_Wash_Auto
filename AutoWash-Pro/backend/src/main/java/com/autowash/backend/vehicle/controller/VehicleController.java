@@ -6,6 +6,7 @@ import com.autowash.backend.vehicle.service.VehicleService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import jakarta.annotation.PostConstruct;
@@ -20,6 +21,7 @@ public class VehicleController {
     private final VehicleService vehicleService;
 
     @GetMapping("/admin")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<VehicleResponse>> getAllVehiclesForAdmin() {
         return ResponseEntity.ok(vehicleService.getAllVehicles());
     }

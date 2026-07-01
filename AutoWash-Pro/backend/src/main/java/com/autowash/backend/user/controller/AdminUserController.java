@@ -32,6 +32,19 @@ public class AdminUserController {
         //lưu lại quyền cũ
         String oldRole = user.getRole();
 
+        // Validate newRole
+        boolean isValidRole = false;
+        for (com.autowash.backend.user.enums.Role r : com.autowash.backend.user.enums.Role.values()) {
+            if (r.name().equalsIgnoreCase(newRole)) {
+                isValidRole = true;
+                break;
+            }
+        }
+        if (!isValidRole) {
+            throw new com.autowash.backend.common.exception.BusinessException(
+                    "Role không hợp lệ. Cho phép: CUSTOMER, STAFF, ADMIN", org.springframework.http.HttpStatus.BAD_REQUEST);
+        }
+
         user.setRole(newRole.toLowerCase());
         userRepository.save(user);
 

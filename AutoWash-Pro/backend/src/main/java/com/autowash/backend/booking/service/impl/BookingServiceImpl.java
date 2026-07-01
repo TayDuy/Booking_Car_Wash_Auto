@@ -186,8 +186,15 @@ public class BookingServiceImpl implements BookingService {
     /** Lấy chi tiết một booking theo ID. */
     @Override
     @Transactional(readOnly = true)
-    public BookingResponseDTO getBookingById(Integer bookingId) {
+    public BookingResponseDTO getBookingById(Integer bookingId, Integer userId) {
         Booking booking = findBookingOrThrow(bookingId);
+        if (userId != null) {
+            Customer customer = customerRepository.findByUser_Id(userId)
+                    .orElseThrow(() -> new BusinessException("Không tìm thấy khách hàng", HttpStatus.FORBIDDEN));
+            if (!booking.getCustomer().getCustomerId().equals(customer.getCustomerId())) {
+                throw new BusinessException("Bạn không có quyền truy cập lịch đặt này", HttpStatus.FORBIDDEN);
+            }
+        }
         List<BookingDetail> details = bookingDetailRepository.findByBooking(booking);
         return bookingMapper.toResponse(booking, details);
     }
@@ -204,7 +211,14 @@ public class BookingServiceImpl implements BookingService {
     /** Lấy danh sách booking theo customer, sắp xếp mới nhất trước. */
     @Override
     @Transactional(readOnly = true)
-    public List<BookingSummaryResponseDTO> getBookingsByCustomer(Integer customerId) {
+    public List<BookingSummaryResponseDTO> getBookingsByCustomer(Integer customerId, Integer userId) {
+        if (userId != null) {
+            Customer customer = customerRepository.findByUser_Id(userId)
+                    .orElseThrow(() -> new BusinessException("Không tìm thấy khách hàng", HttpStatus.FORBIDDEN));
+            if (!customer.getCustomerId().equals(customerId)) {
+                throw new BusinessException("Bạn không có quyền truy cập danh sách đặt lịch này", HttpStatus.FORBIDDEN);
+            }
+        }
         return bookingRepository.findByCustomer_CustomerIdOrderByBookingDateDesc(customerId).stream()
                 .map(b -> bookingMapper.toSummaryResponse(b, bookingDetailRepository.findByBooking(b)))
                 .collect(Collectors.toList());
@@ -241,8 +255,15 @@ public class BookingServiceImpl implements BookingService {
      */
     @Override
     @Transactional
-    public BookingResponseDTO cancelBooking(Integer bookingId) {
+    public BookingResponseDTO cancelBooking(Integer bookingId, Integer userId) {
         Booking booking = findBookingOrThrow(bookingId);
+        if (userId != null) {
+            Customer customer = customerRepository.findByUser_Id(userId)
+                    .orElseThrow(() -> new BusinessException("Không tìm thấy khách hàng", HttpStatus.FORBIDDEN));
+            if (!booking.getCustomer().getCustomerId().equals(customer.getCustomerId())) {
+                throw new BusinessException("Bạn không có quyền hủy lịch đặt này", HttpStatus.FORBIDDEN);
+            }
+        }
         booking.setStatus(BookingStatus.cancelled);
 
         // Giảm số lượng đặt trên slot để mở lại capacity
