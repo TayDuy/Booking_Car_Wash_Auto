@@ -1,106 +1,160 @@
-import axios from 'axios'
+import axios from "axios";
+
+const API_BASE_URL = "http://localhost:8080/api/v1";
 
 const axiosClient = axios.create({
-  baseURL: 'http://localhost:8080/api/v1',
+  baseURL: API_BASE_URL,
   headers: {
-    'Content-Type': 'application/json',
-    Accept: 'application/json',
+    "Content-Type": "application/json",
+    Accept: "application/json",
   },
-})
+});
 
-// Request interceptor: attach JWT if present
-axiosClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token')
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`
-  }
-  return config
-})
+axiosClient.interceptors.request.use(
+  (config) => {
+    const token =
+      localStorage.getItem("token") || localStorage.getItem("accessToken");
 
-let isRefreshing = false
-let failedQueue = []
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+let isRefreshing = false;
+let failedQueue = [];
 
 const processQueue = (error, token = null) => {
-  failedQueue.forEach((prom) => {
+  failedQueue.forEach((promise) => {
     if (error) {
-      prom.reject(error)
+      promise.reject(error);
     } else {
-      prom.resolve(token)
+      promise.resolve(token);
     }
-  })
-  failedQueue = []
+  });
+
+  failedQueue = [];
+};
+
+function clearAuthStorage() {
+  localStorage.removeItem("token");
+  localStorage.removeItem("accessToken");
+  localStorage.removeItem("refreshToken");
+  localStorage.removeItem("username");
+  localStorage.removeItem("role");
+  localStorage.removeItem("userId");
+  localStorage.removeItem("customerId");
 }
 
-// Response interceptor: handle global errors and token refresh
+function redirectToLogin() {
+  if (window.location.pathname !== "/login") {
+    window.location.href = "/login";
+  }
+}
+
+function isAuthPublicRequest(url = "") {
+  return (
+    url.includes("/auth/login") ||
+    url.includes("/auth/register") ||
+    url.includes("/auth/send-otp") ||
+    url.includes("/auth/verify-otp") ||
+    url.includes("/auth/google") ||
+    url.includes("/auth/forgot-password") ||
+    url.includes("/auth/reset-password")
+  );
+}
+
 axiosClient.interceptors.response.use(
   (response) => response,
   async (error) => {
-    const originalRequest = error.config
+    const originalRequest = error.config;
 
-    if (error.response && error.response.status === 401 && !originalRequest._retry) {
+    if (!originalRequest) {
+      return Promise.reject(error);
+    }
+
+    const requestUrl = originalRequest.url || "";
+
+    // Login/Register/Forgot password sai cũng có thể trả 401/400.
+    // Không redirect ở đây, để page tự hiện lỗi.
+    if (isAuthPublicRequest(requestUrl)) {
+      return Promise.reject(error);
+    }
+
+    if (
+      error.response &&
+      error.response.status === 401 &&
+      !originalRequest._retry
+    ) {
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
-          failedQueue.push({ resolve, reject })
+          failedQueue.push({ resolve, reject });
         })
           .then((token) => {
-            originalRequest.headers.Authorization = `Bearer ${token}`
-            return axiosClient(originalRequest)
+            originalRequest.headers.Authorization = `Bearer ${token}`;
+            return axiosClient(originalRequest);
           })
-          .catch((err) => Promise.reject(err))
+          .catch((queueError) => Promise.reject(queueError));
       }
 
-      originalRequest._retry = true
-      isRefreshing = true
+      originalRequest._retry = true;
+      isRefreshing = true;
 
-      const refreshToken = localStorage.getItem('refreshToken')
-      if (refreshToken) {
-        try {
-          const response = await axios.post('http://localhost:8080/api/v1/auth/refresh', {
-            refreshToken: refreshToken,
-          })
-          
-          const { accessToken, refreshToken: newRefreshToken } = response.data.data
-          localStorage.setItem('token', accessToken)
-          if (newRefreshToken) {
-            localStorage.setItem('refreshToken', newRefreshToken)
-          }
+      const refreshToken = localStorage.getItem("refreshToken");
 
-          axiosClient.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`
-          originalRequest.headers.Authorization = `Bearer ${accessToken}`
+      if (!refreshToken) {
+        clearAuthStorage();
+        redirectToLogin();
+        return Promise.reject(error);
+      }
 
-          processQueue(null, accessToken)
-          return axiosClient(originalRequest)
-        } catch (refreshError) {
-          processQueue(refreshError, null)
-          // Clear all auth state
-          localStorage.removeItem('token')
-          localStorage.removeItem('refreshToken')
-          localStorage.removeItem('username')
-          localStorage.removeItem('role')
-          localStorage.removeItem('userId')
-          localStorage.removeItem('customerId')
-          
-          if (window.location.pathname !== '/login') {
-            window.location.href = '/login'
-          }
-          return Promise.reject(refreshError)
-        } finally {
-          isRefreshing = false
+      try {
+        const response = await axios.post(`${API_BASE_URL}/auth/refresh`, {
+          refreshToken,
+        });
+
+        // Hỗ trợ cả 2 kiểu response:
+        // 1. { accessToken, refreshToken }
+        // 2. { data: { accessToken, refreshToken } }
+        const responseData = response.data?.data || response.data;
+
+        const newAccessToken = responseData?.accessToken;
+        const newRefreshToken = responseData?.refreshToken;
+
+        if (!newAccessToken) {
+          throw new Error("Refresh response không có accessToken");
         }
-      } else {
-        localStorage.removeItem('token')
-        localStorage.removeItem('username')
-        localStorage.removeItem('role')
-        localStorage.removeItem('userId')
-        localStorage.removeItem('customerId')
-        if (window.location.pathname !== '/login') {
-          window.location.href = '/login'
+
+        localStorage.setItem("token", newAccessToken);
+        localStorage.setItem("accessToken", newAccessToken);
+
+        if (newRefreshToken) {
+          localStorage.setItem("refreshToken", newRefreshToken);
         }
+
+        axiosClient.defaults.headers.common.Authorization = `Bearer ${newAccessToken}`;
+        originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+
+        processQueue(null, newAccessToken);
+
+        return axiosClient(originalRequest);
+      } catch (refreshError) {
+        processQueue(refreshError, null);
+
+        clearAuthStorage();
+        redirectToLogin();
+
+        return Promise.reject(refreshError);
+      } finally {
+        isRefreshing = false;
       }
     }
 
-    return Promise.reject(error)
+    return Promise.reject(error);
   }
-)
+);
 
-export default axiosClient
+export default axiosClient;

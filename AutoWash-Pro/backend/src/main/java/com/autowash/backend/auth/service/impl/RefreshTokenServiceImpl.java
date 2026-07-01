@@ -38,7 +38,7 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
         //Cách này tránh lỗi DataIntegrityViolationException do Hibernate thực thi insert trước delete
         java.util.Optional<RefreshToken> existingTokenOpt = refreshTokenRepository.findByUser(user);
         RefreshToken refreshToken;
-        
+
         if (existingTokenOpt.isPresent()) {
             refreshToken = existingTokenOpt.get();
             refreshToken.setToken(UUID.randomUUID().toString());
