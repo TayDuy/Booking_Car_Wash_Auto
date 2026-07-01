@@ -25,6 +25,9 @@ import ManageCatalog from "./pages/admin/ManageCatalog";
 
 import DashboardLayout from "./layouts/DashboardLayout";
 import AdminDashboardPage from "./features/admin/pages/AdminDashboardPage";
+import ManageBookingsPage from "./features/admin/pages/ManageBookingsPage";
+import ManageCustomersPage from "./features/admin/pages/ManageCustomersPage";
+import ManageVehiclesPage from "./features/admin/pages/ManageVehiclesPage";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
@@ -50,9 +53,12 @@ ReactDOM.createRoot(document.getElementById("root")).render(
 
         <Route path="/admin" element={<DashboardLayout />}>
           <Route index element={<AdminDashboardPage />} />
+          <Route path="bookings" element={<ManageBookingsPage />} />
+          <Route path="customers" element={<ManageCustomersPage />} />
+          <Route path="vehicles" element={<ManageVehiclesPage/>}/>
+          <Route path="notifications" element={<AdminNotificationPage />} />
+          <Route path="catalog" element={<ManageCatalog />} />
         </Route>
-        <Route path="/admin/notifications" element={<AdminNotificationPage />} />
-        <Route path="/admin/catalog" element={<ManageCatalog />} />
       </Routes>
     </BrowserRouter>
   </React.StrictMode>

@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import jakarta.annotation.PostConstruct;
 
 import java.util.List;
 
@@ -18,6 +19,10 @@ public class VehicleController {
 
     private final VehicleService vehicleService;
 
+    @GetMapping("/admin")
+    public ResponseEntity<List<VehicleResponse>> getAllVehiclesForAdmin() {
+        return ResponseEntity.ok(vehicleService.getAllVehicles());
+    }
     // Lấy danh sách xe của chính mình
     @GetMapping
     public ResponseEntity<List<VehicleResponse>> getMyVehicles(
@@ -58,5 +63,9 @@ public class VehicleController {
             @org.springframework.security.core.annotation.AuthenticationPrincipal com.autowash.backend.security.CustomUserDetails userDetails,
             @PathVariable Integer vehicleId) {
         return ResponseEntity.ok(vehicleService.toggleActive(userDetails.getId(), vehicleId));
+    }
+    @PostConstruct
+    public void init() {
+        System.out.println("===== VehicleController loaded =====");
     }
 }
