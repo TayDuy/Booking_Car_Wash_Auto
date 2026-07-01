@@ -7,7 +7,7 @@ function LandingPage() {
       <header className="landing-header">
         <div className="app-container landing-header-inner">
           <Link to="/" className="landing-logo">
-            <span>♢</span>
+            <img src="/logo.png" alt="Logo" style={{ height: "36px", width: "auto" }} />
             WashFlow Pro
           </Link>
 

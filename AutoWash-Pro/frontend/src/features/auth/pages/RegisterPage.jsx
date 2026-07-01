@@ -178,7 +178,9 @@ function RegisterPage() {
       <div className="register-container">
         <section className="register-left">
           <div className="register-brand">
-            <div className="register-logo">♢</div>
+            <div className="register-logo">
+              <img src="/logo.png" alt="Logo" style={{ width: "85%", height: "auto" }} />
+            </div>
             <span>WashFlow Pro</span>
           </div>
 
@@ -218,7 +220,9 @@ function RegisterPage() {
         <section className="register-right">
           <div className="register-form-wrapper">
             <div className="register-form-logo">
-              <div className="register-form-logo-box">♢</div>
+              <div className="register-form-logo-box">
+                <img src="/logo.png" alt="Logo" style={{ width: "80%", height: "auto", filter: "brightness(0) invert(1)" }} />
+              </div>
               <h1>WashFlow Pro</h1>
               <p>Trải nghiệm dịch vụ rửa xe thông minh</p>
             </div>

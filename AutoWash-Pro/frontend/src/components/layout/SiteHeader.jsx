@@ -40,6 +40,45 @@ export default function SiteHeader() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [notifications, setNotifications] = useState([]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const loadNotifications = async () => {
+      try {
+        const { countUnread, getUnread } = await import("../../api/notificationService");
+        const countRes = await countUnread();
+        setUnreadCount(countRes.count || 0);
+
+        const listRes = await getUnread();
+        setNotifications(listRes || []);
+      } catch (err) {
+        console.error("Lỗi lấy thông báo:", err);
+      }
+    };
+    loadNotifications();
+
+    let es;
+    const connectSSE = async () => {
+      try {
+        const { subscribeSSE } = await import("../../api/notificationService");
+        es = subscribeSSE((msg) => {
+          setUnreadCount((prev) => prev + 1);
+          setNotifications((prev) => [msg, ...prev]);
+        });
+      } catch (err) {
+        console.warn("SSE subscribe failed:", err);
+      }
+    };
+    connectSSE();
+
+    return () => {
+      if (es) es.close();
+    };
+  }, [user]);
+
   const isActive = (path) => location.pathname === path;
 
   return (
@@ -112,24 +151,84 @@ export default function SiteHeader() {
             }}
           >
             <Bell size={18} strokeWidth={2} />
-            <span className="red-alert-dot"></span>
+            {unreadCount > 0 && <span className="red-alert-dot"></span>}
           </button>
 
           {isOpenNotification && (
             <div className="dropdown-popover-box alignment-right">
               <div className="popover-arrow"></div>
-              <div className="popover-header">Thông báo</div>
+              <div className="popover-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span>Thông báo</span>
+                {unreadCount > 0 && (
+                  <button 
+                    style={{ background: 'none', border: 'none', color: '#0046c7', fontSize: '11px', fontWeight: '600', cursor: 'pointer', padding: 0 }}
+                    onClick={async () => {
+                      try {
+                        const { markAllRead } = await import("../../api/notificationService");
+                        await markAllRead();
+                        setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+                        setUnreadCount(0);
+                      } catch (err) {
+                        console.error("Lỗi đánh dấu đọc tất cả:", err);
+                      }
+                    }}
+                  >
+                    Đọc tất cả
+                  </button>
+                )}
+              </div>
 
-              <div className="popover-body-content">
-                <div className="placeholder-item">
-                  <p>Hệ thống thông báo tự động sẵn sàng.</p>
-                  <span>Vừa xong</span>
-                </div>
+              <div className="popover-body-content" style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                {notifications.length > 0 ? (
+                  notifications.slice(0, 5).map((noti) => (
+                    <div 
+                      key={noti.notificationId || noti.id} 
+                      className={`placeholder-item ${noti.read ? "read-item" : "unread-item"}`}
+                      style={{ 
+                        cursor: "pointer", 
+                        borderBottom: "1px solid #f1f5f9", 
+                        padding: "10px 12px",
+                        backgroundColor: noti.read ? '#ffffff' : '#f8fafc',
+                        transition: 'background-color 0.2s'
+                      }}
+                      onClick={async () => {
+                        if (noti.read) return;
+                        try {
+                          const { markAsRead } = await import("../../api/notificationService");
+                          await markAsRead(noti.notificationId || noti.id);
+                          setNotifications(prev => prev.map(n => 
+                            (n.notificationId === noti.notificationId || n.id === noti.id) ? { ...n, read: true } : n
+                          ));
+                          setUnreadCount(prev => Math.max(0, prev - 1));
+                        } catch (err) {
+                          console.error("Lỗi đánh dấu đã đọc:", err);
+                        }
+                      }}
+                    >
+                      <p style={{ margin: "0 0 4px 0", fontSize: "13px", fontWeight: noti.read ? "normal" : "600", color: "#334155" }}>
+                        {noti.title}
+                      </p>
+                      <p style={{ margin: "0 0 4px 0", fontSize: "12px", color: "#64748b", lineHeight: '1.4' }}>
+                        {noti.content}
+                      </p>
+                      <span style={{ fontSize: "10px", color: "#94a3b8" }}>
+                        {noti.createdAt ? new Date(noti.createdAt).toLocaleString("vi-VN") : "Vừa xong"}
+                      </span>
+                    </div>
+                  ))
+                ) : (
+                  <div className="placeholder-item" style={{ padding: "20px", textAlign: "center", color: "#94a3b8", fontSize: "13px" }}>
+                    Không có thông báo mới.
+                  </div>
+                )}
               </div>
 
               <div
                 className="popover-footer-action"
-                onClick={() => navigate("/customer/notifications")}
+                onClick={() => {
+                  setIsOpenNotification(false);
+                  navigate("/customer/notifications");
+                }}
               >
                 Xem tất cả
               </div>

@@ -70,7 +70,7 @@ export default function ManageBookingsPage() {
     if (!confirmCancel) return;
 
     try {
-      await bookingApi.cancel(bookingId);
+      await bookingApi.cancelByStaff(bookingId);
       alert("Hủy booking thành công.");
       loadBookings();
     } catch (error) {

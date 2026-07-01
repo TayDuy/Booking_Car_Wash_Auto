@@ -199,7 +199,9 @@ function LoginPage() {
       <div className="login-container">
         <section className="login-left">
           <div className="login-brand">
-            <div className="login-logo">♢</div>
+            <div className="login-logo">
+              <img src="/logo.png" alt="Logo" style={{ width: "85%", height: "auto" }} />
+            </div>
             <span>WashFlow Pro</span>
           </div>
 
@@ -239,7 +241,9 @@ function LoginPage() {
         <section className="login-right">
           <div className="login-form-wrapper">
             <div className="login-form-logo">
-              <div className="login-form-logo-box">♢</div>
+              <div className="login-form-logo-box">
+                <img src="/logo.png" alt="Logo" style={{ width: "80%", height: "auto", filter: "brightness(0) invert(1)" }} />
+              </div>
               <h1>WashFlow Pro</h1>
               <p>Sạch bóng từng centimet</p>
             </div>

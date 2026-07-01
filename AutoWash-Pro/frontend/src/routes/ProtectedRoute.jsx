@@ -7,7 +7,7 @@ function ProtectedRoute({ children, allowedRoles }) {
   const user = auth?.user;
 
   if (!token) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/auth/login" replace />;
   }
 
   if (allowedRoles && allowedRoles.length) {

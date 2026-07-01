@@ -112,7 +112,9 @@ function ForgotPassword() {
         <div className="forgot-card">
           <div className="forgot-header">
             <div className="brand-row">
-              <div className="forgot-logo">💧</div>
+              <div className="forgot-logo">
+                <img src="/logo.png" alt="Logo" style={{ width: "80%", height: "auto", filter: "brightness(0) invert(1)" }} />
+              </div>
               <h1 className="forgot-title">WashFlow Pro</h1>
             </div>
 
