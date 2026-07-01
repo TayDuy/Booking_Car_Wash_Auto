@@ -38,10 +38,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                     FilterChain filterChain) throws ServletException, IOException {
         try {
             String jwt = extractTokenFromRequest(request);
-
             if (StringUtils.hasText(jwt) && jwtTokenProvider.validateToken(jwt)) {
                 String email = jwtTokenProvider.getEmailFromToken(jwt);
                 UserDetails userDetails = userDetailsService.loadUserByUsername(email);
+
+                if (userDetails instanceof CustomUserDetails) {
+                    CustomUserDetails customDetails = (CustomUserDetails) userDetails;
+                    String tokenPwdSig = jwtTokenProvider.getPasswordSignatureFromToken(jwt);
+                    String currentPwdSig = jwtTokenProvider.generatePasswordSignature(customDetails.getPassword());
+                    if (tokenPwdSig != null && !tokenPwdSig.equals(currentPwdSig)) {
+                        throw new io.jsonwebtoken.security.SignatureException("Token has been invalidated because password changed");
+                    }
+                }
 
                 UsernamePasswordAuthenticationToken authentication =
                         new UsernamePasswordAuthenticationToken(

@@ -128,7 +128,7 @@ public class AuthController {
 
         RefreshToken rotatedToken = refreshTokenService.createRefreshToken(user.getId());
 
-        String token = tokenProvider.generateToken(user.getEmail(), user.getId());
+        String token = tokenProvider.generateToken(user.getEmail(), user.getId(), user.getPassword());
 
         TokenRefreshResponseDTO responseDTO = TokenRefreshResponseDTO.builder()
                 .accessToken(token)

@@ -1,5 +1,5 @@
 import "./ForgotPasswordPage.css";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   requestForgotPassword,
@@ -17,12 +17,24 @@ function ForgotPassword() {
   const [otpSent, setOtpSent] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loadingOtp, setLoadingOtp] = useState(false);
+  const [timer, setTimer] = useState(0);
   const [successMessage, setSuccessMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
 
   const navigate = useNavigate();
 
+  useEffect(() => {
+    let interval;
+    if (timer > 0) {
+      interval = setInterval(() => {
+        setTimer((prev) => prev - 1);
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [timer]);
+
   async function handleSendOtp() {
+    if (timer > 0) return;
     if (!email.trim()) {
       setErrorMessage("Vui lòng nhập địa chỉ email.");
       return;
@@ -39,6 +51,7 @@ function ForgotPassword() {
       const data = await requestForgotPassword(email.trim());
 
       setOtpSent(true);
+      setTimer(60);
       setSuccessMessage(data.message || "Mã OTP phục hồi đã được gửi đến email của bạn.");
     } catch (error) {
       console.error(error);
@@ -153,10 +166,16 @@ function ForgotPassword() {
             <button
               type="button"
               className="otp-send-btn"
-              disabled={loading || loadingOtp}
+              disabled={loading || loadingOtp || timer > 0}
               onClick={handleSendOtp}
             >
-              {loadingOtp ? "Đang xử lý..." : otpSent ? "Gửi lại OTP" : "Gửi OTP"}
+              {loadingOtp
+                ? "Đang gửi..."
+                : timer > 0
+                ? `Gửi lại sau ${timer}s`
+                : otpSent
+                ? "Gửi lại OTP"
+                : "Gửi OTP"}
             </button>
 
             <div className="form-group">

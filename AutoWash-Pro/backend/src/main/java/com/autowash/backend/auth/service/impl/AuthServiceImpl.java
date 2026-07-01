@@ -131,7 +131,7 @@ public class AuthServiceImpl implements AuthService {
                 .build();
         customerRepository.save(newCustomer);
 
-        String token = jwtTokenProvider.generateToken(savedUser.getEmail(), savedUser.getId());
+        String token = jwtTokenProvider.generateToken(savedUser.getEmail(), savedUser.getId(), savedUser.getPassword());
         return buildLoginResponse(token, savedUser);
     }
 
@@ -211,19 +211,31 @@ public class AuthServiceImpl implements AuthService {
             }
         }
 
-        String token = jwtTokenProvider.generateToken(email, user.getId());
+        String token = jwtTokenProvider.generateToken(email, user.getId(), user.getPassword());
         return buildLoginResponse(token, user);
     }
 
     @Override
     public void requestForgotPasswordOtp(String email, String requestIp) {
         String normalizedEmail = normalizeEmail(email);
+        long startTime = System.currentTimeMillis();
 
-        if (userRepository.findByEmail(normalizedEmail).isEmpty()) {
-            return;
+        boolean userExists = userRepository.findByEmail(normalizedEmail).isPresent();
+
+        if (userExists) {
+            otpService.sendOtp(normalizedEmail, OtpService.PURPOSE_PASSWORD_RESET, requestIp);
+        } else {
+            // Chống Timing-based email enumeration bằng cách giả lập thời gian xử lý (DB queries + gửi email)
+            long elapsed = System.currentTimeMillis() - startTime;
+            long targetDelay = 350 + (long) (Math.random() * 250); // 350ms - 600ms
+            if (elapsed < targetDelay) {
+                try {
+                    Thread.sleep(targetDelay - elapsed);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
         }
-
-        otpService.sendOtp(normalizedEmail, OtpService.PURPOSE_PASSWORD_RESET, requestIp);
     }
 
     @Override

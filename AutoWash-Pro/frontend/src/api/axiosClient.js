@@ -60,8 +60,7 @@ function isAuthPublicRequest(url = "") {
     url.includes("/auth/send-otp") ||
     url.includes("/auth/verify-otp") ||
     url.includes("/auth/google") ||
-    url.includes("/auth/forgot-password") ||
-    url.includes("/auth/reset-password")
+    url.includes("/auth/forgot-password")
   );
 }
 
