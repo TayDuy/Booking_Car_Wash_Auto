@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { register, sendOtp, verifyOtp } from "../../../api/authService";
+import OtpInput from "../../../components/common/OtpInput";
 import "./RegisterPage.css";
 
 function RegisterPage() {
@@ -37,7 +38,7 @@ function RegisterPage() {
       [name]: value,
     }));
 
-    if (name === "phone") {
+    if (name === "email") {
       setOtpSent(false);
       setOtpVerified(false);
     }
@@ -48,8 +49,8 @@ function RegisterPage() {
   };
 
   const handleSendOtp = async () => {
-    if (!formData.phone.trim()) {
-      setErrorMessage("Vui lòng nhập số điện thoại trước khi gửi OTP.");
+    if (!formData.email.trim()) {
+      setErrorMessage("Vui lòng nhập địa chỉ email trước khi gửi OTP.");
       return;
     }
 
@@ -58,10 +59,10 @@ function RegisterPage() {
       setErrorMessage("");
       setSuccessMessage("");
 
-      await sendOtp(formData.phone);
+      await sendOtp(formData.email);
 
       setOtpSent(true);
-      setSuccessMessage("Mã OTP đã được gửi đến số điện thoại của bạn.");
+      setSuccessMessage("Mã OTP đã được gửi đến email của bạn.");
     } catch (error) {
       const message =
         error.response?.data?.message ||
@@ -75,8 +76,8 @@ function RegisterPage() {
   };
 
   const handleVerifyOtp = async () => {
-    if (!formData.phone.trim()) {
-      setErrorMessage("Vui lòng nhập số điện thoại.");
+    if (!formData.email.trim()) {
+      setErrorMessage("Vui lòng nhập địa chỉ email.");
       return;
     }
 
@@ -90,7 +91,7 @@ function RegisterPage() {
       setErrorMessage("");
       setSuccessMessage("");
 
-      await verifyOtp(formData.phone, formData.otp);
+      await verifyOtp(formData.email, formData.otp);
 
       setOtpVerified(true);
       setSuccessMessage("Xác thực OTP thành công.");
@@ -280,32 +281,15 @@ function RegisterPage() {
                     Email
                   </label>
 
-                  <input
-                    id="email"
-                    name="email"
-                    className="register-input"
-                    type="email"
-                    placeholder="example@gmail.com"
-                    autoComplete="email"
-                    value={formData.email}
-                    onChange={handleChange}
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label" htmlFor="phone">
-                    Số điện thoại
-                  </label>
-
                   <div className="register-otp-row">
                     <input
-                      id="phone"
-                      name="phone"
+                      id="email"
+                      name="email"
                       className="register-input"
-                      type="tel"
-                      placeholder="0901234567"
-                      autoComplete="tel"
-                      value={formData.phone}
+                      type="email"
+                      placeholder="example@gmail.com"
+                      autoComplete="email"
+                      value={formData.email}
                       onChange={handleChange}
                     />
 
@@ -313,11 +297,28 @@ function RegisterPage() {
                       className="otp-send-button"
                       type="button"
                       onClick={handleSendOtp}
-                      disabled={loadingOtp}
+                      disabled={loadingOtp || otpVerified}
                     >
                       {loadingOtp ? "Đang gửi..." : otpSent ? "Gửi lại" : "Gửi OTP"}
                     </button>
                   </div>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label" htmlFor="phone">
+                    Số điện thoại
+                  </label>
+
+                  <input
+                    id="phone"
+                    name="phone"
+                    className="register-input"
+                    type="tel"
+                    placeholder="0901234567"
+                    autoComplete="tel"
+                    value={formData.phone}
+                    onChange={handleChange}
+                  />
                 </div>
 
                 <div className="form-group">
@@ -326,14 +327,12 @@ function RegisterPage() {
                   </label>
 
                   <div className="register-otp-row">
-                    <input
-                      id="otp"
-                      name="otp"
-                      className="register-input"
-                      type="text"
-                      placeholder="Nhập mã OTP"
+                    <OtpInput
                       value={formData.otp}
-                      onChange={handleChange}
+                      onChange={(val) => handleChange({ target: { name: "otp", value: val } })}
+                      disabled={otpVerified}
+                      placeholder="Nhập mã OTP"
+                      className="register-input"
                     />
 
                     <button

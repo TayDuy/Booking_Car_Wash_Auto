@@ -90,15 +90,16 @@ public class OtpServiceImpl implements OtpService {
             throw new BusinessException("Ma OTP da het han, vui long gui lai");
         }
 
-        if (record.getAttemptCount() >= OTP_MAX_ATTEMPTS) {
+        int attempts = record.getAttemptCount() != null ? record.getAttemptCount() : 0;
+        if (attempts >= OTP_MAX_ATTEMPTS) {
             throw new BusinessException("Ma OTP da bi khoa vi nhap sai qua nhieu lan", HttpStatus.TOO_MANY_REQUESTS);
         }
 
         if (!passwordEncoder.matches(otp, record.getOtpCode())) {
-            record.setAttemptCount(record.getAttemptCount() + 1);
+            record.setAttemptCount(attempts + 1);
             otpRepository.save(record);
 
-            if (record.getAttemptCount() >= OTP_MAX_ATTEMPTS) {
+            if ((attempts + 1) >= OTP_MAX_ATTEMPTS) {
                 throw new BusinessException("Ma OTP da bi khoa vi nhap sai qua nhieu lan", HttpStatus.TOO_MANY_REQUESTS);
             }
 
