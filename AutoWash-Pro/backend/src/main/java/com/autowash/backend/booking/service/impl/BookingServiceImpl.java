@@ -85,7 +85,14 @@ public class BookingServiceImpl implements BookingService {
      */
     @Override
     @Transactional
-    public BookingCreateResponseDTO createBooking(BookingCreateRequestDTO request) {
+    public BookingCreateResponseDTO createBooking(BookingCreateRequestDTO request, Integer userId) {
+        if (userId != null) {
+            Customer authenticatedCustomer = customerRepository.findByUser_Id(userId)
+                    .orElseThrow(() -> new BusinessException("Không tìm thấy khách hàng ứng với tài khoản đăng nhập", HttpStatus.FORBIDDEN));
+            if (!authenticatedCustomer.getCustomerId().equals(request.getCustomerId())) {
+                throw new BusinessException("Bạn không thể tạo đặt lịch dưới danh nghĩa của khách hàng khác", HttpStatus.FORBIDDEN);
+            }
+        }
 
         Customer customer = customerRepository.findById(request.getCustomerId())
                 .orElseThrow(() -> new ResourceNotFoundException("Customer", "id", request.getCustomerId()));

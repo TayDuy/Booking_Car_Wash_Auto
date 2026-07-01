@@ -26,7 +26,7 @@ import java.util.List;
  *
  * <p>Phân quyền:
  * <ul>
- *   <li>POST / PUT / DELETE → chỉ ADMIN/STAFF</li>
+ *   <li>POST / PUT / DELETE → chỉ ADMIN</li>
  *   <li>GET                 → public hoặc USER trở lên</li>
  * </ul>
  * </p>
