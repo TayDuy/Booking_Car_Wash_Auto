@@ -11,7 +11,7 @@ import {
   Eye,
   ArrowRight,
 } from "lucide-react";
-import "./HelpCenter.css";
+import "./Helpcenter.css";
 
 const FEATURED_ARTICLES = [
   {
