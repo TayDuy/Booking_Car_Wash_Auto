@@ -93,14 +93,15 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public LoginResponseDTO register(RegisterRequestDTO request) {
+        String normalizedUsername = request.getUsername().trim().toLowerCase();
         String normalizedEmail = request.getEmail().trim().toLowerCase();
         String normalizedPhone = normalizePhone(request.getPhone());
 
-        if (userRepository.existsByEmail(normalizedEmail)) {
+        if (userRepository.existsByEmailIgnoreCase(normalizedEmail)) {
             throw new BusinessException("Email '" + normalizedEmail + "' da duoc su dung");
         }
 
-        if (userRepository.existsByUsername(request.getUsername())) {
+        if (userRepository.existsByUsernameIgnoreCase(normalizedUsername)) {
             throw new BusinessException("Tai khoan '" + request.getUsername() + "' da duoc su dung");
         }
 
@@ -108,12 +109,12 @@ public class AuthServiceImpl implements AuthService {
             throw new BusinessException("So dien thoai '" + normalizedPhone + "' da duoc su dung");
         }
 
-        if (!otpService.isPhoneVerified(normalizedPhone)) {
-            throw new BusinessException("So dien thoai chua duoc xac minh OTP");
+        if (!otpService.isEmailVerified(normalizedEmail)) {
+            throw new BusinessException("Email chua duoc xac minh OTP");
         }
 
         User newUser = User.builder()
-                .username(request.getUsername())
+                .username(normalizedUsername)
                 .email(normalizedEmail)
                 .password(passwordEncoder.encode(request.getPassword()))
                 .phone(normalizedPhone)
@@ -130,7 +131,7 @@ public class AuthServiceImpl implements AuthService {
                 .build();
         customerRepository.save(newCustomer);
 
-        String token = jwtTokenProvider.generateToken(savedUser.getEmail(), savedUser.getId());
+        String token = jwtTokenProvider.generateToken(savedUser.getEmail(), savedUser.getId(), savedUser.getPassword());
         return buildLoginResponse(token, savedUser);
     }
 
@@ -210,35 +211,49 @@ public class AuthServiceImpl implements AuthService {
             }
         }
 
-        String token = jwtTokenProvider.generateToken(email, user.getId());
+        String token = jwtTokenProvider.generateToken(email, user.getId(), user.getPassword());
         return buildLoginResponse(token, user);
     }
 
     @Override
-    public void requestForgotPasswordOtp(String phone, String requestIp) {
-        String normalizedPhone = normalizePhone(phone);
+    public void requestForgotPasswordOtp(String email, String requestIp) {
+        String normalizedEmail = normalizeEmail(email);
+        long startTime = System.currentTimeMillis();
 
-        if (findUserByPhone(normalizedPhone).isEmpty()) {
-            return;
+        boolean userExists = userRepository.findByEmail(normalizedEmail).isPresent();
+
+        if (userExists) {
+            otpService.sendOtp(normalizedEmail, OtpService.PURPOSE_PASSWORD_RESET, requestIp);
+        } else {
+            // Chống Timing-based email enumeration bằng cách giả lập thời gian xử lý (DB queries + gửi email)
+            long elapsed = System.currentTimeMillis() - startTime;
+            long targetDelay = 350 + (long) (Math.random() * 250); // 350ms - 600ms
+            if (elapsed < targetDelay) {
+                try {
+                    Thread.sleep(targetDelay - elapsed);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
         }
-
-        otpService.sendOtp(normalizedPhone, OtpService.PURPOSE_PASSWORD_RESET, requestIp);
     }
 
     @Override
     @Transactional
-    public void verifyAndResetPassword(String phone, String otp, String newPassword) {
-        String normalizedPhone = normalizePhone(phone);
+    public void verifyAndResetPassword(String email, String otp, String newPassword) {
+        String normalizedEmail = normalizeEmail(email);
 
-        User user = findUserByPhone(normalizedPhone)
+        User user = userRepository.findByEmail(normalizedEmail)
                 .orElseThrow(() -> new BusinessException("Khong tim thay nguoi dung", HttpStatus.NOT_FOUND));
 
-        otpService.verifyOtp(normalizedPhone, otp.trim(), OtpService.PURPOSE_PASSWORD_RESET);
+        if (!otpService.isEmailVerified(normalizedEmail, OtpService.PURPOSE_PASSWORD_RESET)) {
+            otpService.verifyOtp(normalizedEmail, otp.trim(), OtpService.PURPOSE_PASSWORD_RESET);
+        }
 
         user.setPassword(passwordEncoder.encode(newPassword));
         userRepository.save(user);
         refreshTokenService.deleteByUserId(user.getId());
-        otpService.clearVerification(normalizedPhone, OtpService.PURPOSE_PASSWORD_RESET);
+        otpService.clearVerification(normalizedEmail, OtpService.PURPOSE_PASSWORD_RESET);
     }
 
     private LoginResponseDTO buildLoginResponse(String token, User user) {
@@ -272,35 +287,15 @@ public class AuthServiceImpl implements AuthService {
                 .build();
     }
 
-    private Optional<User> findUserByPhone(String phone) {
-        if (phone == null || phone.trim().isEmpty()) {
-            return Optional.empty();
-        }
-        String normalizedPhone = normalizePhone(phone.trim());
-
-        Optional<User> user = userRepository.findByPhone(normalizedPhone);
-        if (user.isPresent()) {
-            return user;
-        }
-
-        if (normalizedPhone.startsWith("+84") && normalizedPhone.length() == 12) {
-            String legacyFormat = "0" + normalizedPhone.substring(3);
-            if (!legacyFormat.equals(phone.trim())) {
-                user = userRepository.findByPhone(legacyFormat);
-                if (user.isPresent()) {
-                    return user;
-                }
-            }
-        }
-
-        return userRepository.findByPhone(phone.trim());
-    }
-
     private String normalizePhone(String phone) {
         String trimmed = phone == null ? "" : phone.trim();
-        if (trimmed.startsWith("0") && trimmed.length() == 10) {
+        if (trimmed.startsWith("0") && (trimmed.length() == 10 || trimmed.length() == 11)) {
             return "+84" + trimmed.substring(1);
         }
         return trimmed;
+    }
+
+    private String normalizeEmail(String email) {
+        return email == null ? "" : email.trim().toLowerCase();
     }
 }

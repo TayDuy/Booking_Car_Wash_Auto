@@ -10,6 +10,7 @@ import org.springframework.http.HttpStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -43,22 +44,29 @@ public class CustomerServiceImpl implements CustomerService {
         Customer updateCustomer = customerRepository.save(customer);
         return mapToResponse(updateCustomer);
     }
+    @Override
+    public List<CustomerProfileResponse> getAllCustomers() {
+        return customerRepository.findAll()
+                .stream()
+                .map(this::mapToResponse)
+                .toList();
+    }
 
     private CustomerProfileResponse mapToResponse(Customer customer) {
-        return CustomerProfileResponse.builder()
-                .customerId(customer.getCustomerId())
-                .username(customer.getUser().getUsername())
-                .email(customer.getUser().getEmail())
-                .phone(customer.getUser().getPhone())
-                .fullName(customer.getFullName())
-                .dateOfBirth(customer.getDateOfBirth())
-                .gender(translateGenderToVietnamese(customer.getGender()))
-                .totalPoints(customer.getTotalPoints())
-                .totalVisits(customer.getTotalVisits())
-                .totalSpending(customer.getTotalSpending())
-                .tierId(customer.getTierId())
-                .joinedAt(customer.getJoinedAt())
-                .build();
+    return CustomerProfileResponse.builder()
+            .customerId(customer.getCustomerId())
+            .username(customer.getUser() != null ? customer.getUser().getUsername() : null)
+            .email(customer.getUser() != null ? customer.getUser().getEmail() : null)
+            .phone(customer.getUser() != null ? customer.getUser().getPhone() : null)
+            .fullName(customer.getFullName())
+            .dateOfBirth(customer.getDateOfBirth())
+            .gender(translateGenderToVietnamese(customer.getGender()))
+            .totalPoints(customer.getTotalPoints())
+            .totalVisits(customer.getTotalVisits())
+            .totalSpending(customer.getTotalSpending())
+            .tierId(customer.getTierId())
+            .joinedAt(customer.getJoinedAt())
+            .build();
     }
     private String translateGenderToEnglish(String gender) {
         if (gender == null) return null;

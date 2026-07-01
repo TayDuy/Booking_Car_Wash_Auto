@@ -1,0 +1,141 @@
+.admin-sidebar {
+  position: fixed;
+  inset: 0 auto 0 0;
+
+  width: 230px;
+  padding: 18px 14px;
+  height: 100vh;
+
+  display: flex;
+  flex-direction: column;
+
+  background: #07111f;
+  color: white;
+
+  padding: 22px 18px;
+}
+
+.sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  margin-bottom: 34px;
+}
+
+.sidebar-brand h2 {
+    color: #3DD9C5;
+}
+
+.brand-icon {
+  width: 42px;
+  height: 42px;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  border-radius: 14px;
+  background: linear-gradient(135deg, #0052cc, #4da3ff);
+
+  font-size: 22px;
+}
+
+.sidebar-brand h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.sidebar-brand p {
+  margin: 4px 0 0;
+  color: #94a3b8;
+  font-size: 13px;
+}
+
+.sidebar-nav {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.menu-group {
+  margin-bottom: 24px;
+}
+
+.menu-title {
+  display: block;
+  margin: 0 0 10px 8px;
+
+  color: #94a3b8;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+
+.sidebar-link {
+  height: 44px;
+
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  padding: 0 12px;
+  margin-bottom: 6px;
+
+  border-radius: 12px;
+
+  color: #dbeafe;
+  text-decoration: none;
+
+  font-size: 15px;
+  font-weight: 600;
+
+  transition: all 0.2s ease;
+}
+
+.sidebar-link:hover {
+  background: rgba(255, 255, 255, 0.08);
+  transform: translateX(3px);
+}
+
+.sidebar-link.active {
+  background: linear-gradient(135deg, #0052cc, #4da3ff);
+  color: white;
+  box-shadow: 0 12px 30px rgba(0, 82, 204, 0.35);
+}
+
+.sidebar-user {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  padding: 14px;
+  border-radius: 16px;
+
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.user-avatar {
+  width: 40px;
+  height: 40px;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  border-radius: 50%;
+  background: #eaf2ff;
+  color: #0052cc;
+
+  font-weight: 800;
+}
+
+.sidebar-user strong {
+  display: block;
+  font-size: 14px;
+}
+
+.sidebar-user p {
+  margin: 3px 0 0;
+  color: #22c55e;
+  font-size: 12px;
+}

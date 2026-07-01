@@ -12,4 +12,5 @@ public interface BookingDetailRepository extends JpaRepository<BookingDetail, In
 
     List<BookingDetail> findByBooking_BookingId(Integer bookingId);
     List<BookingDetail> findByBooking(Booking booking);
+    List<BookingDetail> findByBooking_BookingIdIn(List<Integer> bookingIds);
 }

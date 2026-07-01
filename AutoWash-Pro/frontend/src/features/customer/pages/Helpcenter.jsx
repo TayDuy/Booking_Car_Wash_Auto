@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   Search,
   Mail,
@@ -11,7 +11,7 @@ import {
   Eye,
   ArrowRight,
 } from "lucide-react";
-import "./HelpCenter.css";
+import "./Helpcenter.css";
 
 const FEATURED_ARTICLES = [
   {
@@ -112,7 +112,7 @@ function ArticleCard({
   );
 }
 
-function ContactCard({ icon: Icon, iconBg, title, subtitle, cta, variant }) {
+function ContactCard({ icon: Icon, iconBg, title, subtitle, cta, variant, onClick }) {
   return (
     <article className="wf-contact-card">
       <span className={`wf-contact-card__icon ${iconBg}`}>
@@ -125,6 +125,7 @@ function ContactCard({ icon: Icon, iconBg, title, subtitle, cta, variant }) {
       <button
         className={`wf-contact-card__btn wf-contact-card__btn--${variant}`}
         type="button"
+        onClick={onClick}
       >
         {cta}
       </button>
@@ -133,6 +134,46 @@ function ContactCard({ icon: Icon, iconBg, title, subtitle, cta, variant }) {
 }
 
 export default function HelpCenter() {
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [messages, setMessages] = useState([
+    { sender: "bot", text: "Xin chào! Cảm ơn bạn đã liên hệ với bộ phận hỗ trợ khách hàng của WashFlow Pro. Chúng tôi có thể giúp gì cho bạn hôm nay?" }
+  ]);
+  const [inputValue, setInputValue] = useState("");
+  const [isTyping, setIsTyping] = useState(false);
+  const chatEndRef = React.useRef(null);
+
+  React.useEffect(() => {
+    if (chatEndRef.current) {
+      chatEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages, isTyping]);
+
+  const handleSendMessage = () => {
+    if (!inputValue.trim()) return;
+    
+    const userMsg = { sender: "user", text: inputValue };
+    setMessages(prev => [...prev, userMsg]);
+    setInputValue("");
+    setIsTyping(true);
+
+    // Simulate auto-reply support response after 1.5s
+    setTimeout(() => {
+      setIsTyping(false);
+      let replyText = "Cảm ơn bạn đã để lại tin nhắn! Đội ngũ tư vấn viên của WashFlow Pro đã nhận được yêu cầu của bạn và sẽ phản hồi trực tiếp ngay lập tức.";
+      
+      const textLower = userMsg.text.toLowerCase();
+      if (textLower.includes("giá") || textLower.includes("bao nhiêu") || textLower.includes("tiền")) {
+        replyText = "WashFlow Pro cung cấp nhiều gói rửa xe với giá dao động từ 150.000đ đến 500.000đ tùy loại xe. Bạn có thể tham khảo bảng giá chi tiết tại phần 'Đặt lịch' hoặc 'Gói dịch vụ' trên trang chủ nhé!";
+      } else if (textLower.includes("hủy") || textLower.includes("đổi lịch")) {
+        replyText = "Bạn có thể dễ dàng hủy hoặc đổi lịch rửa xe tại trang 'Lịch sử đặt lịch' tối thiểu 2 giờ trước giờ hẹn. Nếu gặp khó khăn, hãy gửi mã đặt lịch cho chúng tôi tại đây.";
+      } else if (textLower.includes("khuyến mãi") || textLower.includes("ưu đãi")) {
+        replyText = "Chúng tôi đang áp dụng chương trình giảm giá 20% cho khách hàng lần đầu đặt lịch qua ứng dụng và nhiều ưu đãi tích điểm cho các hạng thành viên Vàng/Bạc. Bạn xem thêm tại mục 'Ưu đãi' nhé!";
+      }
+
+      setMessages(prev => [...prev, { sender: "bot", text: replyText }]);
+    }, 1500);
+  };
+
   return (
     <div className="wf-app wf-app-no-sidebar">
       <main className="wf-main wf-main-full">
@@ -206,9 +247,18 @@ export default function HelpCenter() {
           </h2>
 
           <div className="wf-contact-grid">
-            {CONTACT_OPTIONS.map((opt) => (
-              <ContactCard key={opt.title} {...opt} />
-            ))}
+            <ContactCard 
+              {...CONTACT_OPTIONS[0]} 
+              onClick={() => setIsChatOpen(true)}
+            />
+            <ContactCard 
+              {...CONTACT_OPTIONS[1]} 
+              onClick={() => window.location.href = "mailto:support@washflowpro.vn"}
+            />
+            <ContactCard 
+              {...CONTACT_OPTIONS[2]} 
+              onClick={() => alert("Tổng đài hỗ trợ 24/7: 1900 8888. Vui lòng gọi trực tiếp để được tư vấn viên hỗ trợ nhanh nhất.")}
+            />
           </div>
         </section>
 
@@ -223,6 +273,70 @@ export default function HelpCenter() {
           <span className="wf-status__chip">Trạng thái: Ổn định</span>
         </div>
       </main>
+
+      {/* Floating Chat Widget Overlay */}
+      {isChatOpen && (
+        <div className="wf-chat-window">
+          <div className="wf-chat-header">
+            <div className="wf-chat-header-info">
+              <span className="wf-chat-header-dot"></span>
+              <span className="wf-chat-header-title">Hỗ trợ trực tuyến WashFlow</span>
+            </div>
+            <button 
+              className="wf-chat-close-btn" 
+              onClick={() => setIsChatOpen(false)}
+              aria-label="Đóng chat"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+
+          <div className="wf-chat-body">
+            {messages.map((msg, index) => (
+              <div 
+                key={index} 
+                className={`wf-chat-message wf-chat-message--${msg.sender}`}
+              >
+                {msg.text}
+              </div>
+            ))}
+            {isTyping && (
+              <div className="wf-chat-typing">
+                <span className="wf-chat-typing-dot"></span>
+                <span className="wf-chat-typing-dot"></span>
+                <span className="wf-chat-typing-dot"></span>
+              </div>
+            )}
+            <div ref={chatEndRef} />
+          </div>
+
+          <div className="wf-chat-footer">
+            <input 
+              type="text" 
+              className="wf-chat-input"
+              placeholder="Nhập tin nhắn..."
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleSendMessage();
+              }}
+            />
+            <button 
+              className="wf-chat-send-btn"
+              onClick={handleSendMessage}
+              disabled={!inputValue.trim()}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="22" y1="2" x2="11" y2="13"></line>
+                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

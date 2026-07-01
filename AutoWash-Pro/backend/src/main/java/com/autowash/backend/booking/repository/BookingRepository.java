@@ -20,6 +20,26 @@ public interface BookingRepository extends JpaRepository<Booking, Integer> {
     // Lấy booking của customer, mới nhất trước
     List<Booking> findByCustomer_CustomerIdOrderByBookingDateDesc(Integer customerId);
 
+    @Query("""
+            SELECT DISTINCT b FROM Booking b
+            LEFT JOIN FETCH b.customer
+            LEFT JOIN FETCH b.vehicle
+            LEFT JOIN FETCH b.branch
+            LEFT JOIN FETCH b.slot
+            """)
+    List<Booking> findAllWithAssociations();
+
+    @Query("""
+            SELECT DISTINCT b FROM Booking b
+            LEFT JOIN FETCH b.customer
+            LEFT JOIN FETCH b.vehicle
+            LEFT JOIN FETCH b.branch
+            LEFT JOIN FETCH b.slot
+            WHERE b.customer.customerId = :customerId
+            ORDER BY b.bookingDate DESC
+            """)
+    List<Booking> findByCustomerWithAssociations(@Param("customerId") Integer customerId);
+
     Page<Booking> findByCustomer_CustomerId(Integer customerId, Pageable pageable);
 
     Page<Booking> findByBranch_BranchId(Integer branchId, Pageable pageable);

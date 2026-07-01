@@ -12,8 +12,7 @@ const axiosClient = axios.create({
 
 axiosClient.interceptors.request.use(
   (config) => {
-    const token =
-      localStorage.getItem("token") || localStorage.getItem("accessToken");
+    const token = localStorage.getItem("token");
 
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -41,7 +40,6 @@ const processQueue = (error, token = null) => {
 
 function clearAuthStorage() {
   localStorage.removeItem("token");
-  localStorage.removeItem("accessToken");
   localStorage.removeItem("refreshToken");
   localStorage.removeItem("username");
   localStorage.removeItem("role");
@@ -50,8 +48,8 @@ function clearAuthStorage() {
 }
 
 function redirectToLogin() {
-  if (window.location.pathname !== "/login") {
-    window.location.href = "/login";
+  if (window.location.pathname !== "/auth/login") {
+    window.location.href = "/auth/login";
   }
 }
 
@@ -62,8 +60,7 @@ function isAuthPublicRequest(url = "") {
     url.includes("/auth/send-otp") ||
     url.includes("/auth/verify-otp") ||
     url.includes("/auth/google") ||
-    url.includes("/auth/forgot-password") ||
-    url.includes("/auth/reset-password")
+    url.includes("/auth/forgot-password")
   );
 }
 
@@ -129,7 +126,6 @@ axiosClient.interceptors.response.use(
         }
 
         localStorage.setItem("token", newAccessToken);
-        localStorage.setItem("accessToken", newAccessToken);
 
         if (newRefreshToken) {
           localStorage.setItem("refreshToken", newRefreshToken);
