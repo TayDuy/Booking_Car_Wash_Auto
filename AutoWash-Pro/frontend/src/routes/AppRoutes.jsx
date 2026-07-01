@@ -14,7 +14,7 @@ import RegisterPage from "../features/auth/pages/RegisterPage";
 import ForgotPasswordPage from "../features/auth/pages/ForgotPasswordPage";
 
 import HomePage from "../features/customer/pages/HomePage";
-import BookingHistoryPage from "../features/customer/pages/BookingHistoryPage";
+import BookingHistory from "../features/booking/pages/BookingHistory";
 import ProfilePage from "../features/customer/pages/ProfilePage";
 import CustomerNotificationPage from "../features/customer/pages/CustomerNotificationPage";
 import SupportPage from "../features/customer/pages/Helpcenter";
@@ -72,7 +72,7 @@ function AppRoutes() {
         <Route path="booking" element={<BookingPage />} />
         <Route path="booking/success" element={<BookingSuccessPage />} />
         <Route path="booking/:bookingId" element={<BookingDetailPage />} />
-        <Route path="history" element={<BookingHistoryPage />} />
+        <Route path="history" element={<BookingHistory />} />
         <Route path="promotions" element={<PromotionListPage />} />
         <Route path="profile" element={<ProfilePage />} />
         <Route path="notifications" element={<CustomerNotificationPage />} />
