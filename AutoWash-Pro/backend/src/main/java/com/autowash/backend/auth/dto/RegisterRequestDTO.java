@@ -28,7 +28,7 @@ public class RegisterRequestDTO {
     private String fullName;
 
     @NotBlank(message = "Số điện thoại không được để trống")
-    @Pattern(regexp = "^(0|\\+84)[0-9]{9}$",
+    @Pattern(regexp = "^(0|\\+84)[0-9]{9,10}$",
             message = "Số điện thoại không đúng định dạng (VD: 0912345678)")
     private String phone;
 

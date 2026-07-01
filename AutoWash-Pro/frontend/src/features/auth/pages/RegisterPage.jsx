@@ -1,11 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { register, sendOtp, verifyOtp } from "../../../api/authService";
+import { register, sendOtp, verifyOtp, saveAuth } from "../../../api/authService";
 import OtpInput from "../../../components/common/OtpInput";
+import useAuth from "../../../hooks/useAuth";
 import "./RegisterPage.css";
 
 function RegisterPage() {
   const navigate = useNavigate();
+  const auth = useAuth();
 
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
@@ -66,8 +68,12 @@ function RegisterPage() {
       setErrorMessage("Vui lòng nhập số điện thoại.");
       return;
     }
-    if (!formData.password.trim()) {
-      setErrorMessage("Vui lòng nhập mật khẩu.");
+    if (formData.password.length < 8) {
+      setErrorMessage("Mật khẩu phải có ít nhất 8 ký tự.");
+      return;
+    }
+    if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(formData.password)) {
+      setErrorMessage("Mật khẩu phải chứa ít nhất 1 chữ hoa, 1 chữ thường và 1 số.");
       return;
     }
     if (formData.password !== formData.confirmPassword) {
@@ -133,7 +139,7 @@ function RegisterPage() {
       await verifyOtp(formData.email, formData.otp);
 
       // 2. Gọi api đăng ký khi OTP đúng
-      await register(
+      const result = await register(
         formData.username,
         formData.password,
         formData.email,
@@ -141,8 +147,22 @@ function RegisterPage() {
         formData.phone
       );
 
-      alert("Đăng ký tài khoản thành công! Vui lòng đăng nhập.");
-      navigate("/auth/login");
+      saveAuth(result);
+      if (auth) {
+        auth.setToken(result.accessToken);
+        auth.setUser({
+          userId: result.user?.userId,
+          username: result.user?.username,
+          fullName: result.user?.fullName,
+          role: result.user?.role,
+          customerId: result.user?.customerId
+        });
+      }
+
+      setSuccessMessage("Đăng ký tài khoản thành công! Đang đăng nhập...");
+      setTimeout(() => {
+        navigate("/customer/home", { replace: true });
+      }, 1000);
     } catch (error) {
       const message =
         error.response?.data?.message ||

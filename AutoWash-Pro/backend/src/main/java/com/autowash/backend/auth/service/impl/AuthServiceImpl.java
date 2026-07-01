@@ -275,7 +275,7 @@ public class AuthServiceImpl implements AuthService {
 
     private String normalizePhone(String phone) {
         String trimmed = phone == null ? "" : phone.trim();
-        if (trimmed.startsWith("0") && trimmed.length() == 10) {
+        if (trimmed.startsWith("0") && (trimmed.length() == 10 || trimmed.length() == 11)) {
             return "+84" + trimmed.substring(1);
         }
         return trimmed;

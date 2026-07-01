@@ -59,8 +59,7 @@ function LoginPage() {
       });
     }
 
-    const savedToken =
-      localStorage.getItem("token") || localStorage.getItem("accessToken");
+    const savedToken = localStorage.getItem("token");
     const savedRole = localStorage.getItem("role");
 
     console.log("Saved token:", savedToken);
