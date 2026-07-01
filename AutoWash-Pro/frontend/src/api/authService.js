@@ -21,18 +21,19 @@ export async function register(username, password, email, fullName, phone) {
   return response.data.data;
 }
 
-export async function sendOtp(phone) {
+export async function sendOtp(email) {
   const response = await axiosClient.post("/auth/send-otp", {
-    phone,
+    email,
   });
 
   return response.data;
 }
 
-export async function verifyOtp(phone, otp) {
+export async function verifyOtp(email, otp, purpose = "GENERAL") {
   const response = await axiosClient.post("/auth/verify-otp", {
-    phone,
+    email,
     otp,
+    purpose,
   });
 
   return response.data;
@@ -56,20 +57,20 @@ export async function logoutFromServer() {
   }
 }
 
-export async function requestForgotPassword(phone) {
-    const respone = await axiosClient.post(`${API_URL}/forgot-password/request`, {
-        phone: phone,
-    });
-    return respone.data;
+export async function requestForgotPassword(email) {
+  const response = await axiosClient.post("/auth/forgot-password/request", {
+    email: email,
+  });
+  return response.data;
 }
 
-export async function resetForgotPassword(phone, otp, newPassword) {
-    const respone = await axiosClient.post(`${API_URL}/forgot-password/reset`, {
-        phone: phone,
-        otp: otp,
-        newPassword: newPassword,
-    });
-    return respone.data;
+export async function resetForgotPassword(email, otp, newPassword) {
+  const response = await axiosClient.post("/auth/forgot-password/reset", {
+    email: email,
+    otp: otp,
+    newPassword: newPassword,
+  });
+  return response.data;
 }
 
 export function saveAuth(result) {
@@ -80,10 +81,10 @@ export function saveAuth(result) {
   const user = result?.user || {};
 
   localStorage.setItem("token", accessToken);
-  localStorage.setItem("accessToken", accessToken);
   localStorage.setItem("refreshToken", refreshToken);
 
   localStorage.setItem("username", user?.username || "");
+  localStorage.setItem("fullName", user?.fullName || "");
   localStorage.setItem("role", String(user?.role || "").toUpperCase());
   localStorage.setItem("userId", user?.userId || "");
   localStorage.setItem("customerId", user?.customerId || "");
@@ -91,18 +92,16 @@ export function saveAuth(result) {
 
 export function logout() {
   localStorage.removeItem("token");
-  localStorage.removeItem("accessToken");
   localStorage.removeItem("refreshToken");
   localStorage.removeItem("username");
+  localStorage.removeItem("fullName");
   localStorage.removeItem("role");
   localStorage.removeItem("userId");
   localStorage.removeItem("customerId");
 }
 
 export function isLoggedIn() {
-  return Boolean(
-    localStorage.getItem("token") || localStorage.getItem("accessToken")
-  );
+  return Boolean(localStorage.getItem("token"));
 }
 
 export function getUsername() {
@@ -120,4 +119,3 @@ export function getUserId() {
 export function getCustomerId() {
   return localStorage.getItem("customerId");
 }
-

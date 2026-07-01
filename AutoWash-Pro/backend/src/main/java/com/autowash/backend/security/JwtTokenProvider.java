@@ -33,23 +33,25 @@ public class JwtTokenProvider {
      */
     public String generateToken(Authentication authentication) {
         CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
-        return buildToken(userDetails.getUsername(), userDetails.getId());
+        return buildToken(userDetails.getUsername(), userDetails.getId(), userDetails.getPassword());
     }
 
     /**
      * Tạo JWT token trực tiếp từ email + userId (dùng khi register xong tự động login).
      */
-    public String generateToken(String email, Integer userId) {
-        return buildToken(email, userId);
+    public String generateToken(String email, Integer userId, String passwordHash) {
+        return buildToken(email, userId, passwordHash);
     }
 
-    private String buildToken(String email, Integer userId) {
+    private String buildToken(String email, Integer userId, String passwordHash) {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + jwtExpirationMs);
+        String passwordSig = generatePasswordSignature(passwordHash);
 
         return Jwts.builder()
                 .subject(email)
                 .claim("userId", userId)
+                .claim("pwdSig", passwordSig)
                 .issuedAt(now)
                 .expiration(expiryDate)
                 .signWith(getSigningKey())
@@ -88,6 +90,34 @@ public class JwtTokenProvider {
             logger.error("JWT rỗng: {}", e.getMessage());
         }
         return false;
+    }
+
+    public String getPasswordSignatureFromToken(String token) {
+        try {
+            Claims claims = parseClaims(token);
+            return claims.get("pwdSig", String.class);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    public String generatePasswordSignature(String passwordHash) {
+        if (passwordHash == null) {
+            return "";
+        }
+        try {
+            java.security.MessageDigest digest = java.security.MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(passwordHash.getBytes(StandardCharsets.UTF_8));
+            StringBuilder hexString = new StringBuilder();
+            for (byte b : hash) {
+                String hex = Integer.toHexString(0xff & b);
+                if (hex.length() == 1) hexString.append('0');
+                hexString.append(hex);
+            }
+            return hexString.toString();
+        } catch (Exception e) {
+            return passwordHash;
+        }
     }
 
     private Claims parseClaims(String token) {

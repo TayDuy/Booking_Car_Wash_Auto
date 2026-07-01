@@ -1,52 +1,7 @@
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import "./PromotionListPage.css";
-
-const promotions = [
-  {
-    id: 1,
-    title: "Giảm 20% cho lần đặt lịch đầu tiên",
-    description:
-      "Áp dụng cho khách hàng mới khi đặt lịch rửa xe online qua WashFlow Pro.",
-    code: "NEW20",
-    discount: "20%",
-    expiredDate: "31/12/2026",
-    status: "available",
-    tag: "Khách hàng mới",
-  },
-  {
-    id: 2,
-    title: "Giảm 50.000đ cho gói rửa xe cao cấp",
-    description:
-      "Ưu đãi dành cho khách hàng sử dụng dịch vụ rửa xe cao cấp tại chi nhánh bất kỳ.",
-    code: "PREMIUM50",
-    discount: "50K",
-    expiredDate: "30/11/2026",
-    status: "available",
-    tag: "Rửa xe cao cấp",
-  },
-  {
-    id: 3,
-    title: "Tặng điểm thưởng thành viên",
-    description:
-      "Nhận thêm điểm loyalty khi hoàn tất booking và thanh toán thành công.",
-    code: "POINTX2",
-    discount: "x2 điểm",
-    expiredDate: "15/12/2026",
-    status: "available",
-    tag: "Loyalty",
-  },
-  {
-    id: 4,
-    title: "Combo chăm sóc nội thất",
-    description:
-      "Giảm giá khi đặt combo vệ sinh nội thất và khử mùi khoang xe.",
-    code: "INTERIOR15",
-    discount: "15%",
-    expiredDate: "20/10/2026",
-    status: "expired",
-    tag: "Combo",
-  },
-];
+import promotionApi from "../../../api/promotionApi";
 
 function getStatusLabel(status) {
   if (status === "available") {
@@ -57,6 +12,44 @@ function getStatusLabel(status) {
 }
 
 function PromotionListPage() {
+  const [promotions, setPromotions] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchPromotions = async () => {
+      try {
+        const res = await promotionApi.list();
+        if (res.data) {
+          // Map backend entities to frontend display model
+          const mapped = res.data.map(p => ({
+            id: p.promotionId || p.id,
+            title: p.title || p.name || "Khuyến mãi đặc biệt",
+            description: p.description || "Ưu đãi hấp dẫn từ WashFlow Pro dành cho bạn.",
+            code: p.code || "WFPVOUCHER",
+            discount: p.discountType === "PERCENT" ? `${p.value}%` : `${(p.value || 0).toLocaleString()}đ`,
+            expiredDate: p.endDate ? new Date(p.endDate).toLocaleDateString("vi-VN") : "Vô thời hạn",
+            status: p.status === "ACTIVE" ? "available" : "expired",
+            tag: p.vehicleType || "Tất cả xe",
+          }));
+          setPromotions(mapped);
+        }
+      } catch (err) {
+        console.error("Lỗi khi tải danh sách khuyến mãi:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchPromotions();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="promotion-page" style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "50vh" }}>
+        <div className="loading-spinner" style={{ border: "4px solid #f3f3f3", borderTop: "4px solid #0046c7", borderRadius: "50%", width: "40px", height: "40px", animation: "spin 1s linear infinite" }}></div>
+        <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
+      </div>
+    );
+  }
   return (
     <div className="promotion-page">
       <section className="promotion-hero">

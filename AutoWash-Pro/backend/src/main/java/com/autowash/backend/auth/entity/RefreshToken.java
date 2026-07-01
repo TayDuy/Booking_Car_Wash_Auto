@@ -17,7 +17,7 @@ public class RefreshToken {
     private Integer id;
 
     @OneToOne
-    @JoinColumn(name = "user_id", referencedColumnName = "user_id")
+    @JoinColumn(name = "user_id", referencedColumnName = "user_id", unique = true)
     private User user;
 
     //chuỗi token ngẫu nhiên, không được trùng lặp và không được phép null

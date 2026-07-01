@@ -3,13 +3,15 @@ import "./BookingPage.css";
 import {
   FaDroplet,
   FaCalendarDays,
-  FaCarSide
+  FaCarSide,
+  FaStore
 } from "react-icons/fa6";
 import {
   MdDirectionsCar,
   MdAirportShuttle
 } from "react-icons/md";
-import { createBooking } from "../../../api/bookingService";
+import bookingApi from "../../../api/bookingApi";
+import vehicleApi from "../../../api/vehicleApi";
 import { useNavigate } from "react-router-dom";
 import { getActiveServices } from "../../../api/servicePackageService";
 import { getBranches } from "../../../api/branchService";
@@ -20,7 +22,7 @@ const DEFAULT_SERVICES = [
     serviceId: 1,
     serviceName: "Gói Cơ Bản",
     basePrice: 350000,
-    imageUrl: "https://lh3.googleusercontent.com/aida/AP1WRLu0paW8-vyihBC1QtGpIREgGftVGqLPfl_B4JHyp6P4DxmKPxPip6boYICgifRpwilvyJkne_UZf3hxCwNfkPn40CXMxMySo2H4v-asx9ailbq1kiRZ76gUF21AWrhAHQycrOXXx9eCS9KbV8EE18bMjqcbRD5914eCyESZsOJ24u5QxwmC1RBl0atGZkOQkc7aXQqvz8kd3JKslVuRXR1weGyyMWPyw9ZkGOW7d4kSIn7D--iiqLV7Rw-1",
+    imageUrl: "https://images.unsplash.com/photo-1520340356584-f9917d1ecc6f?auto=format&fit=crop&w=800&q=80",
     features: ["Xà phòng pH trung tính", "Khăn Microfiber siêu thấm", "Làm khô khe kẽ bằng khí nén"],
     durationMinutes: 15,
     isPopular: false
@@ -29,7 +31,7 @@ const DEFAULT_SERVICES = [
     serviceId: 2,
     serviceName: "Gói Cao Cấp",
     basePrice: 750000,
-    imageUrl: "https://lh3.googleusercontent.com/aida/AP1WRLtsUQfoNHGvuu3_bYohhGOUlf19Bph-wu1Ool2o5TJ2KIby1rfNOE2SPm43MT6OuzVZSi0xDZ9dN0mTdQlt3jmruI217ptX3s3WMfFu8VvMXTqDrS0l2JBpjwfkhb98K0Lx1GFN2XzxfJPBFKf5mqmeE4ycJFrlHvMH-w2E7wH2GVo2yYnJD3oD7o64h9yf7Yuf1uswYAT41gFzoM5BP4_OlPOxKky-2cX4_4WYvelEePZ5n0tRGN1g1msF",
+    imageUrl: "https://images.unsplash.com/photo-1607860108855-64acf2078ed9?auto=format&fit=crop&w=800&q=80",
     features: ["Phủ bọt 3 lớp (Triple Foam)", "Dưỡng bóng lốp chuyên sâu", "Vệ sinh thảm lót chân"],
     durationMinutes: 30,
     isPopular: true
@@ -38,7 +40,7 @@ const DEFAULT_SERVICES = [
     serviceId: 3,
     serviceName: "Gói Kim Cương",
     basePrice: 1200000,
-    imageUrl: "https://lh3.googleusercontent.com/aida/AP1WRLvi63JYKFsTVq5PCclrSGMPU633IBo-lrUgh1E6Xp2vqE9HYeiRjKz_yFA8oU9J-Fb9mgnHbJCMkmG8C-JvTN1ea6B64ru350hHw13-A1781Ok7-nj3neGtdvI3fxjJPhVt7e954SZyxGzNlBBSSFiKLR1ThfHYu8CRVUtkHxIt-GlMAx3UmmbfEven2UP6GLkaq8ZgVDDKqLXM-yDcbsDL4gb2AVRZHpjw72wgiThQWQvMyJhKC7VtlmQz",
+    imageUrl: "https://images.unsplash.com/photo-1552930294-6b595f4c2974?auto=format&fit=crop&w=800&q=80",
     features: ["Wax Ceramic bảo vệ sơn", "Hút bụi & Vệ sinh nội thất", "Khử mùi diệt khuẩn chuyên sâu"],
     durationMinutes: 45,
     isPopular: false
@@ -74,6 +76,9 @@ export default function BookingPage() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());
 
+  const [savedVehicles, setSavedVehicles] = useState([]);
+  const [selectedVehicleId, setSelectedVehicleId] = useState("");
+
   const monthNames = [
     "Tháng 1", "Tháng 2", "Tháng 3", "Tháng 4", "Tháng 5", "Tháng 6",
     "Tháng 7", "Tháng 8", "Tháng 9", "Tháng 10", "Tháng 11", "Tháng 12"
@@ -83,8 +88,9 @@ export default function BookingPage() {
     const loadServices = async () => {
       try {
         const res = await getActiveServices();
-        if (res.data && res.data.length > 0) {
-          const merged = res.data.map((item, idx) => ({
+        const apiData = res.data?.data || res.data;
+        if (apiData && apiData.length > 0) {
+          const merged = apiData.map((item, idx) => ({
             ...item,
             imageUrl: DEFAULT_SERVICES[idx]?.imageUrl || DEFAULT_SERVICES[0].imageUrl,
             features: DEFAULT_SERVICES[idx]?.features || DEFAULT_SERVICES[0].features,
@@ -106,15 +112,35 @@ export default function BookingPage() {
     const loadBranches = async () => {
       try {
         const res = await getBranches();
-        if (res.data && res.data.length > 0) {
-          setBranches(res.data);
-          setSelectedBranch(res.data[0].branchId);
+        const apiData = res.data?.data || res.data;
+        if (apiData && apiData.length > 0) {
+          setBranches(apiData);
+          setSelectedBranch(apiData[0].branchId);
         }
       } catch (err) {
         console.log(err);
       }
     };
     loadBranches();
+
+    const loadSavedVehicles = async () => {
+      try {
+        const res = await vehicleApi.listMyVehicles();
+        const apiData = res.data?.data || res.data;
+        if (apiData && apiData.length > 0) {
+          setSavedVehicles(apiData);
+          // Preselect first vehicle
+          const firstVeh = apiData[0];
+          setSelectedVehicleId(firstVeh.vehicleId);
+          setLicensePlate(firstVeh.licensePlate);
+          setBrand(firstVeh.brand);
+          setVehicleType(firstVeh.vehicleType === "suv" || firstVeh.vehicleType === "7_seats" ? "7_seats" : "4_seats");
+        }
+      } catch (err) {
+        console.error("Lỗi khi tải danh sách xe của bạn:", err);
+      }
+    };
+    loadSavedVehicles();
   }, []);
 
   useEffect(() => {
@@ -195,7 +221,22 @@ export default function BookingPage() {
         note,
         details: [{ serviceId: selectedService, quantity: 1 }]
       };
-      await createBooking(bookingData);
+      await bookingApi.create(bookingData);
+
+      // Save bookingDraft to localStorage
+      const selectedBranchData = branches.find(b => b.branchId === selectedBranch);
+      const selectedServiceData = services.find(s => s.serviceId === selectedService);
+      const dateStr = selectedDate.toLocaleDateString("vi-VN");
+      const timeStr = selectedSlotData ? `${selectedSlotData.startTime}` : "Khung giờ đã chọn";
+
+      const draft = {
+        branch: { name: selectedBranchData ? selectedBranchData.name : "WashFlow Pro" },
+        service: { name: selectedServiceData ? selectedServiceData.serviceName : "Rửa xe" },
+        date: dateStr,
+        time: timeStr
+      };
+      localStorage.setItem("bookingDraft", JSON.stringify(draft));
+
       alert("Đặt lịch thành công!");
       navigate("/customer/booking/success");
     } catch (error) {
@@ -245,6 +286,35 @@ export default function BookingPage() {
                         </div>
                       </div>
                     </div>
+                ))}
+              </div>
+            </section>
+
+            {/* 1.5. CHỌN CHI NHÁNH */}
+            <section className="form-section-card">
+              <div className="section-title-wrapper">
+                <FaStore className="section-icon" />
+                <h3>1.5. Chọn chi nhánh</h3>
+              </div>
+              <div className="branches-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '16px', marginTop: '16px' }}>
+                {branches.map(b => (
+                  <div
+                    key={b.branchId}
+                    className={`branch-item-card ${selectedBranch === b.branchId ? "active-card" : ""}`}
+                    onClick={() => setSelectedBranch(b.branchId)}
+                    style={{
+                      padding: '16px',
+                      borderRadius: '12px',
+                      border: selectedBranch === b.branchId ? '2px solid #0046c7' : '1px solid #e2e8f0',
+                      backgroundColor: selectedBranch === b.branchId ? '#f8fafc' : '#ffffff',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                    }}
+                  >
+                    <h4 style={{ margin: '0 0 8px 0', color: '#0f172a', fontWeight: '700' }}>{b.name}</h4>
+                    <p style={{ margin: 0, fontSize: '13px', color: '#64748b' }}>{b.address}</p>
+                    {b.phone && <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#94a3b8' }}>📞 {b.phone}</p>}
+                  </div>
                 ))}
               </div>
             </section>
@@ -326,6 +396,49 @@ export default function BookingPage() {
                 <FaCarSide className="section-icon" />
                 <h3>3. Thông tin xe</h3>
               </div>
+
+              {savedVehicles.length > 0 && (
+                <div className="form-field-group" style={{ marginBottom: '20px', width: '100%' }}>
+                  <label style={{ fontWeight: '600', marginBottom: '8px', display: 'block' }}>Chọn từ xe đã lưu trong hồ sơ của bạn</label>
+                  <select
+                    value={selectedVehicleId}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setSelectedVehicleId(val);
+                      if (val === "new") {
+                        setLicensePlate("");
+                        setBrand("");
+                      } else {
+                        const veh = savedVehicles.find(v => v.vehicleId === parseInt(val, 10));
+                        if (veh) {
+                          setLicensePlate(veh.licensePlate);
+                          setBrand(veh.brand);
+                          setVehicleType(veh.vehicleType === "suv" || veh.vehicleType === "7_seats" ? "7_seats" : "4_seats");
+                        }
+                      }
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '12px 16px',
+                      borderRadius: '8px',
+                      border: '1px solid #e2e8f0',
+                      backgroundColor: '#ffffff',
+                      fontSize: '14px',
+                      color: '#0f172a',
+                      fontWeight: '500',
+                      outline: 'none'
+                    }}
+                  >
+                    {savedVehicles.map(v => (
+                      <option key={v.vehicleId} value={v.vehicleId}>
+                        {v.licensePlate} - {v.brand} ({v.vehicleType === "suv" || v.vehicleType === "7_seats" ? "Xe 7 chỗ" : "Xe 4 chỗ"})
+                      </option>
+                    ))}
+                    <option value="new">+ Nhập xe mới...</option>
+                  </select>
+                </div>
+              )}
+
               <div className="vehicle-inputs-row">
                 <div className="form-field-group">
                   <label>Biển số xe *</label>

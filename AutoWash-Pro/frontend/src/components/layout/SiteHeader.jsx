@@ -1,17 +1,22 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Bell, CircleHelp } from "lucide-react";
+import { Bell, CircleHelp, User, LayoutDashboard, Car, History, LogOut, Gift } from "lucide-react";
+import useAuth from "../../hooks/useAuth";
 import "./SiteHeader.css";
 
 export default function SiteHeader() {
   const navigate = useNavigate();
   const location = useLocation();
+  const auth = useAuth();
+  const user = auth?.user;
 
   const [isOpenNotification, setIsOpenNotification] = useState(false);
   const [isOpenSupport, setIsOpenSupport] = useState(false);
+  const [isOpenProfile, setIsOpenProfile] = useState(false);
 
   const notificationRef = useRef(null);
   const supportRef = useRef(null);
+  const profileRef = useRef(null);
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -25,11 +30,54 @@ export default function SiteHeader() {
       if (supportRef.current && !supportRef.current.contains(event.target)) {
         setIsOpenSupport(false);
       }
+
+      if (profileRef.current && !profileRef.current.contains(event.target)) {
+        setIsOpenProfile(false);
+      }
     }
 
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [notifications, setNotifications] = useState([]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const loadNotifications = async () => {
+      try {
+        const { countUnread, getUnread } = await import("../../api/notificationService");
+        const countRes = await countUnread();
+        setUnreadCount(countRes.count || 0);
+
+        const listRes = await getUnread();
+        setNotifications(listRes || []);
+      } catch (err) {
+        console.error("Lỗi lấy thông báo:", err);
+      }
+    };
+    loadNotifications();
+
+    let es;
+    const connectSSE = async () => {
+      try {
+        const { subscribeSSE } = await import("../../api/notificationService");
+        es = subscribeSSE((msg) => {
+          setUnreadCount((prev) => prev + 1);
+          setNotifications((prev) => [msg, ...prev]);
+        });
+      } catch (err) {
+        console.warn("SSE subscribe failed:", err);
+      }
+    };
+    connectSSE();
+
+    return () => {
+      if (es) es.close();
+    };
+  }, [user]);
 
   const isActive = (path) => location.pathname === path;
 
@@ -99,27 +147,88 @@ export default function SiteHeader() {
             onClick={() => {
               setIsOpenNotification(!isOpenNotification);
               setIsOpenSupport(false);
+              setIsOpenProfile(false);
             }}
           >
             <Bell size={18} strokeWidth={2} />
-            <span className="red-alert-dot"></span>
+            {unreadCount > 0 && <span className="red-alert-dot"></span>}
           </button>
 
           {isOpenNotification && (
             <div className="dropdown-popover-box alignment-right">
               <div className="popover-arrow"></div>
-              <div className="popover-header">Thông báo</div>
+              <div className="popover-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span>Thông báo</span>
+                {unreadCount > 0 && (
+                  <button 
+                    style={{ background: 'none', border: 'none', color: '#0046c7', fontSize: '11px', fontWeight: '600', cursor: 'pointer', padding: 0 }}
+                    onClick={async () => {
+                      try {
+                        const { markAllRead } = await import("../../api/notificationService");
+                        await markAllRead();
+                        setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+                        setUnreadCount(0);
+                      } catch (err) {
+                        console.error("Lỗi đánh dấu đọc tất cả:", err);
+                      }
+                    }}
+                  >
+                    Đọc tất cả
+                  </button>
+                )}
+              </div>
 
-              <div className="popover-body-content">
-                <div className="placeholder-item">
-                  <p>Hệ thống thông báo tự động sẵn sàng.</p>
-                  <span>Vừa xong</span>
-                </div>
+              <div className="popover-body-content" style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                {notifications.length > 0 ? (
+                  notifications.slice(0, 5).map((noti) => (
+                    <div 
+                      key={noti.notificationId || noti.id} 
+                      className={`placeholder-item ${noti.read ? "read-item" : "unread-item"}`}
+                      style={{ 
+                        cursor: "pointer", 
+                        borderBottom: "1px solid #f1f5f9", 
+                        padding: "10px 12px",
+                        backgroundColor: noti.read ? '#ffffff' : '#f8fafc',
+                        transition: 'background-color 0.2s'
+                      }}
+                      onClick={async () => {
+                        if (noti.read) return;
+                        try {
+                          const { markAsRead } = await import("../../api/notificationService");
+                          await markAsRead(noti.notificationId || noti.id);
+                          setNotifications(prev => prev.map(n => 
+                            (n.notificationId === noti.notificationId || n.id === noti.id) ? { ...n, read: true } : n
+                          ));
+                          setUnreadCount(prev => Math.max(0, prev - 1));
+                        } catch (err) {
+                          console.error("Lỗi đánh dấu đã đọc:", err);
+                        }
+                      }}
+                    >
+                      <p style={{ margin: "0 0 4px 0", fontSize: "13px", fontWeight: noti.read ? "normal" : "600", color: "#334155" }}>
+                        {noti.title}
+                      </p>
+                      <p style={{ margin: "0 0 4px 0", fontSize: "12px", color: "#64748b", lineHeight: '1.4' }}>
+                        {noti.content}
+                      </p>
+                      <span style={{ fontSize: "10px", color: "#94a3b8" }}>
+                        {noti.createdAt ? new Date(noti.createdAt).toLocaleString("vi-VN") : "Vừa xong"}
+                      </span>
+                    </div>
+                  ))
+                ) : (
+                  <div className="placeholder-item" style={{ padding: "20px", textAlign: "center", color: "#94a3b8", fontSize: "13px" }}>
+                    Không có thông báo mới.
+                  </div>
+                )}
               </div>
 
               <div
                 className="popover-footer-action"
-                onClick={() => navigate("/customer/notifications")}
+                onClick={() => {
+                  setIsOpenNotification(false);
+                  navigate("/customer/notifications");
+                }}
               >
                 Xem tất cả
               </div>
@@ -135,6 +244,7 @@ export default function SiteHeader() {
             onClick={() => {
               setIsOpenSupport(!isOpenSupport);
               setIsOpenNotification(false);
+              setIsOpenProfile(false);
             }}
           >
             <CircleHelp size={18} strokeWidth={2} />
@@ -162,12 +272,124 @@ export default function SiteHeader() {
           )}
         </div>
 
-        <div
-          className="profile-user-avatar"
-          onClick={() => navigate("/customer/profile")}
-          style={{ cursor: "pointer" }}
-        >
-          <img src="/car_avatar.png" alt="User Avatar" />
+        <div className="icon-popover-container" ref={profileRef}>
+          <div
+            className={`profile-user-avatar ${isOpenProfile ? "avatar-active" : ""}`}
+            onClick={() => {
+              setIsOpenProfile(!isOpenProfile);
+              setIsOpenNotification(false);
+              setIsOpenSupport(false);
+            }}
+            style={{ cursor: "pointer" }}
+          >
+            <img src="/car_avatar.png" alt="User Avatar" />
+          </div>
+
+          {isOpenProfile && (
+            <div className="dropdown-popover-box profile-dropdown alignment-right">
+              <div className="popover-arrow"></div>
+              
+              {/* User Card */}
+              <div className="profile-dropdown-card">
+                <div className="profile-dropdown-avatar">
+                  <img src="/car_avatar.png" alt="User Avatar" />
+                </div>
+                <div className="profile-dropdown-info">
+                  <div className="profile-dropdown-name">
+                    {user?.fullName || user?.username || "Khách Hàng"}
+                  </div>
+                  <div className="profile-dropdown-role">Thành viên</div>
+                </div>
+              </div>
+
+              <div 
+                className="profile-dropdown-view-btn"
+                onClick={() => {
+                  setIsOpenProfile(false);
+                  navigate("/customer/profile");
+                }}
+              >
+                <User size={16} />
+                <span>Xem trang cá nhân</span>
+              </div>
+
+              <div className="profile-dropdown-divider"></div>
+
+              {/* Menu Options */}
+              <div className="profile-dropdown-menu">
+                <div 
+                  className="profile-menu-item"
+                  onClick={() => {
+                    setIsOpenProfile(false);
+                    navigate("/customer/profile#personal-info");
+                    // Scroll to section helper
+                    const el = document.getElementById("personal-info");
+                    if (el) el.scrollIntoView({ behavior: "smooth" });
+                  }}
+                >
+                  <LayoutDashboard size={16} />
+                  <span>Bảng điều khiển</span>
+                </div>
+
+                <div 
+                  className="profile-menu-item"
+                  onClick={() => {
+                    setIsOpenProfile(false);
+                    navigate("/customer/profile#my-vehicles");
+                    const el = document.getElementById("my-vehicles");
+                    if (el) el.scrollIntoView({ behavior: "smooth" });
+                  }}
+                >
+                  <Car size={16} />
+                  <span>Xe của tôi</span>
+                </div>
+
+                <div 
+                  className="profile-menu-item"
+                  onClick={() => {
+                    setIsOpenProfile(false);
+                    navigate("/customer/history");
+                  }}
+                >
+                  <History size={16} />
+                  <span>Lịch sử rửa xe</span>
+                </div>
+
+                <div 
+                  className="profile-menu-item"
+                  onClick={() => {
+                    setIsOpenProfile(false);
+                    navigate("/customer/promotions");
+                  }}
+                >
+                  <Gift size={16} />
+                  <span>Ưu đãi của tôi</span>
+                </div>
+
+                <div 
+                  className="profile-menu-item logout-item"
+                  onClick={async () => {
+                    setIsOpenProfile(false);
+                    try {
+                      const { logoutFromServer } = await import("../../api/authService");
+                      await logoutFromServer();
+                    } catch (err) {
+                      console.error("Logout error:", err);
+                    }
+                    navigate("/auth/login");
+                  }}
+                >
+                  <LogOut size={16} />
+                  <span>Đăng xuất</span>
+                </div>
+              </div>
+
+              <div className="profile-dropdown-divider"></div>
+              <div className="profile-dropdown-footer">
+                Quyền riêng tư · Điều khoản · WashFlow © 2026
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </header>

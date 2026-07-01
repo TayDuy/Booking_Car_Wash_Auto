@@ -231,33 +231,6 @@ export default function CustomerNotificationPage() {
 
     return (
         <div className="cn-app">
-            <header className="cn-topbar">
-                <div className="cn-brand">
-                    <Waves size={20} />
-                    <span>WashFlow Pro</span>
-                </div>
-                <nav className="cn-topnav">
-                    {TOP_NAV.map(item => (
-                        <button
-                            key={item.label}
-                            className={`cn-topnav__link ${item.active ? "is-active" : ""}`}
-                            onClick={() => navigate(item.path)}
-                        >
-                            {item.label}
-                            {item.label === "Thông báo" && unreadTotal > 0 && (
-                                <span className="cn-badge">{unreadTotal}</span>
-                            )}
-                        </button>
-                    ))}
-                </nav>
-                <div className="cn-topbar__actions">
-                    <button className="cn-icon-btn" aria-label="Trợ giúp">
-                        <HelpCircle size={20} />
-                    </button>
-                    <div className="cn-avatar" />
-                </div>
-            </header>
-
             <div className="cn-body">
                 {/* ── Sidebar ── */}
                 <aside className="cn-sidebar">
@@ -332,20 +305,6 @@ export default function CustomerNotificationPage() {
                     )}
                 </main>
             </div>
-
-            {/* Footer */}
-            <footer className="global-footer-bar">
-                <div className="footer-brand-info">
-                    <h4>WashFlow Pro</h4>
-                    <p>© 2026 WashFlow Pro Automation. Tất cả quyền được bảo lưu.</p>
-                </div>
-                <div className="footer-nav-links">
-                    <a href="#">Liên hệ</a>
-                    <a href="#">Chính sách bảo mật</a>
-                    <a href="#">Điều khoản dịch vụ</a>
-                    <a href="#">Hỗ trợ</a>
-                </div>
-            </footer>
         </div>
     );
 }

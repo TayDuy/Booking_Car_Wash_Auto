@@ -6,20 +6,20 @@ import java.util.List;
 
 public interface BookingService {
 
-    BookingCreateResponseDTO createBooking(BookingCreateRequestDTO request);
+    BookingCreateResponseDTO createBooking(BookingCreateRequestDTO request, Integer userId);
 
-    BookingResponseDTO getBookingById(Integer bookingId);
+    BookingResponseDTO getBookingById(Integer bookingId, Integer userId);
 
     List<BookingSummaryResponseDTO> getAllBookings();
 
-    List<BookingSummaryResponseDTO> getBookingsByCustomer(Integer customerId);
+    List<BookingSummaryResponseDTO> getBookingsByCustomer(Integer customerId, Integer userId);
 
     BookingResponseDTO updateBooking(
             Integer bookingId,
             BookingUpdateRequestDTO request
     );
 
-    BookingResponseDTO cancelBooking(Integer bookingId);
+    BookingResponseDTO cancelBooking(Integer bookingId, Integer userId);
 
     BookingResponseDTO completeBooking(Integer bookingId);
 }

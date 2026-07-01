@@ -2,10 +2,12 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { login, loginWithGoogle, saveAuth } from "../../../api/authService";
 import { supabase } from "../../../api/supabaseClient";
+import useAuth from "../../../hooks/useAuth";
 import "./LoginPage.css";
 
 function LoginPage() {
   const navigate = useNavigate();
+  const auth = useAuth();
 
   const [formData, setFormData] = useState({
     username: "",
@@ -46,9 +48,18 @@ function LoginPage() {
     console.log("Login success result:", result);
 
     saveAuth(result);
+    if (auth) {
+      auth.setToken(result.accessToken);
+      auth.setUser({
+        userId: result.user?.userId,
+        username: result.user?.username,
+        fullName: result.user?.fullName,
+        role: result.user?.role,
+        customerId: result.user?.customerId
+      });
+    }
 
-    const savedToken =
-      localStorage.getItem("token") || localStorage.getItem("accessToken");
+    const savedToken = localStorage.getItem("token");
     const savedRole = localStorage.getItem("role");
 
     console.log("Saved token:", savedToken);
@@ -187,7 +198,9 @@ function LoginPage() {
       <div className="login-container">
         <section className="login-left">
           <div className="login-brand">
-            <div className="login-logo">♢</div>
+            <div className="login-logo">
+              <img src="/logo.png" alt="Logo" style={{ width: "85%", height: "auto" }} />
+            </div>
             <span>WashFlow Pro</span>
           </div>
 
@@ -227,7 +240,9 @@ function LoginPage() {
         <section className="login-right">
           <div className="login-form-wrapper">
             <div className="login-form-logo">
-              <div className="login-form-logo-box">♢</div>
+              <div className="login-form-logo-box">
+                <img src="/logo.png" alt="Logo" style={{ width: "80%", height: "auto", filter: "brightness(0) invert(1)" }} />
+              </div>
               <h1>WashFlow Pro</h1>
               <p>Sạch bóng từng centimet</p>
             </div>
