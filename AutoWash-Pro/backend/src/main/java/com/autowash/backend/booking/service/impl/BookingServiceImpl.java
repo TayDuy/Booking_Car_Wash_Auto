@@ -264,6 +264,9 @@ public class BookingServiceImpl implements BookingService {
     @Transactional
     public BookingResponseDTO cancelBooking(Integer bookingId, Integer userId) {
         Booking booking = findBookingOrThrow(bookingId);
+        if (!booking.isCancellable()) {
+            throw new BusinessException("Booking không thể hủy ở trạng thái hiện tại", HttpStatus.BAD_REQUEST);
+        }
         if (userId != null) {
             Customer customer = customerRepository.findByUser_Id(userId)
                     .orElseThrow(() -> new BusinessException("Không tìm thấy khách hàng", HttpStatus.FORBIDDEN));
