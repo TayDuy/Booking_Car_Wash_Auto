@@ -22,7 +22,7 @@ const ProfilePage = () => {
     dateOfBirth: '',
     totalPoints: 0,
     tierId: 1,
-    avatarUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCXSQBay_U_L9vWetD3mJfotQUlO6yUEOJW1H0ojUfAED_o7Cuzfdx0vFTj2tr8GAnduPBjO2Z7YJ4izpC33BqyGsAm3KFlcTTdcEtBUTyxiz19XYMXmBQMWjP8XRIpVc6jB2RvhVcW6EsJn_YyxlF0SsR8aCwM52zqMoS2noz1NKHv18JQ39LXT6JOrLOyMiMGzF5cKi7aX9mDF2kcenXqiwjRJQyNLvg-ORHpGeAI3BGPYkfIno4in-OyZAiCjst2p5trwwZAFlE_'
+    avatarUrl: '/car_avatar.png'
   });
 
   const [editForm, setEditForm] = useState({
@@ -70,7 +70,7 @@ const ProfilePage = () => {
 
         // Load vehicles (endpoint automatically checks current logged in user)
         try {
-          const vehRes = await vehicleApi.list();
+          const vehRes = await vehicleApi.listMyVehicles();
           if (vehRes.data) {
             setVehicles(vehRes.data);
           }
@@ -106,7 +106,7 @@ const ProfilePage = () => {
 
   const handleLogout = () => {
     logout();
-    navigate('/login');
+    navigate('/auth/login');
   };
 
   const handleSave = async () => {
@@ -240,56 +240,6 @@ const ProfilePage = () => {
 
   return (
     <div className="profile-page-wrapper">
-      {/* Sidebar Navigation Shell */}
-      <aside className="sidebar">
-        <div className="sidebar-header" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <img src="/logo.png" alt="Logo" style={{ height: '48px', width: 'auto' }} />
-          <h1 className="logo-text" style={{ fontSize: '20px' }}>WashFlow Pro</h1>
-        </div>
-        
-        <div className="sidebar-profile">
-          <div className="avatar-container">
-            <img alt="Ảnh đại diện" className="avatar-img" src="/car_avatar.png" />
-          </div>
-          <div className="profile-info">
-            <span className="profile-name">{user.fullName || user.username}</span>
-            <span className="profile-tier">Thành viên {getTierName(user.tierId)}</span>
-          </div>
-        </div>
-
-        <nav className="sidebar-nav">
-          <a className="nav-link" href="/booking" onClick={(e) => { e.preventDefault(); navigate('/booking'); }}>
-            <span className="material-symbols-outlined">dashboard</span>
-            Bảng điều khiển
-          </a>
-          <a className="nav-link" href="#vehicles" onClick={(e) => { e.preventDefault(); handleScrollTo('vehicles'); }}>
-            <span className="material-symbols-outlined">directions_car</span>
-            Xe của tôi
-          </a>
-          <a className="nav-link" href="#history" onClick={(e) => { e.preventDefault(); handleScrollTo('history'); }}>
-            <span className="material-symbols-outlined">history</span>
-            Lịch sử rửa xe
-          </a>
-          <a className="nav-link" href="#subscription" onClick={(e) => { e.preventDefault(); handleScrollTo('subscription'); }}>
-            <span className="material-symbols-outlined">payments</span>
-            Gói đăng ký
-          </a>
-          <a className="nav-link active" href="#personal-info" onClick={(e) => { e.preventDefault(); handleScrollTo('personal-info'); }}>
-            <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>settings</span>
-            Cài đặt
-          </a>
-          <a className="nav-link" href="#logout" onClick={(e) => { e.preventDefault(); handleLogout(); }}>
-            <span className="material-symbols-outlined">logout</span>
-            Đăng xuất
-          </a>
-
-          <button className="btn-book" onClick={() => navigate('/booking')}>
-            <span className="material-symbols-outlined icon-small">add</span>
-            Đặt lịch ngay
-          </button>
-        </nav>
-      </aside>
-
       {/* Main Content Area */}
       <main className="main-area">
         {/* Top App Bar */}
@@ -436,7 +386,7 @@ const ProfilePage = () => {
                     <span className="material-symbols-outlined text-primary">history</span>
                     Lịch sử đặt lịch
                   </h3>
-                  <button className="link-primary" onClick={() => navigate('/bookings')}>Xem tất cả</button>
+                  <button className="link-primary" onClick={() => navigate('/customer/history')}>Xem tất cả</button>
                 </div>
                 <div className="table-wrapper">
                   <table className="history-table">
