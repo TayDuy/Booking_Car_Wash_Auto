@@ -93,15 +93,14 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public LoginResponseDTO register(RegisterRequestDTO request) {
-        String normalizedUsername = request.getUsername().trim().toLowerCase();
         String normalizedEmail = request.getEmail().trim().toLowerCase();
         String normalizedPhone = normalizePhone(request.getPhone());
 
-        if (userRepository.existsByEmailIgnoreCase(normalizedEmail)) {
+        if (userRepository.existsByEmail(normalizedEmail)) {
             throw new BusinessException("Email '" + normalizedEmail + "' da duoc su dung");
         }
 
-        if (userRepository.existsByUsernameIgnoreCase(normalizedUsername)) {
+        if (userRepository.existsByUsername(request.getUsername())) {
             throw new BusinessException("Tai khoan '" + request.getUsername() + "' da duoc su dung");
         }
 
@@ -109,12 +108,12 @@ public class AuthServiceImpl implements AuthService {
             throw new BusinessException("So dien thoai '" + normalizedPhone + "' da duoc su dung");
         }
 
-        if (!otpService.isEmailVerified(normalizedEmail)) {
-            throw new BusinessException("Email chua duoc xac minh OTP");
+        if (!otpService.isPhoneVerified(normalizedPhone)) {
+            throw new BusinessException("So dien thoai chua duoc xac minh OTP");
         }
 
         User newUser = User.builder()
-                .username(normalizedUsername)
+                .username(request.getUsername())
                 .email(normalizedEmail)
                 .password(passwordEncoder.encode(request.getPassword()))
                 .phone(normalizedPhone)
@@ -216,30 +215,30 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    public void requestForgotPasswordOtp(String email, String requestIp) {
-        String normalizedEmail = normalizeEmail(email);
+    public void requestForgotPasswordOtp(String phone, String requestIp) {
+        String normalizedPhone = normalizePhone(phone);
 
-        if (userRepository.findByEmail(normalizedEmail).isEmpty()) {
+        if (findUserByPhone(normalizedPhone).isEmpty()) {
             return;
         }
 
-        otpService.sendOtp(normalizedEmail, OtpService.PURPOSE_PASSWORD_RESET, requestIp);
+        otpService.sendOtp(normalizedPhone, OtpService.PURPOSE_PASSWORD_RESET, requestIp);
     }
 
     @Override
     @Transactional
-    public void verifyAndResetPassword(String email, String otp, String newPassword) {
-        String normalizedEmail = normalizeEmail(email);
+    public void verifyAndResetPassword(String phone, String otp, String newPassword) {
+        String normalizedPhone = normalizePhone(phone);
 
-        User user = userRepository.findByEmail(normalizedEmail)
+        User user = findUserByPhone(normalizedPhone)
                 .orElseThrow(() -> new BusinessException("Khong tim thay nguoi dung", HttpStatus.NOT_FOUND));
 
-        otpService.verifyOtp(normalizedEmail, otp.trim(), OtpService.PURPOSE_PASSWORD_RESET);
+        otpService.verifyOtp(normalizedPhone, otp.trim(), OtpService.PURPOSE_PASSWORD_RESET);
 
         user.setPassword(passwordEncoder.encode(newPassword));
         userRepository.save(user);
         refreshTokenService.deleteByUserId(user.getId());
-        otpService.clearVerification(normalizedEmail, OtpService.PURPOSE_PASSWORD_RESET);
+        otpService.clearVerification(normalizedPhone, OtpService.PURPOSE_PASSWORD_RESET);
     }
 
     private LoginResponseDTO buildLoginResponse(String token, User user) {
@@ -273,15 +272,35 @@ public class AuthServiceImpl implements AuthService {
                 .build();
     }
 
+    private Optional<User> findUserByPhone(String phone) {
+        if (phone == null || phone.trim().isEmpty()) {
+            return Optional.empty();
+        }
+        String normalizedPhone = normalizePhone(phone.trim());
+
+        Optional<User> user = userRepository.findByPhone(normalizedPhone);
+        if (user.isPresent()) {
+            return user;
+        }
+
+        if (normalizedPhone.startsWith("+84") && normalizedPhone.length() == 12) {
+            String legacyFormat = "0" + normalizedPhone.substring(3);
+            if (!legacyFormat.equals(phone.trim())) {
+                user = userRepository.findByPhone(legacyFormat);
+                if (user.isPresent()) {
+                    return user;
+                }
+            }
+        }
+
+        return userRepository.findByPhone(phone.trim());
+    }
+
     private String normalizePhone(String phone) {
         String trimmed = phone == null ? "" : phone.trim();
         if (trimmed.startsWith("0") && trimmed.length() == 10) {
             return "+84" + trimmed.substring(1);
         }
         return trimmed;
-    }
-
-    private String normalizeEmail(String email) {
-        return email == null ? "" : email.trim().toLowerCase();
     }
 }
