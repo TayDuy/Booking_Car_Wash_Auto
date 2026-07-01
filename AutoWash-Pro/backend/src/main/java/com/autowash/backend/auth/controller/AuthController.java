@@ -116,7 +116,7 @@ public class AuthController {
 
     @PostMapping("/refresh")
     public ResponseEntity<ApiResponse<TokenRefreshResponseDTO>> refreshJwtToken(
-        @Valid @RequestBody TokenRefreshRequestDTO request
+            @Valid @RequestBody TokenRefreshRequestDTO request
     ){
         String requestRefreshToken = request.getRefreshToken();
 

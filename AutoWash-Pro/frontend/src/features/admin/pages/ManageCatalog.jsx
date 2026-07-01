@@ -8,10 +8,10 @@ import "./ManageCatalog.css";
 import "./AdminNotificationPage.css";
 
 // Import các API service ta đã cấu hình ở Bước 1
-import { getBranches, createBranch, updateBranch, deleteBranch } from "../../api/branchService";
-import { getBaysByBranch, createBay, updateBayStatus, deleteBay } from "../../api/washBayService";
-import { getAllServices, createService, updateService, deactivateService } from "../../api/servicePackageService";
-import { isLoggedIn, logout as clearAuth } from "../../api/authService";
+import { getBranches, createBranch, updateBranch, deleteBranch } from "../../../api/branchService";
+import { getBaysByBranch, createBay, updateBayStatus, deleteBay } from "../../../api/washBayService";
+import { getAllServices, createService, updateService, deactivateService } from "../../../api/servicePackageService";
+import { isLoggedIn, logout as clearAuth } from "../../../api/authService";
 
 // Khai báo menu điều hướng bên trái (Sidebar)
 const SIDEBAR_NAV = [
