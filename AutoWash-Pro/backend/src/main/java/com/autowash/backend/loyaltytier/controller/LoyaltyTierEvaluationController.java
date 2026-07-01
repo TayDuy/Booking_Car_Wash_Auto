@@ -56,7 +56,7 @@ public class LoyaltyTierEvaluationController {
      * Ở đây {customerId} là customer.customer_id, không phải account.user_id.
      */
     @PostMapping("/customers/{customerId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF', 'BRANCH_MANAGER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF', 'CUSTOMER')")
     public ResponseEntity<CustomerTierEvaluationResponseDTO> evaluateOneCustomer(
             @PathVariable Integer customerId
     ) {
