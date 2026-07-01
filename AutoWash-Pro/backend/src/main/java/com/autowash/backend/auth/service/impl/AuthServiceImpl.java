@@ -246,7 +246,9 @@ public class AuthServiceImpl implements AuthService {
         User user = userRepository.findByEmail(normalizedEmail)
                 .orElseThrow(() -> new BusinessException("Khong tim thay nguoi dung", HttpStatus.NOT_FOUND));
 
-        otpService.verifyOtp(normalizedEmail, otp.trim(), OtpService.PURPOSE_PASSWORD_RESET);
+        if (!otpService.isEmailVerified(normalizedEmail, OtpService.PURPOSE_PASSWORD_RESET)) {
+            otpService.verifyOtp(normalizedEmail, otp.trim(), OtpService.PURPOSE_PASSWORD_RESET);
+        }
 
         user.setPassword(passwordEncoder.encode(newPassword));
         userRepository.save(user);

@@ -15,6 +15,8 @@ public interface OtpService {
 
     boolean isEmailVerified(String email);
 
+    boolean isEmailVerified(String email, String purpose);
+
     void clearVerification(String email);
 
     void clearVerification(String email, String purpose);
