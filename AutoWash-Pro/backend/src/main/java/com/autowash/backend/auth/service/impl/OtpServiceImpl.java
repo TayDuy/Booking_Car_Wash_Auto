@@ -117,6 +117,11 @@ public class OtpServiceImpl implements OtpService {
     }
 
     @Override
+    public boolean isEmailVerified(String email, String purpose) {
+        return otpRepository.existsByEmailAndPurposeAndVerifiedTrue(normalizeEmail(email), normalizePurpose(purpose));
+    }
+
+    @Override
     @Transactional
     public void clearVerification(String email) {
         clearVerification(email, PURPOSE_GENERAL);
