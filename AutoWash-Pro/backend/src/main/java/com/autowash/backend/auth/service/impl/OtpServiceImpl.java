@@ -18,40 +18,38 @@ import java.time.LocalDateTime;
 public class OtpServiceImpl implements OtpService {
 
     private static final int OTP_MAX_ATTEMPTS = 5;
-    private static final int OTP_MAX_SENDS_PER_EMAIL = 5;
+    private static final int OTP_MAX_SENDS_PER_PHONE = 5;
     private static final int OTP_MAX_SENDS_PER_IP = 20;
     private static final int OTP_SEND_WINDOW_MINUTES = 15;
 
     private final OtpRepository otpRepository;
     private final PasswordEncoder passwordEncoder;
-    private final com.autowash.backend.mail.service.MailService mailService;
     private final SecureRandom secureRandom = new SecureRandom();
 
     @Value("${app.otp.log-code:false}")
     private boolean logOtpCode;
 
-    public OtpServiceImpl(OtpRepository otpRepository, PasswordEncoder passwordEncoder, com.autowash.backend.mail.service.MailService mailService) {
+    public OtpServiceImpl(OtpRepository otpRepository, PasswordEncoder passwordEncoder) {
         this.otpRepository = otpRepository;
         this.passwordEncoder = passwordEncoder;
-        this.mailService = mailService;
     }
 
     @Override
     @Transactional
-    public void sendOtp(String email) {
-        sendOtp(email, PURPOSE_GENERAL, null);
+    public void sendOtp(String phone) {
+        sendOtp(phone, PURPOSE_GENERAL, null);
     }
 
     @Override
     @Transactional
-    public void sendOtp(String email, String purpose, String requestIp) {
-        String normalizedEmail = normalizeEmail(email);
+    public void sendOtp(String phone, String purpose, String requestIp) {
+        String normalizedPhone = normalizePhone(phone);
         String normalizedPurpose = normalizePurpose(purpose);
-        checkSendRateLimit(normalizedEmail, normalizedPurpose, requestIp);
+        checkSendRateLimit(normalizedPhone, normalizedPurpose, requestIp);
 
         String otpCode = String.format("%06d", secureRandom.nextInt(1_000_000));
         OtpVerification otp = OtpVerification.builder()
-                .email(normalizedEmail)
+                .phone(normalizedPhone)
                 .otpCode(passwordEncoder.encode(otpCode))
                 .purpose(normalizedPurpose)
                 .verified(false)
@@ -61,30 +59,31 @@ public class OtpServiceImpl implements OtpService {
                 .build();
 
         otpRepository.save(otp);
-        mailService.sendOtpEmail(normalizedEmail, otpCode, normalizedPurpose);
 
+        System.out.println("========================================");
+        System.out.println("[MOCK SMS] send to: " + normalizedPhone + ", purpose: " + normalizedPurpose);
         if (logOtpCode) {
-            System.out.println("========================================");
-            System.out.println("OTP code for " + normalizedEmail + ": " + otpCode);
-            System.out.println("========================================");
+            System.out.println("OTP code: " + otpCode);
         }
+        System.out.println("Expires after 5 minutes");
+        System.out.println("========================================");
     }
 
     @Override
     @Transactional
-    public boolean verifyOtp(String email, String otp) {
-        return verifyOtp(email, otp, PURPOSE_GENERAL);
+    public boolean verifyOtp(String phone, String otp) {
+        return verifyOtp(phone, otp, PURPOSE_GENERAL);
     }
 
     @Override
     @Transactional
-    public boolean verifyOtp(String email, String otp, String purpose) {
-        String normalizedEmail = normalizeEmail(email);
+    public boolean verifyOtp(String phone, String otp, String purpose) {
+        String normalizedPhone = normalizePhone(phone);
         String normalizedPurpose = normalizePurpose(purpose);
 
         OtpVerification record = otpRepository
-                .findTopByEmailAndPurposeAndVerifiedFalseOrderByCreatedAtDesc(normalizedEmail, normalizedPurpose)
-                .orElseThrow(() -> new BusinessException("Khong tim thay ma OTP cho email nay"));
+                .findTopByPhoneAndPurposeAndVerifiedFalseOrderByCreatedAtDesc(normalizedPhone, normalizedPurpose)
+                .orElseThrow(() -> new BusinessException("Khong tim thay ma OTP cho so nay"));
 
         if (record.getExpiresAt().isBefore(LocalDateTime.now())) {
             throw new BusinessException("Ma OTP da het han, vui long gui lai");
@@ -111,26 +110,26 @@ public class OtpServiceImpl implements OtpService {
     }
 
     @Override
-    public boolean isEmailVerified(String email) {
-        return otpRepository.existsByEmailAndPurposeAndVerifiedTrue(normalizeEmail(email), PURPOSE_GENERAL);
+    public boolean isPhoneVerified(String phone) {
+        return otpRepository.existsByPhoneAndPurposeAndVerifiedTrue(normalizePhone(phone), PURPOSE_GENERAL);
     }
 
     @Override
     @Transactional
-    public void clearVerification(String email) {
-        clearVerification(email, PURPOSE_GENERAL);
+    public void clearVerification(String phone) {
+        clearVerification(phone, PURPOSE_GENERAL);
     }
 
     @Override
     @Transactional
-    public void clearVerification(String email, String purpose) {
-        otpRepository.deleteByEmailAndPurposeAndVerifiedTrue(normalizeEmail(email), normalizePurpose(purpose));
+    public void clearVerification(String phone, String purpose) {
+        otpRepository.deleteByPhoneAndPurposeAndVerifiedTrue(normalizePhone(phone), normalizePurpose(purpose));
     }
 
-    private void checkSendRateLimit(String email, String purpose, String requestIp) {
+    private void checkSendRateLimit(String phone, String purpose, String requestIp) {
         LocalDateTime since = LocalDateTime.now().minusMinutes(OTP_SEND_WINDOW_MINUTES);
 
-        if (otpRepository.countByEmailAndPurposeAndCreatedAtAfter(email, purpose, since) >= OTP_MAX_SENDS_PER_EMAIL) {
+        if (otpRepository.countByPhoneAndPurposeAndCreatedAtAfter(phone, purpose, since) >= OTP_MAX_SENDS_PER_PHONE) {
             throw new BusinessException("Ban da yeu cau OTP qua nhieu lan, vui long thu lai sau", HttpStatus.TOO_MANY_REQUESTS);
         }
 
@@ -144,7 +143,11 @@ public class OtpServiceImpl implements OtpService {
         return StringUtils.hasText(purpose) ? purpose.trim().toUpperCase() : PURPOSE_GENERAL;
     }
 
-    private String normalizeEmail(String email) {
-        return email == null ? "" : email.trim().toLowerCase();
+    private String normalizePhone(String phone) {
+        String trimmed = phone == null ? "" : phone.trim();
+        if (trimmed.startsWith("0") && trimmed.length() == 10) {
+            return "+84" + trimmed.substring(1);
+        }
+        return trimmed;
     }
 }
