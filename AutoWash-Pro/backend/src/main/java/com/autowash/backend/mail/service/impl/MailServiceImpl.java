@@ -11,6 +11,8 @@ import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
+import org.springframework.web.util.HtmlUtils;
+
 import java.math.BigDecimal;
 import java.text.NumberFormat;
 import java.time.LocalDate;
@@ -25,10 +27,19 @@ public class MailServiceImpl implements MailService {
 
     private final JavaMailSender mailSender;
 
+    @org.springframework.beans.factory.annotation.Value("${spring.mail.username}")
+    private String mailFrom;
+
+    @org.springframework.beans.factory.annotation.Value("${app.otp.log-code:false}")
+    private boolean logOtpCode;
+
     @Override
-    @Async
     public void sendOtpEmail(String toEmail, String otpCode, String purpose) {
-        log.info("Bắt đầu gửi email OTP bất đồng bộ đến {} - MÃ OTP THẬT: {}", toEmail, otpCode);
+        if (logOtpCode) {
+            log.info("Bắt đầu gửi email OTP đến {} - MÃ OTP THẬT: {}", toEmail, otpCode);
+        } else {
+            log.info("Bắt đầu gửi email OTP đến {}", toEmail);
+        }
         try {
             SimpleMailMessage message = new SimpleMailMessage();
             message.setTo(toEmail);
@@ -41,11 +52,15 @@ public class MailServiceImpl implements MailService {
                     otpCode, purpose
             );
             message.setText(content);
-            message.setFrom("no-reply@washflow.pro");
+            message.setFrom(mailFrom);
             mailSender.send(message);
             log.info("Đã gửi thành công email OTP đến {}", toEmail);
         } catch (Exception e) {
             log.error("Lỗi khi gửi email OTP đến {}: {}", toEmail, e.getMessage(), e);
+            throw new com.autowash.backend.common.exception.BusinessException(
+                "Gửi email OTP thất bại. Vui lòng kiểm tra lại địa chỉ email.",
+                org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR
+            );
         }
     }
 
@@ -70,7 +85,7 @@ public class MailServiceImpl implements MailService {
 
             helper.setTo(toEmail);
             helper.setSubject("Xác nhận đặt lịch thành công - WashFlow Pro");
-            helper.setFrom("no-reply@washflow.pro");
+            helper.setFrom(mailFrom);
 
             // Định dạng ngày: "Thứ Ba, 30/06/2026"
             DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("EEEE, dd/MM/yyyy", new Locale("vi", "VN"));
@@ -90,6 +105,12 @@ public class MailServiceImpl implements MailService {
             String formattedPrice = currencyFormatter.format(totalPrice);
 
             String ctaUrl = "http://localhost:5173/bookings";
+
+            String safeCustomerName = HtmlUtils.htmlEscape(customerName);
+            String safeBranchName = HtmlUtils.htmlEscape(branchName);
+            String safeBranchAddress = HtmlUtils.htmlEscape(branchAddress);
+            String safeServiceName = HtmlUtils.htmlEscape(serviceName);
+            String safeBookingCode = HtmlUtils.htmlEscape(bookingCode);
 
             String htmlContent = String.format(
                 "<!DOCTYPE html>" +
@@ -237,15 +258,15 @@ public class MailServiceImpl implements MailService {
                 "  </table>" +
                 "</body>" +
                 "</html>",
-                customerName,
+                safeCustomerName,
                 formattedTime,
                 formattedDate,
-                branchName,
-                branchAddress,
-                serviceName,
+                safeBranchName,
+                safeBranchAddress,
+                safeServiceName,
                 formattedPrice,
                 ctaUrl,
-                bookingCode
+                safeBookingCode
             );
 
             helper.setText(htmlContent, true);
