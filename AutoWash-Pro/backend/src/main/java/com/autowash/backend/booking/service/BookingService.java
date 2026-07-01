@@ -6,7 +6,7 @@ import java.util.List;
 
 public interface BookingService {
 
-    BookingCreateResponseDTO createBooking(BookingCreateRequestDTO request);
+    BookingCreateResponseDTO createBooking(BookingCreateRequestDTO request, Integer userId);
 
     BookingResponseDTO getBookingById(Integer bookingId, Integer userId);
 

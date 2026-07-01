@@ -1,5 +1,6 @@
 package com.autowash.backend.branch.controller;
 
+import com.autowash.backend.common.dto.ApiResponse;
 import com.autowash.backend.branch.dto.BranchRequestDTO;
 import com.autowash.backend.branch.dto.BranchResponseDTO;
 import com.autowash.backend.branch.entity.Branch.BranchStatus;
@@ -15,18 +16,6 @@ import java.util.List;
 
 /**
  * REST Controller xử lý các HTTP request liên quan đến Chi nhánh (Branch).
- *
- * <p>Base URL: {@code /api/v1/branches}</p>
- *
- * <h3>Danh sách endpoints:</h3>
- * <pre>
- * GET    /api/v1/branches                  Lấy danh sách chi nhánh (filter theo ?status=)
- * GET    /api/v1/branches/{id}             Lấy chi tiết một chi nhánh
- * POST   /api/v1/branches                  Tạo chi nhánh mới (Admin only)
- * PUT    /api/v1/branches/{id}             Cập nhật thông tin chi nhánh (Admin only)
- * PATCH  /api/v1/branches/{id}/status      Đổi trạng thái chi nhánh (Admin only)
- * DELETE /api/v1/branches/{id}             Soft delete - chuyển sang CLOSED (Admin only)
- * </pre>
  */
 @RestController
 @RequestMapping("/api/v1/branches")
@@ -35,101 +24,58 @@ public class BranchController {
 
     private final BranchService branchService;
 
-    // ====================================================================
-    //  GET /api/v1/branches?status=open  — Ai cũng xem được
-    // ====================================================================
-
     /**
-     * Lấy danh sách chi nhánh (khách hàng cần xem để chọn chỗ đặt lịch).
-     *
-     * @param status (optional) lọc theo trạng thái; null = lấy tất cả
-     * @return 200 OK + danh sách DTO
+     * Lấy danh sách chi nhánh.
      */
     @GetMapping
-    public ResponseEntity<List<BranchResponseDTO>> getAll(
+    public ResponseEntity<ApiResponse<List<BranchResponseDTO>>> getAll(
             @RequestParam(required = false) BranchStatus status) {
-        return ResponseEntity.ok(branchService.findAll(status));
+        return ResponseEntity.ok(ApiResponse.success(branchService.findAll(status)));
     }
-
-    // ====================================================================
-    //  GET /api/v1/branches/{id}  — Ai cũng xem được
-    // ====================================================================
 
     /**
      * Lấy chi tiết một chi nhánh theo ID.
-     *
-     * @param id ID của chi nhánh cần tra cứu
-     * @return 200 OK + DTO chi tiết | 404 Not Found
      */
     @GetMapping("/{id}")
-    public ResponseEntity<BranchResponseDTO> getById(@PathVariable Integer id) {
-        return ResponseEntity.ok(branchService.findById(id));
+    public ResponseEntity<ApiResponse<BranchResponseDTO>> getById(@PathVariable Integer id) {
+        return ResponseEntity.ok(ApiResponse.success(branchService.findById(id)));
     }
-
-    // ====================================================================
-    //  POST /api/v1/branches  — Chỉ Admin
-    // ====================================================================
 
     /**
      * Tạo chi nhánh mới.
-     *
-     * @return 201 Created + DTO chi nhánh vừa tạo | 400 Bad Request | 409 Conflict
-     * @PreAuthorize: Chặn ngay tại đây nếu token không phải Admin → 403 Forbidden
      */
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
-    public ResponseEntity<BranchResponseDTO> create(
+    public ResponseEntity<ApiResponse<BranchResponseDTO>> create(
             @Valid @RequestBody BranchRequestDTO request) {
         BranchResponseDTO created = branchService.create(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(created);
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(created));
     }
-
-    // ====================================================================
-    //  PUT /api/v1/branches/{id}  — Chỉ Admin
-    // ====================================================================
 
     /**
      * Cập nhật thông tin chi nhánh.
-     *
-     * @return 200 OK + DTO sau khi cập nhật | 404 Not Found
-     * @PreAuthorize: Chặn ngay tại đây nếu token không phải Admin → 403 Forbidden
      */
     @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{id}")
-    public ResponseEntity<BranchResponseDTO> update(
+    public ResponseEntity<ApiResponse<BranchResponseDTO>> update(
             @PathVariable Integer id,
             @Valid @RequestBody BranchRequestDTO request) {
-        return ResponseEntity.ok(branchService.update(id, request));
+        return ResponseEntity.ok(ApiResponse.success(branchService.update(id, request)));
     }
-
-    // ====================================================================
-    //  PATCH /api/v1/branches/{id}/status  — Chỉ Admin
-    // ====================================================================
 
     /**
      * Thay đổi trạng thái hoạt động của chi nhánh.
-     *
-     * @return 200 OK + DTO sau khi đổi trạng thái | 404 Not Found
-     * @PreAuthorize: Chặn ngay tại đây nếu token không phải Admin → 403 Forbidden
-     * Ví dụ: PATCH /api/v1/branches/3/status?status=maintenance
      */
     @PreAuthorize("hasRole('ADMIN')")
     @PatchMapping("/{id}/status")
-    public ResponseEntity<BranchResponseDTO> changeStatus(
+    public ResponseEntity<ApiResponse<BranchResponseDTO>> changeStatus(
             @PathVariable Integer id,
             @RequestParam BranchStatus status) {
-        return ResponseEntity.ok(branchService.changeStatus(id, status));
+        return ResponseEntity.ok(ApiResponse.success(branchService.changeStatus(id, status)));
     }
 
-    // ====================================================================
-    //  DELETE /api/v1/branches/{id}  — Chỉ Admin
-    // ====================================================================
-
     /**
-     * Soft delete chi nhánh (chuyển status về CLOSED, không xóa khỏi DB).
-     *
-     * @return 204 No Content khi thành công | 404 Not Found
-     * @PreAuthorize: Chặn ngay tại đây nếu token không phải Admin → 403 Forbidden
+     * Soft delete chi nhánh.
      */
     @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{id}")

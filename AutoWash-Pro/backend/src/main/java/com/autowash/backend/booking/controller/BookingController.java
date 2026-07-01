@@ -62,11 +62,12 @@ public class BookingController {
     @PostMapping("/bookings")
     @PreAuthorize("hasRole('CUSTOMER')")
     public ResponseEntity<BookingCreateResponseDTO> createBooking(
-            @Valid @RequestBody BookingCreateRequestDTO request
+            @Valid @RequestBody BookingCreateRequestDTO request,
+            @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
 
         BookingCreateResponseDTO response =
-                bookingService.createBooking(request);
+                bookingService.createBooking(request, userDetails.getId());
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)
