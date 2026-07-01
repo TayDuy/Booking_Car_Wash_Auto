@@ -131,7 +131,6 @@ export default function BookingHistory() {
   // ══════════════════════════════════════════════════════════════
   return (
     <div className="bh-page">
-      <SiteHeader />
 
       <div className="bh-container">
 
@@ -446,19 +445,6 @@ export default function BookingHistory() {
         </div>
       )}
 
-      {/* Footer */}
-      <footer className="global-footer-bar">
-        <div className="footer-brand-info">
-          <h4>WashFlow Pro</h4>
-          <p>© 2026 WashFlow Pro Automation. Tất cả quyền được bảo lưu.</p>
-        </div>
-        <div className="footer-nav-links">
-          <a href="#">Liên hệ</a>
-          <a href="#">Chính sách bảo mật</a>
-          <a href="#">Điều khoản dịch vụ</a>
-          <a href="#">Hỗ trợ</a>
-        </div>
-      </footer>
     </div>
   );
 }
