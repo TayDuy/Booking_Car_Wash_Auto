@@ -48,8 +48,8 @@ function clearAuthStorage() {
 }
 
 function redirectToLogin() {
-  if (window.location.pathname !== "/login") {
-    window.location.href = "/login";
+  if (window.location.pathname !== "/auth/login") {
+    window.location.href = "/auth/login";
   }
 }
 
