@@ -53,6 +53,7 @@ function LoginPage() {
       auth.setUser({
         userId: result.user?.userId,
         username: result.user?.username,
+        fullName: result.user?.fullName,
         role: result.user?.role,
         customerId: result.user?.customerId
       });

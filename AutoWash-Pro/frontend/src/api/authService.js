@@ -84,6 +84,7 @@ export function saveAuth(result) {
   localStorage.setItem("refreshToken", refreshToken);
 
   localStorage.setItem("username", user?.username || "");
+  localStorage.setItem("fullName", user?.fullName || "");
   localStorage.setItem("role", String(user?.role || "").toUpperCase());
   localStorage.setItem("userId", user?.userId || "");
   localStorage.setItem("customerId", user?.customerId || "");
@@ -94,6 +95,7 @@ export function logout() {
   localStorage.removeItem("accessToken");
   localStorage.removeItem("refreshToken");
   localStorage.removeItem("username");
+  localStorage.removeItem("fullName");
   localStorage.removeItem("role");
   localStorage.removeItem("userId");
   localStorage.removeItem("customerId");
