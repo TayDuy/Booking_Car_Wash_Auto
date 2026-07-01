@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import "./UnauthorizedPage.css";
+import "./Unauthorized.css";
 
 function UnauthorizedPage() {
   return (

@@ -47,6 +47,9 @@ function AppRoutes() {
       {/* Landing page */}
       <Route path="/" element={<LandingPage />} />
 
+      {/* Unauthorized page */}
+      <Route path="/unauthorized" element={<UnauthorizedPage />} />
+
       {/* Auth routes */}
       <Route path="/auth" element={<AuthLayout />}>
         <Route index element={<Navigate to="login" replace />} />
