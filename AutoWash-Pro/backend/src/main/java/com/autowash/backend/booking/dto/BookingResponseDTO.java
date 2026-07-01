@@ -30,6 +30,9 @@ public class BookingResponseDTO {
     private LocalDateTime startTime;
     private LocalDateTime endTime;
     private String note;
+    private LocalDateTime checkInAt;
+    private LocalDateTime completedAt;
+    private Boolean loyaltyPointGranted;
     private LocalDateTime updatedAt;
     private BigDecimal totalAmount;         // sum(subTotal) từ BookingDetail
 

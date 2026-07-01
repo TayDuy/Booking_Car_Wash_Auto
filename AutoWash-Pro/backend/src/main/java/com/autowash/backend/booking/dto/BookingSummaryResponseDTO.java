@@ -23,6 +23,9 @@ public class BookingSummaryResponseDTO {
     private String bookingCode;
     private LocalDateTime bookingDate;
     private BookingStatus status;
+    private LocalDateTime checkInAt;
+    private LocalDateTime completedAt;
+    private Boolean loyaltyPointGranted;
 
     private String customerName;
     private String licensePlate;            // đổi từ vehiclePlateNumber cho đồng nhất với Mapper
