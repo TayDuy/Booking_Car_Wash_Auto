@@ -23,8 +23,8 @@ public class OtpVerification {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    @Column(nullable = false, length = 100)
-    private String email;
+    @Column(nullable = false, length = 15)
+    private String phone;
 
     @Column(name = "otp_code", nullable = false, length = 100)
     private String otpCode;
