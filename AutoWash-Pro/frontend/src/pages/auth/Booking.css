@@ -441,6 +441,76 @@
     border-color: var(--accent-color);
     box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.08);
 }
+/* Gợi ý xe cũ / số điện thoại — dropdown autocomplete gắn ngay trong ô nhập */
+.input-suggest-wrapper {
+    position: relative;
+}
+
+.input-suggest-dropdown {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    right: 0;
+    background: #ffffff;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
+    z-index: 20;
+    overflow: hidden;
+    padding: 6px;
+}
+
+.input-suggest-heading {
+    font-size: 12px;
+    font-weight: 600;
+    color: #94a3b8;
+    padding: 6px 10px 4px;
+}
+
+.input-suggest-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 10px;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-main);
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.15s ease;
+}
+
+.input-suggest-item:hover {
+    background: #eff6ff;
+}
+
+.input-suggest-item-active {
+    background: #eff6ff;
+    color: var(--accent-color);
+}
+
+.suggest-item-icon {
+    color: var(--accent-color);
+    flex-shrink: 0;
+}
+
+.suggest-item-tag {
+    margin-left: auto;
+    font-size: 12px;
+    font-weight: 600;
+    color: #94a3b8;
+}
+
+.input-suggest-empty {
+    padding: 12px 10px;
+    font-size: 13px;
+    color: #94a3b8;
+    text-align: center;
+}
 
 /* Nút chuyển đổi (Segmented Control) thay thế thẻ select */
 .vehicle-type-segmented-control {

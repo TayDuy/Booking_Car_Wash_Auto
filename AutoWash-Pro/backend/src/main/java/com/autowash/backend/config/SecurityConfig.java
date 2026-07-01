@@ -96,7 +96,12 @@ public class SecurityConfig {
                                 "/api/v1/auth/forgot-password/request",    // Gửi OTP quên mật khẩu
                                 "/api/v1/auth/forgot-password/reset",      // Đặt lại mật khẩu mới
                                 "/swagger-ui/**",                          // Swagger UI (chỉ dùng khi dev/test)
-                                "/v3/api-docs/**"                          // OpenAPI spec (chỉ dùng khi dev/test)
+                                "/v3/api-docs/**",                         // OpenAPI spec (chỉ dùng khi dev/test)
+
+                                // VNPAY gọi callback trực tiếp (server-to-server hoặc redirect trình duyệt),
+                                // KHÔNG mang theo JWT của user nên phải để public, nếu không sẽ luôn bị 401.
+                                "/api/v1/payments/vnpay-return",
+                                "/api/v1/payments/vnpay-ipn"
                         ).permitAll()
 
                         // ─── Admin only ────────────────────────────────────────────────────
