@@ -80,7 +80,6 @@ export function saveAuth(result) {
   const user = result?.user || {};
 
   localStorage.setItem("token", accessToken);
-  localStorage.setItem("accessToken", accessToken);
   localStorage.setItem("refreshToken", refreshToken);
 
   localStorage.setItem("username", user?.username || "");
@@ -92,7 +91,6 @@ export function saveAuth(result) {
 
 export function logout() {
   localStorage.removeItem("token");
-  localStorage.removeItem("accessToken");
   localStorage.removeItem("refreshToken");
   localStorage.removeItem("username");
   localStorage.removeItem("fullName");
@@ -102,9 +100,7 @@ export function logout() {
 }
 
 export function isLoggedIn() {
-  return Boolean(
-    localStorage.getItem("token") || localStorage.getItem("accessToken")
-  );
+  return Boolean(localStorage.getItem("token"));
 }
 
 export function getUsername() {

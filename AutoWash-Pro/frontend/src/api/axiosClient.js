@@ -12,8 +12,7 @@ const axiosClient = axios.create({
 
 axiosClient.interceptors.request.use(
   (config) => {
-    const token =
-      localStorage.getItem("token") || localStorage.getItem("accessToken");
+    const token = localStorage.getItem("token");
 
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -41,7 +40,6 @@ const processQueue = (error, token = null) => {
 
 function clearAuthStorage() {
   localStorage.removeItem("token");
-  localStorage.removeItem("accessToken");
   localStorage.removeItem("refreshToken");
   localStorage.removeItem("username");
   localStorage.removeItem("role");
@@ -129,7 +127,6 @@ axiosClient.interceptors.response.use(
         }
 
         localStorage.setItem("token", newAccessToken);
-        localStorage.setItem("accessToken", newAccessToken);
 
         if (newRefreshToken) {
           localStorage.setItem("refreshToken", newRefreshToken);
