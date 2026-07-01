@@ -32,7 +32,9 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -210,9 +212,8 @@ public class BookingServiceImpl implements BookingService {
     @Override
     @Transactional(readOnly = true)
     public List<BookingSummaryResponseDTO> getAllBookings() {
-        return bookingRepository.findAll().stream()
-                .map(b -> bookingMapper.toSummaryResponse(b, bookingDetailRepository.findByBooking(b)))
-                .collect(Collectors.toList());
+        List<Booking> bookings = bookingRepository.findAllWithAssociations();
+        return mapToSummaryResponses(bookings);
     }
 
     /** Lấy danh sách booking theo customer, sắp xếp mới nhất trước. */
@@ -226,8 +227,21 @@ public class BookingServiceImpl implements BookingService {
                 throw new BusinessException("Bạn không có quyền truy cập danh sách đặt lịch này", HttpStatus.FORBIDDEN);
             }
         }
-        return bookingRepository.findByCustomer_CustomerIdOrderByBookingDateDesc(customerId).stream()
-                .map(b -> bookingMapper.toSummaryResponse(b, bookingDetailRepository.findByBooking(b)))
+        List<Booking> bookings = bookingRepository.findByCustomerWithAssociations(customerId);
+        return mapToSummaryResponses(bookings);
+    }
+
+    private List<BookingSummaryResponseDTO> mapToSummaryResponses(List<Booking> bookings) {
+        if (bookings.isEmpty()) {
+            return Collections.emptyList();
+        }
+        List<Integer> bookingIds = bookings.stream().map(Booking::getBookingId).toList();
+        List<BookingDetail> details = bookingDetailRepository.findByBooking_BookingIdIn(bookingIds);
+        Map<Integer, List<BookingDetail>> detailsMap = details.stream()
+                .collect(Collectors.groupingBy(d -> d.getBooking().getBookingId()));
+
+        return bookings.stream()
+                .map(b -> bookingMapper.toSummaryResponse(b, detailsMap.getOrDefault(b.getBookingId(), Collections.emptyList())))
                 .collect(Collectors.toList());
     }
 
