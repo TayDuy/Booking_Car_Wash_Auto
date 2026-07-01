@@ -81,7 +81,7 @@ function ForgotPassword() {
     setSuccessMessage("");
 
     try {
-      await verifyOtp(email.trim(), otp.trim());
+      await verifyOtp(email.trim(), otp.trim(), "PASSWORD_RESET");
       setOtpVerified(true);
       setSuccessMessage("Xác thực OTP thành công. Vui lòng đặt mật khẩu mới.");
     } catch (error) {
