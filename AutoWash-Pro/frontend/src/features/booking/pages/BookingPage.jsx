@@ -5,11 +5,14 @@ import {
   FaCalendarDays,
   FaCarSide
 } from "react-icons/fa6";
+import { FaPhoneAlt } from "react-icons/fa";
 import {
   MdDirectionsCar,
   MdAirportShuttle
 } from "react-icons/md";
 import { createBooking } from "../../../api/bookingService";
+import customerApi from "../../../api/customerApi";
+import vehicleApi from "../../../api/vehicleApi";
 import { useNavigate } from "react-router-dom";
 import { getActiveServices } from "../../../api/servicePackageService";
 import { getBranches } from "../../../api/branchService";
@@ -45,22 +48,12 @@ const DEFAULT_SERVICES = [
   }
 ];
 
-const MOCK_SLOTS_DATA = [
-  { slotId: 101, startTime: "09:00 sáng", statusType: "ECO", statusLabel: "GIỜ ECO", available: true },
-  { slotId: 102, startTime: "09:30 sáng", statusType: "NORMAL", statusLabel: "Còn 3 chỗ", available: true },
-  { slotId: 103, startTime: "10:00 sáng", statusType: "NORMAL", statusLabel: "Còn 2 chỗ", available: true },
-  { slotId: 104, startTime: "10:30 sáng", statusType: "PEAK", statusLabel: "GIỜ CAO ĐIỂM", available: true },
-  { slotId: 105, startTime: "11:00 sáng", statusType: "NORMAL", statusLabel: "Còn 1 chỗ", available: true },
-  { slotId: 106, startTime: "11:30 sáng", statusType: "FULL", statusLabel: "Hết chỗ", available: false },
-  { slotId: 107, startTime: "12:00 sáng", available: true },
-  { slotId: 108, startTime: "12:30 trưa", available: true },
-];
-
 export default function BookingPage() {
   const navigate = useNavigate();
   const [services, setServices] = useState([]);
   const [branches, setBranches] = useState([]);
   const [slots, setSlots] = useState([]);
+  const [slotsError, setSlotsError] = useState(null);
 
   const [selectedBranch, setSelectedBranch] = useState(null);
   const [vehicleType, setVehicleType] = useState("4_seats");
@@ -69,6 +62,14 @@ export default function BookingPage() {
   const [selectedTime, setSelectedTime] = useState(null);
   const [licensePlate, setLicensePlate] = useState("");
   const [brand, setBrand] = useState("");
+  const [savedVehicles, setSavedVehicles] = useState([]);
+  const [selectedVehicleId, setSelectedVehicleId] = useState(null);
+  const [fullName, setFullName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [profileData, setProfileData] = useState(null);
+  const [phoneSuggestions, setPhoneSuggestions] = useState([]);
+  const [showVehicleSuggest, setShowVehicleSuggest] = useState(false);
+  const [showPhoneSuggest, setShowPhoneSuggest] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("online");
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -78,6 +79,33 @@ export default function BookingPage() {
     "Tháng 1", "Tháng 2", "Tháng 3", "Tháng 4", "Tháng 5", "Tháng 6",
     "Tháng 7", "Tháng 8", "Tháng 9", "Tháng 10", "Tháng 11", "Tháng 12"
   ];
+
+  // Backend lưu vehicleType là car/suv/truck, UI chỉ có 2 lựa chọn 4_seats/7_seats
+  const mapVehicleTypeToUi = (backendType) => {
+    if (backendType === "suv" || backendType === "truck") return "7_seats";
+    return "4_seats";
+  };
+
+  // Format ngày theo giờ ĐỊA PHƯƠNG (yyyy-MM-dd), KHÔNG dùng toISOString().
+  // Lý do: toISOString() convert Date sang UTC. Với VN (UTC+7), 00:00 giờ VN
+  // ngày X = 17:00 UTC ngày (X-1) → toISOString() trả về sai lệch 1 ngày,
+  // khiến FE query slot cho ngày (X-1) thay vì ngày X đã chọn, gây ra lỗi
+  // "ngày có slot nhưng lại báo không có khung giờ trống".
+  const formatDateLocal = (date) => {
+    const year = date.getFullYear();
+    const month = (date.getMonth() + 1).toString().padStart(2, "0");
+    const day = date.getDate().toString().padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
+  const applyVehicle = (vehicle) => {
+    if (!vehicle) return;
+    setSelectedVehicleId(vehicle.vehicleId);
+    setLicensePlate(vehicle.licensePlate || "");
+    setBrand(vehicle.brand || "");
+    setVehicleType(mapVehicleTypeToUi(vehicle.vehicleType));
+    setShowVehicleSuggest(false);
+  };
 
   useEffect(() => {
     const loadServices = async () => {
@@ -115,17 +143,53 @@ export default function BookingPage() {
       }
     };
     loadBranches();
+
+    const loadProfile = async () => {
+      try {
+        const res = await customerApi.profile();
+        if (res.data) {
+          setProfileData(res.data);
+          setFullName(res.data.fullName || "");
+          setPhone(res.data.phone || "");
+          if (res.data.phone) {
+            setPhoneSuggestions((prev) => Array.from(new Set([...prev, res.data.phone])));
+          }
+        }
+      } catch (err) {
+        console.error("[Booking] Lỗi khi tải hồ sơ khách hàng:", err);
+      }
+    };
+    loadProfile();
+
+    // Gợi ý xe cũ: lấy danh sách xe đã lưu của khách hàng để autofill
+    // biển số / hãng xe / loại xe, tránh phải nhập lại mỗi lần đặt lịch.
+    const loadVehicles = async () => {
+      try {
+        const res = await vehicleApi.list();
+        const list = res.data || [];
+        if (list.length > 0) {
+          setSavedVehicles(list);
+          // Tự động điền theo xe gần nhất (phần tử đầu tiên trả về từ API)
+          applyVehicle(list[0]);
+        }
+      } catch (err) {
+        console.log(err);
+      }
+    };
+    loadVehicles();
   }, []);
 
   useEffect(() => {
     const loadSlots = async () => {
+      // Chưa xác định được chi nhánh (đang load chi nhánh) → chưa có gì để chọn.
       if (!selectedBranch) {
-        setSlots(MOCK_SLOTS_DATA);
-        setSelectedTime(MOCK_SLOTS_DATA[2].slotId);
+        setSlots([]);
+        setSelectedTime(null);
+        setSlotsError(null);
         return;
       }
       try {
-        const date = selectedDate.toISOString().split("T")[0];
+        const date = formatDateLocal(selectedDate);
         const res = await getAvailableSlots(selectedBranch, date);
         if (res.data && res.data.length > 0) {
           const formattedSlots = res.data.map(slot => ({
@@ -136,13 +200,18 @@ export default function BookingPage() {
           }));
           setSlots(formattedSlots);
           setSelectedTime(formattedSlots[0].slotId);
+          setSlotsError(null);
         } else {
-          setSlots(MOCK_SLOTS_DATA);
-          setSelectedTime(MOCK_SLOTS_DATA[2].slotId);
+          // KHÔNG dùng MOCK_SLOTS_DATA nữa — slot giả có thể trùng ID với slot thật
+          // đã hết hạn ngày trong DB, gây lỗi 500 khi đặt lịch (validate slotDate).
+          setSlots([]);
+          setSelectedTime(null);
+          setSlotsError("Chi nhánh này chưa có khung giờ trống cho ngày đã chọn. Vui lòng chọn chi nhánh hoặc ngày khác.");
         }
       } catch (err) {
-        setSlots(MOCK_SLOTS_DATA);
-        setSelectedTime(MOCK_SLOTS_DATA[2].slotId);
+        setSlots([]);
+        setSelectedTime(null);
+        setSlotsError("Không tải được khung giờ trống. Vui lòng thử lại hoặc chọn ngày/chi nhánh khác.");
       }
     };
     loadSlots();
@@ -173,18 +242,41 @@ export default function BookingPage() {
   for (let i = 0; i < firstDay; i++) calendarDays.push(null);
   for (let i = 1; i <= daysInMonth; i++) calendarDays.push(i);
 
+  const syncProfileIfChanged = async () => {
+    const phoneChanged = phone.trim() !== (profileData?.phone || "");
+    const nameChanged = fullName.trim() !== (profileData?.fullName || "");
+    if (!phoneChanged && !nameChanged) return;
+
+    try {
+      await customerApi.updateProfile({
+        fullName: fullName.trim(),
+        phone: phone.trim(),
+        email: profileData?.email || "",
+        dateOfBirth: profileData?.dateOfBirth || null,
+        gender: profileData?.gender || null
+      });
+      setProfileData((prev) => ({ ...(prev || {}), fullName: fullName.trim(), phone: phone.trim() }));
+    } catch (err) {
+      console.error("[Booking] Lỗi khi lưu số điện thoại/họ tên vào hồ sơ:", err);
+    }
+  };
+
   const handleBooking = async () => {
     if (!selectedService) { alert("Vui lòng chọn gói dịch vụ!"); return; }
     if (!agreeTerms) { alert("Vui lòng xác nhận thông tin dịch vụ và điều khoản dịch vụ để tiếp tục!"); return; }
 
     const customerIdRaw = localStorage.getItem("customerId");
     if (!customerIdRaw) { alert("Không tìm thấy thông tin khách hàng. Vui lòng đăng nhập lại!"); return; }
+    if (!fullName.trim()) { alert("Vui lòng nhập họ và tên!"); return; }
+    if (!phone.trim()) { alert("Vui lòng nhập số điện thoại!"); return; }
     if (!licensePlate.trim()) { alert("Vui lòng nhập biển số xe!"); return; }
     if (!brand.trim()) { alert("Vui lòng nhập hãng xe!"); return; }
     if (!selectedTime) { alert("Vui lòng chọn khung giờ!"); return; }
     if (!selectedBranch) { alert("Vui lòng chọn chi nhánh!"); return; }
 
     try {
+      await syncProfileIfChanged();
+
       const bookingData = {
         customerId: parseInt(customerIdRaw, 10),
         licensePlate: licensePlate.trim(),
@@ -195,9 +287,9 @@ export default function BookingPage() {
         note,
         details: [{ serviceId: selectedService, quantity: 1 }]
       };
-      await createBooking(bookingData);
-      alert("Đặt lịch thành công!");
-      navigate("/customer/booking/success");
+      const result = await createBooking(bookingData);
+      const bookingId = result?.data?.bookingId || result?.data?.id || result?.data?.data?.bookingId;
+      navigate("/payment", { state: { bookingId } });
     } catch (error) {
       alert(error.response?.data?.message || "Đặt lịch thất bại. Vui lòng thử lại!");
     }
@@ -301,20 +393,26 @@ export default function BookingPage() {
                     </div>
                   </div>
                   <div className="slots-grid-container">
-                    {slots.map((slot) => {
-                      const isSelected = selectedTime === slot.slotId;
-                      const isDisabled = slot.available === false;
-                      let className = "time-slot-pill-btn";
-                      if (slot.statusType === "ECO") className += " status-eco";
-                      if (slot.statusType === "PEAK") className += " status-peak";
-                      if (isSelected) className += " pill-selected";
-                      return (
-                          <button key={slot.slotId} type="button" disabled={isDisabled} className={className} onClick={() => setSelectedTime(slot.slotId)}>
-                            <span className="slot-clock-text">{slot.startTime}</span>
-                            <span className="slot-status-subtext">{isSelected ? "Đã chọn" : slot.statusLabel}</span>
-                          </button>
-                      );
-                    })}
+                    {slots.length === 0 ? (
+                        <div className="slots-empty-state">
+                          {slotsError || "Đang tải khung giờ..."}
+                        </div>
+                    ) : (
+                        slots.map((slot) => {
+                          const isSelected = selectedTime === slot.slotId;
+                          const isDisabled = slot.available === false;
+                          let className = "time-slot-pill-btn";
+                          if (slot.statusType === "ECO") className += " status-eco";
+                          if (slot.statusType === "PEAK") className += " status-peak";
+                          if (isSelected) className += " pill-selected";
+                          return (
+                              <button key={slot.slotId} type="button" disabled={isDisabled} className={className} onClick={() => setSelectedTime(slot.slotId)}>
+                                <span className="slot-clock-text">{slot.startTime}</span>
+                                <span className="slot-status-subtext">{isSelected ? "Đã chọn" : slot.statusLabel}</span>
+                              </button>
+                          );
+                        })
+                    )}
                   </div>
                 </div>
               </div>
@@ -328,22 +426,94 @@ export default function BookingPage() {
               </div>
               <div className="vehicle-inputs-row">
                 <div className="form-field-group">
-                  <label>Biển số xe *</label>
+                  <label>Họ và tên *</label>
                   <input
                       type="text"
-                      placeholder="Ví dụ: 30A-123.45"
-                      value={licensePlate}
-                      onChange={(e) => setLicensePlate(e.target.value)}
+                      placeholder="Nguyễn Văn A"
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
                   />
                 </div>
                 <div className="form-field-group">
-                  <label>Hãng xe *</label>
-                  <input
-                      type="text"
-                      placeholder="Ví dụ: Toyota, Honda, Mazda..."
-                      value={brand}
-                      onChange={(e) => setBrand(e.target.value)}
-                  />
+                  <label>Số điện thoại *</label>
+                  <div className="input-suggest-wrapper">
+                    <input
+                        type="text"
+                        placeholder="090 123 4567"
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
+                        onFocus={() => setShowPhoneSuggest(true)}
+                        onBlur={() => setTimeout(() => setShowPhoneSuggest(false), 150)}
+                    />
+                    {showPhoneSuggest && (
+                        <div className="input-suggest-dropdown">
+                          {phoneSuggestions.length > 0 ? (
+                              <>
+                                <div className="input-suggest-heading">Số điện thoại đã dùng</div>
+                                {phoneSuggestions.map((p) => (
+                                    <button
+                                        key={p}
+                                        type="button"
+                                        className={`input-suggest-item ${phone === p ? "input-suggest-item-active" : ""}`}
+                                        onMouseDown={() => { setPhone(p); setShowPhoneSuggest(false); }}
+                                    >
+                                      <FaPhoneAlt className="suggest-item-icon" />
+                                      <span>{p}</span>
+                                    </button>
+                                ))}
+                              </>
+                          ) : (
+                              <div className="input-suggest-empty">Chưa có số điện thoại nào được lưu trong hồ sơ</div>
+                          )}
+                        </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <div className="form-field-group full-width-field">
+                <label>Chi nhánh *</label>
+                <select
+                    value={selectedBranch || ""}
+                    onChange={(e) => setSelectedBranch(Number(e.target.value))}
+                >
+                  {branches.length === 0 && <option value="">Đang tải chi nhánh...</option>}
+                  {branches.map((b) => (
+                      <option key={b.branchId} value={b.branchId}>
+                        {b.branchName}{b.address ? ` - ${b.address}` : ""}
+                      </option>
+                  ))}
+                </select>
+              </div>
+              <div className="vehicle-inputs-row">
+                <div className="form-field-group">
+                  <label>Biển số xe *</label>
+                  <div className="input-suggest-wrapper">
+                    <input
+                        type="text"
+                        placeholder="Ví dụ: 30A-123.45"
+                        value={licensePlate}
+                        onChange={(e) => { setLicensePlate(e.target.value); setSelectedVehicleId(null); }}
+                        onFocus={() => setShowVehicleSuggest(true)}
+                        onBlur={() => setTimeout(() => setShowVehicleSuggest(false), 150)}
+                    />
+                    {showVehicleSuggest && savedVehicles.length > 0 && (
+                        <div className="input-suggest-dropdown">
+                          <div className="input-suggest-heading">Xe đã lưu (chọn để điền nhanh)</div>
+                          {savedVehicles.map((v) => (
+                              <button
+                                  key={v.vehicleId}
+                                  type="button"
+                                  className={`input-suggest-item ${selectedVehicleId === v.vehicleId ? "input-suggest-item-active" : ""}`}
+                                  onMouseDown={() => applyVehicle(v)}
+                              >
+                                <MdDirectionsCar className="suggest-item-icon" />
+                                <span>{v.nickname || v.brand}</span>
+                                <span className="suggest-item-tag">{v.licensePlate}</span>
+                              </button>
+                          ))}
+                        </div>
+                    )}
+                  </div>
                 </div>
                 <div className="form-field-group">
                   <label>Loại xe *</label>
@@ -364,6 +534,15 @@ export default function BookingPage() {
                     </button>
                   </div>
                 </div>
+              </div>
+              <div className="form-field-group full-width-field">
+                <label>Hãng xe *</label>
+                <input
+                    type="text"
+                    placeholder="Ví dụ: Toyota, Honda, Mazda..."
+                    value={brand}
+                    onChange={(e) => setBrand(e.target.value)}
+                />
               </div>
               <div className="form-field-group full-width-field">
                 <label>Yêu cầu đặc biệt (Không bắt buộc)</label>

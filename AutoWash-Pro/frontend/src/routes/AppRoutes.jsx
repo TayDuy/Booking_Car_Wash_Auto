@@ -23,6 +23,8 @@ import BookingPage from "../features/booking/pages/BookingPage";
 import BookingDetailPage from "../features/booking/pages/BookingDetailPage";
 import BookingSuccessPage from "../features/booking/pages/BookingSuccessPage";
 
+import PaymentPage from "../features/payment/pages/PaymentPage";
+
 import PromotionListPage from "../features/promotion/pages/PromotionListPage";
 
 import AdminDashboardPage from "../features/admin/pages/AdminDashboardPage";
@@ -44,6 +46,7 @@ function AppRoutes() {
     <Routes>
       {/* Landing page */}
       <Route path="/" element={<LandingPage />} />
+      <Route path="/payment" element={<PaymentPage />} />
 
       {/* Auth routes */}
       <Route path="/auth" element={<AuthLayout />}>

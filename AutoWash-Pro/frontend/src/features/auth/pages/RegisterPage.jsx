@@ -1,459 +1,299 @@
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { register, sendOtp, verifyOtp } from "../../../api/authService";
 import "./RegisterPage.css";
+import { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import {
+  register,
+  sendOtp,
+  verifyOtp,
+  loginWithGoogle,
+  saveAuth,
+} from "../../../api/authService";
+import { supabase } from "../../../api/supabaseClient";
 
-function RegisterPage() {
+function Register() {
   const navigate = useNavigate();
 
-  const [formData, setFormData] = useState({
-    fullName: "",
-    username: "",
-    email: "",
-    phone: "",
-    otp: "",
-    password: "",
-    confirmPassword: "",
-  });
-
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
+  const [phone, setPhone] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-
+  const [errorMessage, setErrorMessage] = useState("");
+  const [otp, setOtp] = useState("");
   const [otpSent, setOtpSent] = useState(false);
   const [otpVerified, setOtpVerified] = useState(false);
 
-  const [loadingOtp, setLoadingOtp] = useState(false);
-  const [loadingVerifyOtp, setLoadingVerifyOtp] = useState(false);
-  const [loadingRegister, setLoadingRegister] = useState(false);
+  function redirectByRole(role) {
+    const normalizedRole = role?.toLowerCase();
 
-  const [errorMessage, setErrorMessage] = useState("");
-  const [successMessage, setSuccessMessage] = useState("");
-
-  const handleChange = (event) => {
-    const { name, value } = event.target;
-
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-
-    if (name === "phone") {
-      setOtpSent(false);
-      setOtpVerified(false);
+    if (normalizedRole === "admin") {
+      navigate("/admin");
+    } else if (normalizedRole === "employee") {
+      navigate("/employee");
+    } else {
+      navigate("/");
     }
+  }
 
-    if (name === "otp") {
-      setOtpVerified(false);
-    }
-  };
+  async function handleSubmit(e) {
+    e.preventDefault();
 
-  const handleSendOtp = async () => {
-    if (!formData.phone.trim()) {
-      setErrorMessage("Vui lòng nhập số điện thoại trước khi gửi OTP.");
+    if (!fullName || !email || !username || !phone || !password || !confirmPassword) {
+      setErrorMessage("Vui lòng nhập đầy đủ thông tin.");
       return;
     }
 
-    try {
-      setLoadingOtp(true);
-      setErrorMessage("");
-      setSuccessMessage("");
-
-      await sendOtp(formData.phone);
-
-      setOtpSent(true);
-      setSuccessMessage("Mã OTP đã được gửi đến số điện thoại của bạn.");
-    } catch (error) {
-      const message =
-        error.response?.data?.message ||
-        error.response?.data?.error ||
-        "Gửi OTP thất bại. Vui lòng thử lại.";
-
-      setErrorMessage(message);
-    } finally {
-      setLoadingOtp(false);
-    }
-  };
-
-  const handleVerifyOtp = async () => {
-    if (!formData.phone.trim()) {
-      setErrorMessage("Vui lòng nhập số điện thoại.");
-      return;
-    }
-
-    if (!formData.otp.trim()) {
-      setErrorMessage("Vui lòng nhập mã OTP.");
-      return;
-    }
-
-    try {
-      setLoadingVerifyOtp(true);
-      setErrorMessage("");
-      setSuccessMessage("");
-
-      await verifyOtp(formData.phone, formData.otp);
-
-      setOtpVerified(true);
-      setSuccessMessage("Xác thực OTP thành công.");
-    } catch (error) {
-      const message =
-        error.response?.data?.message ||
-        error.response?.data?.error ||
-        "Mã OTP không đúng hoặc đã hết hạn.";
-
-      setOtpVerified(false);
-      setErrorMessage(message);
-    } finally {
-      setLoadingVerifyOtp(false);
-    }
-  };
-
-  const handleSubmit = async (event) => {
-    event.preventDefault();
-
-    if (!formData.fullName.trim()) {
-      setErrorMessage("Vui lòng nhập họ và tên.");
-      return;
-    }
-
-    if (!formData.username.trim()) {
-      setErrorMessage("Vui lòng nhập username.");
-      return;
-    }
-
-    if (!formData.email.trim()) {
-      setErrorMessage("Vui lòng nhập email.");
-      return;
-    }
-
-    if (!formData.phone.trim()) {
-      setErrorMessage("Vui lòng nhập số điện thoại.");
-      return;
-    }
-
-    if (!otpVerified) {
-      setErrorMessage("Vui lòng xác thực OTP trước khi đăng ký.");
-      return;
-    }
-
-    if (!formData.password.trim()) {
-      setErrorMessage("Vui lòng nhập mật khẩu.");
-      return;
-    }
-
-    if (formData.password !== formData.confirmPassword) {
+    if (password !== confirmPassword) {
       setErrorMessage("Mật khẩu xác nhận không khớp.");
       return;
     }
 
-    try {
-      setLoadingRegister(true);
-      setErrorMessage("");
-      setSuccessMessage("");
-
-      await register(
-        formData.username,
-        formData.password,
-        formData.email,
-        formData.fullName,
-        formData.phone
-      );
-
-      alert("Đăng ký thành công. Vui lòng đăng nhập.");
-      navigate("/auth/login");
-    } catch (error) {
-      const message =
-        error.response?.data?.message ||
-        error.response?.data?.error ||
-        "Đăng ký thất bại. Vui lòng kiểm tra lại thông tin.";
-
-      setErrorMessage(message);
-    } finally {
-      setLoadingRegister(false);
+    if (!otpVerified) {
+      setErrorMessage("Vui lòng xác minh OTP trước khi đăng ký.");
+      return;
     }
-  };
+
+    setErrorMessage("");
+
+    try {
+      const data = await register(username, password, email, fullName, phone);
+      alert(data.message || "Đăng ký thành công");
+    } catch (error) {
+      setErrorMessage("Đăng ký thất bại.");
+    }
+  }
+
+  async function handleSendOtp() {
+    if (!phone) {
+      setErrorMessage("Vui lòng nhập số điện thoại trước.");
+      return;
+    }
+    try {
+      await sendOtp(phone);
+      setOtpSent(true);
+      setErrorMessage("")
+      alert("Mã OTP đã được gửi.");
+    } catch (error) {
+      setErrorMessage("Gửi OTP thất bại.");
+    }
+  }
+
+  async function handleVerifyOtp() {
+    if (!otp) {
+      setErrorMessage("Vui lòng nhập mã OTP.");
+      return;
+    }
+    try {
+      await verifyOtp(phone, otp);
+      setOtpVerified(true);
+      setErrorMessage("");
+      alert("Xác minh OTP thành công.");
+    } catch (error) {
+      setErrorMessage("OTP không đúng hoặc đã hết hạn.");
+    }
+  }
+
+  async function handleGoogleRegister() {
+    try {
+      await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: window.location.origin + "/register",
+        },
+      });
+    } catch (error) {
+      console.log("Google register error:", error);
+      setErrorMessage("Đăng ký bằng Google thất bại.");
+    }
+  }
+
+  useEffect(() => {
+    console.log("Register page loaded, checking Google redirect...");
+
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+        async (event, session) => {
+          if (event === "SIGNED_IN" && session) {
+            try {
+              const supabaseToken = session.access_token;
+              const data = await loginWithGoogle(supabaseToken);
+
+              if (data.status === 200 || data.data) {
+                saveAuth(data.data);
+                redirectByRole(data.data.user.role);
+              } else {
+                setErrorMessage(
+                    data.message || "Đăng ký bằng Google thất bại trên Backend."
+                );
+              }
+            } catch (error) {
+              console.error("Lỗi khi gửi Google token về Backend:", error);
+              setErrorMessage(
+                  "Đăng ký bằng Google thất bại. Không thể xác thực với máy chủ."
+              );
+            }
+          }
+        }
+    );
+
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
+  }, []);
 
   return (
-    <div className="register-page">
-      <div className="register-container">
-        <section className="register-left">
-          <div className="register-brand">
-            <div className="register-logo">♢</div>
-            <span>WashFlow Pro</span>
-          </div>
-
-          <div className="register-hero-content">
-            <span className="register-badge">Tài khoản khách hàng</span>
-
-            <h1>
-              Đăng ký để đặt lịch
-              <br />
-              nhanh hơn mỗi ngày
-            </h1>
-
-            <p>
-              Tạo tài khoản để quản lý lịch rửa xe, xác thực OTP an toàn, nhận
-              ưu đãi riêng và tích điểm thành viên sau mỗi lần sử dụng dịch vụ.
-            </p>
-
-            <div className="register-stats">
-              <div>
-                <strong>OTP</strong>
-                <span>Xác thực an toàn</span>
-              </div>
-
-              <div>
-                <strong>Ưu đãi</strong>
-                <span>Dành riêng hội viên</span>
-              </div>
-
-              <div>
-                <strong>Điểm</strong>
-                <span>Tích lũy sau booking</span>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section className="register-right">
-          <div className="register-form-wrapper">
-            <div className="register-form-logo">
-              <div className="register-form-logo-box">♢</div>
-              <h1>WashFlow Pro</h1>
-              <p>Trải nghiệm dịch vụ rửa xe thông minh</p>
+      <div className="register-layout">
+        <main className="register-page">
+          <div className="register-card">
+            <div className="register-header" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '32px' }}>
+              <img src="/logo.png" alt="WashFlow Pro Logo" style={{ height: '80px', width: 'auto', marginBottom: '8px' }} />
+              <h1 className="register-title">WashFlow Pro</h1>
+              <p className="register-subtitle">Create your account</p>
             </div>
 
-            <div className="register-card">
-              <div className="register-card-header">
-                <h2>Đăng ký tài khoản</h2>
-                <p>Điền thông tin và xác thực OTP để bắt đầu.</p>
-              </div>
+            {errorMessage && (
+                <div className="register-error">
+                  {errorMessage}
+                </div>
+            )}
 
-              <form className="register-form" onSubmit={handleSubmit}>
-                {errorMessage && (
-                  <div className="register-message error">{errorMessage}</div>
-                )}
-
-                {successMessage && (
-                  <div className="register-message success">
-                    {successMessage}
-                  </div>
-                )}
-
-                <div className="register-grid">
-                  <div className="form-group">
-                    <label className="form-label" htmlFor="fullName">
-                      Họ và tên
-                    </label>
-
+            <form className="register-form" onSubmit={handleSubmit}>
+              <div className="register-grid">
+                <div className="form-group">
+                  <label className="form-label">Full Name</label>
+                  <div className="input-row">
+                    <span className="input-icon">👤</span>
                     <input
-                      id="fullName"
-                      name="fullName"
-                      className="register-input"
-                      type="text"
-                      placeholder="Nguyễn Văn A"
-                      autoComplete="name"
-                      value={formData.fullName}
-                      onChange={handleChange}
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label className="form-label" htmlFor="username">
-                      Username
-                    </label>
-
-                    <input
-                      id="username"
-                      name="username"
-                      className="register-input"
-                      type="text"
-                      placeholder="vanna_washflow"
-                      autoComplete="username"
-                      value={formData.username}
-                      onChange={handleChange}
+                        type="text"
+                        className="register-input"
+                        placeholder="Nhập họ tên"
+                        value={fullName}
+                        onChange={(e) => setFullName(e.target.value)}
                     />
                   </div>
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label" htmlFor="email">
-                    Email
-                  </label>
-
-                  <input
-                    id="email"
-                    name="email"
-                    className="register-input"
-                    type="email"
-                    placeholder="example@gmail.com"
-                    autoComplete="email"
-                    value={formData.email}
-                    onChange={handleChange}
-                  />
+                  <label className="form-label">Email</label>
+                  <div className="input-row">
+                    <span className="input-icon">✉</span>
+                    <input
+                        type="email"
+                        className="register-input"
+                        placeholder="Nhập email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                    />
+                  </div>
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label" htmlFor="phone">
-                    Số điện thoại
-                  </label>
-
-                  <div className="register-otp-row">
+                  <label className="form-label">Username</label>
+                  <div className="input-row">
+                    <span className="input-icon">@</span>
                     <input
-                      id="phone"
-                      name="phone"
-                      className="register-input"
-                      type="tel"
-                      placeholder="0901234567"
-                      autoComplete="tel"
-                      value={formData.phone}
-                      onChange={handleChange}
+                        type="text"
+                        className="register-input"
+                        placeholder="Nhập username"
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value)}
                     />
+                  </div>
+                </div>
 
-                    <button
-                      className="otp-send-button"
+                <div className="form-group">
+                  <label className="form-label">Phone Number</label>
+                  <div className="input-row">
+                    <span className="input-icon">☎</span>
+                    <input
+                        type="tel"
+                        className="register-input"
+                        placeholder="Nhập phone"
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">OTP Code</label>
+                  <div className="input-row">
+                    <span className="input-icon">#</span>
+                    <input
+                        type="text"
+                        className="register-input"
+                        placeholder="Nhập mã OTP"
+                        value={otp}
+                        disabled={!otpSent || otpVerified}
+                        onChange={(e) => setOtp(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div className="form-group otp-group">
+                  <label className="form-label invisible-label">OTP Action</label>
+                  <button
                       type="button"
-                      onClick={handleSendOtp}
-                      disabled={loadingOtp}
-                    >
-                      {loadingOtp ? "Đang gửi..." : otpSent ? "Gửi lại" : "Gửi OTP"}
-                    </button>
-                  </div>
+                      className="otp-btn"
+                      onClick={otpSent ? handleVerifyOtp : handleSendOtp}
+                      disabled={otpVerified}
+                  >
+                    {otpVerified ? "Đã xác minh" : otpSent ? "Xác minh OTP" : "Gửi OTP"}
+                  </button>
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label" htmlFor="otp">
-                    Mã OTP
-                  </label>
-
-                  <div className="register-otp-row">
+                  <label className="form-label">Password</label>
+                  <div className="input-row">
+                    <span className="input-icon">🔒</span>
                     <input
-                      id="otp"
-                      name="otp"
-                      className="register-input"
-                      type="text"
-                      placeholder="Nhập mã OTP"
-                      value={formData.otp}
-                      onChange={handleChange}
-                    />
-
-                    <button
-                      className={
-                        otpVerified
-                          ? "otp-verify-button verified"
-                          : "otp-verify-button"
-                      }
-                      type="button"
-                      onClick={handleVerifyOtp}
-                      disabled={loadingVerifyOtp || otpVerified}
-                    >
-                      {otpVerified
-                        ? "Đã xác thực"
-                        : loadingVerifyOtp
-                          ? "Đang xác thực..."
-                          : "Xác thực"}
-                    </button>
-                  </div>
-                </div>
-
-                <div className="register-grid">
-                  <div className="form-group">
-                    <label className="form-label" htmlFor="password">
-                      Mật khẩu
-                    </label>
-
-                    <div className="register-password-wrap">
-                      <input
-                        id="password"
-                        name="password"
-                        className="register-input password-padding"
                         type={showPassword ? "text" : "password"}
+                        className="register-input"
                         placeholder="Nhập mật khẩu"
-                        autoComplete="new-password"
-                        value={formData.password}
-                        onChange={handleChange}
-                      />
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                    />
 
-                      <button
-                        className="register-eye-btn"
+                    <button
                         type="button"
-                        onClick={() => setShowPassword((prev) => !prev)}
-                      >
-                        {showPassword ? "🙈" : "👁"}
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="form-group">
-                    <label className="form-label" htmlFor="confirmPassword">
-                      Xác nhận mật khẩu
-                    </label>
-
-                    <div className="register-password-wrap">
-                      <input
-                        id="confirmPassword"
-                        name="confirmPassword"
-                        className="register-input password-padding"
-                        type={showConfirmPassword ? "text" : "password"}
-                        placeholder="Nhập lại mật khẩu"
-                        autoComplete="new-password"
-                        value={formData.confirmPassword}
-                        onChange={handleChange}
-                      />
-
-                      <button
-                        className="register-eye-btn"
-                        type="button"
-                        onClick={() =>
-                          setShowConfirmPassword((prev) => !prev)
-                        }
-                      >
-                        {showConfirmPassword ? "🙈" : "👁"}
-                      </button>
-                    </div>
+                        className="password-toggle"
+                        onClick={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? "🙈" : "👁"}
+                    </button>
                   </div>
                 </div>
 
-                <label className="register-policy">
-                  <input type="checkbox" />
-                  <span>
-                    Tôi đồng ý với <strong>Điều khoản dịch vụ</strong> và{" "}
-                    <strong>Chính sách bảo mật</strong> của WashFlow Pro.
-                  </span>
-                </label>
-
-                <button
-                  className="register-submit-button"
-                  type="submit"
-                  disabled={loadingRegister}
-                >
-                  {loadingRegister ? "Đang đăng ký..." : "Đăng ký ngay"}
-                </button>
-              </form>
-
-              <div className="register-divider">
-                <span>Hoặc tiếp tục với</span>
+                <div className="form-group">
+                  <label className="form-label">Confirm Password</label>
+                  <div className="input-row">
+                    <span className="input-icon">🔐</span>
+                    <input
+                        type="password"
+                        className="register-input"
+                        placeholder="Nhập lại mật khẩu"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                    />
+                  </div>
+                </div>
               </div>
 
-              <button className="register-google-button" type="button">
-                <span>🌐</span>
-                Đăng ký bằng Google
+              <button type="submit" className="register-btn">
+                <span>Đăng ký</span>
+                <span>→</span>
               </button>
 
-              <p className="register-login-text">
-                Đã có tài khoản? <Link to="/auth/login">Đăng nhập</Link>
-              </p>
-            </div>
-
-            <div className="register-footer-links">
-              <Link to="/">Dịch vụ</Link>
-              <Link to="/customer/support">Hỗ trợ</Link>
-              <Link to="/">Điều khoản</Link>
-            </div>
+              <div className="register-footer">
+                <span>Đã có tài khoản? </span>
+                <Link to="/">Đăng nhập</Link>
+              </div>
+            </form>
           </div>
-        </section>
+        </main>
       </div>
-    </div>
   );
 }
 
-export default RegisterPage;
+export default Register;

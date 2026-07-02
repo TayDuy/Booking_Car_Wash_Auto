@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import {
-    Waves, Calendar, CheckCircle2, Gift, Star, Megaphone,
-    HelpCircle, ChevronDown, CheckCheck, Bell, Copy, BellOff,
+    Calendar, Gift, Megaphone,
+    ChevronDown, CheckCheck, Bell, Copy, BellOff,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import "./CustomerNotificationPage.css";
@@ -15,13 +15,6 @@ const CATEGORIES = [
     { id: "booking", label: "Cập nhật Đặt lịch", icon: Calendar },
     { id: "reward",  label: "Ưu đãi & Quà tặng", icon: Gift },
     { id: "promo",   label: "Khuyến mãi",         icon: Megaphone },
-];
-
-const TOP_NAV = [
-    { label: "Trang chủ",  path: "/" },
-    { label: "Đặt lịch",   path: "/booking" },
-    { label: "Gói dịch vụ",path: "/packages" },
-    { label: "Thông báo",  path: "/notifications", active: true },
 ];
 
 // Map backend type string → UI category id
@@ -225,39 +218,10 @@ export default function CustomerNotificationPage() {
         promo:   allItems.filter(it => it.catId === "promo").length,
     };
 
-    const unreadTotal = allItems.filter(it => it.unread).length;
-
     // ── Render ───────────────────────────────────────────────────────────────
 
     return (
         <div className="cn-app">
-            <header className="cn-topbar">
-                <div className="cn-brand">
-                    <Waves size={20} />
-                    <span>WashFlow Pro</span>
-                </div>
-                <nav className="cn-topnav">
-                    {TOP_NAV.map(item => (
-                        <button
-                            key={item.label}
-                            className={`cn-topnav__link ${item.active ? "is-active" : ""}`}
-                            onClick={() => navigate(item.path)}
-                        >
-                            {item.label}
-                            {item.label === "Thông báo" && unreadTotal > 0 && (
-                                <span className="cn-badge">{unreadTotal}</span>
-                            )}
-                        </button>
-                    ))}
-                </nav>
-                <div className="cn-topbar__actions">
-                    <button className="cn-icon-btn" aria-label="Trợ giúp">
-                        <HelpCircle size={20} />
-                    </button>
-                    <div className="cn-avatar" />
-                </div>
-            </header>
-
             <div className="cn-body">
                 {/* ── Sidebar ── */}
                 <aside className="cn-sidebar">
@@ -332,20 +296,6 @@ export default function CustomerNotificationPage() {
                     )}
                 </main>
             </div>
-
-            {/* Footer */}
-            <footer className="global-footer-bar">
-                <div className="footer-brand-info">
-                    <h4>WashFlow Pro</h4>
-                    <p>© 2026 WashFlow Pro Automation. Tất cả quyền được bảo lưu.</p>
-                </div>
-                <div className="footer-nav-links">
-                    <a href="#">Liên hệ</a>
-                    <a href="#">Chính sách bảo mật</a>
-                    <a href="#">Điều khoản dịch vụ</a>
-                    <a href="#">Hỗ trợ</a>
-                </div>
-            </footer>
         </div>
     );
 }
