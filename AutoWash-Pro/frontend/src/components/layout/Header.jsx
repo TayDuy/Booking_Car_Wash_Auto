@@ -1,11 +1,12 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 import useAuth from "../../hooks/useAuth";
 import { Bell, Moon, Search, Menu, ChevronDown } from "lucide-react";
 import "./Header.css";
 
 export default function Header() {
   const auth = useAuth();
-
+  const navigate = useNavigate();
   return (
     <header className="admin-header">
       <div className="header-left">
@@ -20,7 +21,10 @@ export default function Header() {
       </div>
 
       <div className="header-right">
-        <button className="icon-btn notification-btn">
+        <button
+          className="icon-btn notification-btn"
+          onClick={() => navigate("/admin/notifications")}
+        >
           <Bell size={19} />
           <span className="notification-dot">3</span>
         </button>

@@ -5,8 +5,6 @@ import {
     HelpCircle, Settings, Plus, Edit, Trash2, RefreshCw
 } from "lucide-react";
 import "./ManageCatalog.css";
-import "./AdminNotificationPage.css";
-
 // Import các API service ta đã cấu hình ở Bước 1
 import { getBranches, createBranch, updateBranch, deleteBranch } from "../../api/branchService";
 import { getBaysByBranch, createBay, updateBayStatus, deleteBay } from "../../api/washBayService";

@@ -35,4 +35,22 @@ public class CustomerController {
     public ResponseEntity<List<CustomerProfileResponse>> getAllCustomers() {
         return ResponseEntity.ok(customerService.getAllCustomers());
     }
+
+    @PutMapping("/{customerId}")
+    public ResponseEntity<CustomerProfileResponse> updateCustomer(
+            @PathVariable Integer customerId,
+            @Valid @RequestBody CustomerUpdateRequest request
+    ) {
+        return ResponseEntity.ok(
+                customerService.updateCustomer(customerId, request)
+        );
+    }
+
+    @DeleteMapping("/{customerId}")
+    public ResponseEntity<Void> deleteCustomer(
+            @PathVariable Integer customerId
+    ) {
+        customerService.deleteCustomer(customerId);
+        return ResponseEntity.noContent().build();
+    }
 }

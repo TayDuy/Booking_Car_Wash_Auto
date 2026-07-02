@@ -251,6 +251,24 @@ public class BookingServiceImpl implements BookingService {
         return bookingMapper.toResponse(saved, bookingDetailRepository.findByBooking(saved));
     }
 
+    @Override
+    @Transactional
+    public BookingResponseDTO confirmBooking(Integer bookingId) {
+        Booking booking = findBookingOrThrow(bookingId);
+
+        if (!BookingStatus.pending.equals(booking.getStatus())) {
+            throw new BusinessException(
+                    "Chỉ có thể xác nhận booking đang chờ",
+                    HttpStatus.BAD_REQUEST
+            );
+        }
+
+        booking.setStatus(BookingStatus.confirmed);
+
+        Booking saved = bookingRepository.save(booking);
+        return bookingMapper.toResponse(saved, bookingDetailRepository.findByBooking(saved));
+    }
+
     // ── HELPERS ──────────────────────────────────────────────────────────────
 
     /**

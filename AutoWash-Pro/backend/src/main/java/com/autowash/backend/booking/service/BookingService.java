@@ -22,4 +22,6 @@ public interface BookingService {
     BookingResponseDTO cancelBooking(Integer bookingId);
 
     BookingResponseDTO completeBooking(Integer bookingId);
+
+    BookingResponseDTO confirmBooking(Integer bookingId);
 }
