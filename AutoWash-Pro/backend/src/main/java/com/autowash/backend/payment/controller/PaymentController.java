@@ -227,10 +227,15 @@ public class PaymentController {
                 return ResponseEntity.ok(result);
             }
 
+            String vnp_TransactionNo = fields.get("vnp_TransactionNo");
+            String vnp_BankCode = fields.get("vnp_BankCode");
+            String vnp_CardType = fields.get("vnp_CardType");
+            String vnp_ResponseCode = fields.get("vnp_ResponseCode");
+
             if ("00".equals(responseCode)) {
-                paymentService.processPayment(paymentId);
+                paymentService.processPayment(paymentId, vnp_TransactionNo, vnp_BankCode, vnp_CardType, vnp_ResponseCode);
             } else {
-                paymentService.markFailed(paymentId);
+                paymentService.markFailed(paymentId, vnp_TransactionNo, vnp_BankCode, vnp_CardType, vnp_ResponseCode);
             }
 
             result.put("RspCode", "00");

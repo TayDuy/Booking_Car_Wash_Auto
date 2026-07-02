@@ -45,8 +45,6 @@ function LoginPage() {
   };
 
   const handleLoginSuccess = (result) => {
-    console.log("Login success result:", result);
-
     saveAuth(result);
     if (auth) {
       auth.setToken(result.accessToken);
@@ -61,9 +59,6 @@ function LoginPage() {
 
     const savedToken = localStorage.getItem("token");
     const savedRole = localStorage.getItem("role");
-
-    console.log("Saved token:", savedToken);
-    console.log("Saved role:", savedRole);
 
     if (!savedToken) {
       setErrorMessage("Đăng nhập thành công nhưng chưa lưu được token.");

@@ -91,7 +91,9 @@ public class SecurityConfig {
                                 "/api/v1/auth/google",
                                 "/api/v1/auth/refresh",
                                 "/api/v1/auth/forgot-password/request",
-                                "/api/v1/auth/forgot-password/reset"
+                                "/api/v1/auth/forgot-password/reset",
+                                "/api/v1/payments/vnpay-return",
+                                "/api/v1/payments/vnpay-ipn"
                         ).permitAll()
 
                         // Admin only

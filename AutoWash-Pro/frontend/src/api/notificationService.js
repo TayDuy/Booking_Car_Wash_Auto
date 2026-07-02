@@ -1,6 +1,6 @@
-import axiosClient from './axiosClient';
+import axiosClient, { API_BASE_URL } from './axiosClient';
 
-const BASE_URL = 'http://localhost:8080/api/v1/notifications';
+const BASE_URL = `${API_BASE_URL}/notifications`;
 
 export async function getAll(){
   const resp = await axiosClient.get('/notifications');

@@ -74,8 +74,6 @@ export async function resetForgotPassword(email, otp, newPassword) {
 }
 
 export function saveAuth(result) {
-  console.log("saveAuth result:", result);
-
   const accessToken = result?.accessToken || "";
   const refreshToken = result?.refreshToken || "";
   const user = result?.user || {};

@@ -16,7 +16,6 @@ export default function ManageBookingsPage() {
   async function loadBookings() {
     try {
       const response = await bookingApi.list();
-      console.log("ADMIN BOOKINGS:", response.data);
 
       const result = response.data?.data || response.data || [];
 
@@ -66,7 +65,9 @@ export default function ManageBookingsPage() {
       return;
     }
 
-    const confirmCancel = window.confirm("Bạn có chắc muốn hủy đơn đặt lịch này không?");
+    const confirmCancel = window.confirm(
+      "Bạn có chắc muốn hủy đơn đặt lịch này không?",
+    );
     if (!confirmCancel) return;
 
     try {
@@ -89,13 +90,14 @@ export default function ManageBookingsPage() {
   function handleViewBooking(booking) {
     alert(
       `Mã đơn: ${booking.bookingCode || "N/A"}\n` +
-      `Khách hàng: ${booking.customerName || "N/A"}\n` +
-      `Chi nhánh: ${booking.branchName || "N/A"}\n` +
-      `Trạng thái: ${booking.status || "N/A"}\n` +
-      `Thời gian: ${booking.bookingDate
-        ? new Date(booking.bookingDate).toLocaleString("vi-VN")
-        : "N/A"
-      }`
+        `Khách hàng: ${booking.customerName || "N/A"}\n` +
+        `Chi nhánh: ${booking.branchName || "N/A"}\n` +
+        `Trạng thái: ${booking.status || "N/A"}\n` +
+        `Thời gian: ${
+          booking.bookingDate
+            ? new Date(booking.bookingDate).toLocaleString("vi-VN")
+            : "N/A"
+        }`,
     );
   }
 
@@ -180,9 +182,9 @@ export default function ManageBookingsPage() {
                       {Array.isArray(booking.serviceNames)
                         ? booking.serviceNames.join(", ")
                         : booking.serviceName ||
-                        booking.service?.serviceName ||
-                        booking.service ||
-                        "N/A"}
+                          booking.service?.serviceName ||
+                          booking.service ||
+                          "N/A"}
                     </td>
                     <td>
                       {booking.bookingDate
@@ -192,7 +194,9 @@ export default function ManageBookingsPage() {
                           : booking.time || "N/A"}
                     </td>
                     <td>
-                      <span className={`status-badge ${getStatusClass(booking.status)}`}>
+                      <span
+                        className={`status-badge ${getStatusClass(booking.status)}`}
+                      >
                         {booking.status || "pending"}
                       </span>
                     </td>
