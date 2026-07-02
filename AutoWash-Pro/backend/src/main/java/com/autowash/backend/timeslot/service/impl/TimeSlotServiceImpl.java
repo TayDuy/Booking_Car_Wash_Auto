@@ -45,9 +45,11 @@ public class TimeSlotServiceImpl implements TimeSlotService {
 
     @Override
     public List<TimeSlotResponseDTO> getByBranchAndDate(Integer branchId, LocalDate date) {
-        // Dùng lại query có JOIN FETCH, lọc status ở Java để tránh thêm query
+        // FIX: trước đây gọi nhầm findByBranchAndDateAndStatus(..., open) — cùng query với
+        // getAvailable() — khiến admin KHÔNG thấy được slot đã full/closed, sai với javadoc
+        // "lấy tất cả slot (kể cả full/closed)". Đổi sang query không lọc status.
         return slotRepository
-                .findByBranchAndDateAndStatus(branchId, date, SlotStatus.open)
+                .findByBranchAndDate(branchId, date)
                 .stream()
                 .map(mapper::toResponse)
                 .toList();

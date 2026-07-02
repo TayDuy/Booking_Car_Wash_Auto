@@ -36,6 +36,28 @@ public interface TimeSlotRepository extends JpaRepository<TimeSlot, Integer> {
     );
 
     /**
+     * FIX: lấy TẤT CẢ slot theo branch+ngày, KHÔNG lọc theo status.
+     * Dùng cho:
+     *  - Admin xem toàn bộ slot trong ngày (kể cả full/closed) — trước đây
+     *    getByBranchAndDate() bị lỗi tái sử dụng nhầm findByBranchAndDateAndStatus(..., open)
+     *    nên admin không thấy được slot đã full/closed.
+     *  - FE phân biệt "chi nhánh chưa tạo lịch cho ngày này" (danh sách rỗng)
+     *    với "đã tạo lịch nhưng hết chỗ hết rồi" (có slot nhưng toàn full).
+     */
+    @Query("""
+            SELECT ts FROM TimeSlot ts
+            JOIN FETCH ts.branch b
+            JOIN FETCH ts.washBay wb
+            WHERE b.branchId = :branchId
+              AND ts.slotDate = :date
+            ORDER BY ts.startTime
+            """)
+    List<TimeSlot> findByBranchAndDate(
+            @Param("branchId") Integer branchId,
+            @Param("date")     LocalDate date
+    );
+
+    /**
      * Kiểm tra trùng slot (cùng bay + ngày + giờ bắt đầu) trước khi INSERT.
      * Unique constraint trên DB là lưới an toàn cuối cùng,
      * check trước ở đây để trả lỗi rõ ràng hơn thay vì DataIntegrityViolationException.
