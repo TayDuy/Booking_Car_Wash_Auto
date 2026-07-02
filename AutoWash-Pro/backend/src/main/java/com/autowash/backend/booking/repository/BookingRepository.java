@@ -22,12 +22,13 @@ public interface BookingRepository extends JpaRepository<Booking, Integer> {
     List<Booking> findByCustomer_CustomerIdOrderByBookingDateDesc(Integer customerId);
 
     @Query("""
-            SELECT DISTINCT b FROM Booking b
-            LEFT JOIN FETCH b.customer
-            LEFT JOIN FETCH b.vehicle
-            LEFT JOIN FETCH b.branch
-            LEFT JOIN FETCH b.slot
-            """)
+        SELECT b FROM Booking b
+        LEFT JOIN FETCH b.customer
+        LEFT JOIN FETCH b.vehicle
+        LEFT JOIN FETCH b.branch
+        LEFT JOIN FETCH b.slot
+        ORDER BY b.priorityScore DESC, b.bookingDate ASC
+        """)
     List<Booking> findAllWithAssociations();
 
     @Query("""
