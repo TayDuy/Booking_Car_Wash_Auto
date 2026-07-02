@@ -208,11 +208,55 @@ public class BookingServiceImpl implements BookingService {
 
     /**
      * Hủy booking — giải phóng slot để người khác có thể đặt.
+     *
+     * FIX (chế độ hủy lịch): trước đây hàm này KHÔNG kiểm tra trạng thái hiện tại
+     * của booking trước khi hủy — dù entity Booking đã có sẵn isCancellable()
+     * (chỉ cho phép hủy khi đang pending/confirmed) nhưng service không hề gọi nó.
+     * Hậu quả: có thể hủy 1 booking đã completed/cancelled/in_progress, và nếu hủy
+     * trùng nhiều lần sẽ gọi decrementBookings() nhiều lần → sai lệch số chỗ trống
+     * thật của slot so với dữ liệu.
+     *
+     * Dùng cho STAFF/ADMIN (hủy bất kỳ booking nào, không cần là chủ sở hữu).
      */
     @Override
     @Transactional
     public BookingResponseDTO cancelBooking(Integer bookingId) {
         Booking booking = findBookingOrThrow(bookingId);
+        return doCancel(booking);
+    }
+
+    /**
+     * CUSTOMER hủy booking của chính mình.
+     *
+     * FIX (chế độ hủy lịch): trước đây endpoint hủy của customer chỉ check
+     * hasRole('CUSTOMER') mà KHÔNG kiểm tra bookingId đó có thuộc về khách
+     * đang đăng nhập hay không → bất kỳ khách nào cũng có thể hủy lịch của
+     * người khác nếu biết/đoán được bookingId. Giờ bắt buộc phải khớp customer.
+     */
+    @Override
+    @Transactional
+    public BookingResponseDTO cancelOwnBooking(Integer bookingId, Integer userId) {
+        Booking booking = findBookingOrThrow(bookingId);
+
+        Customer owner = customerRepository.findByUser_Id(userId)
+                .orElseThrow(() -> new BusinessException("Không tìm thấy hồ sơ khách hàng", HttpStatus.NOT_FOUND));
+
+        if (!booking.getCustomer().getCustomerId().equals(owner.getCustomerId())) {
+            throw new BusinessException("Bạn không có quyền hủy lịch đặt này", HttpStatus.FORBIDDEN);
+        }
+
+        return doCancel(booking);
+    }
+
+    /** Logic hủy dùng chung cho cả 2 luồng — validate trạng thái trước khi hủy. */
+    private BookingResponseDTO doCancel(Booking booking) {
+        if (!booking.isCancellable()) {
+            throw new BusinessException(
+                    "Không thể hủy lịch đang ở trạng thái '" + booking.getStatus() +
+                            "'. Chỉ có thể hủy khi đang chờ xác nhận (pending) hoặc đã xác nhận (confirmed).",
+                    HttpStatus.CONFLICT);
+        }
+
         booking.setStatus(BookingStatus.cancelled);
 
         // Giảm số lượng đặt trên slot để mở lại capacity
