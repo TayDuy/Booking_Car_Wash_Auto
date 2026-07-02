@@ -10,13 +10,13 @@ import {
   MdDirectionsCar,
   MdAirportShuttle
 } from "react-icons/md";
-import bookingApi from "../../../api/bookingApi";
+import { createBooking } from "../../../api/bookingService";
 import customerApi from "../../../api/customerApi";
 import vehicleApi from "../../../api/vehicleApi";
 import { useNavigate } from "react-router-dom";
 import { getActiveServices } from "../../../api/servicePackageService";
 import { getBranches } from "../../../api/branchService";
-import { getAvailableSlots } from "../../../api/timeSlotService";
+import { getSlotsByBranchAndDate } from "../../../api/timeSlotService";
 
 const DEFAULT_SERVICES = [
   {
@@ -192,23 +192,55 @@ export default function BookingPage() {
       }
       try {
         const date = formatDateLocal(selectedDate);
-        const res = await getAvailableSlots(selectedBranch, date);
-        if (res.data && res.data.length > 0) {
-          const formattedSlots = res.data.map(slot => ({
-            ...slot,
-            statusType: slot.statusType || (slot.capacity <= 1 ? "PEAK" : "NORMAL"),
-            statusLabel: slot.statusLabel || `Còn ${slot.capacity || 3} chỗ`,
-            available: slot.available !== undefined ? slot.available : true
-          }));
+        // FIX: trước đây gọi getAvailableSlots (BE chỉ trả status=open) → slot đã
+        // FULL bị loại bỏ hoàn toàn khỏi response, khiến nó "biến mất" khỏi danh
+        // sách thay vì hiển thị dạng xám/disable như UX thông thường (Grab, Booking.com...).
+        // Giờ gọi getSlotsByBranchAndDate (lấy TẤT CẢ status) làm nguồn chính,
+        // rồi tự lọc/đánh dấu available ở FE — vừa hiện được slot full (để khách
+        // biết khung giờ đó tồn tại nhưng hết chỗ), vừa vẫn ẩn slot "closed"
+        // (admin chủ động đóng, không nên cho khách thấy).
+        const res = await getSlotsByBranchAndDate(selectedBranch, date);
+        const rawSlots = res.data || [];
+        const visibleSlots = rawSlots.filter(slot => slot.status !== "closed");
+
+        if (visibleSlots.length > 0) {
+          const formattedSlots = visibleSlots
+              .map(slot => {
+                const max = slot.maxCapacity ?? 1;
+                const current = slot.currentBookings ?? 0;
+                const remaining = Math.max(max - current, 0);
+                const isOpen = slot.status === "open" && remaining > 0;
+                return {
+                  ...slot,
+                  statusType: !isOpen ? "FULL" : (remaining <= 1 ? "PEAK" : "NORMAL"),
+                  statusLabel: isOpen ? `Còn ${remaining} chỗ` : "Hết chỗ",
+                  available: isOpen,
+                };
+              })
+              // Slot còn chỗ hiện lên trước, slot hết chỗ dồn xuống cuối — dễ chọn hơn
+              // nhưng khách vẫn thấy được toàn bộ khung giờ trong ngày.
+              .sort((a, b) => Number(b.available) - Number(a.available));
+
           setSlots(formattedSlots);
-          setSelectedTime(formattedSlots[0].slotId);
-          setSlotsError(null);
+          const firstAvailable = formattedSlots.find(s => s.available);
+          setSelectedTime(firstAvailable ? firstAvailable.slotId : null);
+          setSlotsError(
+              firstAvailable
+                  ? null
+                  : "Tất cả khung giờ trong ngày này đã kín chỗ. Vui lòng chọn ngày khác hoặc chi nhánh khác."
+          );
         } else {
           // KHÔNG dùng MOCK_SLOTS_DATA nữa — slot giả có thể trùng ID với slot thật
           // đã hết hạn ngày trong DB, gây lỗi 500 khi đặt lịch (validate slotDate).
           setSlots([]);
           setSelectedTime(null);
-          setSlotsError("Chi nhánh này chưa có khung giờ trống cho ngày đã chọn. Vui lòng chọn chi nhánh hoặc ngày khác.");
+          setSlotsError(
+              rawSlots.length > 0
+                  // Có slot nhưng toàn bộ đang "closed" (admin đóng thủ công)
+                  ? "Chi nhánh tạm đóng lịch đặt cho ngày này. Vui lòng chọn ngày khác hoặc chi nhánh khác."
+                  // Hoàn toàn chưa có slot nào — chưa generate lịch cho ngày này
+                  : "Chi nhánh này chưa mở lịch đặt cho ngày đã chọn. Vui lòng chọn chi nhánh hoặc ngày khác."
+          );
         }
       } catch (err) {
         setSlots([]);
@@ -289,9 +321,8 @@ export default function BookingPage() {
         note,
         details: [{ serviceId: selectedService, quantity: 1 }]
       };
-      const response = await bookingApi.create(bookingData);
-      const result = response.data;
-      const bookingId = result?.bookingId || result?.id || result?.data?.bookingId;
+      const result = await createBooking(bookingData);
+      const bookingId = result?.data?.bookingId || result?.data?.id || result?.data?.data?.bookingId;
       navigate("/customer/payment", { state: { bookingId } });
     } catch (error) {
       alert(error.response?.data?.message || "Đặt lịch thất bại. Vui lòng thử lại!");
@@ -391,7 +422,12 @@ export default function BookingPage() {
                       </h4>
                       <div className="bay-live-status">
                         <span className="status-indicator-dot">●</span>
-                        Bay 1 & 2 đang sẵn sàng
+                        {(() => {
+                          const readyBays = [...new Set(slots.filter(s => s.available).map(s => s.bayName).filter(Boolean))];
+                          return readyBays.length > 0
+                              ? `${readyBays.join(" & ")} đang sẵn sàng`
+                              : "Chưa có bay nào sẵn sàng cho ngày này";
+                        })()}
                       </div>
                     </div>
                   </div>

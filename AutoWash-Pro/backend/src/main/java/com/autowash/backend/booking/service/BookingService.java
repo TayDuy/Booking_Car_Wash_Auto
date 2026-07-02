@@ -21,5 +21,11 @@ public interface BookingService {
 
     BookingResponseDTO cancelBooking(Integer bookingId, Integer userId);
 
+    /**
+     * CUSTOMER hủy booking của chính mình — có kiểm tra quyền sở hữu.
+     * userId là id của User đang đăng nhập (lấy từ CustomUserDetails).
+     */
+    BookingResponseDTO cancelOwnBooking(Integer bookingId, Integer userId);
+
     BookingResponseDTO completeBooking(Integer bookingId);
 }

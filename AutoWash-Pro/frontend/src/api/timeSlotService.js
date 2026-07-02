@@ -11,3 +11,7 @@ export const getSlotsByBranchAndDate = async (branchId, date) => {
     params: { branchId, date },
   });
 };
+
+export const generateMonthlySlots = async (payload) => {
+    return axiosClient.post("/time-slots/generate", payload);
+};

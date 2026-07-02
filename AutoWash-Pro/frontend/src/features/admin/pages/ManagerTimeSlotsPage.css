@@ -1,0 +1,131 @@
+.manager-timeslots-page {
+    padding: 24px;
+    max-width: 900px;
+}
+
+.manager-timeslots-page .page-title-area h1 {
+    margin: 0 0 8px;
+    font-size: 22px;
+}
+
+.manager-timeslots-page .page-title-area p {
+    color: #555;
+    margin: 0 0 20px;
+    line-height: 1.5;
+}
+
+.ts-alert {
+    padding: 12px 16px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    font-size: 14px;
+}
+
+.ts-alert-error {
+    background: #fdecea;
+    color: #b3261e;
+    border: 1px solid #f5c2c0;
+}
+
+.ts-form-card {
+    background: #fff;
+    border: 1px solid #e5e5e5;
+    border-radius: 12px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.ts-row {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.ts-field {
+    flex: 1;
+    min-width: 160px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.ts-field label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #333;
+}
+
+.ts-field input[type="text"],
+.ts-field input[type="number"],
+.ts-field input[type="time"],
+.ts-field select {
+    padding: 8px 10px;
+    border: 1px solid #d0d5dd;
+    border-radius: 8px;
+    font-size: 14px;
+}
+
+.ts-hint {
+    font-size: 13px;
+    color: #888;
+    margin: 0;
+}
+
+.ts-checkbox-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 18px;
+}
+
+.ts-checkbox-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.ts-submit-btn {
+    align-self: flex-start;
+    background: #1a3fa3;
+    color: #fff;
+    border: none;
+    padding: 10px 22px;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.ts-submit-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.ts-result-card {
+    margin-top: 20px;
+    background: #f4f8f6;
+    border: 1px solid #cfe8dc;
+    border-radius: 12px;
+    padding: 18px 20px;
+}
+
+.ts-result-card h3 {
+    margin: 0 0 10px;
+}
+
+.ts-result-card ul {
+    margin: 0;
+    padding-left: 18px;
+    line-height: 1.7;
+}
+
+.ts-skip-list {
+    max-height: 220px;
+    overflow-y: auto;
+    font-size: 13px;
+    color: #666;
+}

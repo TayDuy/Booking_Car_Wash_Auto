@@ -1,5 +1,7 @@
 package com.autowash.backend.timeslot.controller;
 
+import com.autowash.backend.timeslot.dto.GenerateSlotsRequestDTO;
+import com.autowash.backend.timeslot.dto.GenerateSlotsResponseDTO;
 import com.autowash.backend.timeslot.dto.TimeSlotRequestDTO;
 import com.autowash.backend.timeslot.dto.TimeSlotResponseDTO;
 import com.autowash.backend.timeslot.entity.TimeSlot.SlotStatus;
@@ -109,4 +111,11 @@ public class TimeSlotController {
         service.delete(id);
         return ResponseEntity.noContent().build();
     }
+
+    @PostMapping("/generate")
+    public ResponseEntity<GenerateSlotsResponseDTO> generateMonthlySlots(
+            @Valid @RequestBody GenerateSlotsRequestDTO request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(service.generateMonthlySlots(request));
+    }
+
 }
