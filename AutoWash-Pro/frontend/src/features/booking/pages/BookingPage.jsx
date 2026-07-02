@@ -10,7 +10,7 @@ import {
   MdDirectionsCar,
   MdAirportShuttle
 } from "react-icons/md";
-import { createBooking } from "../../../api/bookingService";
+import bookingApi from "../../../api/bookingApi";
 import customerApi from "../../../api/customerApi";
 import vehicleApi from "../../../api/vehicleApi";
 import { useNavigate } from "react-router-dom";
@@ -321,8 +321,9 @@ export default function BookingPage() {
         note,
         details: [{ serviceId: selectedService, quantity: 1 }]
       };
-      const result = await createBooking(bookingData);
-      const bookingId = result?.data?.bookingId || result?.data?.id || result?.data?.data?.bookingId;
+      const response = await bookingApi.create(bookingData);
+      const result = response.data;
+      const bookingId = result?.bookingId || result?.id || result?.data?.bookingId;
       navigate("/customer/payment", { state: { bookingId } });
     } catch (error) {
       alert(error.response?.data?.message || "Đặt lịch thất bại. Vui lòng thử lại!");
