@@ -1,0 +1,206 @@
+/* Lớp phủ mờ phía sau, click ra ngoài để đóng */
+.scw-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.35);
+    display: flex;
+    align-items: flex-end;
+    justify-content: flex-end;
+    padding: 24px;
+    z-index: 2000;
+}
+
+.scw-panel {
+    width: 380px;
+    max-width: calc(100vw - 48px);
+    height: 560px;
+    max-height: calc(100vh - 48px);
+    background: var(--wf-surface, #ffffff);
+    border-radius: var(--wf-radius-lg, 16px);
+    box-shadow: 0 20px 50px rgba(15, 23, 42, 0.25);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.scw-header {
+    background: var(--wf-navy, #1d3a8f);
+    color: #ffffff;
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+}
+
+.scw-header__title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.scw-close-btn {
+    background: none;
+    border: none;
+    color: #ffffff;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    opacity: 0.85;
+    padding: 4px;
+}
+
+.scw-close-btn:hover {
+    opacity: 1;
+}
+
+.scw-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    background: var(--wf-bg, #f4f5f7);
+}
+
+.scw-msg {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    max-width: 88%;
+}
+
+.scw-msg--user {
+    align-self: flex-end;
+    flex-direction: row-reverse;
+}
+
+.scw-msg__avatar {
+    flex-shrink: 0;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--wf-blue-50, #eef2fc);
+    color: var(--wf-navy, #1d3a8f);
+}
+
+.scw-msg--user .scw-msg__avatar {
+    background: var(--wf-navy, #1d3a8f);
+    color: #ffffff;
+}
+
+.scw-msg__bubble {
+    margin: 0;
+    padding: 10px 13px;
+    border-radius: var(--wf-radius-md, 12px);
+    background: var(--wf-surface, #ffffff);
+    color: var(--wf-text, #1a1d29);
+    font-size: 13.5px;
+    line-height: 1.5;
+    box-shadow: var(--wf-shadow, 0 1px 2px rgba(16,24,40,0.06));
+    white-space: pre-wrap;
+}
+
+.scw-msg--user .scw-msg__bubble {
+    background: var(--wf-navy, #1d3a8f);
+    color: #ffffff;
+}
+
+.scw-msg__bubble--loading {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--wf-text-muted, #6b7280);
+}
+
+.scw-spin {
+    animation: scw-spin 0.9s linear infinite;
+}
+
+@keyframes scw-spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.scw-error {
+    align-self: center;
+    font-size: 12.5px;
+    color: var(--wf-red, #c4291c);
+    background: var(--wf-red-bg, #fde9e7);
+    border-radius: var(--wf-radius-sm, 8px);
+    padding: 8px 12px;
+    text-align: center;
+}
+
+.scw-input-row {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px;
+    border-top: 1px solid var(--wf-border, #e3e5ea);
+    background: var(--wf-surface, #ffffff);
+}
+
+.scw-input {
+    flex: 1;
+    border: 1px solid var(--wf-border, #e3e5ea);
+    border-radius: var(--wf-radius-sm, 8px);
+    padding: 10px 12px;
+    font-size: 13.5px;
+    outline: none;
+    color: var(--wf-text, #1a1d29);
+}
+
+.scw-input:focus {
+    border-color: var(--wf-navy, #1d3a8f);
+}
+
+.scw-input:disabled {
+    background: var(--wf-bg, #f4f5f7);
+    cursor: not-allowed;
+}
+
+.scw-send-btn {
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: none;
+    background: var(--wf-navy, #1d3a8f);
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: opacity .2s ease;
+}
+
+.scw-send-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.scw-send-btn:not(:disabled):hover {
+    background: var(--wf-navy-dark, #15296b);
+}
+
+/* Responsive: trên màn hình nhỏ, panel chiếm gần hết chiều rộng */
+@media (max-width: 480px) {
+    .scw-overlay {
+        padding: 0;
+        align-items: stretch;
+    }
+    .scw-panel {
+        width: 100%;
+        height: 100%;
+        max-height: 100%;
+        border-radius: 0;
+    }
+}

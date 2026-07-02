@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import {
-    Waves, Calendar, CheckCircle2, Gift, Star, Megaphone,
-    HelpCircle, ChevronDown, CheckCheck, Bell, Copy, BellOff,
+    Calendar, Gift, Megaphone,
+    ChevronDown, CheckCheck, Bell, Copy, BellOff,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import "./CustomerNotificationPage.css";
@@ -15,13 +15,6 @@ const CATEGORIES = [
     { id: "booking", label: "Cập nhật Đặt lịch", icon: Calendar },
     { id: "reward",  label: "Ưu đãi & Quà tặng", icon: Gift },
     { id: "promo",   label: "Khuyến mãi",         icon: Megaphone },
-];
-
-const TOP_NAV = [
-    { label: "Trang chủ",  path: "/" },
-    { label: "Đặt lịch",   path: "/booking" },
-    { label: "Gói dịch vụ",path: "/packages" },
-    { label: "Thông báo",  path: "/notifications", active: true },
 ];
 
 // Map backend type string → UI category id
@@ -224,8 +217,6 @@ export default function CustomerNotificationPage() {
         reward:  allItems.filter(it => it.catId === "reward").length,
         promo:   allItems.filter(it => it.catId === "promo").length,
     };
-
-    const unreadTotal = allItems.filter(it => it.unread).length;
 
     // ── Render ───────────────────────────────────────────────────────────────
 

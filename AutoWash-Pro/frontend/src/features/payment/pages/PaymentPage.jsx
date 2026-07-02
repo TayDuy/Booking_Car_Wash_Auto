@@ -1,8 +1,9 @@
 import "./PaymentPage.css";
 import { useState, useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
-import axiosClient from "../../../api/axiosClient";
+import SiteHeader from "../../../components/layout/SiteHeader";
 
+const API_BASE = "http://localhost:8080";
 const STORE_NAME = "AutoWash Pro";
 
 // VNPAY sandbox hết hạn giao dịch sau 15 phút kể từ vnp_CreateDate
@@ -49,11 +50,20 @@ function PaymentPage() {
         setQrLoading(true);
         setErrorMessage("");
         try {
-            const response = await axiosClient.get(`/payments/${id}/vnpay-qr`, {
-                responseType: "blob"
+            const response = await fetch(`${API_BASE}/api/v1/payments/${id}/vnpay-qr`, {
+                method: "GET",
+                headers: {
+                    Authorization: `Bearer ${localStorage.getItem("token")}`,
+                },
             });
 
-            const blob = response.data;
+            if (!response.ok) {
+                // Endpoint lỗi trả JSON message, còn thành công trả ảnh nên đọc text để báo lỗi.
+                const text = await response.text().catch(() => "");
+                throw new Error(text || `Không tạo được QR VNPAY (HTTP ${response.status})`);
+            }
+
+            const blob = await response.blob();
 
             // Revoke URL cũ trước khi tạo URL mới để tránh leak bộ nhớ.
             if (qrObjectUrlRef.current) {
@@ -63,7 +73,7 @@ function PaymentPage() {
             qrObjectUrlRef.current = objectUrl;
             setQrImageUrl(objectUrl);
         } catch (error) {
-            setErrorMessage(error.response?.data?.message || "Không tạo được mã QR VNPAY");
+            setErrorMessage(error.message || "Không tạo được mã QR VNPAY");
         } finally {
             setQrLoading(false);
         }
@@ -114,17 +124,30 @@ function PaymentPage() {
 
         try {
             setIsLoading(true);
-            const response = await axiosClient.post("/payments", data);
-            const result = response.data;
+            const response = await fetch(`${API_BASE}/api/v1/payments`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${localStorage.getItem("token")}`,
+                },
+                body: JSON.stringify(data),
+            });
 
-            setPaymentResult(result);
-            setPaymentId(result.paymentId);
-            setErrorMessage("");
-            // Tạo payment xong -> gọi backend sinh QR VNPAY thật cho paymentId vừa tạo
-            await fetchVnpayQrImage(result.paymentId);
+            const result = await response.json();
+
+            if (response.ok) {
+                setPaymentResult(result);
+                setPaymentId(result.paymentId);
+                setErrorMessage("");
+                // Tạo payment xong -> gọi backend sinh QR VNPAY thật cho paymentId vừa tạo
+                await fetchVnpayQrImage(result.paymentId);
+            } else {
+                setPaymentResult(null);
+                setErrorMessage(result.message);
+            }
         } catch (error) {
-            setPaymentResult(null);
-            setErrorMessage(error.response?.data?.message || "Cannot create payment");
+            setErrorMessage("Network Error");
+            console.log("Cannot create payment", error);
         } finally {
             setIsLoading(false);
         }
@@ -138,26 +161,48 @@ function PaymentPage() {
         if (!paymentId) return;
 
         try {
-            const response = await axiosClient.get(`/payments/${paymentId}`);
-            const result = response.data;
+            const response = await fetch(`${API_BASE}/api/v1/payments/${paymentId}`, {
+                method: "GET",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${localStorage.getItem("token")}`
+                },
+            });
 
-            setPaymentResult(result);
-            if (!silent) setErrorMessage("");
-        } catch (error) {
-            if (!silent) {
+            const result = await response.json();
+
+            if (response.ok) {
+                setPaymentResult(result);
+                if (!silent) setErrorMessage("");
+            } else if (!silent) {
                 setPaymentResult(null);
-                setErrorMessage(error.response?.data?.message || "Cannot get payment");
+                setErrorMessage(result.message);
             }
+        } catch (error) {
+            if (!silent) setErrorMessage("Network Error");
+            console.log("Cannot get payment", error);
         }
     }
 
     async function handleGetBookingDetail(id) {
         try {
-            const response = await axiosClient.get(`/bookings/${id}`);
-            const result = response.data;
-            setBookingDetail(result);
+            const response = await fetch(`http://localhost:8080/api/v1/bookings/${id}`, {
+                method: "GET",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${localStorage.getItem("token")}`
+                }
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+                setBookingDetail(result);
+            } else {
+                console.log(result.message);
+            }
         } catch (error) {
-            // No console.log to avoid leaking token/PII
+            console.log("Cannot get booking detail", error);
         }
     }
 
@@ -236,6 +281,7 @@ function PaymentPage() {
 
     return (
         <>
+            <SiteHeader />
             <div className="payment-page">
                 <div className="payment-page-inner">
                     <h1>Thanh Toán</h1>

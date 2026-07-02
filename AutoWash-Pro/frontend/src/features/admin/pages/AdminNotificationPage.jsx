@@ -6,15 +6,7 @@ import {
     AlertTriangle, Star, ThumbsUp, Clock,
 } from "lucide-react";
 import "./AdminNotificationPage.css";
-import { 
-    getAll, 
-    createNotification, 
-    markAllRead, 
-    markAsRead, 
-    subscribeSSE, 
-    getUnread, 
-    countUnread 
-} from '../../../api/notificationService';
+import { getAll, createNotification, createBulk, markAllRead, markAsRead, subscribeSSE, getUnread, countUnread } from '../../../api/notificationService';
 import { isLoggedIn, logout as clearAuth, getRole } from '../../../api/authService';
 
 const SIDEBAR_NAV = [
@@ -27,12 +19,33 @@ const SIDEBAR_NAV = [
     { id: "catalog", label: "Chi nhánh & Dịch vụ", icon: Settings },
 ];
 
+// Khớp với enum Notification.NotificationType ở backend — không tự đặt nhãn tùy ý
+const NOTIFICATION_TYPES = {
+    BOOKING_CONFIRMED:   { label: "Đặt lịch đã xác nhận",   category: "booking" },
+    BOOKING_CANCELLED:   { label: "Đặt lịch đã hủy",        category: "booking" },
+    BOOKING_RESCHEDULED: { label: "Đặt lịch đổi giờ",        category: "booking" },
+    WAITLIST_PROMOTED:   { label: "Được xếp từ danh sách chờ", category: "booking" },
+    TIER_UPGRADED:       { label: "Nâng hạng thành viên",    category: "tier" },
+    TIER_DOWNGRADED:     { label: "Hạ hạng thành viên",      category: "tier" },
+    PAYMENT_COMPLETED:   { label: "Thanh toán hoàn tất",     category: "payment" },
+};
+
+const CHANNELS = [
+    { id: "in_app", label: "Trong ứng dụng" },
+    { id: "sms", label: "SMS" },
+    { id: "email", label: "Email" },
+];
+
 const FILTERS = [
     { id: "all", label: "Tất cả" },
-    { id: "ops", label: "Cảnh báo vận hành" },
-    { id: "hr", label: "Nhân sự" },
-    { id: "customer", label: "Khách hàng" },
+    { id: "booking", label: "Đặt lịch" },
+    { id: "tier", label: "Hạng thành viên" },
+    { id: "payment", label: "Thanh toán" },
 ];
+
+function categoryOf(type) {
+    return NOTIFICATION_TYPES[type]?.category || "booking";
+}
 
 // initially empty; will be loaded from backend
 const GROUPS = [];
@@ -79,7 +92,21 @@ export default function AdminNotificationPage() {
     const [showCompose, setShowCompose] = useState(false);
     const [title, setTitle] = useState("");
     const [body, setBody] = useState("");
+    const [type, setType] = useState("");
+    const [channel, setChannel] = useState("in_app");
+    const [sendMode, setSendMode] = useState("single"); // 'single' | 'broadcast'
     const [targetUserId, setTargetUserId] = useState("");
+    const [formError, setFormError] = useState("");
+    const [formSuccess, setFormSuccess] = useState("");
+    const [submitting, setSubmitting] = useState(false);
+    const [totalCount, setTotalCount] = useState(0);
+    const [categoryCounts, setCategoryCounts] = useState({ booking: 0, tier: 0, payment: 0 });
+    const [toast, setToast] = useState(null);
+
+    function showToast(message){
+        setToast(message);
+        setTimeout(()=> setToast(null), 2500);
+    }
 
     useEffect(()=>{
         if(!isLoggedIn()){
@@ -89,17 +116,19 @@ export default function AdminNotificationPage() {
 
     // helper to map backend DTO -> card item
     function mapDtoToItem(dto){
-        const tone = dto.isRead ? 'gray' : (dto.type?.toString().includes('ALERT') ? 'red' : 'blue');
-        const icon = dto.type?.toString().includes('ALERT') ? AlertTriangle : (dto.type?.toString().includes('HR') ? ThumbsUp : Star);
+        const cat = categoryOf(dto.type);
+        const tone = dto.isRead ? 'gray' : (cat === 'payment' ? 'green' : cat === 'tier' ? 'red' : 'blue');
+        const icon = cat === 'payment' ? ThumbsUp : cat === 'tier' ? Star : AlertTriangle;
         const time = dto.createdAt ? new Date(dto.createdAt).toLocaleString() : '';
         return {
             id: dto.notificationId,
             icon,
             tone,
-            title: dto.title || dto.type,
+            title: dto.title || NOTIFICATION_TYPES[dto.type]?.label || dto.type,
             description: dto.body,
             time,
-            category: dto.type?.toString() || 'Thông báo',
+            category: NOTIFICATION_TYPES[dto.type]?.label || dto.type || 'Thông báo',
+            categoryId: cat,
             badge: { label: dto.isRead ? 'Đã đọc' : 'Mới', tone: dto.isRead ? 'gray' : 'blue' },
             seen: dto.isRead,
             raw: dto,
@@ -115,8 +144,10 @@ export default function AdminNotificationPage() {
             const yesterday = [];
             const older = [];
             const now = new Date();
+            const catCount = { booking: 0, tier: 0, payment: 0 };
             data.forEach(d => {
                 const item = mapDtoToItem(d);
+                catCount[item.categoryId] = (catCount[item.categoryId] || 0) + 1;
                 const dt = d.createdAt ? new Date(d.createdAt) : null;
                 if(!dt) { older.push(item); return; }
                 const diff = Math.floor((now - dt)/(1000*60*60*24));
@@ -129,8 +160,11 @@ export default function AdminNotificationPage() {
             if(yesterday.length) newGroups.push({ id: 'yesterday', label: 'HÔM QUA', items: yesterday });
             if(older.length) newGroups.push({ id: 'older', label: 'CŨ HƠN', items: older });
             setGroups(newGroups);
+            setTotalCount(data.length);
+            setCategoryCounts(catCount);
         }catch(err){
             console.error('load notifications', err);
+            setFormError('Không tải được danh sách thông báo. Vui lòng thử lại.');
         }finally{ setLoading(false); }
     }
 
@@ -175,26 +209,63 @@ export default function AdminNotificationPage() {
     async function handleMarkAll(){
         try{
             await markAllRead();
-            // refresh
-            load();
-        }catch(err){ console.error(err); }
+            await load();
+            await loadUnread();
+            showToast('Đã đánh dấu tất cả là đã đọc');
+        }catch(err){
+            console.error(err);
+            showToast('Không thể đánh dấu đã đọc, vui lòng thử lại');
+        }
     }
 
     async function handleMark(id){
-        try{ await markAsRead(id); load(); }catch(err){ console.error(err); }
+        try{ await markAsRead(id); load(); loadUnread(); }catch(err){ console.error(err); }
+    }
+
+    function resetComposeForm(){
+        setTitle(''); setBody(''); setType(''); setChannel('in_app');
+        setSendMode('single'); setTargetUserId('');
     }
 
     async function handleCreate(e){
         e.preventDefault();
+        setFormError('');
+        setFormSuccess('');
+
+        if(!type){
+            setFormError('Vui lòng chọn loại thông báo.');
+            return;
+        }
+        if(sendMode === 'single' && !targetUserId.trim()){
+            setFormError('Vui lòng nhập ID người dùng nhận thông báo, hoặc chuyển sang "Gửi cho tất cả".');
+            return;
+        }
+
+        setSubmitting(true);
         try{
-            const dto = { title, body };
-            if(targetUserId) dto.userId = Number(targetUserId);
-            const created = await createNotification(dto);
-            // prepend
-            const item = mapDtoToItem(created);
-            setGroups(prev => { if(prev.length && prev[0].id==='today') { prev[0].items.unshift(item); return [...prev]; } else return [{ id:'today', label:'HÔM NAY', items:[item] }, ...prev]; });
-            setTitle(''); setBody(''); setTargetUserId(''); setShowCompose(false);
-        }catch(err){ console.error('create', err); }
+            if(sendMode === 'broadcast'){
+                const res = await createBulk({ type, title, body, channel });
+                showToast(`Đã gửi thông báo đến ${res?.totalSent ?? 0} người dùng`);
+            } else {
+                const dto = { type, title, body, channel, userId: Number(targetUserId) };
+                const created = await createNotification(dto);
+                const item = mapDtoToItem(created);
+                setGroups(prev => {
+                    if(prev.length && prev[0].id === 'today') { prev[0].items.unshift(item); return [...prev]; }
+                    return [{ id: 'today', label: 'HÔM NAY', items: [item] }, ...prev];
+                });
+                showToast('Đã gửi thông báo');
+            }
+            setFormSuccess('Gửi thông báo thành công.');
+            resetComposeForm();
+            setShowCompose(false);
+        }catch(err){
+            console.error('create', err);
+            const apiMsg = err?.response?.data?.message;
+            setFormError(apiMsg || 'Gửi thông báo thất bại. Vui lòng kiểm tra lại thông tin (đặc biệt là ID người dùng).');
+        }finally{
+            setSubmitting(false);
+        }
     }
 
     const handleSidebarClick = (id) => {
@@ -206,6 +277,13 @@ export default function AdminNotificationPage() {
             alert("Chức năng đang phát triển!");
         }
     };
+
+    const filteredGroups = groups
+        .map(g => ({
+            ...g,
+            items: activeFilter === 'all' ? g.items : g.items.filter(it => it.categoryId === activeFilter),
+        }))
+        .filter(g => g.items.length > 0);
 
     return (
         <div className="an-app">
@@ -220,8 +298,8 @@ export default function AdminNotificationPage() {
 
                 <nav className="an-sidebar__nav">
                     {SIDEBAR_NAV.map(({ id, label, icon: Icon, active }) => (
-                        <button 
-                            key={id} 
+                        <button
+                            key={id}
                             className={`an-sidebar__item ${active ? "is-active" : ""}`}
                             onClick={() => handleSidebarClick(id)}
                         >
@@ -256,16 +334,16 @@ export default function AdminNotificationPage() {
                         <input placeholder="Tìm kiếm thông báo..." />
                     </div>
                     <div className="an-topbar__actions">
-                                            <button className="an-icon-btn" onClick={async ()=>{ await loadUnread(); setShowList(s=>!s); }}>
-                                                <Bell size={18} />
-                                                {unreadCount > 0 && <span className="an-bell-badge">{unreadCount}</span>}
-                                            </button>
-                                            <button className="an-icon-btn"><Settings size={18} /></button>
-                                            <div className="an-profile">
-                                                <div className="an-avatar" />
-                                                <span>Quản lý cấp cao</span>
-                                            </div>
-                                        </div>
+                        <button className="an-icon-btn" onClick={async ()=>{ await loadUnread(); setShowList(s=>!s); }}>
+                            <Bell size={18} />
+                            {unreadCount > 0 && <span className="an-bell-badge">{unreadCount}</span>}
+                        </button>
+                        <button className="an-icon-btn"><Settings size={18} /></button>
+                        <div className="an-profile">
+                            <div className="an-avatar" />
+                            <span>Quản lý cấp cao</span>
+                        </div>
+                    </div>
                 </header>
 
                 <div className="an-toolbar">
@@ -280,114 +358,148 @@ export default function AdminNotificationPage() {
                             </button>
                         ))}
                     </div>
-                                        <button className="an-mark-read" onClick={handleMarkAll}>
+                    <button className="an-mark-read" onClick={handleMarkAll}>
                         <CheckCheck size={16} /> Đánh dấu tất cả là đã đọc
                     </button>
-                                    {role === 'ADMIN' && (
-                                        <button className="an-filter-advanced" onClick={()=>setShowCompose(s=>!s)}>
-                                            <Megaphone size={16} /> {showCompose ? 'Đóng' : 'Tạo thông báo'}
-                                        </button>
-                                    )}
+                    {role === 'ADMIN' && (
+                        <button className="an-filter-advanced" onClick={()=>setShowCompose(s=>!s)}>
+                            <Megaphone size={16} /> {showCompose ? 'Đóng' : 'Tạo thông báo'}
+                        </button>
+                    )}
                 </div>
 
                 <div className="an-content">
                     <div className="an-list">
-                                                {showCompose && (
-                                                    <form className="an-compose" onSubmit={handleCreate}>
-                                                        <h3>Tạo thông báo mới</h3>
-                                                        <input placeholder="Tiêu đề" value={title} onChange={e=>setTitle(e.target.value)} required />
-                                                        <textarea placeholder="Nội dung" value={body} onChange={e=>setBody(e.target.value)} required />
-                                                        <input placeholder="User ID (để trống để broadcast)" value={targetUserId} onChange={e=>setTargetUserId(e.target.value)} />
-                                                        <div className="an-compose__actions">
-                                                            <button className="an-btn" type="submit">Gửi</button>
-                                                            <button type="button" className="an-btn an-btn--muted" onClick={()=>setShowCompose(false)}>Hủy</button>
-                                                        </div>
-                                                    </form>
-                                                )}
+                        {showCompose && (
+                            <form className="an-compose" onSubmit={handleCreate}>
+                                <h3>Tạo thông báo mới</h3>
 
-                                                {groups.map((group) => (
-                                                    <section key={group.id} className="an-group">
-                                                        <h2 className="an-group__label">{group.label}</h2>
-                                                        <div className="an-group__items">
-                                                            {group.items.map((item) => (
-                                                                <NotifCard key={item.id} item={item} onMark={handleMark} />
-                                                            ))}
-                                                        </div>
-                                                    </section>
-                                                ))}
+                                {formError && <div className="an-form-error">{formError}</div>}
 
-                                                {/* unread dropdown for quick access (opened by bell) */}
-                                                {showList && (
-                                                    <div className="an-unread-dropdown">
-                                                        <h4>Thông báo chưa đọc ({unreadCount})</h4>
-                                                        <div className="an-unread-items">
-                                                            {unreadItems.length === 0 && <div className="an-empty">Không có thông báo chưa đọc</div>}
-                                                            {unreadItems.map(it => (
-                                                                <div key={it.id} className="an-unread-item">
-                                                                    <div className="an-unread-item__title">{it.title}</div>
-                                                                    <div className="an-unread-item__time">{it.time}</div>
-                                                                    <div className="an-unread-item__actions">
-                                                                        <button className="an-btn an-btn--small" onClick={async ()=>{ await handleMark(it.id); await loadUnread(); setShowList(false); }}>Đánh dấu đã đọc</button>
-                                                                    </div>
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                        <div className="an-unread-footer">
-                                                            <button className="an-btn an-btn--muted" onClick={()=>{ setShowList(false); }}>Đóng</button>
-                                                        </div>
-                                                    </div>
-                                                )}
+                                <label className="an-field-label">Loại thông báo</label>
+                                <select value={type} onChange={e=>setType(e.target.value)} required>
+                                    <option value="" disabled>Chọn loại thông báo…</option>
+                                    {Object.entries(NOTIFICATION_TYPES).map(([key, val]) => (
+                                        <option key={key} value={key}>{val.label}</option>
+                                    ))}
+                                </select>
+
+                                <input placeholder="Tiêu đề (tối đa 100 ký tự)" value={title} maxLength={100} onChange={e=>setTitle(e.target.value)} required />
+                                <textarea placeholder="Nội dung (tối đa 500 ký tự)" value={body} maxLength={500} onChange={e=>setBody(e.target.value)} />
+
+                                <label className="an-field-label">Kênh gửi</label>
+                                <select value={channel} onChange={e=>setChannel(e.target.value)}>
+                                    {CHANNELS.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
+                                </select>
+
+                                <label className="an-field-label">Đối tượng nhận</label>
+                                <div className="an-send-mode">
+                                    <button type="button"
+                                            className={`an-filter ${sendMode === 'single' ? 'is-active' : ''}`}
+                                            onClick={()=>setSendMode('single')}>
+                                        Một người dùng
+                                    </button>
+                                    <button type="button"
+                                            className={`an-filter ${sendMode === 'broadcast' ? 'is-active' : ''}`}
+                                            onClick={()=>setSendMode('broadcast')}>
+                                        Tất cả khách hàng đang hoạt động
+                                    </button>
+                                </div>
+
+                                {sendMode === 'single' && (
+                                    <input placeholder="ID người dùng nhận thông báo" value={targetUserId} onChange={e=>setTargetUserId(e.target.value)} required />
+                                )}
+                                {sendMode === 'broadcast' && (
+                                    <p className="an-hint">Thông báo sẽ được gửi đến tất cả người dùng có trạng thái hoạt động (active).</p>
+                                )}
+
+                                <div className="an-compose__actions">
+                                    <button className="an-btn" type="submit" disabled={submitting}>
+                                        {submitting ? 'Đang gửi…' : 'Gửi'}
+                                    </button>
+                                    <button type="button" className="an-btn an-btn--muted" onClick={()=>{ setShowCompose(false); setFormError(''); }}>Hủy</button>
+                                </div>
+                            </form>
+                        )}
+
+                        {filteredGroups.length === 0 && !loading && (
+                            <div className="an-empty">Không có thông báo phù hợp.</div>
+                        )}
+                        {filteredGroups.map((group) => (
+                            <section key={group.id} className="an-group">
+                                <h2 className="an-group__label">{group.label}</h2>
+                                <div className="an-group__items">
+                                    {group.items.map((item) => (
+                                        <NotifCard key={item.id} item={item} onMark={handleMark} />
+                                    ))}
+                                </div>
+                            </section>
+                        ))}
+
+                        {/* unread dropdown for quick access (opened by bell) */}
+                        {showList && (
+                            <div className="an-unread-dropdown">
+                                <h4>Thông báo chưa đọc ({unreadCount})</h4>
+                                <div className="an-unread-items">
+                                    {unreadItems.length === 0 && <div className="an-empty">Không có thông báo chưa đọc</div>}
+                                    {unreadItems.map(it => (
+                                        <div key={it.id} className="an-unread-item">
+                                            <div className="an-unread-item__title">{it.title}</div>
+                                            <div className="an-unread-item__time">{it.time}</div>
+                                            <div className="an-unread-item__actions">
+                                                <button className="an-btn an-btn--small" onClick={async ()=>{ await handleMark(it.id); await loadUnread(); setShowList(false); }}>Đánh dấu đã đọc</button>
                                             </div>
+                                        </div>
+                                    ))}
+                                </div>
+                                <div className="an-unread-footer">
+                                    <button className="an-btn an-btn--muted" onClick={()=>{ setShowList(false); }}>Đóng</button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
 
                     <aside className="an-side">
                         <div className="an-overview">
-                            <h3>Tổng quan tuần này</h3>
+                            <h3>Tổng quan thông báo</h3>
                             <div className="an-overview__stats">
                                 <div>
-                                    <strong>248</strong>
-                                    <span>Thông báo mới</span>
+                                    <strong>{totalCount}</strong>
+                                    <span>Tổng số thông báo</span>
                                 </div>
                                 <div>
-                                    <strong>12</strong>
-                                    <span>Cảnh báo khẩn cấp</span>
+                                    <strong>{unreadCount}</strong>
+                                    <span>Chưa đọc</span>
                                 </div>
-                            </div>
-                            <button className="an-overview__btn">Xem báo cáo chi tiết</button>
-                        </div>
-
-                        <div className="an-bay-status">
-                            <h3>Trạng thái khoang rửa</h3>
-                            <div className="an-bay">
-                                <div className="an-bay__top">
-                                    <span><span className="an-bay__dot an-bay__dot--green" />Khoang 01</span>
-                                    <span className="an-bay__status an-bay__status--green">Đang hoạt động</span>
-                                </div>
-                                <div className="an-bay__bar"><div className="an-bay__fill an-bay__fill--green" style={{ width: "70%" }} /></div>
-                            </div>
-                            <div className="an-bay">
-                                <div className="an-bay__top">
-                                    <span><span className="an-bay__dot an-bay__dot--red" />Khoang 02</span>
-                                    <span className="an-bay__status an-bay__status--red">Cần xử lý</span>
-                                </div>
-                                <div className="an-bay__bar"><div className="an-bay__fill an-bay__fill--red" style={{ width: "20%" }} /></div>
                             </div>
                         </div>
 
                         <div className="an-legend">
-                            <h3>Phân loại</h3>
+                            <h3>Theo loại</h3>
                             <ul>
-                                <li><span className="an-legend__dot an-legend__dot--red" />Cảnh báo khẩn cấp (Cơ sở hạ tầng)</li>
-                                <li><span className="an-legend__dot an-legend__dot--blue" />Hoạt động khách hàng (Doanh thu)</li>
-                                <li><span className="an-legend__dot an-legend__dot--green" />Thông tin nhân sự (Vận hành)</li>
+                                <li>
+                                    <span className="an-legend__dot an-legend__dot--blue" />
+                                    Đặt lịch ({categoryCounts.booking || 0})
+                                </li>
+                                <li>
+                                    <span className="an-legend__dot an-legend__dot--red" />
+                                    Hạng thành viên ({categoryCounts.tier || 0})
+                                </li>
+                                <li>
+                                    <span className="an-legend__dot an-legend__dot--green" />
+                                    Thanh toán ({categoryCounts.payment || 0})
+                                </li>
                             </ul>
                         </div>
                     </aside>
                 </div>
             </div>
 
-            <div className="an-toast">
-                <CheckCheck size={16} /> Đã đánh dấu tất cả là đã đọc
-            </div>
+            {toast && (
+                <div className="an-toast">
+                    <CheckCheck size={16} /> {toast}
+                </div>
+            )}
         </div>
     );
 }
