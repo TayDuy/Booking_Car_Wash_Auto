@@ -1,7 +1,7 @@
 import "./PaymentPage.css";
 import { useState, useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
-import SiteHeader from "../auth/SiteHeader";
+import SiteHeader from "../../../components/layout/SiteHeader";
 
 const API_BASE = "http://localhost:8080";
 const STORE_NAME = "AutoWash Pro";

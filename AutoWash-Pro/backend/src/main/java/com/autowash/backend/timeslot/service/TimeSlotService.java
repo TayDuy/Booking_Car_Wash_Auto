@@ -1,5 +1,7 @@
 package com.autowash.backend.timeslot.service;
 
+import com.autowash.backend.timeslot.dto.GenerateSlotsRequestDTO;
+import com.autowash.backend.timeslot.dto.GenerateSlotsResponseDTO;
 import com.autowash.backend.timeslot.dto.TimeSlotRequestDTO;
 import com.autowash.backend.timeslot.dto.TimeSlotResponseDTO;
 import com.autowash.backend.timeslot.entity.TimeSlot.SlotStatus;
@@ -25,4 +27,6 @@ public interface TimeSlotService {
     TimeSlotResponseDTO changeStatus(Integer id, SlotStatus status);
 
     void delete(Integer id);
+
+    GenerateSlotsResponseDTO generateMonthlySlots(GenerateSlotsRequestDTO request);
 }

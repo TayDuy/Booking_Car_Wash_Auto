@@ -18,6 +18,7 @@ function ManagerLayout() {
           <nav className="dashboard-menu">
             <NavLink to="/manager/dashboard">Dashboard</NavLink>
             <NavLink to="/manager/bookings">Bookings</NavLink>
+            <NavLink to="/manager/time-slots">Khung giờ</NavLink>
             <NavLink to="/manager/staff">Staff</NavLink>
             <NavLink to="/manager/revenue">Revenue</NavLink>
             <NavLink to="/manager/service-status">Service Status</NavLink>

@@ -2,7 +2,9 @@ package com.autowash.backend.auth.repository;
 
 import com.autowash.backend.auth.entity.RefreshToken;
 import com.autowash.backend.user.entity.User;
+import jakarta.transaction.Transactional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
@@ -19,4 +21,8 @@ public interface RefreshTokenRepository extends JpaRepository<RefreshToken, Inte
 
     //xóa tất cả token của một user(dùng khi user đăng xuất hoặc đổi mật khẩu )
     int deleteByUser(User user);
+
+    @Modifying
+    @Transactional
+    int deleteByUser_Id(Integer userId);
 }

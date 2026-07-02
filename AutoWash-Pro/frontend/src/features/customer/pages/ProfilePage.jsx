@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import './ProfilePage.css';
 import { useNavigate } from 'react-router-dom';
 import customerApi from '../../../api/customerApi';
@@ -11,7 +11,7 @@ const ProfilePage = () => {
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [showAddVehicleModal, setShowAddVehicleModal] = useState(false);
-  
+
   const [user, setUser] = useState({
     customerId: null,
     username: '',
@@ -49,11 +49,7 @@ const ProfilePage = () => {
 
   const [vehicleError, setVehicleError] = useState('');
 
-  useEffect(() => {
-    fetchProfileAndData();
-  }, []);
-
-  const fetchProfileAndData = async () => {
+  const fetchProfileAndData = useCallback(async () => {
     try {
       setLoading(true);
       const res = await customerApi.profile();
@@ -95,7 +91,11 @@ const ProfilePage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchProfileAndData();
+  }, [fetchProfileAndData]);
 
   const handleScrollTo = (id) => {
     const element = document.getElementById(id);
@@ -239,463 +239,463 @@ const ProfilePage = () => {
   if (loading) return <div className="p-8 text-center" style={{ padding: '40px', textAlign: 'center', fontSize: '18px' }}>Đang tải...</div>;
 
   return (
-    <div className="profile-page-wrapper">
-      {/* Sidebar Navigation Shell */}
-      <aside className="sidebar">
-        <div className="sidebar-header" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <img src="/logo.png" alt="Logo" style={{ height: '48px', width: 'auto' }} />
-          <h1 className="logo-text" style={{ fontSize: '20px' }}>WashFlow Pro</h1>
-        </div>
-        
-        <div className="sidebar-profile">
-          <div className="avatar-container">
-            <img alt="Ảnh đại diện" className="avatar-img" src="/car_avatar.png" />
+      <div className="profile-page-wrapper">
+        {/* Sidebar Navigation Shell */}
+        <aside className="sidebar">
+          <div className="sidebar-header" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <img src="/logo.png" alt="Logo" style={{ height: '48px', width: 'auto' }} />
+            <h1 className="logo-text" style={{ fontSize: '20px' }}>WashFlow Pro</h1>
           </div>
-          <div className="profile-info">
-            <span className="profile-name">{user.fullName || user.username}</span>
-            <span className="profile-tier">Thành viên {getTierName(user.tierId)}</span>
+
+          <div className="sidebar-profile">
+            <div className="avatar-container">
+              <img alt="Ảnh đại diện" className="avatar-img" src="/car_avatar.png" />
+            </div>
+            <div className="profile-info">
+              <span className="profile-name">{user.fullName || user.username}</span>
+              <span className="profile-tier">Thành viên {getTierName(user.tierId)}</span>
+            </div>
           </div>
-        </div>
 
-        <nav className="sidebar-nav">
-          <a className="nav-link" href="/booking" onClick={(e) => { e.preventDefault(); navigate('/booking'); }}>
-            <span className="material-symbols-outlined">dashboard</span>
-            Bảng điều khiển
-          </a>
-          <a className="nav-link" href="#vehicles" onClick={(e) => { e.preventDefault(); handleScrollTo('vehicles'); }}>
-            <span className="material-symbols-outlined">directions_car</span>
-            Xe của tôi
-          </a>
-          <a className="nav-link" href="#history" onClick={(e) => { e.preventDefault(); handleScrollTo('history'); }}>
-            <span className="material-symbols-outlined">history</span>
-            Lịch sử rửa xe
-          </a>
-          <a className="nav-link" href="#subscription" onClick={(e) => { e.preventDefault(); handleScrollTo('subscription'); }}>
-            <span className="material-symbols-outlined">payments</span>
-            Gói đăng ký
-          </a>
-          <a className="nav-link active" href="#personal-info" onClick={(e) => { e.preventDefault(); handleScrollTo('personal-info'); }}>
-            <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>settings</span>
-            Cài đặt
-          </a>
-          <a className="nav-link" href="#logout" onClick={(e) => { e.preventDefault(); handleLogout(); }}>
-            <span className="material-symbols-outlined">logout</span>
-            Đăng xuất
-          </a>
+          <nav className="sidebar-nav">
+            <a className="nav-link" href="/booking" onClick={(e) => { e.preventDefault(); navigate('/booking'); }}>
+              <span className="material-symbols-outlined">dashboard</span>
+              Bảng điều khiển
+            </a>
+            <a className="nav-link" href="#vehicles" onClick={(e) => { e.preventDefault(); handleScrollTo('vehicles'); }}>
+              <span className="material-symbols-outlined">directions_car</span>
+              Xe của tôi
+            </a>
+            <a className="nav-link" href="#history" onClick={(e) => { e.preventDefault(); handleScrollTo('history'); }}>
+              <span className="material-symbols-outlined">history</span>
+              Lịch sử rửa xe
+            </a>
+            <a className="nav-link" href="/subscription" onClick={(e) => { e.preventDefault(); navigate('/subscription'); }}>
+              <span className="material-symbols-outlined">payments</span>
+              Ưu đãi thành viên
+            </a>
+            <a className="nav-link active" href="#personal-info" onClick={(e) => { e.preventDefault(); handleScrollTo('personal-info'); }}>
+              <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>settings</span>
+              Cài đặt
+            </a>
+            <a className="nav-link" href="#logout" onClick={(e) => { e.preventDefault(); handleLogout(); }}>
+              <span className="material-symbols-outlined">logout</span>
+              Đăng xuất
+            </a>
 
-          <button className="btn-book" onClick={() => navigate('/booking')}>
-            <span className="material-symbols-outlined icon-small">add</span>
-            Đặt lịch ngay
-          </button>
-        </nav>
-      </aside>
-
-      {/* Main Content Area */}
-      <main className="main-area">
-        {/* Top App Bar */}
-        <header className="topbar glass-header">
-          <div className="topbar-titles">
-            <h2 className="page-title">Hồ sơ</h2>
-            <p className="page-subtitle">Welcome, {user.fullName || user.username}</p>
-          </div>
-          <div className="topbar-actions">
-            <button className="icon-btn">
-              <span className="material-symbols-outlined">notifications</span>
+            <button className="btn-book" onClick={() => navigate('/booking')}>
+              <span className="material-symbols-outlined icon-small">add</span>
+              Đặt lịch ngay
             </button>
-            <button className="icon-btn">
-              <span className="material-symbols-outlined">help</span>
-            </button>
-          </div>
-        </header>
+          </nav>
+        </aside>
 
-        {/* Content Canvas */}
-        <div className="content-canvas">
-          <div className="main-grid">
-            
-            {/* Left Column: Personal Info & Vehicles */}
-            <div className="col-left">
-              
-              {/* Personal Info Card */}
-              <section id="personal-info" className="card card-shadow">
-                <div className="card-header">
-                  <h3 className="card-title">
-                    <span className="material-symbols-outlined text-primary">person</span>
-                    Thông tin cá nhân
-                  </h3>
-                  {!isEditing ? (
-                    <button className="btn-edit" onClick={() => setIsEditing(true)}>
-                      <span className="material-symbols-outlined icon-small">edit</span>
-                      Chỉnh sửa
+        {/* Main Content Area */}
+        <main className="main-area">
+          {/* Top App Bar */}
+          <header className="topbar glass-header">
+            <div className="topbar-titles">
+              <h2 className="page-title">Hồ sơ</h2>
+              <p className="page-subtitle">Welcome, {user.fullName || user.username}</p>
+            </div>
+            <div className="topbar-actions">
+              <button className="icon-btn">
+                <span className="material-symbols-outlined">notifications</span>
+              </button>
+              <button className="icon-btn">
+                <span className="material-symbols-outlined">help</span>
+              </button>
+            </div>
+          </header>
+
+          {/* Content Canvas */}
+          <div className="content-canvas">
+            <div className="main-grid">
+
+              {/* Left Column: Personal Info & Vehicles */}
+              <div className="col-left">
+
+                {/* Personal Info Card */}
+                <section id="personal-info" className="card card-shadow">
+                  <div className="card-header">
+                    <h3 className="card-title">
+                      <span className="material-symbols-outlined text-primary">person</span>
+                      Thông tin cá nhân
+                    </h3>
+                    {!isEditing ? (
+                        <button className="btn-edit" onClick={() => setIsEditing(true)}>
+                          <span className="material-symbols-outlined icon-small">edit</span>
+                          Chỉnh sửa
+                        </button>
+                    ) : (
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <button className="btn-edit" style={{ color: '#ba1a1a' }} onClick={() => setIsEditing(false)}>Hủy</button>
+                          <button className="btn-add" onClick={handleSave}>Lưu</button>
+                        </div>
+                    )}
+                  </div>
+
+                  <div className="info-grid">
+                    <div className="info-item">
+                      <label>Họ và tên</label>
+                      {!isEditing ? <p>{user.fullName || 'Chưa cập nhật'}</p> :
+                          <input type="text" name="fullName" value={editForm.fullName} onChange={handleInputChange} className="info-edit-input" />}
+                    </div>
+                    <div className="info-item">
+                      <label>Địa chỉ Email</label>
+                      {!isEditing ? <p>{user.email || 'Chưa cập nhật'}</p> :
+                          <input type="email" name="email" value={editForm.email} onChange={handleInputChange} className="info-edit-input" />}
+                    </div>
+                    <div className="info-item">
+                      <label>Số điện thoại</label>
+                      {!isEditing ? <p>{user.phone || 'Chưa cập nhật'}</p> :
+                          <input type="text" name="phone" value={editForm.phone} onChange={handleInputChange} className="info-edit-input" />}
+                    </div>
+                    <div className="info-item">
+                      <label>Giới tính</label>
+                      {!isEditing ? <p>{user.gender || 'Chưa cập nhật'}</p> :
+                          <select name="gender" value={editForm.gender} onChange={handleInputChange} className="info-edit-select">
+                            <option value="">Chọn giới tính</option>
+                            <option value="Nam">Nam</option>
+                            <option value="Nữ">Nữ</option>
+                            <option value="Khác">Khác</option>
+                          </select>
+                      }
+                    </div>
+                    <div className="info-item">
+                      <label>Ngày sinh</label>
+                      {!isEditing ? <p>{user.dateOfBirth || 'Chưa cập nhật'}</p> :
+                          <input type="date" name="dateOfBirth" value={editForm.dateOfBirth} onChange={handleInputChange} className="info-edit-input" />}
+                    </div>
+                    <div className="info-item">
+                      <label>Địa điểm</label>
+                      <p>Hồ Chí Minh, Việt Nam</p>
+                    </div>
+                  </div>
+                </section>
+
+                {/* My Vehicles Section */}
+                <section id="vehicles" className="section-vehicles">
+                  <div className="card-header">
+                    <h3 className="card-title">
+                      <span className="material-symbols-outlined text-primary">directions_car</span>
+                      Xe của tôi
+                    </h3>
+                    <button className="btn-add" onClick={() => setShowAddVehicleModal(true)}>
+                      <span className="material-symbols-outlined icon-small">add_circle</span>
+                      Thêm xe mới
                     </button>
-                  ) : (
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                      <button className="btn-edit" style={{ color: '#ba1a1a' }} onClick={() => setIsEditing(false)}>Hủy</button>
-                      <button className="btn-add" onClick={handleSave}>Lưu</button>
-                    </div>
-                  )}
-                </div>
-                
-                <div className="info-grid">
-                  <div className="info-item">
-                    <label>Họ và tên</label>
-                    {!isEditing ? <p>{user.fullName || 'Chưa cập nhật'}</p> : 
-                      <input type="text" name="fullName" value={editForm.fullName} onChange={handleInputChange} className="info-edit-input" />}
                   </div>
-                  <div className="info-item">
-                    <label>Địa chỉ Email</label>
-                    {!isEditing ? <p>{user.email || 'Chưa cập nhật'}</p> : 
-                      <input type="email" name="email" value={editForm.email} onChange={handleInputChange} className="info-edit-input" />}
-                  </div>
-                  <div className="info-item">
-                    <label>Số điện thoại</label>
-                    {!isEditing ? <p>{user.phone || 'Chưa cập nhật'}</p> : 
-                      <input type="text" name="phone" value={editForm.phone} onChange={handleInputChange} className="info-edit-input" />}
-                  </div>
-                  <div className="info-item">
-                    <label>Giới tính</label>
-                    {!isEditing ? <p>{user.gender || 'Chưa cập nhật'}</p> : 
-                      <select name="gender" value={editForm.gender} onChange={handleInputChange} className="info-edit-select">
-                        <option value="">Chọn giới tính</option>
-                        <option value="Nam">Nam</option>
-                        <option value="Nữ">Nữ</option>
-                        <option value="Khác">Khác</option>
-                      </select>
-                    }
-                  </div>
-                  <div className="info-item">
-                    <label>Ngày sinh</label>
-                    {!isEditing ? <p>{user.dateOfBirth || 'Chưa cập nhật'}</p> : 
-                      <input type="date" name="dateOfBirth" value={editForm.dateOfBirth} onChange={handleInputChange} className="info-edit-input" />}
-                  </div>
-                  <div className="info-item">
-                    <label>Địa điểm</label>
-                    <p>Hồ Chí Minh, Việt Nam</p>
-                  </div>
-                </div>
-              </section>
 
-              {/* My Vehicles Section */}
-              <section id="vehicles" className="section-vehicles">
-                <div className="card-header">
-                  <h3 className="card-title">
-                    <span className="material-symbols-outlined text-primary">directions_car</span>
-                    Xe của tôi
-                  </h3>
-                  <button className="btn-add" onClick={() => setShowAddVehicleModal(true)}>
-                    <span className="material-symbols-outlined icon-small">add_circle</span>
-                    Thêm xe mới
-                  </button>
-                </div>
-                
-                <div className="vehicles-grid">
-                  {vehicles.length === 0 ? (
-                    <div className="card card-shadow" style={{ gridColumn: 'span 2', textAlign: 'center', padding: '32px', color: 'var(--on-surface-variant)' }}>
-                      Bạn chưa thêm phương tiện nào. Hãy nhấn nút thêm xe để bắt đầu!
-                    </div>
-                  ) : (
-                    vehicles.map(vehicle => (
-                      <div key={vehicle.vehicleId} className="vehicle-card card-shadow group">
-                        <div className="vehicle-info">
-                          <div className="vehicle-icon-box bg-cyan">
-                            <span className="material-symbols-outlined text-secondary" style={{ fontSize: '32px' }}>
-                              {vehicle.vehicleType === 'suv' ? 'airport_shuttle' : 'directions_car'}
-                            </span>
-                          </div>
-                          <div>
-                            <h4 className="vehicle-name">{vehicle.brand} {vehicle.model}</h4>
-                            <span className="vehicle-plate">{vehicle.licensePlate}</span>
-                            <span style={{ fontSize: '12px', color: 'var(--on-surface-variant)', marginLeft: '8px', fontWeight: 'bold' }}>
-                              ({vehicle.vehicleType === 'suv' ? 'Xe 7 chỗ' : 'Xe 4 chỗ'})
-                            </span>
-                          </div>
+                  <div className="vehicles-grid">
+                    {vehicles.length === 0 ? (
+                        <div className="card card-shadow" style={{ gridColumn: 'span 2', textAlign: 'center', padding: '32px', color: 'var(--on-surface-variant)' }}>
+                          Bạn chưa thêm phương tiện nào. Hãy nhấn nút thêm xe để bắt đầu!
                         </div>
-                        <div className="vehicle-footer">
-                          <span className="vehicle-date">{vehicle.color ? `Màu: ${vehicle.color}` : 'Chưa nhập màu'}</span>
-                          <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <button 
-                              className={`vehicle-status-toggle ${vehicle.isActive ? 'active' : 'inactive'}`} 
-                              onClick={() => handleToggleActive(vehicle.vehicleId, vehicle.isActive)}
-                            >
-                              <span className="material-symbols-outlined icon-small">
-                                {vehicle.isActive ? 'check_circle' : 'do_not_disturb_on'}
-                              </span>
-                              {vehicle.isActive ? 'Đang hoạt động' : 'Ngừng hoạt động'}
-                            </button>
+                    ) : (
+                        vehicles.map(vehicle => (
+                            <div key={vehicle.vehicleId} className="vehicle-card card-shadow group">
+                              <div className="vehicle-info">
+                                <div className="vehicle-icon-box bg-cyan">
+                          <span className="material-symbols-outlined text-secondary" style={{ fontSize: '32px' }}>
+                            {vehicle.vehicleType === 'suv' ? 'airport_shuttle' : 'directions_car'}
                           </span>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </section>
+                                </div>
+                                <div>
+                                  <h4 className="vehicle-name">{vehicle.brand} {vehicle.model}</h4>
+                                  <span className="vehicle-plate">{vehicle.licensePlate}</span>
+                                  <span style={{ fontSize: '12px', color: 'var(--on-surface-variant)', marginLeft: '8px', fontWeight: 'bold' }}>
+                            ({vehicle.vehicleType === 'suv' ? 'Xe 7 chỗ' : 'Xe 4 chỗ'})
+                          </span>
+                                </div>
+                              </div>
+                              <div className="vehicle-footer">
+                                <span className="vehicle-date">{vehicle.color ? `Màu: ${vehicle.color}` : 'Chưa nhập màu'}</span>
+                                <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <button
+                              className={`vehicle-status-toggle ${vehicle.isActive ? 'active' : 'inactive'}`}
+                              onClick={() => handleToggleActive(vehicle.vehicleId, vehicle.isActive)}
+                          >
+                            <span className="material-symbols-outlined icon-small">
+                              {vehicle.isActive ? 'check_circle' : 'do_not_disturb_on'}
+                            </span>
+                            {vehicle.isActive ? 'Đang hoạt động' : 'Ngừng hoạt động'}
+                          </button>
+                        </span>
+                              </div>
+                            </div>
+                        ))
+                    )}
+                  </div>
+                </section>
 
-              {/* Booking History Table */}
-              <section id="history" className="card card-shadow no-pad">
-                <div className="table-header">
-                  <h3 className="card-title">
-                    <span className="material-symbols-outlined text-primary">history</span>
-                    Lịch sử đặt lịch
-                  </h3>
-                  <button className="link-primary" onClick={() => navigate('/bookings')}>Xem tất cả</button>
-                </div>
-                <div className="table-wrapper">
-                  <table className="history-table">
-                    <thead>
+                {/* Booking History Table */}
+                <section id="history" className="card card-shadow no-pad">
+                  <div className="table-header">
+                    <h3 className="card-title">
+                      <span className="material-symbols-outlined text-primary">history</span>
+                      Lịch sử đặt lịch
+                    </h3>
+                    <button className="link-primary" onClick={() => navigate('/bookings')}>Xem tất cả</button>
+                  </div>
+                  <div className="table-wrapper">
+                    <table className="history-table">
+                      <thead>
                       <tr>
                         <th>Ngày</th>
                         <th>Chi nhánh & Phương tiện</th>
                         <th>Trạng thái</th>
                         <th className="text-right">Tổng thanh toán</th>
                       </tr>
-                    </thead>
-                    <tbody>
+                      </thead>
+                      <tbody>
                       {bookings.length === 0 ? (
-                        <tr>
-                          <td colSpan="4" className="text-center text-dark" style={{ padding: '24px', textAlign: 'center' }}>
-                            Chưa có dữ liệu đặt lịch rửa xe.
-                          </td>
-                        </tr>
+                          <tr>
+                            <td colSpan="4" className="text-center text-dark" style={{ padding: '24px', textAlign: 'center' }}>
+                              Chưa có dữ liệu đặt lịch rửa xe.
+                            </td>
+                          </tr>
                       ) : (
-                        bookings.map(booking => {
-                          const dateObj = booking.slotDate ? new Date(booking.slotDate) : new Date(booking.bookingDate);
-                          const dateString = dateObj.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
-                          const amountString = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(booking.totalAmount || 0);
+                          bookings.map(booking => {
+                            const dateObj = booking.slotDate ? new Date(booking.slotDate) : new Date(booking.bookingDate);
+                            const dateString = dateObj.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                            const amountString = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(booking.totalAmount || 0);
 
-                          let badgeClass = 'bg-blue';
-                          let dotClass = 'dot-blue';
-                          let textViet = 'Chờ xử lý';
+                            let badgeClass = 'bg-blue';
+                            let dotClass = 'dot-blue';
+                            let textViet = 'Chờ xử lý';
 
-                          switch(booking.status) {
-                            case 'completed':
-                              badgeClass = 'bg-green';
-                              dotClass = 'dot-green';
-                              textViet = 'Đã hoàn thành';
-                              break;
-                            case 'cancelled':
-                              badgeClass = 'inactive';
-                              dotClass = 'dot-gray';
-                              textViet = 'Đã hủy';
-                              break;
-                            case 'confirmed':
-                              badgeClass = 'bg-blue pulse-active';
-                              dotClass = 'dot-blue';
-                              textViet = 'Đã xác nhận';
-                              break;
-                            case 'in_progress':
-                              badgeClass = 'bg-blue pulse-active';
-                              dotClass = 'dot-blue';
-                              textViet = 'Đang làm';
-                              break;
-                            case 'no_show':
-                              badgeClass = 'inactive';
-                              dotClass = 'dot-gray';
-                              textViet = 'Vắng mặt';
-                              break;
-                            default:
-                              break;
-                          }
+                            switch(booking.status) {
+                              case 'completed':
+                                badgeClass = 'bg-green';
+                                dotClass = 'dot-green';
+                                textViet = 'Đã hoàn thành';
+                                break;
+                              case 'cancelled':
+                                badgeClass = 'inactive';
+                                dotClass = 'dot-gray';
+                                textViet = 'Đã hủy';
+                                break;
+                              case 'confirmed':
+                                badgeClass = 'bg-blue pulse-active';
+                                dotClass = 'dot-blue';
+                                textViet = 'Đã xác nhận';
+                                break;
+                              case 'in_progress':
+                                badgeClass = 'bg-blue pulse-active';
+                                dotClass = 'dot-blue';
+                                textViet = 'Đang làm';
+                                break;
+                              case 'no_show':
+                                badgeClass = 'inactive';
+                                dotClass = 'dot-gray';
+                                textViet = 'Vắng mặt';
+                                break;
+                              default:
+                                break;
+                            }
 
-                          return (
-                            <tr key={booking.bookingId}>
-                              <td className="font-medium text-dark">
-                                {dateString} {booking.slotStartTime ? ` - ${booking.slotStartTime.substring(0, 5)}` : ''}
-                              </td>
-                              <td>
-                                <div className="service-cell">
-                                  <span className="service-name">{booking.branchName || 'AutoWash-Pro Branch'}</span>
-                                  <span className="service-car">{booking.licensePlate || 'Mã: ' + booking.bookingCode}</span>
-                                </div>
-                              </td>
-                              <td>
-                                <span className={`status-badge ${badgeClass}`}>
-                                  <span className={`dot ${dotClass}`}></span> {textViet}
-                                </span>
-                              </td>
-                              <td className="text-right font-bold text-dark">{amountString}</td>
-                            </tr>
-                          );
-                        })
+                            return (
+                                <tr key={booking.bookingId}>
+                                  <td className="font-medium text-dark">
+                                    {dateString} {booking.slotStartTime ? ` - ${booking.slotStartTime.substring(0, 5)}` : ''}
+                                  </td>
+                                  <td>
+                                    <div className="service-cell">
+                                      <span className="service-name">{booking.branchName || 'AutoWash-Pro Branch'}</span>
+                                      <span className="service-car">{booking.licensePlate || 'Mã: ' + booking.bookingCode}</span>
+                                    </div>
+                                  </td>
+                                  <td>
+                              <span className={`status-badge ${badgeClass}`}>
+                                <span className={`dot ${dotClass}`}></span> {textViet}
+                              </span>
+                                  </td>
+                                  <td className="text-right font-bold text-dark">{amountString}</td>
+                                </tr>
+                            );
+                          })
                       )}
-                    </tbody>
-                  </table>
-                </div>
-              </section>
+                      </tbody>
+                    </table>
+                  </div>
+                </section>
 
-            </div>
+              </div>
 
-            {/* Right Column: Loyalty & Stats */}
-            <div className="col-right">
-              
-              {/* Loyalty Summary Card */}
-              <section className="loyalty-card card-shadow">
-                <div className="loyalty-bg-glow"></div>
-                <div className="loyalty-header">
-                  <div>
-                    <p className="loyalty-label">Hạng thành viên</p>
-                    <h3 className="loyalty-tier">{getTierName(user.tierId)}</h3>
-                  </div>
-                  <span className="material-symbols-outlined icon-star" style={{ fontVariationSettings: "'FILL' 1" }}>stars</span>
-                </div>
-                <div className="loyalty-body">
-                  <div className="loyalty-points-row">
-                    <span className="points-label">Số dư hiện tại</span>
-                    <span className="points-value">{user.totalPoints || 0} điểm</span>
-                  </div>
-                  <div className="progress-track">
-                    <div className="progress-fill" style={{ width: `${Math.min((user.totalPoints || 0) / 3000 * 100, 100)}%` }}></div>
-                  </div>
-                  <p className="points-hint">Chỉ còn {getPointsNeeded(user.totalPoints || 0)} điểm nữa để đạt hạng Bạch Kim!</p>
-                </div>
-                <button className="btn-loyalty">Đổi phần thưởng</button>
-              </section>
+              {/* Right Column: Loyalty & Stats */}
+              <div className="col-right">
 
-              {/* Subscription Details */}
-              <section id="subscription" className="card card-shadow">
-                <h3 className="card-title text-dark mb-md">Gói đăng ký hiện tại</h3>
-                <div className="sub-header">
-                  <div className="sub-icon">
-                    <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>workspace_premium</span>
-                  </div>
-                  <div>
-                    <h4 className="sub-title">{subInfo.title}</h4>
-                    <p className="sub-price">{subInfo.price}</p>
-                  </div>
-                </div>
-                <div className="sub-features">
-                  {subInfo.features.map((feature, i) => (
-                    <div key={i} className="sub-feature">
-                      <span className="material-symbols-outlined text-secondary">check_circle</span>
-                      {feature}
+                {/* Loyalty Summary Card */}
+                <section className="loyalty-card card-shadow">
+                  <div className="loyalty-bg-glow"></div>
+                  <div className="loyalty-header">
+                    <div>
+                      <p className="loyalty-label">Hạng thành viên</p>
+                      <h3 className="loyalty-tier">{getTierName(user.tierId)}</h3>
                     </div>
-                  ))}
-                </div>
-                <button className="btn-manage-sub">Quản lý gói đăng ký</button>
-              </section>
+                    <span className="material-symbols-outlined icon-star" style={{ fontVariationSettings: "'FILL' 1" }}>stars</span>
+                  </div>
+                  <div className="loyalty-body">
+                    <div className="loyalty-points-row">
+                      <span className="points-label">Số dư hiện tại</span>
+                      <span className="points-value">{user.totalPoints || 0} điểm</span>
+                    </div>
+                    <div className="progress-track">
+                      <div className="progress-fill" style={{ width: `${Math.min((user.totalPoints || 0) / 3000 * 100, 100)}%` }}></div>
+                    </div>
+                    <p className="points-hint">Chỉ còn {getPointsNeeded(user.totalPoints || 0)} điểm nữa để đạt hạng Bạch Kim!</p>
+                  </div>
+                  <button className="btn-loyalty">Đổi phần thưởng</button>
+                </section>
 
-              {/* Promo Card */}
-              <div className="promo-card group">
-                <div className="promo-content">
-                  <h4 className="promo-title">GIỚI THIỆU BẠN BÈ</h4>
-                  <p className="promo-desc">Nhận ngay 500 điểm cho mỗi người bạn tham gia WashFlow Pro!</p>
-                  <button className="btn-promo-link">
-                    Chia sẻ liên kết
-                    <span className="material-symbols-outlined icon-small group-hover-gap">arrow_forward</span>
+                {/* Subscription Details */}
+                <section id="subscription" className="card card-shadow">
+                  <h3 className="card-title text-dark mb-md">Gói đăng ký hiện tại</h3>
+                  <div className="sub-header">
+                    <div className="sub-icon">
+                      <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>workspace_premium</span>
+                    </div>
+                    <div>
+                      <h4 className="sub-title">{subInfo.title}</h4>
+                      <p className="sub-price">{subInfo.price}</p>
+                    </div>
+                  </div>
+                  <div className="sub-features">
+                    {subInfo.features.map((feature, i) => (
+                        <div key={i} className="sub-feature">
+                          <span className="material-symbols-outlined text-secondary">check_circle</span>
+                          {feature}
+                        </div>
+                    ))}
+                  </div>
+                  <button className="btn-manage-sub" onClick={() => navigate('/subscription')}>Quản lý gói đăng ký</button>
+                </section>
+
+                {/* Promo Card */}
+                <div className="promo-card group">
+                  <div className="promo-content">
+                    <h4 className="promo-title">GIỚI THIỆU BẠN BÈ</h4>
+                    <p className="promo-desc">Nhận ngay 500 điểm cho mỗi người bạn tham gia WashFlow Pro!</p>
+                    <button className="btn-promo-link">
+                      Chia sẻ liên kết
+                      <span className="material-symbols-outlined icon-small group-hover-gap">arrow_forward</span>
+                    </button>
+                  </div>
+                  <span className="material-symbols-outlined promo-icon-bg">loyalty</span>
+                </div>
+
+              </div>
+            </div>
+          </div>
+
+          {/* Footer */}
+          <footer className="global-footer-bar">
+            <div className="footer-brand-info">
+              <h4>WashFlow Pro</h4>
+              <p>© 2026 WashFlow Pro Automation. Tất cả quyền được bảo lưu.</p>
+            </div>
+            <div className="footer-nav-links">
+              <a href="#">Liên hệ</a>
+              <a href="#">Chính sách bảo mật</a>
+              <a href="#">Điều khoản dịch vụ</a>
+              <a href="#">Hỗ trợ</a>
+            </div>
+          </footer>
+        </main>
+
+        {/* Add Vehicle Modal Overlay */}
+        {showAddVehicleModal && (
+            <div className="modal-overlay">
+              <form className="modal-content" onSubmit={handleAddVehicle}>
+                <div className="modal-header">
+                  <h3 className="modal-title">
+                    <span className="material-symbols-outlined">directions_car</span>
+                    Đăng ký xe mới
+                  </h3>
+                  <button type="button" className="btn-close" onClick={() => setShowAddVehicleModal(false)}>
+                    <span className="material-symbols-outlined">close</span>
                   </button>
                 </div>
-                <span className="material-symbols-outlined promo-icon-bg">loyalty</span>
-              </div>
-
-            </div>
-          </div>
-        </div>
-
-        {/* Footer */}
-        <footer className="global-footer-bar">
-          <div className="footer-brand-info">
-            <h4>WashFlow Pro</h4>
-            <p>© 2026 WashFlow Pro Automation. Tất cả quyền được bảo lưu.</p>
-          </div>
-          <div className="footer-nav-links">
-            <a href="#">Liên hệ</a>
-            <a href="#">Chính sách bảo mật</a>
-            <a href="#">Điều khoản dịch vụ</a>
-            <a href="#">Hỗ trợ</a>
-          </div>
-        </footer>
-      </main>
-
-      {/* Add Vehicle Modal Overlay */}
-      {showAddVehicleModal && (
-        <div className="modal-overlay">
-          <form className="modal-content" onSubmit={handleAddVehicle}>
-            <div className="modal-header">
-              <h3 className="modal-title">
-                <span className="material-symbols-outlined">directions_car</span>
-                Đăng ký xe mới
-              </h3>
-              <button type="button" className="btn-close" onClick={() => setShowAddVehicleModal(false)}>
-                <span className="material-symbols-outlined">close</span>
-              </button>
-            </div>
-            <div className="modal-body">
-              {vehicleError && (
-                <div style={{ color: '#ba1a1a', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}>
-                  {vehicleError}
+                <div className="modal-body">
+                  {vehicleError && (
+                      <div style={{ color: '#ba1a1a', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}>
+                        {vehicleError}
+                      </div>
+                  )}
+                  <div className="form-group">
+                    <label>Biển số xe (VD: 51A-12345)*</label>
+                    <input
+                        type="text"
+                        placeholder="VD: 51A-12345"
+                        className="form-input"
+                        value={vehicleForm.licensePlate}
+                        onChange={e => setVehicleForm({...vehicleForm, licensePlate: e.target.value})}
+                        required
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Hãng xe (VD: Toyota)*</label>
+                    <input
+                        type="text"
+                        placeholder="VD: Toyota"
+                        className="form-input"
+                        value={vehicleForm.brand}
+                        onChange={e => setVehicleForm({...vehicleForm, brand: e.target.value})}
+                        required
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Dòng xe (VD: Camry)*</label>
+                    <input
+                        type="text"
+                        placeholder="VD: Camry"
+                        className="form-input"
+                        value={vehicleForm.model}
+                        onChange={e => setVehicleForm({...vehicleForm, model: e.target.value})}
+                        required
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Loại xe*</label>
+                    <select
+                        className="form-select"
+                        value={vehicleForm.vehicleType}
+                        onChange={e => setVehicleForm({...vehicleForm, vehicleType: e.target.value})}
+                    >
+                      <option value="car">Xe 4 chỗ</option>
+                      <option value="suv">Xe 7 chỗ</option>
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label>Màu sắc (Tùy chọn)</label>
+                    <input
+                        type="text"
+                        placeholder="VD: Đen"
+                        className="form-input"
+                        value={vehicleForm.color}
+                        onChange={e => setVehicleForm({...vehicleForm, color: e.target.value})}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Tên gọi / Nickname (Tùy chọn)</label>
+                    <input
+                        type="text"
+                        placeholder="VD: Xe đi làm"
+                        className="form-input"
+                        value={vehicleForm.nickname}
+                        onChange={e => setVehicleForm({...vehicleForm, nickname: e.target.value})}
+                    />
+                  </div>
                 </div>
-              )}
-              <div className="form-group">
-                <label>Biển số xe (VD: 51A-12345)*</label>
-                <input 
-                  type="text" 
-                  placeholder="VD: 51A-12345"
-                  className="form-input"
-                  value={vehicleForm.licensePlate} 
-                  onChange={e => setVehicleForm({...vehicleForm, licensePlate: e.target.value})} 
-                  required 
-                />
-              </div>
-              <div className="form-group">
-                <label>Hãng xe (VD: Toyota)*</label>
-                <input 
-                  type="text" 
-                  placeholder="VD: Toyota"
-                  className="form-input"
-                  value={vehicleForm.brand} 
-                  onChange={e => setVehicleForm({...vehicleForm, brand: e.target.value})} 
-                  required 
-                />
-              </div>
-              <div className="form-group">
-                <label>Dòng xe (VD: Camry)*</label>
-                <input 
-                  type="text" 
-                  placeholder="VD: Camry"
-                  className="form-input"
-                  value={vehicleForm.model} 
-                  onChange={e => setVehicleForm({...vehicleForm, model: e.target.value})} 
-                  required 
-                />
-              </div>
-              <div className="form-group">
-                <label>Loại xe*</label>
-                <select 
-                  className="form-select"
-                  value={vehicleForm.vehicleType} 
-                  onChange={e => setVehicleForm({...vehicleForm, vehicleType: e.target.value})}
-                >
-                  <option value="car">Xe 4 chỗ</option>
-                  <option value="suv">Xe 7 chỗ</option>
-                </select>
-              </div>
-              <div className="form-group">
-                <label>Màu sắc (Tùy chọn)</label>
-                <input 
-                  type="text" 
-                  placeholder="VD: Đen"
-                  className="form-input"
-                  value={vehicleForm.color} 
-                  onChange={e => setVehicleForm({...vehicleForm, color: e.target.value})} 
-                />
-              </div>
-              <div className="form-group">
-                <label>Tên gọi / Nickname (Tùy chọn)</label>
-                <input 
-                  type="text" 
-                  placeholder="VD: Xe đi làm"
-                  className="form-input"
-                  value={vehicleForm.nickname} 
-                  onChange={e => setVehicleForm({...vehicleForm, nickname: e.target.value})} 
-                />
-              </div>
+                <div className="modal-footer">
+                  <button type="button" className="btn-secondary" onClick={() => setShowAddVehicleModal(false)}>Hủy</button>
+                  <button type="submit" className="btn-primary">Đăng ký xe</button>
+                </div>
+              </form>
             </div>
-            <div className="modal-footer">
-              <button type="button" className="btn-secondary" onClick={() => setShowAddVehicleModal(false)}>Hủy</button>
-              <button type="submit" className="btn-primary">Đăng ký xe</button>
-            </div>
-          </form>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
   );
 };
 
