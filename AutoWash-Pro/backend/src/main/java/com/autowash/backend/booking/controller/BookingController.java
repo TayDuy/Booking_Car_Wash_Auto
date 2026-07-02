@@ -153,7 +153,7 @@ public class BookingController {
     ) {
 
         BookingCreateResponseDTO response =
-                bookingService.createBooking(request);
+                bookingService.createBooking(request, null);
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)
