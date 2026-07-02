@@ -17,6 +17,13 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+import com.autowash.backend.payment.service.VNPayService;
+import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.http.MediaType;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Enumeration;
+
 /**
  * PaymentController — REST API cho nghiệp vụ thanh toán (FR-5).
  */
@@ -29,6 +36,7 @@ public class PaymentController {
     private final BookingRepository bookingRepository;
     private final PaymentRepository paymentRepository;
     private final CustomerRepository customerRepository;
+    private final VNPayService vnPayService;
 
     /**
      * Tạo payment cho booking đã completed.
@@ -105,6 +113,135 @@ public class PaymentController {
     public ResponseEntity<List<PaymentResponseDTO>> getAll(
             @RequestParam(required = false) PaymentStatus status) {
         return ResponseEntity.ok(paymentService.getByStatus(status));
+    }
+
+    // ============================================================
+    // VNPAY — sinh QR thanh toán & xử lý callback
+    // ============================================================
+
+    /**
+     * Sinh ảnh QR thanh toán VNPAY cho 1 payment đã tồn tại (đang ở trạng thái unpaid).
+     * Chỉ khách hàng sở hữu đơn thanh toán hoặc Staff/Admin mới được quyền sinh mã.
+     */
+    @GetMapping("/{id}/vnpay-qr")
+    @PreAuthorize("hasAnyRole('CUSTOMER', 'STAFF', 'ADMIN')")
+    public ResponseEntity<byte[]> getVnpayQrCode(
+            HttpServletRequest request,
+            @PathVariable Integer id,
+            @AuthenticationPrincipal CustomUserDetails userDetails) throws Exception {
+        verifyPaymentOwnership(id, userDetails);
+        PaymentResponseDTO payment = paymentService.getById(id);
+
+        String txnRef = "PAY" + payment.getPaymentId();
+        String orderInfo = "Thanh toan don hang #" + payment.getPaymentId();
+        long amount = payment.getFinalAmount().longValue();
+
+        String paymentUrl = vnPayService.createPaymentUrl(request, amount, orderInfo, txnRef);
+        byte[] qrImage = vnPayService.generateQRCode(paymentUrl, 300, 300);
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.IMAGE_PNG)
+                .body(qrImage);
+    }
+
+    /**
+     * Endpoint VNPAY redirect về sau khi khách thanh toán xong (vnp_ReturnUrl).
+     */
+    @GetMapping("/vnpay-return")
+    public ResponseEntity<?> vnpayReturn(HttpServletRequest request) throws Exception {
+        Map<String, String> fields = new HashMap<>();
+        for (Enumeration<String> params = request.getParameterNames(); params.hasMoreElements(); ) {
+            String name = params.nextElement();
+            fields.put(name, request.getParameter(name));
+        }
+
+        String vnp_SecureHash = fields.remove("vnp_SecureHash");
+        fields.remove("vnp_SecureHashType");
+
+        boolean isValid = vnPayService.validateSignature(fields, vnp_SecureHash);
+        String responseCode = fields.get("vnp_ResponseCode");
+        String txnRef = fields.get("vnp_TxnRef");
+
+        if (isValid && "00".equals(responseCode)) {
+            return ResponseEntity.ok().body("Thanh toán thành công cho giao dịch: " + txnRef);
+        } else {
+            return ResponseEntity.badRequest().body("Thanh toán thất bại hoặc chữ ký không hợp lệ");
+        }
+    }
+
+    /**
+     * Endpoint IPN (Instant Payment Notification) — VNPAY SERVER gọi trực tiếp tới đây
+     */
+    @GetMapping("/vnpay-ipn")
+    public ResponseEntity<Map<String, String>> vnpayIpn(HttpServletRequest request) {
+        Map<String, String> result = new HashMap<>();
+        try {
+            Map<String, String> fields = new HashMap<>();
+            for (Enumeration<String> params = request.getParameterNames(); params.hasMoreElements(); ) {
+                String name = params.nextElement();
+                fields.put(name, request.getParameter(name));
+            }
+
+            String vnp_SecureHash = fields.remove("vnp_SecureHash");
+            fields.remove("vnp_SecureHashType");
+
+            boolean isValid = vnPayService.validateSignature(fields, vnp_SecureHash);
+
+            if (!isValid) {
+                result.put("RspCode", "97");
+                result.put("Message", "Invalid Signature");
+                return ResponseEntity.ok(result);
+            }
+
+            String responseCode = fields.get("vnp_ResponseCode");
+            String txnRef = fields.get("vnp_TxnRef");
+
+            Integer paymentId;
+            try {
+                paymentId = Integer.parseInt(txnRef.replace("PAY", ""));
+            } catch (Exception e) {
+                result.put("RspCode", "01");
+                result.put("Message", "Order not found");
+                return ResponseEntity.ok(result);
+            }
+
+            PaymentResponseDTO payment;
+            try {
+                payment = paymentService.getById(paymentId);
+            } catch (Exception e) {
+                result.put("RspCode", "01");
+                result.put("Message", "Order not found");
+                return ResponseEntity.ok(result);
+            }
+
+            long vnpAmount = Long.parseLong(fields.get("vnp_Amount")) / 100;
+            if (payment.getFinalAmount().longValue() != vnpAmount) {
+                result.put("RspCode", "04");
+                result.put("Message", "Invalid amount");
+                return ResponseEntity.ok(result);
+            }
+
+            if (payment.getPaymentStatus() != PaymentStatus.unpaid) {
+                result.put("RspCode", "02");
+                result.put("Message", "Order already confirmed");
+                return ResponseEntity.ok(result);
+            }
+
+            if ("00".equals(responseCode)) {
+                paymentService.processPayment(paymentId);
+            } else {
+                paymentService.markFailed(paymentId);
+            }
+
+            result.put("RspCode", "00");
+            result.put("Message", "Confirm Success");
+            return ResponseEntity.ok(result);
+
+        } catch (Exception e) {
+            result.put("RspCode", "99");
+            result.put("Message", "Unknown error");
+            return ResponseEntity.ok(result);
+        }
     }
 
     // ── PRIVATE HELPERS FOR OWNERSHIP CHECKS ──────────────────────────────────
