@@ -83,4 +83,34 @@ public class CustomerServiceImpl implements CustomerService {
         if ("other".equalsIgnoreCase(gender)) return "Khác";
         return gender;
     }
+
+    @Override
+    @Transactional
+    public CustomerProfileResponse updateCustomer(Integer customerId, CustomerUpdateRequest request) {
+        Customer customer = customerRepository.findById(customerId)
+                .orElseThrow(() -> new BusinessException("Không tìm thấy khách hàng", HttpStatus.NOT_FOUND));
+
+        customer.setFullName(request.getFullName());
+        customer.setDateOfBirth(request.getDateOfBirth());
+        customer.setGender(translateGenderToEnglish(request.getGender()));
+
+        if (customer.getUser() != null) {
+            customer.getUser().setPhone(request.getPhone());
+            customer.getUser().setEmail(request.getEmail());
+        }
+
+        Customer updatedCustomer = customerRepository.save(customer);
+        return mapToResponse(updatedCustomer);
+    }
+
+    @Override
+    @Transactional
+    public void deleteCustomer(Integer customerId) {
+        Customer customer = customerRepository.findById(customerId)
+                .orElseThrow(() -> new BusinessException("Không tìm thấy khách hàng", HttpStatus.NOT_FOUND));
+
+        if (customer.getUser() != null) {
+            customer.getUser().setStatus("inactive");
+        }
+    }
 }

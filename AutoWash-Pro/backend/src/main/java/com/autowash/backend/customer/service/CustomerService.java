@@ -9,4 +9,8 @@ public interface CustomerService {
 
     CustomerProfileResponse updateCustomerProfile(Integer userId, CustomerUpdateRequest request);
     List<CustomerProfileResponse> getAllCustomers();
+
+    CustomerProfileResponse updateCustomer(Integer customerId, CustomerUpdateRequest request);
+
+    void deleteCustomer(Integer customerId);
 }

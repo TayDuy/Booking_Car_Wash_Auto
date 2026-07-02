@@ -140,6 +140,15 @@ public class BookingController {
                 bookingService.getAllBookings()
         );
     }
+    @GetMapping("/staff/bookings/{bookingId}")
+    @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
+    public ResponseEntity<BookingResponseDTO> getBookingByIdForStaff(
+        @PathVariable Integer bookingId
+    )   {
+          return ResponseEntity.ok(
+                bookingService.getBookingById(bookingId)
+          );
+        }
 
     /**
      * STAFF / ADMIN cập nhật booking
@@ -195,4 +204,14 @@ public class BookingController {
                 bookingService.completeBooking(bookingId)
         );
     }
+
+    @PatchMapping("/staff/bookings/{bookingId}/confirm")
+    @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
+    public ResponseEntity<BookingResponseDTO> confirmBooking(
+            @PathVariable Integer bookingId
+) {
+        return ResponseEntity.ok(
+                bookingService.confirmBooking(bookingId)
+        );
+  }
 }
