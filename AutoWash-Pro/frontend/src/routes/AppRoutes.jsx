@@ -23,6 +23,8 @@ import BookingPage from "../features/booking/pages/BookingPage";
 import BookingDetailPage from "../features/booking/pages/BookingDetailPage";
 import BookingSuccessPage from "../features/booking/pages/BookingSuccessPage";
 
+import PaymentPage from "../features/payment/pages/PaymentPage";
+
 import PromotionListPage from "../features/promotion/pages/PromotionListPage";
 
 import AdminDashboardPage from "../features/admin/pages/AdminDashboardPage";
@@ -49,6 +51,7 @@ function AppRoutes() {
 
       {/* Unauthorized page */}
       <Route path="/unauthorized" element={<UnauthorizedPage />} />
+      <Route path="/payment" element={<PaymentPage />} />
 
       {/* Auth routes */}
       <Route path="/auth" element={<AuthLayout />}>
