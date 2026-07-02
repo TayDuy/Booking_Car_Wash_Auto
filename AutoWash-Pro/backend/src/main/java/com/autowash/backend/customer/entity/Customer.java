@@ -40,13 +40,13 @@ public class Customer {
     @Column(name = "tier_id")
     private Integer tierId;
 
-    @Column(name = "total_points", nullable = false, insertable = false, updatable = false)
+    @Column(name = "total_points", nullable = false)
     private Integer totalPoints;
 
-    @Column(name = "total_visits", nullable = false, insertable = false, updatable = false)
+    @Column(name = "total_visits", nullable = false)
     private Integer totalVisits;
 
-    @Column(name = "total_spending", nullable = false, insertable = false, updatable = false)
+    @Column(name = "total_spending", nullable = false)
     private BigDecimal totalSpending;
 
     @Column(name = "joined_at", nullable = false, insertable = false, updatable = false)
