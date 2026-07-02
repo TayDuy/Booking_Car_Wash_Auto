@@ -10,7 +10,7 @@ import {
   MdDirectionsCar,
   MdAirportShuttle
 } from "react-icons/md";
-import { createBooking } from "../../../api/bookingService";
+import bookingApi from "../../../api/bookingApi";
 import customerApi from "../../../api/customerApi";
 import vehicleApi from "../../../api/vehicleApi";
 import { useNavigate } from "react-router-dom";
@@ -111,8 +111,9 @@ export default function BookingPage() {
     const loadServices = async () => {
       try {
         const res = await getActiveServices();
-        if (res.data && res.data.length > 0) {
-          const merged = res.data.map((item, idx) => ({
+        const servicesList = res.data?.data || res.data;
+        if (servicesList && servicesList.length > 0) {
+          const merged = servicesList.map((item, idx) => ({
             ...item,
             imageUrl: DEFAULT_SERVICES[idx]?.imageUrl || DEFAULT_SERVICES[0].imageUrl,
             features: DEFAULT_SERVICES[idx]?.features || DEFAULT_SERVICES[0].features,
@@ -134,9 +135,10 @@ export default function BookingPage() {
     const loadBranches = async () => {
       try {
         const res = await getBranches();
-        if (res.data && res.data.length > 0) {
-          setBranches(res.data);
-          setSelectedBranch(res.data[0].branchId);
+        const branchesList = res.data?.data || res.data;
+        if (branchesList && branchesList.length > 0) {
+          setBranches(branchesList);
+          setSelectedBranch(branchesList[0].branchId);
         }
       } catch (err) {
         console.log(err);
@@ -165,7 +167,7 @@ export default function BookingPage() {
     // biển số / hãng xe / loại xe, tránh phải nhập lại mỗi lần đặt lịch.
     const loadVehicles = async () => {
       try {
-        const res = await vehicleApi.list();
+        const res = await vehicleApi.listMyVehicles();
         const list = res.data || [];
         if (list.length > 0) {
           setSavedVehicles(list);
@@ -287,9 +289,10 @@ export default function BookingPage() {
         note,
         details: [{ serviceId: selectedService, quantity: 1 }]
       };
-      const result = await createBooking(bookingData);
-      const bookingId = result?.data?.bookingId || result?.data?.id || result?.data?.data?.bookingId;
-      navigate("/payment", { state: { bookingId } });
+      const response = await bookingApi.create(bookingData);
+      const result = response.data;
+      const bookingId = result?.bookingId || result?.id || result?.data?.bookingId;
+      navigate("/customer/payment", { state: { bookingId } });
     } catch (error) {
       alert(error.response?.data?.message || "Đặt lịch thất bại. Vui lòng thử lại!");
     }

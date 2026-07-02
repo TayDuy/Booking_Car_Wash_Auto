@@ -21,7 +21,6 @@ import SupportPage from "../features/customer/pages/Helpcenter";
 
 import BookingPage from "../features/booking/pages/BookingPage";
 import BookingDetailPage from "../features/booking/pages/BookingDetailPage";
-import BookingSuccessPage from "../features/booking/pages/BookingSuccessPage";
 
 import PaymentPage from "../features/payment/pages/PaymentPage";
 
@@ -51,7 +50,6 @@ function AppRoutes() {
 
       {/* Unauthorized page */}
       <Route path="/unauthorized" element={<UnauthorizedPage />} />
-      <Route path="/payment" element={<PaymentPage />} />
 
       {/* Auth routes */}
       <Route path="/auth" element={<AuthLayout />}>
@@ -73,13 +71,13 @@ function AppRoutes() {
         <Route index element={<Navigate to="home" replace />} />
         <Route path="home" element={<HomePage />} />
         <Route path="booking" element={<BookingPage />} />
-        <Route path="booking/success" element={<BookingSuccessPage />} />
         <Route path="booking/:bookingId" element={<BookingDetailPage />} />
         <Route path="history" element={<BookingHistory />} />
         <Route path="promotions" element={<PromotionListPage />} />
         <Route path="profile" element={<ProfilePage />} />
         <Route path="notifications" element={<CustomerNotificationPage />} />
         <Route path="support" element={<SupportPage />} />
+        <Route path="payment" element={<PaymentPage />} />
       </Route>
 
       {/* Admin routes */}

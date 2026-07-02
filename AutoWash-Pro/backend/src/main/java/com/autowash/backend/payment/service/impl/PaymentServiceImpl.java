@@ -24,6 +24,7 @@ import com.autowash.backend.reward.entity.Reward;
 import com.autowash.backend.reward.repository.RewardRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -65,7 +66,7 @@ public class PaymentServiceImpl implements PaymentService {
 
         // Kiểm tra chưa có payment
         if (paymentRepository.existsByBooking_BookingId(bookingId)) {
-            throw new BusinessException("Booking này đã có payment rồi");
+            throw new BusinessException("Booking này đã có payment rồi", HttpStatus.CONFLICT);
         }
 
         // 1. Tính original amount từ BookingDetail — không nhận từ client
@@ -134,8 +135,8 @@ public class PaymentServiceImpl implements PaymentService {
 
     @Override
     @Transactional
-    public PaymentResponseDTO processPayment(Integer paymentId) {
-        Payment payment = findPaymentOrThrow(paymentId);
+    public PaymentResponseDTO processPayment(Integer paymentId, String transactionNo, String bankCode, String cardType, String responseCode) {
+        Payment payment = findPaymentOrThrowForUpdate(paymentId);
 
         if (!PaymentStatus.unpaid.equals(payment.getPaymentStatus())) {
             throw new BusinessException(
@@ -144,6 +145,11 @@ public class PaymentServiceImpl implements PaymentService {
 
         payment.setPaymentStatus(PaymentStatus.paid);
         payment.setPaidAt(LocalDateTime.now());
+        payment.setVnpayTransactionNo(transactionNo);
+        payment.setVnpayBankCode(bankCode);
+        payment.setVnpayCardType(cardType);
+        payment.setVnpayResponseCode(responseCode);
+        
         Payment saved = paymentRepository.save(payment);
 
         // FR-7: Tích điểm loyalty
@@ -160,12 +166,10 @@ public class PaymentServiceImpl implements PaymentService {
         return paymentMapper.toResponse(saved);
     }
 
-    // ── CANCEL — unpaid → cancelled ──────────────────────────────────────────
-
     @Override
     @Transactional
     public PaymentResponseDTO cancelPayment(Integer paymentId) {
-        Payment payment = findPaymentOrThrow(paymentId);
+        Payment payment = findPaymentOrThrowForUpdate(paymentId);
 
         if (!PaymentStatus.unpaid.equals(payment.getPaymentStatus())) {
             throw new BusinessException("Chỉ có thể hủy payment ở trạng thái unpaid");
@@ -187,14 +191,19 @@ public class PaymentServiceImpl implements PaymentService {
 
     @Override
     @Transactional
-    public PaymentResponseDTO markFailed(Integer paymentId) {
-        Payment payment = findPaymentOrThrow(paymentId);
+    public PaymentResponseDTO markFailed(Integer paymentId, String transactionNo, String bankCode, String cardType, String responseCode) {
+        Payment payment = findPaymentOrThrowForUpdate(paymentId);
 
         if (!PaymentStatus.unpaid.equals(payment.getPaymentStatus())) {
             throw new BusinessException("Chỉ chuyển failed từ trạng thái unpaid");
         }
 
         payment.setPaymentStatus(PaymentStatus.failed);
+        payment.setVnpayTransactionNo(transactionNo);
+        payment.setVnpayBankCode(bankCode);
+        payment.setVnpayCardType(cardType);
+        payment.setVnpayResponseCode(responseCode);
+        
         return paymentMapper.toResponse(paymentRepository.save(payment));
     }
 
@@ -341,6 +350,12 @@ public class PaymentServiceImpl implements PaymentService {
 
     private Payment findPaymentOrThrow(Integer paymentId) {
         return paymentRepository.findById(paymentId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Payment", "id", paymentId));
+    }
+
+    private Payment findPaymentOrThrowForUpdate(Integer paymentId) {
+        return paymentRepository.findByIdForUpdate(paymentId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Payment", "id", paymentId));
     }
