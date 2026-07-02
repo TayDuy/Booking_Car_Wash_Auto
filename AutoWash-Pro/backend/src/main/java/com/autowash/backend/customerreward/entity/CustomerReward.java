@@ -3,11 +3,17 @@ package com.autowash.backend.customerreward.entity;
 import com.autowash.backend.customer.entity.Customer;
 import com.autowash.backend.reward.entity.Reward;
 import jakarta.persistence.*;
-import lombok.Builder;
+import lombok.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
+@Entity
+@Table(name = "customer_reward")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
 @Builder
 public class CustomerReward {
 
@@ -17,11 +23,11 @@ public class CustomerReward {
     private Integer customerRewardId;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "customer_id, nullable = false")
+    @JoinColumn(name = "customer_id", nullable = false)
     private Customer customer;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "reward_id, nullable = false")
+    @JoinColumn(name = "reward_id", nullable = false)
     private Reward reward;
 
     @Column(name = "voucher_code", nullable = false, unique = true, length = 50)
@@ -32,7 +38,7 @@ public class CustomerReward {
     private String status = "UNUSED";
 
     @Column(name = "redeemed_points", nullable = false)
-    private Integer redeemPoints;
+    private Integer redeemedPoints;
 
     @Column(name = "discount_type", length = 30)
     private String discountType;
@@ -42,14 +48,14 @@ public class CustomerReward {
 
     @Builder.Default
     @Column(name = "redeemed_at", nullable = false)
-    private LocalDateTime redeemAt = LocalDateTime.now();
+    private LocalDateTime redeemedAt = LocalDateTime.now();
 
     @Column(name = "expired_at")
     private LocalDateTime expiredAt;
 
     @Column(name = "used_at")
-    private LocalDateTime useAt;
+    private LocalDateTime usedAt;
 
     @Column(name = "used_booking_id")
-    private Integer useBookingId;
+    private Integer usedBookingId;
 }
