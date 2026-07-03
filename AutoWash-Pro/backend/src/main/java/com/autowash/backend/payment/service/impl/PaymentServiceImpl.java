@@ -58,10 +58,13 @@ public class PaymentServiceImpl implements PaymentService {
         Integer bookingId = request.getBookingId();
         Booking booking = findBookingOrThrow(bookingId);
 
-        // Chỉ tạo payment khi booking đã completed
-        if (!BookingStatus.completed.equals(booking.getStatus())) {
+        // Cho phép tạo payment ngay từ khi booking đang pending/confirmed/in_progress
+        // (khách thanh toán trước, không cần chờ quản lý xác nhận hoàn tất dịch vụ).
+        // Chỉ chặn 2 trạng thái không còn ý nghĩa để thanh toán: đã hủy / không đến.
+        if (BookingStatus.cancelled.equals(booking.getStatus())
+                || BookingStatus.no_show.equals(booking.getStatus())) {
             throw new BusinessException(
-                    "Chỉ tạo payment khi booking đã completed, hiện tại: " + booking.getStatus());
+                    "Không thể tạo payment cho booking đã ở trạng thái: " + booking.getStatus());
         }
 
         // Kiểm tra chưa có payment
@@ -149,7 +152,7 @@ public class PaymentServiceImpl implements PaymentService {
         payment.setVnpayBankCode(bankCode);
         payment.setVnpayCardType(cardType);
         payment.setVnpayResponseCode(responseCode);
-        
+
         Payment saved = paymentRepository.save(payment);
 
         // FR-7: Tích điểm loyalty
@@ -203,7 +206,7 @@ public class PaymentServiceImpl implements PaymentService {
         payment.setVnpayBankCode(bankCode);
         payment.setVnpayCardType(cardType);
         payment.setVnpayResponseCode(responseCode);
-        
+
         return paymentMapper.toResponse(paymentRepository.save(payment));
     }
 

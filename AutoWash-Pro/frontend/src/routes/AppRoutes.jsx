@@ -23,6 +23,7 @@ import BookingPage from "../features/booking/pages/BookingPage";
 import BookingDetailPage from "../features/booking/pages/BookingDetailPage";
 
 import PaymentPage from "../features/payment/pages/PaymentPage";
+import PaymentSuccessPage from "../features/payment/pages/PaymentSuccessPage";
 import PromotionListPage from "../features/promotion/pages/PromotionListPage";
 
 import AdminDashboardPage from "../features/admin/pages/AdminDashboardPage";
@@ -42,84 +43,85 @@ import ManagerServiceStatusPage from "../features/manager/pages/ManagerServiceSt
 import UnauthorizedPage from "../pages/UnauthorizedPage";
 
 function AppRoutes() {
-  return (
-    <Routes>
-      {/* Landing page */}
-      <Route path="/" element={<LandingPage />} />
-      <Route path="/payment" element={<PaymentPage />} />
+    return (
+        <Routes>
+            {/* Landing page */}
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/payment" element={<PaymentPage />} />
 
-      {/* Unauthorized page */}
-      <Route path="/unauthorized" element={<UnauthorizedPage />} />
+            {/* Unauthorized page */}
+            <Route path="/unauthorized" element={<UnauthorizedPage />} />
 
-      {/* Auth routes */}
-      <Route path="/auth" element={<AuthLayout />}>
-        <Route index element={<Navigate to="login" replace />} />
-        <Route path="login" element={<LoginPage />} />
-        <Route path="register" element={<RegisterPage />} />
-        <Route path="forgot-password" element={<ForgotPasswordPage />} />
-      </Route>
+            {/* Auth routes */}
+            <Route path="/auth" element={<AuthLayout />}>
+                <Route index element={<Navigate to="login" replace />} />
+                <Route path="login" element={<LoginPage />} />
+                <Route path="register" element={<RegisterPage />} />
+                <Route path="forgot-password" element={<ForgotPasswordPage />} />
+            </Route>
 
-      {/* Customer routes */}
-      <Route
-        path="/customer"
-        element={
-          <ProtectedRoute allowedRoles={["CUSTOMER", "USER"]}>
-            <CustomerLayout />
-          </ProtectedRoute>
-        }
-      >
-        <Route index element={<Navigate to="home" replace />} />
-        <Route path="home" element={<HomePage />} />
-        <Route path="booking" element={<BookingPage />} />
-        <Route path="booking/:bookingId" element={<BookingDetailPage />} />
-        <Route path="history" element={<BookingHistory />} />
-        <Route path="promotions" element={<PromotionListPage />} />
-        <Route path="profile" element={<ProfilePage />} />
-        <Route path="notifications" element={<CustomerNotificationPage />} />
-        <Route path="support" element={<SupportPage />} />
-        <Route path="payment" element={<PaymentPage />} />
-      </Route>
+            {/* Customer routes */}
+            <Route
+                path="/customer"
+                element={
+                    <ProtectedRoute allowedRoles={["CUSTOMER", "USER"]}>
+                        <CustomerLayout />
+                    </ProtectedRoute>
+                }
+            >
+                <Route index element={<Navigate to="home" replace />} />
+                <Route path="home" element={<HomePage />} />
+                <Route path="booking" element={<BookingPage />} />
+                <Route path="booking/:bookingId" element={<BookingDetailPage />} />
+                <Route path="history" element={<BookingHistory />} />
+                <Route path="promotions" element={<PromotionListPage />} />
+                <Route path="profile" element={<ProfilePage />} />
+                <Route path="notifications" element={<CustomerNotificationPage />} />
+                <Route path="support" element={<SupportPage />} />
+                <Route path="payment" element={<PaymentPage />} />
+                <Route path="payment/success" element={<PaymentSuccessPage />} />
+            </Route>
 
-      {/* Admin routes */}
-      <Route
-        path="/admin"
-        element={
-          <ProtectedRoute allowedRoles={["ADMIN"]}>
-            <AdminLayout />
-          </ProtectedRoute>
-        }
-      >
-        <Route index element={<Navigate to="dashboard" replace />} />
-        <Route path="dashboard" element={<AdminDashboardPage />} />
-        <Route path="bookings" element={<ManageBookingsPage />} />
-        <Route path="customers" element={<ManageCustomersPage />} />
-        <Route path="promotions" element={<ManagePromotionsPage />} />
-        <Route path="vehicles" element={<ManageVehiclesPage />} />
-        <Route path="notifications" element={<AdminNotificationPage />} />
-        <Route path="reports" element={<ReportsPage />} />
-      </Route>
+            {/* Admin routes */}
+            <Route
+                path="/admin"
+                element={
+                    <ProtectedRoute allowedRoles={["ADMIN"]}>
+                        <AdminLayout />
+                    </ProtectedRoute>
+                }
+            >
+                <Route index element={<Navigate to="dashboard" replace />} />
+                <Route path="dashboard" element={<AdminDashboardPage />} />
+                <Route path="bookings" element={<ManageBookingsPage />} />
+                <Route path="customers" element={<ManageCustomersPage />} />
+                <Route path="promotions" element={<ManagePromotionsPage />} />
+                <Route path="vehicles" element={<ManageVehiclesPage />} />
+                <Route path="notifications" element={<AdminNotificationPage />} />
+                <Route path="reports" element={<ReportsPage />} />
+            </Route>
 
-      {/* Manager routes */}
-      <Route
-        path="/manager"
-        element={
-          <ProtectedRoute allowedRoles={["MANAGER"]}>
-            <ManagerLayout />
-          </ProtectedRoute>
-        }
-      >
-        <Route index element={<Navigate to="dashboard" replace />} />
-        <Route path="dashboard" element={<ManagerDashboardPage />} />
-        <Route path="bookings" element={<ManagerBookingsPage />} />
-        <Route path="staff" element={<ManagerStaffPage />} />
-        <Route path="revenue" element={<ManagerRevenuePage />} />
-        <Route path="service-status" element={<ManagerServiceStatusPage />} />
-      </Route>
+            {/* Manager routes */}
+            <Route
+                path="/manager"
+                element={
+                    <ProtectedRoute allowedRoles={["MANAGER"]}>
+                        <ManagerLayout />
+                    </ProtectedRoute>
+                }
+            >
+                <Route index element={<Navigate to="dashboard" replace />} />
+                <Route path="dashboard" element={<ManagerDashboardPage />} />
+                <Route path="bookings" element={<ManagerBookingsPage />} />
+                <Route path="staff" element={<ManagerStaffPage />} />
+                <Route path="revenue" element={<ManagerRevenuePage />} />
+                <Route path="service-status" element={<ManagerServiceStatusPage />} />
+            </Route>
 
-      {/* Not found */}
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
-  );
+            {/* Not found */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+    );
 }
 
 export default AppRoutes;

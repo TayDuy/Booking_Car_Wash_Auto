@@ -100,14 +100,25 @@ public class BookingServiceImpl implements BookingService {
                 .orElseThrow(() -> new ResourceNotFoundException("Customer", "id", request.getCustomerId()));
 
         // ← Thay vehicleRepository.findById bằng logic check biển số
-        Vehicle vehicle = vehicleRepository.findByLicensePlate(request.getLicensePlate())
+        String normalizedPlate = request.getLicensePlate().trim().toUpperCase();
+        Vehicle vehicle = vehicleRepository.findByLicensePlateAndCustomer_CustomerId(normalizedPlate, customer.getCustomerId())
+                .map(existing -> {
+                    // Xe đã có sẵn của đúng customer này -> kích hoạt lại nếu trước đó bị soft-delete
+                    if (!Boolean.TRUE.equals(existing.getIsActive())) {
+                        existing.setIsActive(true);
+                        return vehicleRepository.save(existing);
+                    }
+                    return existing;
+                })
                 .orElseGet(() -> {
-                    // Sửa trong BookingServiceImpl.java chỗ tạo xe mới:
+                    // Không tìm thấy xe của customer này với biển số đó -> tạo mới
+                    // (kể cả khi biển số đã tồn tại dưới customer khác, vì 1 xe
+                    //  thực tế có thể đổi chủ / được nhiều khách nhập nhầm)
                     Vehicle newVehicle = Vehicle.builder()
                             .customer(customer)
-                            .licensePlate(request.getLicensePlate())
+                            .licensePlate(normalizedPlate)
                             .brand(request.getBrand())
-                            .model(request.getModel())   // ← THÊM dòng này
+                            .model(request.getModel())
                             .vehicleType(resolveVehicleType(request.getVehicleType()))
                             .isActive(true)
                             .build();

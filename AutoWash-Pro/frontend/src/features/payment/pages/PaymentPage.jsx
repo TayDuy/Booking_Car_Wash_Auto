@@ -1,7 +1,6 @@
 import "./PaymentPage.css";
 import { useState, useEffect, useRef } from "react";
-import { useLocation } from "react-router-dom";
-import SiteHeader from "../../../components/layout/SiteHeader";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 
 const API_BASE = "http://localhost:8080";
 const STORE_NAME = "AutoWash Pro";
@@ -12,8 +11,16 @@ const VNPAY_EXPIRE_SECONDS = 15 * 60;
 
 function PaymentPage() {
     const location = useLocation();
+    const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
     const bookingIdFromBookingPage = location.state?.bookingId;
-    const bookingId = bookingIdFromBookingPage ? String(bookingIdFromBookingPage) : "";
+    const bookingIdFromQuery = searchParams.get("bookingId");
+    const paymentIdFromQuery = searchParams.get("paymentId");
+    const paymentFailedFromQuery = searchParams.get("paymentFailed");
+    const failReasonFromQuery = searchParams.get("reason");
+    const bookingId = bookingIdFromBookingPage
+        ? String(bookingIdFromBookingPage)
+        : (bookingIdFromQuery || "");
     // VNPAY là phương thức duy nhất hiện hỗ trợ QR thật, nên fix cứng luôn.
     // Lưu ý: enum PaymentMethod ở backend không có "vnpay", nên khi tạo payment
     // vẫn phải gửi "bank_transfer" để pass validation — QR hiển thị là QR VNPAY thật.
@@ -104,11 +111,12 @@ function PaymentPage() {
             return;
         }
 
-        // Chỉ cho tạo payment khi booking đã hoàn tất dịch vụ.
-        if (bookingDetail && bookingDetail.status !== "completed") {
+        // Cho phép tạo payment ngay cả khi booking đang pending/confirmed/in_progress.
+        // Chỉ chặn khi booking đã bị hủy hoặc khách không đến — 2 trạng thái này
+        // không còn ý nghĩa để thanh toán.
+        if (bookingDetail && (bookingDetail.status === "cancelled" || bookingDetail.status === "no_show")) {
             setErrorMessage(
-                `Booking chưa hoàn tất (trạng thái hiện tại: ${bookingDetail.status}). ` +
-                "Chỉ có thể thanh toán khi booking đã completed."
+                `Không thể thanh toán cho booking đã ở trạng thái "${bookingDetail.status}".`
             );
             return;
         }
@@ -206,6 +214,46 @@ function PaymentPage() {
         }
     }
 
+    // Khi VNPAY redirect trình duyệt thật về đây (không phải điều hướng nội bộ của
+    // React Router), location.state luôn rỗng. Đọc kết quả từ query string thay thế:
+    // - Thành công: có ?paymentId=... -> load lại payment để hiển thị trạng thái "paid".
+    // - Thất bại: có ?paymentFailed=1&reason=... -> hiển thị lý do, cho phép thử lại.
+    useEffect(() => {
+        if (paymentIdFromQuery && !autoTriggeredRef.current) {
+            autoTriggeredRef.current = true;
+            setPaymentId(paymentIdFromQuery);
+        } else if (paymentFailedFromQuery === "1") {
+            const reasonMessages = {
+                invalid_signature: "Chữ ký giao dịch không hợp lệ. Vui lòng thử lại.",
+                invalid_order: "Không xác định được đơn hàng thanh toán.",
+                order_not_found: "Không tìm thấy đơn hàng tương ứng.",
+                payment_failed: "Giao dịch không thành công. Vui lòng thử lại.",
+            };
+            setErrorMessage(
+                reasonMessages[failReasonFromQuery] || "Thanh toán không thành công. Vui lòng thử lại."
+            );
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    // Có paymentId (từ query khi redirect về, hoặc vừa tạo) nhưng chưa có QR ảnh
+    // (nghĩa là không cần quét QR nữa — chỉ cần load lại trạng thái mới nhất).
+    useEffect(() => {
+        if (paymentId && !qrImageUrl) {
+            handleGetPayment(false).then(() => {});
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [paymentId]);
+
+    // Khi đã có payment nhưng chưa có booking detail (trường hợp vào từ redirect,
+    // chỉ có paymentId trong query) -> lấy bookingId từ payment để hiển thị tóm tắt.
+    useEffect(() => {
+        if (!bookingDetail && paymentResult?.bookingId) {
+            handleGetBookingDetail(paymentResult.bookingId).then(() => {});
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [paymentResult?.bookingId]);
+
     useEffect(() => {
         if (bookingId) {
             // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch dữ liệu booking từ server, không phải sync state nội bộ
@@ -214,13 +262,14 @@ function PaymentPage() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [bookingId]);
 
-    // Tự động tạo payment + sinh mã QR ngay khi vào trang — nhưng CHỈ khi booking
-    // đã ở trạng thái "completed". Nếu booking còn "pending"/khác, chưa cho tạo
-    // payment (tránh thu tiền trước khi dịch vụ hoàn tất).
+    // Tự động tạo payment + sinh mã QR ngay khi vào trang, miễn là booking chưa bị
+    // hủy / không đến. Không còn chờ trạng thái "completed" nữa.
     useEffect(() => {
         if (
             bookingId &&
-            bookingDetail?.status === "completed" &&
+            bookingDetail &&
+            bookingDetail.status !== "cancelled" &&
+            bookingDetail.status !== "no_show" &&
             !autoTriggeredRef.current
         ) {
             autoTriggeredRef.current = true;
@@ -266,6 +315,22 @@ function PaymentPage() {
         };
     }, []);
 
+    // Ngay khi phát hiện VNPAY đã xác nhận "paid" (qua polling hoặc bấm nút kiểm
+    // tra trạng thái thủ công), điều hướng sang trang "Thanh toán thành công".
+    // Đợi 900ms để người dùng kịp thấy dòng "✅ VNPAY đã xác nhận..." trước khi chuyển trang.
+    useEffect(() => {
+        if (paymentResult?.paymentStatus === "paid") {
+            const timer = setTimeout(() => {
+                navigate("/customer/payment/success", {
+                    replace: true,
+                    state: { paymentResult, bookingDetail },
+                });
+            }, 900);
+            return () => clearTimeout(timer);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [paymentResult?.paymentStatus]);
+
     const timerMinutes = String(Math.floor(timeLeft / 60)).padStart(2, "0");
     const timerSeconds = String(timeLeft % 60).padStart(2, "0");
 
@@ -279,9 +344,13 @@ function PaymentPage() {
         bookingDetail?.bookingDetail?.[0] ||
         null;
 
+    // Chỉ chặn thanh toán khi booking đã hủy / khách không đến.
+    // Mọi trạng thái khác (pending/confirmed/in_progress/completed) đều cho phép thanh toán.
+    const isBookingUnpayable =
+        bookingDetail && (bookingDetail.status === "cancelled" || bookingDetail.status === "no_show");
+
     return (
         <>
-            <SiteHeader />
             <div className="payment-page">
                 <div className="payment-page-inner">
                     <h1>Thanh Toán</h1>
@@ -324,12 +393,12 @@ function PaymentPage() {
                                     </div>
                                 </div>
 
-                                {bookingDetail && bookingDetail.status !== "completed" && (
+                                {isBookingUnpayable && (
                                     <div className="method-alert">
-                                        Booking đang ở trạng thái "<strong>{bookingDetail.status}</strong>". Mã QR sẽ được tạo sau khi quản lý xác nhận dịch vụ.
+                                        Booking đang ở trạng thái "<strong>{bookingDetail.status}</strong>" nên không thể thanh toán.
                                     </div>
                                 )}
-                                {bookingDetail?.status === "completed" && !paymentId && !qrLoading && (
+                                {bookingDetail && !isBookingUnpayable && !paymentId && !qrLoading && (
                                     <p className="method-hint">Đang chuẩn bị mã QR thanh toán...</p>
                                 )}
                                 {qrLoading && <p className="method-hint">Đang tạo mã QR...</p>}
@@ -509,16 +578,16 @@ function PaymentPage() {
                             <button
                                 className="pay-now-button"
                                 onClick={handleCreatePayment}
-                                disabled={isLoading || (bookingDetail && bookingDetail.status !== "completed")}
+                                disabled={isLoading || isBookingUnpayable}
                             >
                                 <span>
                                     {isLoading
                                         ? "Đang xử lý..."
-                                        : bookingDetail && bookingDetail.status !== "completed"
-                                            ? "Chờ booking hoàn tất"
+                                        : isBookingUnpayable
+                                            ? "Booking không thể thanh toán"
                                             : (paymentId ? "Tạo lại mã QR" : "Xác Nhận & Hoàn Tất")}
                                 </span>
-                                {!isLoading && (!bookingDetail || bookingDetail.status === "completed") && (
+                                {!isLoading && !isBookingUnpayable && (
                                     <span className="pay-now-arrow" aria-hidden="true">→</span>
                                 )}
                             </button>
