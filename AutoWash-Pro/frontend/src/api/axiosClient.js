@@ -1,6 +1,7 @@
 import axios from "axios";
 
-const API_BASE_URL = "http://localhost:8080/api/v1";
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080/api/v1";
+export const BACKEND_ROOT_URL = API_BASE_URL.replace("/api/v1", "");
 
 const axiosClient = axios.create({
   baseURL: API_BASE_URL,
@@ -12,8 +13,7 @@ const axiosClient = axios.create({
 
 axiosClient.interceptors.request.use(
   (config) => {
-    const token =
-      localStorage.getItem("token") || localStorage.getItem("accessToken");
+    const token = localStorage.getItem("token");
 
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -41,7 +41,6 @@ const processQueue = (error, token = null) => {
 
 function clearAuthStorage() {
   localStorage.removeItem("token");
-  localStorage.removeItem("accessToken");
   localStorage.removeItem("refreshToken");
   localStorage.removeItem("username");
   localStorage.removeItem("role");
@@ -50,8 +49,8 @@ function clearAuthStorage() {
 }
 
 function redirectToLogin() {
-  if (window.location.pathname !== "/login") {
-    window.location.href = "/login";
+  if (window.location.pathname !== "/auth/login") {
+    window.location.href = "/auth/login";
   }
 }
 
@@ -62,8 +61,7 @@ function isAuthPublicRequest(url = "") {
     url.includes("/auth/send-otp") ||
     url.includes("/auth/verify-otp") ||
     url.includes("/auth/google") ||
-    url.includes("/auth/forgot-password") ||
-    url.includes("/auth/reset-password")
+    url.includes("/auth/forgot-password")
   );
 }
 
@@ -129,7 +127,6 @@ axiosClient.interceptors.response.use(
         }
 
         localStorage.setItem("token", newAccessToken);
-        localStorage.setItem("accessToken", newAccessToken);
 
         if (newRefreshToken) {
           localStorage.setItem("refreshToken", newRefreshToken);

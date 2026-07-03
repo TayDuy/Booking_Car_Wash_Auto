@@ -22,8 +22,9 @@ import org.springframework.transaction.annotation.Transactional;
             @Override
             @Transactional(readOnly = true)
             public UserDetails loadUserByUsername(String identifier) throws UsernameNotFoundException {
-                User user = userRepository.findByEmail(identifier)
-                        .or(() -> userRepository.findByUsername(identifier))
+                String trimmedIdentifier = identifier.trim();
+                User user = userRepository.findByEmailIgnoreCase(trimmedIdentifier)
+                        .or(() -> userRepository.findByUsernameIgnoreCase(trimmedIdentifier))
                         .orElseThrow(() -> new UsernameNotFoundException(
                                 "Không tìm thấy người dùng với tài khoản hoặc email: " + identifier));
                 return new CustomUserDetails(user);

@@ -1,5 +1,5 @@
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
-import { logout } from "../api/authService";
+import { logoutFromServer } from "../api/authService";
 
 function ManagerLayout() {
   const navigate = useNavigate();

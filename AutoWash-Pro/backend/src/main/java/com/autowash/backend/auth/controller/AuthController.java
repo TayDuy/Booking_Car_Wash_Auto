@@ -95,28 +95,32 @@ public class AuthController {
 
     /**
      * POST /api/v1/auth/send-otp
-     * Body: { "phone": "0912345678" }
+     * Body: { "email": "user@example.com" }
      */
     @PostMapping("/send-otp")
     public ResponseEntity<ApiResponse<Void>> sendOtp(@Valid @RequestBody OtpRequestDTO request,
                                                      HttpServletRequest httpRequest){
-        otpService.sendOtp(request.getPhone(), OtpService.PURPOSE_GENERAL, getClientIp(httpRequest));
-        return ResponseEntity.ok(ApiResponse.success("Mã otp đã được gửi", null));
+        otpService.sendOtp(request.getEmail(), OtpService.PURPOSE_GENERAL, getClientIp(httpRequest));
+        return ResponseEntity.ok(ApiResponse.success("Mã OTP đã được gửi", null));
     }
 
     /**
      * POST /api/v1/auth/verify-otp
-     * Body: { "phone": "0912345678", "otp": "123456" }
+     * Body: { "email": "user@example.com", "otp": "123456" }
      */
     @PostMapping("/verify-otp")
     public ResponseEntity<ApiResponse<Void>> verifyOtp(@Valid@RequestBody OtpVerifyDTO request){
-        otpService.verifyOtp(request.getPhone(), request.getOtp());
+        String purpose = request.getPurpose();
+        if (purpose == null || purpose.trim().isEmpty()) {
+            purpose = com.autowash.backend.auth.service.OtpService.PURPOSE_GENERAL;
+        }
+        otpService.verifyOtp(request.getEmail(), request.getOtp(), purpose);
         return ResponseEntity.ok(ApiResponse.success("Xác minh OTP thành công", null));
     }
 
     @PostMapping("/refresh")
     public ResponseEntity<ApiResponse<TokenRefreshResponseDTO>> refreshJwtToken(
-            @Valid @RequestBody TokenRefreshRequestDTO request
+        @Valid @RequestBody TokenRefreshRequestDTO request
     ){
         String requestRefreshToken = request.getRefreshToken();
 
@@ -128,7 +132,7 @@ public class AuthController {
 
         RefreshToken rotatedToken = refreshTokenService.createRefreshToken(user.getId());
 
-        String token = tokenProvider.generateToken(user.getEmail(), user.getId());
+        String token = tokenProvider.generateToken(user.getEmail(), user.getId(), user.getPassword());
 
         TokenRefreshResponseDTO responseDTO = TokenRefreshResponseDTO.builder()
                 .accessToken(token)
@@ -156,14 +160,14 @@ public class AuthController {
     public ResponseEntity<ApiResponse<Void>> requestForgotPassword(
             @Valid @RequestBody ForgotPasswordRequestDTO request,
             HttpServletRequest httpRequest) {
-        authService.requestForgotPasswordOtp(request.getPhone(), getClientIp(httpRequest));
-        return ResponseEntity.ok(ApiResponse.success("Nếu số điện thoại hợp lệ, mã OTP phục hồi sẽ được gửi", null));
+        authService.requestForgotPasswordOtp(request.getEmail(), getClientIp(httpRequest));
+        return ResponseEntity.ok(ApiResponse.success("Nếu email hợp lệ, mã OTP phục hồi sẽ được gửi", null));
     }
 
     @PostMapping("/forgot-password/reset")
     public ResponseEntity<ApiResponse<Void>> resetForgotPassword(
             @Valid @RequestBody ForgotPasswordResetDTO request) {
-        authService.verifyAndResetPassword(request.getPhone(), request.getOtp(), request.getNewPassword());
+        authService.verifyAndResetPassword(request.getEmail(), request.getOtp(), request.getNewPassword());
         return ResponseEntity.ok(ApiResponse.success("Đặt lại mật khẩu thành công", null));
     }
 

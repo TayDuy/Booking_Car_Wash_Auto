@@ -5,17 +5,19 @@ public interface OtpService {
     String PURPOSE_GENERAL = "GENERAL";
     String PURPOSE_PASSWORD_RESET = "PASSWORD_RESET";
 
-    void sendOtp(String phone);
+    void sendOtp(String email);
 
-    void sendOtp(String phone, String purpose, String requestIp);
+    void sendOtp(String email, String purpose, String requestIp);
 
-    boolean verifyOtp(String phone, String otp);
+    boolean verifyOtp(String email, String otp);
 
-    boolean verifyOtp(String phone, String otp, String purpose);
+    boolean verifyOtp(String email, String otp, String purpose);
 
-    boolean isPhoneVerified(String phone);
+    boolean isEmailVerified(String email);
 
-    void clearVerification(String phone);
+    boolean isEmailVerified(String email, String purpose);
 
-    void clearVerification(String phone, String purpose);
+    void clearVerification(String email);
+
+    void clearVerification(String email, String purpose);
 }

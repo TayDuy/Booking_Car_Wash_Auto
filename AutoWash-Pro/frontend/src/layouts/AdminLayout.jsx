@@ -74,11 +74,6 @@ function AdminLayout() {
 
             <div className="st-menu-title">HỆ THỐNG</div>
 
-            <NavLink to="/admin/payments">
-              <span>💳</span>
-              Thanh toán
-            </NavLink>
-
             <NavLink to="/admin/reports">
               <span>📊</span>
               Báo cáo

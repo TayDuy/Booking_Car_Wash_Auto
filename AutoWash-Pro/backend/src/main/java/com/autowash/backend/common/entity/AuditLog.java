@@ -30,6 +30,13 @@ public class AuditLog {
 
     //Thời gian xảy ra, tự động lấy thời gian hiện tại khi tạo
     @Column(nullable = false)
-    private LocalDateTime timestamp = LocalDateTime.now();
+    private LocalDateTime timestamp;
+
+    @PrePersist
+    protected void onCreate() {
+        if (this.timestamp == null) {
+            this.timestamp = LocalDateTime.now();
+        }
+    }
 
 }

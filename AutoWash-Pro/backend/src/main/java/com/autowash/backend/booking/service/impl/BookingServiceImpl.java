@@ -32,12 +32,15 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@lombok.extern.slf4j.Slf4j
 public class BookingServiceImpl implements BookingService {
 
     private final BookingRepository bookingRepository;
@@ -49,6 +52,7 @@ public class BookingServiceImpl implements BookingService {
     private final EmployeeRepository employeeRepository;
     private final ServicePackageRepository servicePackageRepository;
     private final BookingMapper bookingMapper;
+    private final com.autowash.backend.mail.service.MailService mailService;
 
     // ── CREATE ──────────────────────────────────────────────────────────────
 
@@ -83,7 +87,14 @@ public class BookingServiceImpl implements BookingService {
      */
     @Override
     @Transactional
-    public BookingCreateResponseDTO createBooking(BookingCreateRequestDTO request) {
+    public BookingCreateResponseDTO createBooking(BookingCreateRequestDTO request, Integer userId) {
+        if (userId != null) {
+            Customer authenticatedCustomer = customerRepository.findByUser_Id(userId)
+                    .orElseThrow(() -> new BusinessException("Không tìm thấy khách hàng ứng với tài khoản đăng nhập", HttpStatus.FORBIDDEN));
+            if (!authenticatedCustomer.getCustomerId().equals(request.getCustomerId())) {
+                throw new BusinessException("Bạn không thể tạo đặt lịch dưới danh nghĩa của khách hàng khác", HttpStatus.FORBIDDEN);
+            }
+        }
 
         Customer customer = customerRepository.findById(request.getCustomerId())
                 .orElseThrow(() -> new ResourceNotFoundException("Customer", "id", request.getCustomerId()));
@@ -160,6 +171,34 @@ public class BookingServiceImpl implements BookingService {
         details.forEach(d -> d.setBooking(savedBooking));
         bookingDetailRepository.saveAll(details);
 
+        // Gửi email xác nhận đặt lịch bất đồng bộ
+        try {
+            String toEmail = customer.getUser() != null ? customer.getUser().getEmail() : null;
+            if (toEmail != null) {
+                String serviceNames = details.stream()
+                        .map(d -> d.getService().getServiceName())
+                        .collect(Collectors.joining(", "));
+                BigDecimal totalPrice = details.stream()
+                        .map(BookingDetail::getSubTotal)
+                        .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+                mailService.sendBookingConfirmationEmail(
+                        toEmail,
+                        customer.getFullName(),
+                        savedBooking.getBookingCode(),
+                        branch.getBranchName(),
+                        branch.getAddress(),
+                        serviceNames,
+                        slot.getSlotDate(),
+                        slot.getStartTime(),
+                        slot.getEndTime(),
+                        totalPrice
+                );
+            }
+        } catch (Exception e) {
+            log.error("Lỗi khi kích hoạt gửi email xác nhận đặt lịch: {}", e.getMessage(), e);
+        }
+
         return bookingMapper.toCreateResponse(savedBooking, details);
     }
     // ── READ ─────────────────────────────────────────────────────────────────
@@ -167,8 +206,15 @@ public class BookingServiceImpl implements BookingService {
     /** Lấy chi tiết một booking theo ID. */
     @Override
     @Transactional(readOnly = true)
-    public BookingResponseDTO getBookingById(Integer bookingId) {
+    public BookingResponseDTO getBookingById(Integer bookingId, Integer userId) {
         Booking booking = findBookingOrThrow(bookingId);
+        if (userId != null) {
+            Customer customer = customerRepository.findByUser_Id(userId)
+                    .orElseThrow(() -> new BusinessException("Không tìm thấy khách hàng", HttpStatus.FORBIDDEN));
+            if (!booking.getCustomer().getCustomerId().equals(customer.getCustomerId())) {
+                throw new BusinessException("Bạn không có quyền truy cập lịch đặt này", HttpStatus.FORBIDDEN);
+            }
+        }
         List<BookingDetail> details = bookingDetailRepository.findByBooking(booking);
         return bookingMapper.toResponse(booking, details);
     }
@@ -177,17 +223,36 @@ public class BookingServiceImpl implements BookingService {
     @Override
     @Transactional(readOnly = true)
     public List<BookingSummaryResponseDTO> getAllBookings() {
-        return bookingRepository.findAll().stream()
-                .map(b -> bookingMapper.toSummaryResponse(b, bookingDetailRepository.findByBooking(b)))
-                .collect(Collectors.toList());
+        List<Booking> bookings = bookingRepository.findAllWithAssociations();
+        return mapToSummaryResponses(bookings);
     }
 
     /** Lấy danh sách booking theo customer, sắp xếp mới nhất trước. */
     @Override
     @Transactional(readOnly = true)
-    public List<BookingSummaryResponseDTO> getBookingsByCustomer(Integer customerId) {
-        return bookingRepository.findByCustomer_CustomerIdOrderByBookingDateDesc(customerId).stream()
-                .map(b -> bookingMapper.toSummaryResponse(b, bookingDetailRepository.findByBooking(b)))
+    public List<BookingSummaryResponseDTO> getBookingsByCustomer(Integer customerId, Integer userId) {
+        if (userId != null) {
+            Customer customer = customerRepository.findByUser_Id(userId)
+                    .orElseThrow(() -> new BusinessException("Không tìm thấy khách hàng", HttpStatus.FORBIDDEN));
+            if (!customer.getCustomerId().equals(customerId)) {
+                throw new BusinessException("Bạn không có quyền truy cập danh sách đặt lịch này", HttpStatus.FORBIDDEN);
+            }
+        }
+        List<Booking> bookings = bookingRepository.findByCustomerWithAssociations(customerId);
+        return mapToSummaryResponses(bookings);
+    }
+
+    private List<BookingSummaryResponseDTO> mapToSummaryResponses(List<Booking> bookings) {
+        if (bookings.isEmpty()) {
+            return Collections.emptyList();
+        }
+        List<Integer> bookingIds = bookings.stream().map(Booking::getBookingId).toList();
+        List<BookingDetail> details = bookingDetailRepository.findByBooking_BookingIdIn(bookingIds);
+        Map<Integer, List<BookingDetail>> detailsMap = details.stream()
+                .collect(Collectors.groupingBy(d -> d.getBooking().getBookingId()));
+
+        return bookings.stream()
+                .map(b -> bookingMapper.toSummaryResponse(b, detailsMap.getOrDefault(b.getBookingId(), Collections.emptyList())))
                 .collect(Collectors.toList());
     }
 
@@ -231,7 +296,7 @@ public class BookingServiceImpl implements BookingService {
      */
     @Override
     @Transactional
-    public BookingResponseDTO cancelBooking(Integer bookingId) {
+    public BookingResponseDTO cancelBooking(Integer bookingId, Integer userId) {
         Booking booking = findBookingOrThrow(bookingId);
         return doCancel(booking);
     }
@@ -267,7 +332,6 @@ public class BookingServiceImpl implements BookingService {
                             "'. Chỉ có thể hủy khi đang chờ xác nhận (pending) hoặc đã xác nhận (confirmed).",
                     HttpStatus.CONFLICT);
         }
-
         booking.setStatus(BookingStatus.cancelled);
 
         // Giảm số lượng đặt trên slot để mở lại capacity

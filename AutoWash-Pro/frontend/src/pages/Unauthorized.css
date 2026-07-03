@@ -1,0 +1,50 @@
+.unauthorized-page {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  background: #f6f8fb;
+}
+
+.unauthorized-card {
+  width: 420px;
+  padding: 40px;
+  text-align: center;
+
+  background: white;
+  border-radius: 20px;
+  box-shadow: 0 24px 70px rgba(16, 24, 40, 0.14);
+}
+
+.unauthorized-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.unauthorized-card h1 {
+  margin: 0;
+  font-size: 64px;
+  color: #dc2626;
+}
+
+.unauthorized-card h2 {
+  margin: 8px 0;
+  color: #111827;
+}
+
+.unauthorized-card p {
+  color: #667085;
+}
+
+.unauthorized-btn {
+  display: inline-flex;
+  margin-top: 24px;
+  padding: 12px 20px;
+
+  border-radius: 10px;
+  background: #0052cc;
+  color: white;
+  text-decoration: none;
+  font-weight: 700;
+}
