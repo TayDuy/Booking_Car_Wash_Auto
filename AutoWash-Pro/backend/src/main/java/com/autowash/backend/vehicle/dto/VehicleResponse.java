@@ -16,4 +16,6 @@ public class VehicleResponse {
     private String color;
     private String nickname;
     private Boolean isActive;
+    private Integer customerId;
+    private String customerName;
 }

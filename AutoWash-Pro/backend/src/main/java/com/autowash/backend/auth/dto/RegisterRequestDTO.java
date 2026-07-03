@@ -20,6 +20,8 @@ public class RegisterRequestDTO {
 
     @NotBlank(message = "Mật khẩu không được để trống")
     @Size(min = 8, message = "Mật khẩu phải có ít nhất 8 ký tự")
+    @Pattern(regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d).+$",
+            message = "Mật khẩu phải chứa ít nhất 1 chữ hoa, 1 chữ thường và 1 số")
     @ToString.Exclude
     private String password;
 
@@ -28,7 +30,7 @@ public class RegisterRequestDTO {
     private String fullName;
 
     @NotBlank(message = "Số điện thoại không được để trống")
-    @Pattern(regexp = "^(0|\\+84)[0-9]{9}$",
+    @Pattern(regexp = "^(0|\\+84)[0-9]{9,10}$",
             message = "Số điện thoại không đúng định dạng (VD: 0912345678)")
     private String phone;
 

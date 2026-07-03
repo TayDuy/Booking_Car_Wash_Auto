@@ -38,10 +38,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                     FilterChain filterChain) throws ServletException, IOException {
         try {
             String jwt = extractTokenFromRequest(request);
-
             if (StringUtils.hasText(jwt) && jwtTokenProvider.validateToken(jwt)) {
                 String email = jwtTokenProvider.getEmailFromToken(jwt);
                 UserDetails userDetails = userDetailsService.loadUserByUsername(email);
+
+                if (userDetails instanceof CustomUserDetails) {
+                    CustomUserDetails customDetails = (CustomUserDetails) userDetails;
+                    String tokenPwdSig = jwtTokenProvider.getPasswordSignatureFromToken(jwt);
+                    String currentPwdSig = jwtTokenProvider.generatePasswordSignature(customDetails.getPassword());
+                    if (tokenPwdSig != null && !tokenPwdSig.equals(currentPwdSig)) {
+                        throw new io.jsonwebtoken.security.SignatureException("Token has been invalidated because password changed");
+                    }
+                }
 
                 UsernamePasswordAuthenticationToken authentication =
                         new UsernamePasswordAuthenticationToken(
@@ -60,13 +68,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     /**
-     * Trích xuất token từ header Authorization.
-     * Header format: "Bearer <token>"
+     * Trích xuất token từ header Authorization hoặc query parameter token.
      */
     private String extractTokenFromRequest(HttpServletRequest request) {
         String bearerToken = request.getHeader(AUTHORIZATION_HEADER);
         if (StringUtils.hasText(bearerToken) && bearerToken.startsWith(BEARER_PREFIX)) {
             return bearerToken.substring(BEARER_PREFIX.length());
+        }
+        String tokenParam = request.getParameter("token");
+        if (StringUtils.hasText(tokenParam)) {
+            return tokenParam;
         }
         return null;
     }

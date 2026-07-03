@@ -12,7 +12,7 @@ import com.autowash.backend.payment.repository.PaymentRepository;
 import com.autowash.backend.payment.dto.RedeemResponseDTO;
 import com.autowash.backend.reward.entity.Reward;
 import com.autowash.backend.reward.repository.RewardRepository;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;

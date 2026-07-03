@@ -26,7 +26,7 @@ import java.util.List;
  *
  * <p>Phân quyền:
  * <ul>
- *   <li>POST / PUT / DELETE → chỉ ADMIN/STAFF</li>
+ *   <li>POST / PUT / DELETE → chỉ ADMIN</li>
  *   <li>GET                 → public hoặc USER trở lên</li>
  * </ul>
  * </p>
@@ -179,6 +179,7 @@ public class PromotionController {
      * POST /api/v1/promotions/expire-expired
      */
     @PostMapping("/expire-expired")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<String> expireExpiredPromotions() {
         int expiredCount = promotionService.expireExpiredPromotions();
 
