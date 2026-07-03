@@ -527,6 +527,21 @@ export default function BookingPage() {
               <div className="vehicle-inputs-row">
                 <div className="form-field-group">
                   <label>Biển số xe *</label>
+                  {savedVehicles.length > 0 && (
+                      <div className="saved-vehicle-chip-row">
+                        {savedVehicles.map((v) => (
+                            <button
+                                key={v.vehicleId}
+                                type="button"
+                                className={`saved-vehicle-chip ${selectedVehicleId === v.vehicleId ? "saved-vehicle-chip-active" : ""}`}
+                                onClick={() => applyVehicle(v)}
+                            >
+                              <MdDirectionsCar className="suggest-item-icon" />
+                              {v.licensePlate}{v.nickname ? ` · ${v.nickname}` : v.brand ? ` · ${v.brand}` : ""}
+                            </button>
+                        ))}
+                      </div>
+                  )}
                   <div className="input-suggest-wrapper">
                     <input
                         type="text"

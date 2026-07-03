@@ -171,7 +171,8 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
     public ResponseEntity<ApiResponse<Void>> handleDataIntegrityViolationException(
             org.springframework.dao.DataIntegrityViolationException ex) {
-        log.warn("DataIntegrityViolationException: {}", ex.getMessage());
+        Throwable root = org.springframework.core.NestedExceptionUtils.getMostSpecificCause(ex);
+        log.warn("DataIntegrityViolationException: {} | rootCause: {}", ex.getMessage(), root.getMessage(), ex);
         return ResponseEntity
                 .status(HttpStatus.CONFLICT)
                 .body(ApiResponse.error(409, "Dữ liệu bị trùng lặp hoặc vi phạm ràng buộc cơ sở dữ liệu"));
