@@ -68,6 +68,10 @@ function RegisterPage() {
       setErrorMessage("Vui lòng nhập số điện thoại.");
       return;
     }
+    if (!/^0(3[2-9]|5[25689]|7[06-9]|8[1-9]|9[0-9])[0-9]{7}$/.test(formData.phone.trim())) {
+      setErrorMessage("Số điện thoại không hợp lệ. Vui lòng nhập đúng định dạng SĐT Việt Nam (VD: 0912345678).");
+      return;
+    }
     if (formData.password.length < 8) {
       setErrorMessage("Mật khẩu phải có ít nhất 8 ký tự.");
       return;
@@ -306,14 +310,19 @@ function RegisterPage() {
                       </label>
 
                       <input
-                        id="phone"
-                        name="phone"
-                        className="register-input"
-                        type="tel"
-                        placeholder="0901234567"
-                        autoComplete="tel"
-                        value={formData.phone}
-                        onChange={handleChange}
+                          id="phone"
+                          name="phone"
+                          className="register-input"
+                          type="tel"
+                          inputMode="numeric"
+                          maxLength={10}
+                          placeholder="0901234567"
+                          autoComplete="tel"
+                          value={formData.phone}
+                          onChange={(e) => {
+                            const digitsOnly = e.target.value.replace(/\D/g, "").slice(0, 10);
+                            handleChange({ target: { name: "phone", value: digitsOnly } });
+                          }}
                       />
                     </div>
 

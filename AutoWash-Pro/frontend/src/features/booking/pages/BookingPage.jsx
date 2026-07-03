@@ -298,6 +298,11 @@ export default function BookingPage() {
   const handleBooking = async () => {
     if (!selectedService) { alert("Vui lòng chọn gói dịch vụ!"); return; }
     if (!agreeTerms) { alert("Vui lòng xác nhận thông tin dịch vụ và điều khoản dịch vụ để tiếp tục!"); return; }
+    if (!phone.trim()) { alert("Vui lòng nhập số điện thoại!"); return; }
+    if (!/^0(3[2-9]|5[25689]|7[06-9]|8[1-9]|9[0-9])[0-9]{7}$/.test(phone.trim())) {
+      alert("Số điện thoại không hợp lệ. Vui lòng nhập đúng định dạng SĐT Việt Nam (VD: 0912345678).");
+      return;
+    }
 
     const customerIdRaw = localStorage.getItem("customerId");
     if (!customerIdRaw) { alert("Không tìm thấy thông tin khách hàng. Vui lòng đăng nhập lại!"); return; }
@@ -479,9 +484,11 @@ export default function BookingPage() {
                   <div className="input-suggest-wrapper">
                     <input
                         type="text"
+                        inputMode="numeric"
+                        maxLength={10}
                         placeholder="090 123 4567"
                         value={phone}
-                        onChange={(e) => setPhone(e.target.value)}
+                        onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
                         onFocus={() => setShowPhoneSuggest(true)}
                         onBlur={() => setTimeout(() => setShowPhoneSuggest(false), 150)}
                     />
