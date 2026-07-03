@@ -1,9 +1,9 @@
-import axiosClient from './axiosClient'
+import axiosClient from "./axiosClient";
 
-const loyaltyApi = {
-  getPoints: (customerId) => axiosClient.get(`/loyalty/${customerId}/points`),
-  redeem: (customerId, payload) => axiosClient.post(`/loyalty/${customerId}/redeem`, payload),
-  rewards: () => axiosClient.get('/loyalty/rewards'),
+export async function evaluateCustomerTier(customerId) {
+  const response = await axiosClient.post(
+    `/loyalty-tiers/evaluation/customers/${customerId}`
+  );
+
+  return response.data;
 }
-
-export default loyaltyApi
