@@ -155,6 +155,29 @@ public class GlobalExceptionHandler {
      * <p>Không trả {@code ex.getMessage()} ra client để tránh lộ
      * thông tin nội bộ (tên class, SQL, đường dẫn file, ...).</p>
      */
+
+    @ExceptionHandler(org.springframework.orm.ObjectOptimisticLockingFailureException.class)
+    public ResponseEntity<ApiResponse<Void>> handleOptimisticLock(
+            org.springframework.orm.ObjectOptimisticLockingFailureException ex) {
+        log.warn("OptimisticLock: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ApiResponse.error(409, "Dữ liệu đã thay đổi, vui lòng thử lại"));
+    }
+
+    /**
+     * Xử lý lỗi vi phạm ràng buộc dữ liệu (ví dụ: unique constraint, duplicate payment race).
+     * Trả HTTP 409 Conflict.
+     */
+    @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
+    public ResponseEntity<ApiResponse<Void>> handleDataIntegrityViolationException(
+            org.springframework.dao.DataIntegrityViolationException ex) {
+        Throwable root = org.springframework.core.NestedExceptionUtils.getMostSpecificCause(ex);
+        log.warn("DataIntegrityViolationException: {} | rootCause: {}", ex.getMessage(), root.getMessage(), ex);
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(ApiResponse.error(409, "Dữ liệu bị trùng lặp hoặc vi phạm ràng buộc cơ sở dữ liệu"));
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleGenericException(Exception ex) {
         // log.error với stacktrace đầy đủ để debug

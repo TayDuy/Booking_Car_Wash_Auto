@@ -26,6 +26,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
@@ -93,14 +94,15 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public LoginResponseDTO register(RegisterRequestDTO request) {
+        String normalizedUsername = request.getUsername().trim().toLowerCase();
         String normalizedEmail = request.getEmail().trim().toLowerCase();
         String normalizedPhone = normalizePhone(request.getPhone());
 
-        if (userRepository.existsByEmail(normalizedEmail)) {
+        if (userRepository.existsByEmailIgnoreCase(normalizedEmail)) {
             throw new BusinessException("Email '" + normalizedEmail + "' da duoc su dung");
         }
 
-        if (userRepository.existsByUsername(request.getUsername())) {
+        if (userRepository.existsByUsernameIgnoreCase(normalizedUsername)) {
             throw new BusinessException("Tai khoan '" + request.getUsername() + "' da duoc su dung");
         }
 
@@ -108,12 +110,12 @@ public class AuthServiceImpl implements AuthService {
             throw new BusinessException("So dien thoai '" + normalizedPhone + "' da duoc su dung");
         }
 
-        if (!otpService.isPhoneVerified(normalizedPhone)) {
-            throw new BusinessException("So dien thoai chua duoc xac minh OTP");
+        if (!otpService.isEmailVerified(normalizedEmail)) {
+            throw new BusinessException("Email chua duoc xac minh OTP");
         }
 
         User newUser = User.builder()
-                .username(request.getUsername())
+                .username(normalizedUsername)
                 .email(normalizedEmail)
                 .password(passwordEncoder.encode(request.getPassword()))
                 .phone(normalizedPhone)
@@ -130,7 +132,7 @@ public class AuthServiceImpl implements AuthService {
                 .build();
         customerRepository.save(newCustomer);
 
-        String token = jwtTokenProvider.generateToken(savedUser.getEmail(), savedUser.getId());
+        String token = jwtTokenProvider.generateToken(savedUser.getEmail(), savedUser.getId(), savedUser.getPassword());
         return buildLoginResponse(token, savedUser);
     }
 
@@ -184,61 +186,100 @@ public class AuthServiceImpl implements AuthService {
 
         User user = userRepository.findByEmail(email).orElse(null);
         if (user == null) {
-            try {
-                String randomUsername = "gg_" + java.util.UUID.randomUUID().toString().substring(0, 8);
-
-                user = User.builder()
-                        .username(randomUsername)
-                        .email(email)
-                        .password(passwordEncoder.encode(java.util.UUID.randomUUID().toString()))
-                        .role("customer")
-                        .status("active")
-                        .build();
-                user = userRepository.save(user);
-
-                Customer customer = Customer.builder()
-                        .user(user)
-                        .fullName(fullName)
-                        .tierId(1)
-                        .build();
-                customerRepository.save(customer);
-            } catch (org.springframework.dao.DataIntegrityViolationException e) {
-                user = userRepository.findByEmail(email)
-                        .orElseThrow(() -> new BusinessException(
-                                "Loi dong thoi khi dang nhap Google, vui long thu lai",
-                                HttpStatus.CONFLICT));
-            }
+            user = findOrCreateGoogleUser(email, fullName);
         }
 
-        String token = jwtTokenProvider.generateToken(email, user.getId());
+        String token = jwtTokenProvider.generateToken(email, user.getId(), user.getPassword());
         return buildLoginResponse(token, user);
     }
 
     @Override
-    public void requestForgotPasswordOtp(String phone, String requestIp) {
-        String normalizedPhone = normalizePhone(phone);
+    public void requestForgotPasswordOtp(String email, String requestIp) {
+        String normalizedEmail = normalizeEmail(email);
+        long startTime = System.currentTimeMillis();
 
-        if (findUserByPhone(normalizedPhone).isEmpty()) {
-            return;
+        boolean userExists = userRepository.findByEmail(normalizedEmail).isPresent();
+
+        if (userExists) {
+            otpService.sendOtp(normalizedEmail, OtpService.PURPOSE_PASSWORD_RESET, requestIp);
+        } else {
+            // Chống Timing-based email enumeration bằng cách giả lập thời gian xử lý (DB queries + gửi email)
+            long elapsed = System.currentTimeMillis() - startTime;
+            long targetDelay = 350 + (long) (Math.random() * 250); // 350ms - 600ms
+            if (elapsed < targetDelay) {
+                try {
+                    Thread.sleep(targetDelay - elapsed);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
         }
-
-        otpService.sendOtp(normalizedPhone, OtpService.PURPOSE_PASSWORD_RESET, requestIp);
     }
 
     @Override
     @Transactional
-    public void verifyAndResetPassword(String phone, String otp, String newPassword) {
-        String normalizedPhone = normalizePhone(phone);
+    public void verifyAndResetPassword(String email, String otp, String newPassword) {
+        String normalizedEmail = normalizeEmail(email);
 
-        User user = findUserByPhone(normalizedPhone)
+        User user = userRepository.findByEmail(normalizedEmail)
                 .orElseThrow(() -> new BusinessException("Khong tim thay nguoi dung", HttpStatus.NOT_FOUND));
 
-        otpService.verifyOtp(normalizedPhone, otp.trim(), OtpService.PURPOSE_PASSWORD_RESET);
+        if (!otpService.isEmailVerified(normalizedEmail, OtpService.PURPOSE_PASSWORD_RESET)) {
+            otpService.verifyOtp(normalizedEmail, otp.trim(), OtpService.PURPOSE_PASSWORD_RESET);
+        }
 
         user.setPassword(passwordEncoder.encode(newPassword));
         userRepository.save(user);
         refreshTokenService.deleteByUserId(user.getId());
-        otpService.clearVerification(normalizedPhone, OtpService.PURPOSE_PASSWORD_RESET);
+        otpService.clearVerification(normalizedEmail, OtpService.PURPOSE_PASSWORD_RESET);
+    }
+
+    /**
+     * Tạo user + customer mới cho đăng nhập Google, chạy trong TRANSACTION RIÊNG
+     * (REQUIRES_NEW). Lý do: nếu 2 request Google-login bắn gần như đồng thời
+     * (VD: React StrictMode gọi useEffect 2 lần ở môi trường dev) cùng thấy user
+     * chưa tồn tại và cùng insert, 1 request sẽ bị lỗi trùng email
+     * (DataIntegrityViolationException). Với PostgreSQL, hễ 1 câu lệnh trong
+     * transaction lỗi thì CẢ transaction bị đánh dấu "aborted" — mọi câu lệnh
+     * sau đó trên transaction đó đều bị từ chối. Nếu dùng chung transaction với
+     * loginWithGoogle(), việc query lại findByEmail() trong khối catch sẽ chạy
+     * trên transaction đã aborted đó và ném ra 1 exception khác (không được
+     * catch), gây lỗi 500 thay vì xử lý êm.
+     *
+     * Chạy trong transaction riêng giúp: nếu insert lỗi, CHỈ transaction phụ
+     * này bị rollback; transaction chính (đang chạy loginWithGoogle) vẫn sạch,
+     * và câu findByEmail() ở dưới chạy bình thường trên transaction chính đó.
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    protected User findOrCreateGoogleUser(String email, String fullName) {
+        try {
+            String randomUsername = "gg_" + java.util.UUID.randomUUID().toString().substring(0, 8);
+
+            User user = User.builder()
+                    .username(randomUsername)
+                    .email(email)
+                    .password(passwordEncoder.encode(java.util.UUID.randomUUID().toString()))
+                    .role("customer")
+                    .status("active")
+                    .build();
+            user = userRepository.save(user);
+
+            Customer customer = Customer.builder()
+                    .user(user)
+                    .fullName(fullName)
+                    .tierId(1)
+                    .build();
+            customerRepository.save(customer);
+
+            return user;
+        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+            // Transaction phụ này rollback ngay tại đây, không ảnh hưởng transaction chính.
+            // Trường hợp thường gặp: 2 request chạy song song cùng tạo user cho 1 email.
+            return userRepository.findByEmail(email)
+                    .orElseThrow(() -> new BusinessException(
+                            "Loi dong thoi khi dang nhap Google, vui long thu lai",
+                            HttpStatus.CONFLICT));
+        }
     }
 
     private LoginResponseDTO buildLoginResponse(String token, User user) {
@@ -272,35 +313,15 @@ public class AuthServiceImpl implements AuthService {
                 .build();
     }
 
-    private Optional<User> findUserByPhone(String phone) {
-        if (phone == null || phone.trim().isEmpty()) {
-            return Optional.empty();
-        }
-        String normalizedPhone = normalizePhone(phone.trim());
-
-        Optional<User> user = userRepository.findByPhone(normalizedPhone);
-        if (user.isPresent()) {
-            return user;
-        }
-
-        if (normalizedPhone.startsWith("+84") && normalizedPhone.length() == 12) {
-            String legacyFormat = "0" + normalizedPhone.substring(3);
-            if (!legacyFormat.equals(phone.trim())) {
-                user = userRepository.findByPhone(legacyFormat);
-                if (user.isPresent()) {
-                    return user;
-                }
-            }
-        }
-
-        return userRepository.findByPhone(phone.trim());
-    }
-
     private String normalizePhone(String phone) {
         String trimmed = phone == null ? "" : phone.trim();
-        if (trimmed.startsWith("0") && trimmed.length() == 10) {
+        if (trimmed.startsWith("0") && (trimmed.length() == 10 || trimmed.length() == 11)) {
             return "+84" + trimmed.substring(1);
         }
         return trimmed;
+    }
+
+    private String normalizeEmail(String email) {
+        return email == null ? "" : email.trim().toLowerCase();
     }
 }
