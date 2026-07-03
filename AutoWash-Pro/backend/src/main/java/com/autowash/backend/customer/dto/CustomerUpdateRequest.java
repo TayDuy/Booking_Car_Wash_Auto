@@ -21,6 +21,9 @@ public class CustomerUpdateRequest {
     @Pattern(regexp = "^(male|female|Nam|Nữ|Khác)$", message = "Giới tính không hợp lệ")
     private String gender;
 
+    @Pattern(regexp = "^0(3[2-9]|5[25689]|7[06-9]|8[1-9]|9[0-9])[0-9]{7}$",
+            message = "Số điện thoại không đúng định dạng (VD: 0912345678)")
     private String phone;
+
     private String email;
 }

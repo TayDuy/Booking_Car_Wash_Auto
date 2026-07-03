@@ -110,6 +110,10 @@ const ProfilePage = () => {
   };
 
   const handleSave = async () => {
+    if (editForm.phone && !/^0(3[2-9]|5[25689]|7[06-9]|8[1-9]|9[0-9])[0-9]{7}$/.test(editForm.phone.trim())) {
+      alert('Số điện thoại không hợp lệ. Vui lòng nhập đúng định dạng SĐT Việt Nam (VD: 0912345678).');
+      return;
+    }
     try {
       await customerApi.updateProfile(editForm);
       setUser(prev => ({ ...prev, ...editForm }));
@@ -298,7 +302,7 @@ const ProfilePage = () => {
                   </div>
                   <div className="info-item">
                     <label>Số điện thoại</label>
-                    {!isEditing ? <p>{user.phone || 'Chưa cập nhật'}</p> : 
+                    {!isEditing ? <p>{user.phone || 'Chưa cập nhật'}</p> :
                       <input type="text" name="phone" value={editForm.phone} onChange={handleInputChange} className="info-edit-input" />}
                   </div>
                   <div className="info-item">
@@ -314,8 +318,16 @@ const ProfilePage = () => {
                   </div>
                   <div className="info-item">
                     <label>Ngày sinh</label>
-                    {!isEditing ? <p>{user.dateOfBirth || 'Chưa cập nhật'}</p> : 
-                      <input type="date" name="dateOfBirth" value={editForm.dateOfBirth} onChange={handleInputChange} className="info-edit-input" />}
+                    {!isEditing ? <p>{user.dateOfBirth || 'Chưa cập nhật'}</p> :
+                        <input
+                            type="text"
+                            name="phone"
+                            inputMode="numeric"
+                            maxLength={10}
+                            value={editForm.phone}
+                            onChange={(e) => setEditForm({ ...editForm, phone: e.target.value.replace(/\D/g, "").slice(0, 10) })}
+                            className="info-edit-input"
+                        />}
                   </div>
                   <div className="info-item">
                     <label>Địa điểm</label>
