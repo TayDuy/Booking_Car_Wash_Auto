@@ -1,5 +1,7 @@
 package com.autowash.backend.timeslot.controller;
 
+import com.autowash.backend.timeslot.dto.GenerateSlotsRequestDTO;
+import com.autowash.backend.timeslot.dto.GenerateSlotsResponseDTO;
 import com.autowash.backend.timeslot.dto.TimeSlotRequestDTO;
 import com.autowash.backend.timeslot.dto.TimeSlotResponseDTO;
 import com.autowash.backend.timeslot.entity.TimeSlot.SlotStatus;
@@ -45,10 +47,14 @@ public class TimeSlotController {
 
     /**
      * GET /api/v1/time-slots?branchId=1&date=2026-06-20
-     * Admin xem toàn bộ slot trong ngày của một branch.
+     * Admin/Staff xem toàn bộ slot trong ngày của một branch.
+     * Customer cũng cần gọi endpoint này ở trang đặt lịch để thấy được
+     * cả các khung giờ đã hết chỗ (status FULL) thay vì chúng biến mất
+     * hoàn toàn — xem comment trong BookingPage.jsx (FE). Đây là API chỉ đọc
+     * (read-only) nên việc mở thêm quyền CUSTOMER là an toàn.
      */
     @GetMapping
-    @PreAuthorize("hasAnyRole('STAFF', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('CUSTOMER', 'STAFF', 'ADMIN')")
     public ResponseEntity<List<TimeSlotResponseDTO>> getByBranchAndDate(
             @RequestParam Integer branchId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
@@ -109,4 +115,11 @@ public class TimeSlotController {
         service.delete(id);
         return ResponseEntity.noContent().build();
     }
+
+    @PostMapping("/generate")
+    public ResponseEntity<GenerateSlotsResponseDTO> generateMonthlySlots(
+            @Valid @RequestBody GenerateSlotsRequestDTO request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(service.generateMonthlySlots(request));
+    }
+
 }

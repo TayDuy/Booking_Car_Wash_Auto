@@ -26,7 +26,6 @@ class BackendApplicationTests {
 
     @Autowired
     private org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
-
     @Test
     void testQueryGenderValues() {
         try {

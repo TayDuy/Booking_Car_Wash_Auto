@@ -93,7 +93,8 @@ public class SecurityConfig {
                                 "/api/v1/auth/forgot-password/request",
                                 "/api/v1/auth/forgot-password/reset",
                                 "/api/v1/payments/vnpay-return",
-                                "/api/v1/payments/vnpay-ipn"
+                                "/api/v1/payments/vnpay-ipn",
+                                "/actuator/health"
                         ).permitAll()
 
                         // Admin only

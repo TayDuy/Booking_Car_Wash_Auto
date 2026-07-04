@@ -18,23 +18,38 @@ public class LoyaltyTransaction {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "loyalty_transaction_id")
     private Long loyaltyTransactionId;
 
+    @Column(name = "customer_id", nullable = false)
     private Integer customerId;
 
+    @Column(name = "payment_id")
     private Long paymentId;
 
+    @Column(name = "transaction_type", nullable = false, length = 15)
     private String transactionType;
 
+    @Column(name = "points", nullable = false)
     private Integer points;
 
+    @Column(name = "balance_before", nullable = false)
     private Integer balanceBefore;
 
+    @Column(name = "balance_after", nullable = false)
     private Integer balanceAfter;
 
+    @Column(name = "expired_at")
     private LocalDateTime expiredAt;
 
+    @Column(name = "created_at")
     private LocalDateTime createdAt;
 
+    @Column(name = "note")
     private String note;
+
+    @PrePersist
+    protected void onCreate() {
+        this.createdAt = LocalDateTime.now();
+    }
 }
