@@ -6,6 +6,7 @@ import com.autowash.backend.booking.dto.BookingResponseDTO;
 import com.autowash.backend.booking.dto.BookingSummaryResponseDTO;
 import com.autowash.backend.booking.dto.BookingUpdateRequestDTO;
 import com.autowash.backend.booking.service.BookingService;
+import com.autowash.backend.security.CustomUserDetails;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -14,7 +15,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import com.autowash.backend.security.CustomUserDetails;
+
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -113,6 +114,9 @@ public class BookingController {
     /**
      * CUSTOMER hủy booking
      *
+     * FIX: trước đây không kiểm tra bookingId có thuộc khách đang đăng nhập
+     * hay không → giờ bắt buộc truyền userId lấy từ token để service verify.
+     *
      * DELETE:
      * /api/v1/bookings/{bookingId}/cancel
      */
@@ -124,13 +128,37 @@ public class BookingController {
     ) {
 
         return ResponseEntity.ok(
-                bookingService.cancelBooking(bookingId, userDetails.getId())
+                bookingService.cancelOwnBooking(bookingId, userDetails.getId())
         );
     }
 
     // ==========================================================
     // STAFF / ADMIN APIs
     // ==========================================================
+
+    /**
+     * STAFF / ADMIN tạo booking hộ khách hàng
+     * (khách walk-in tại quầy, đặt lịch qua điện thoại, v.v).
+     *
+     * Dùng chung DTO/logic với luồng khách tự đặt — request đã có sẵn
+     * customerId nên chỉ cần khác quyền truy cập (STAFF/ADMIN thay vì CUSTOMER).
+     *
+     * POST:
+     * /api/v1/staff/bookings
+     */
+    @PostMapping("/staff/bookings")
+    @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
+    public ResponseEntity<BookingCreateResponseDTO> createBookingByStaff(
+            @Valid @RequestBody BookingCreateRequestDTO request
+    ) {
+
+        BookingCreateResponseDTO response =
+                bookingService.createBooking(request, null);
+
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(response);
+    }
 
     /**
      * Xem toàn bộ booking

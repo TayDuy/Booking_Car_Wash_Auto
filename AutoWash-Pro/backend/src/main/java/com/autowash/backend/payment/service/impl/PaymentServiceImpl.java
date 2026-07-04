@@ -22,9 +22,11 @@ import com.autowash.backend.promotion.entity.Promotion;
 import com.autowash.backend.promotion.repository.PromotionRepository;
 import com.autowash.backend.reward.entity.Reward;
 import com.autowash.backend.reward.repository.RewardRepository;
+import com.autowash.backend.mail.service.MailService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -46,6 +48,7 @@ public class PaymentServiceImpl implements PaymentService {
     private final RewardRepository             rewardRepository;
     private final LoyaltyTransactionRepository loyaltyTransactionRepository;
     private final PaymentMapper                paymentMapper;
+    private final MailService                  mailService;
 
     // Tỉ lệ tích điểm: cứ 10,000 VND = 1 điểm
     private static final BigDecimal POINTS_PER_VND = BigDecimal.valueOf(10_000);
@@ -58,10 +61,13 @@ public class PaymentServiceImpl implements PaymentService {
         Integer bookingId = request.getBookingId();
         Booking booking = findBookingOrThrow(bookingId);
 
-        // Chỉ tạo payment khi booking đã completed
-        if (!BookingStatus.completed.equals(booking.getStatus())) {
+        // Cho phép tạo payment ngay từ khi booking đang pending/confirmed/in_progress
+        // (khách thanh toán trước, không cần chờ quản lý xác nhận hoàn tất dịch vụ).
+        // Chỉ chặn 2 trạng thái không còn ý nghĩa để thanh toán: đã hủy / không đến.
+        if (BookingStatus.cancelled.equals(booking.getStatus())
+                || BookingStatus.no_show.equals(booking.getStatus())) {
             throw new BusinessException(
-                    "Chỉ tạo payment khi booking đã completed, hiện tại: " + booking.getStatus());
+                    "Không thể tạo payment cho booking đã ở trạng thái: " + booking.getStatus());
         }
 
         // Kiểm tra chưa có payment
@@ -123,9 +129,9 @@ public class PaymentServiceImpl implements PaymentService {
     @Transactional
     public PaymentResponseDTO updateStatus(Integer paymentId, PaymentUpdateRequestDTO request) {
         return switch (request.getPaymentStatus()) {
-            case paid      -> processPayment(paymentId);
+            case paid      -> processPayment(paymentId, null, null, null, null);
             case cancelled -> cancelPayment(paymentId);
-            case failed    -> markFailed(paymentId);
+            case failed    -> markFailed(paymentId, null, null, null, null);
             default -> throw new BusinessException(
                     "Trạng thái không hợp lệ: " + request.getPaymentStatus());
         };
@@ -149,16 +155,20 @@ public class PaymentServiceImpl implements PaymentService {
         payment.setVnpayBankCode(bankCode);
         payment.setVnpayCardType(cardType);
         payment.setVnpayResponseCode(responseCode);
-        
+
         Payment saved = paymentRepository.save(payment);
 
         // FR-7: Tích điểm loyalty
         earnLoyaltyPoints(saved);
 
-        // Cập nhật total_spending của customer
+        // Cập nhật total_spending và total_visits của customer
         Customer customer = saved.getBooking().getCustomer();
         customer.setTotalSpending(customer.getTotalSpending().add(saved.getFinalAmount()));
+        customer.setTotalVisits(customer.getTotalVisits() != null ? customer.getTotalVisits() + 1 : 1);
         customerRepository.save(customer);
+
+        // Gửi email xác nhận thanh toán thành công
+        sendPaymentConfirmationEmailAsync(saved);
 
         log.info("Payment {} processed, loyalty points earned for customer {}",
                 paymentId, customer.getCustomerId());
@@ -203,7 +213,7 @@ public class PaymentServiceImpl implements PaymentService {
         payment.setVnpayBankCode(bankCode);
         payment.setVnpayCardType(cardType);
         payment.setVnpayResponseCode(responseCode);
-        
+
         return paymentMapper.toResponse(paymentRepository.save(payment));
     }
 
@@ -364,5 +374,38 @@ public class PaymentServiceImpl implements PaymentService {
         return bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Booking", "id", bookingId));
+    }
+
+    // ── PRIVATE — gửi email xác nhận thanh toán (bất đồng bộ) ───────────────
+
+    private void sendPaymentConfirmationEmailAsync(Payment payment) {
+        try {
+            com.autowash.backend.customer.entity.Customer customer = payment.getBooking().getCustomer();
+            String toEmail = customer.getUser() != null ? customer.getUser().getEmail() : null;
+            if (toEmail == null) return;
+
+            com.autowash.backend.booking.entity.Booking booking = payment.getBooking();
+            java.util.List<com.autowash.backend.booking.dto.BookingDetailItemResponseDTO> details =
+                    bookingDetailService.getByBookingId(booking.getBookingId());
+
+            String serviceNames = details.stream()
+                    .map(com.autowash.backend.booking.dto.BookingDetailItemResponseDTO::getServiceName)
+                    .collect(java.util.stream.Collectors.joining(", "));
+
+            mailService.sendBookingConfirmationEmail(
+                    toEmail,
+                    customer.getFullName(),
+                    booking.getBookingCode(),
+                    booking.getBranch().getBranchName(),
+                    booking.getBranch().getAddress(),
+                    serviceNames,
+                    booking.getSlot().getSlotDate(),
+                    booking.getSlot().getStartTime(),
+                    booking.getSlot().getEndTime(),
+                    payment.getFinalAmount()
+            );
+        } catch (Exception e) {
+            log.error("Lỗi khi gửi email xác nhận thanh toán #{}: {}", payment.getPaymentId(), e.getMessage(), e);
+        }
     }
 }

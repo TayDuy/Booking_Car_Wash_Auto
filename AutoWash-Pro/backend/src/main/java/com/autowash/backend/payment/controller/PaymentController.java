@@ -23,6 +23,10 @@ import org.springframework.http.MediaType;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Enumeration;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.web.util.UriComponentsBuilder;
+import org.springframework.http.HttpHeaders;
+import java.net.URI;
 
 /**
  * PaymentController — REST API cho nghiệp vụ thanh toán (FR-5).
@@ -37,6 +41,9 @@ public class PaymentController {
     private final PaymentRepository paymentRepository;
     private final CustomerRepository customerRepository;
     private final VNPayService vnPayService;
+
+    @Value("${app.frontend-base-url:http://localhost:5173}")
+    private String frontendBaseUrl;
 
     /**
      * Tạo payment cho booking đã completed.
@@ -144,11 +151,8 @@ public class PaymentController {
                 .body(qrImage);
     }
 
-    /**
-     * Endpoint VNPAY redirect về sau khi khách thanh toán xong (vnp_ReturnUrl).
-     */
     @GetMapping("/vnpay-return")
-    public ResponseEntity<?> vnpayReturn(HttpServletRequest request) throws Exception {
+    public ResponseEntity<Void> vnpayReturn(HttpServletRequest request) {
         Map<String, String> fields = new HashMap<>();
         for (Enumeration<String> params = request.getParameterNames(); params.hasMoreElements(); ) {
             String name = params.nextElement();
@@ -158,15 +162,91 @@ public class PaymentController {
         String vnp_SecureHash = fields.remove("vnp_SecureHash");
         fields.remove("vnp_SecureHashType");
 
-        boolean isValid = vnPayService.validateSignature(fields, vnp_SecureHash);
+        boolean isValid;
+        try {
+            isValid = vnPayService.validateSignature(fields, vnp_SecureHash);
+        } catch (java.io.UnsupportedEncodingException e) {
+            return redirectTo(failureUrl(null, "invalid_signature"));
+        }
         String responseCode = fields.get("vnp_ResponseCode");
         String txnRef = fields.get("vnp_TxnRef");
 
-        if (isValid && "00".equals(responseCode)) {
-            return ResponseEntity.ok().body("Thanh toán thành công cho giao dịch: " + txnRef);
-        } else {
-            return ResponseEntity.badRequest().body("Thanh toán thất bại hoặc chữ ký không hợp lệ");
+        if (!isValid) {
+            return redirectTo(failureUrl(null, "invalid_signature"));
         }
+
+        Integer paymentId;
+        try {
+            paymentId = Integer.parseInt(txnRef.replace("PAY", ""));
+        } catch (Exception e) {
+            return redirectTo(failureUrl(null, "invalid_order"));
+        }
+
+        PaymentResponseDTO payment;
+        try {
+            payment = paymentService.getById(paymentId);
+        } catch (Exception e) {
+            return redirectTo(failureUrl(null, "order_not_found"));
+        }
+
+        if (payment.getPaymentStatus() == PaymentStatus.paid) {
+            return redirectTo(successUrl(paymentId));
+        }
+
+        if (payment.getPaymentStatus() == PaymentStatus.unpaid) {
+            // IPN chưa kịp xử lý — tự xử lý tại đây để tránh redirect sai sang pending
+            try {
+                String vnp_TransactionNo = fields.get("vnp_TransactionNo");
+                String vnp_BankCode      = fields.get("vnp_BankCode");
+                String vnp_CardType      = fields.get("vnp_CardType");
+                if ("00".equals(responseCode)) {
+                    paymentService.processPayment(paymentId, vnp_TransactionNo, vnp_BankCode, vnp_CardType, responseCode);
+                    return redirectTo(successUrl(paymentId));
+                } else {
+                    paymentService.markFailed(paymentId, vnp_TransactionNo, vnp_BankCode, vnp_CardType, responseCode);
+                    return redirectTo(failureUrl(payment.getBookingId(), "payment_failed"));
+                }
+            } catch (Exception e) {
+                // processPayment đã được xử lý bởi IPN trước đó (idempotency guard bên trong)
+                PaymentResponseDTO refreshed = paymentService.getById(paymentId);
+                if (refreshed.getPaymentStatus() == PaymentStatus.paid) {
+                    return redirectTo(successUrl(paymentId));
+                }
+                return redirectTo(failureUrl(payment.getBookingId(), "payment_failed"));
+            }
+        }
+
+        return redirectTo(failureUrl(payment.getBookingId(), "payment_failed"));
+    }
+
+    private String successUrl(Integer paymentId) {
+        return UriComponentsBuilder.fromUriString(frontendBaseUrl + "/customer/payment")
+                .queryParam("paymentId", paymentId)
+                .toUriString();
+    }
+
+    private String pendingUrl(Integer paymentId) {
+        return UriComponentsBuilder.fromUriString(frontendBaseUrl + "/customer/payment")
+                .queryParam("paymentId", paymentId)
+                .queryParam("pending", "1")
+                .toUriString();
+    }
+
+    private String failureUrl(Integer bookingId, String reason) {
+        UriComponentsBuilder builder = UriComponentsBuilder
+                .fromUriString(frontendBaseUrl + "/customer/payment")
+                .queryParam("paymentFailed", "1")
+                .queryParam("reason", reason);
+        if (bookingId != null) {
+            builder.queryParam("bookingId", bookingId);
+        }
+        return builder.toUriString();
+    }
+
+    private ResponseEntity<Void> redirectTo(String url) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setLocation(URI.create(url));
+        return new ResponseEntity<>(headers, HttpStatus.FOUND);
     }
 
     /**
