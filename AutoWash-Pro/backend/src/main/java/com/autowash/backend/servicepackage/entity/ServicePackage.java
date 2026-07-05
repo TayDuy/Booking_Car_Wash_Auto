@@ -38,9 +38,6 @@ public class ServicePackage {
     private String serviceName;
 
     @Size(max = 255)
-
-
-
     @Column(name = "description", length = 255)
     private String description;
 

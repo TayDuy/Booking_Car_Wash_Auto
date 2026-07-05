@@ -257,7 +257,7 @@ function LandingPage() {
             <h4>Liên hệ</h4>
             <p>123 Đường Công Nghệ, TP.HCM</p>
             <p>1900 8888</p>
-            <p>support@washflow.vn</p>
+            <p>support@washflow.vn</p>  
           </div>
         </div>
 
