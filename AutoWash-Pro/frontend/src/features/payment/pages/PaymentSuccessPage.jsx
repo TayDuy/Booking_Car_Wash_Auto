@@ -60,7 +60,7 @@ function PaymentSuccessPage() {
         let cancelled = false;
         async function loadBooking() {
             try {
-                const response = await axiosClient.get(`/bookings/${bookingId}`);
+                const response = await axiosClient.get(`/customer/bookings/${bookingId}`);
                 if (!cancelled) setBookingDetail(response.data);
             } catch (error) {
                 console.log("Cannot load booking detail", error);

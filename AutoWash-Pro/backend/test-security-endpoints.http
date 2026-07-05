@@ -174,3 +174,40 @@ Content-Type: application/json
   "newSlotId": 5,
   "note": "Thay đổi lịch hẹn sang giờ mới"
 }
+
+### ==========================================
+### 5. KIỂM TRA BẢO MẬT CHI TIẾT ĐẶT LỊCH (BOOKING DETAILS OWNERSHIP)
+### ==========================================
+
+#### 5.1 GET /bookings/{bookingId}/details (Chỉ xem được details của chính mình)
+# Thử xem details của bookingId = 123 (nếu 123 không phải của khoavh) -> Trả về 403 Forbidden
+GET {{baseUrl}}/bookings/123/details
+Authorization: Bearer {{customerToken}}
+
+###
+
+#### 5.2 POST /bookings/{bookingId}/details (Chỉ thêm details vào booking của chính mình)
+# Thử thêm service vào bookingId = 123 -> Trả về 403 Forbidden
+POST {{baseUrl}}/bookings/123/details
+Authorization: Bearer {{customerToken}}
+Content-Type: application/json
+
+{
+  "serviceId": 1,
+  "quantity": 1
+}
+
+###
+
+#### 5.3 DELETE /bookings/details/{detailId} (Chỉ xóa details của chính mình)
+# Thử xóa detailId = 123 -> Trả về 403 Forbidden
+DELETE {{baseUrl}}/bookings/details/123
+Authorization: Bearer {{customerToken}}
+
+###
+
+#### 5.4 GET /bookings/details/{detailId} (Chỉ xem detail cụ thể của chính mình)
+# Thử xem detailId = 123 -> Trả về 403 Forbidden
+GET {{baseUrl}}/bookings/details/123
+Authorization: Bearer {{customerToken}}
+
