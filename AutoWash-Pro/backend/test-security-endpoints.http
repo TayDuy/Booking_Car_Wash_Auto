@@ -1,0 +1,176 @@
+### AutoWash-Pro API Testing HTTP Requests
+# File này dùng để test các api bảo mật và các tính năng mới cho Customer
+# Bạn có thể chạy trực tiếp trong IntelliJ IDEA hoặc VS Code (cài extension REST Client)
+
+@baseUrl = http://localhost:8080/api/v1
+
+### ==========================================
+### 1. ĐĂNG NHẬP (AUTH)
+### ==========================================
+
+# @name loginAdmin
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "usernameOrEmail": "admin.minh",
+  "password": "123456"
+}
+
+###
+
+# @name loginStaff
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "usernameOrEmail": "staff.tanpd",
+  "password": "123456"
+}
+
+###
+
+# @name loginCustomer
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "usernameOrEmail": "khoavh@gmail.com",
+  "password": "123456"
+}
+
+###
+@adminToken = {{loginAdmin.response.body.accessToken}}
+@staffToken = {{loginStaff.response.body.accessToken}}
+@customerToken = {{loginCustomer.response.body.accessToken}}
+
+
+### ==========================================
+### 2. KIỂM TRA VÁ BẢO MẬT (SECURITY TESTS)
+### ==========================================
+
+#### 2.1 GET /customers (Chỉ STAFF/ADMIN được phép)
+# Test với Customer Token -> Phải trả về 403 Forbidden
+GET {{baseUrl}}/customers
+Authorization: Bearer {{customerToken}}
+
+###
+# Test với Staff Token -> Phải trả về 200 OK
+GET {{baseUrl}}/customers
+Authorization: Bearer {{staffToken}}
+
+###
+
+#### 2.2 GET /loyalty-transactions/customers/{id} (Chỉ STAFF/ADMIN được phép)
+# Giả sử customerId = 1
+# Test với Customer Token -> Phải trả về 403 Forbidden
+GET {{baseUrl}}/loyalty-transactions/customers/1
+Authorization: Bearer {{customerToken}}
+
+###
+# Test với Staff Token -> Phải trả về 200 OK hoặc 404 (nếu ko có customer 1)
+GET {{baseUrl}}/loyalty-transactions/customers/1
+Authorization: Bearer {{staffToken}}
+
+###
+
+#### 2.3 POST /time-slots/generate (Chỉ STAFF/ADMIN được phép)
+# Test với Customer Token -> Phải trả về 403 Forbidden
+POST {{baseUrl}}/time-slots/generate
+Authorization: Bearer {{customerToken}}
+Content-Type: application/json
+
+{
+  "branchId": 1,
+  "year": 2026,
+  "month": 7
+}
+
+###
+# Test với Admin Token -> Phải trả về 201 Created hoặc lỗi validation khác (không được trả về 403)
+POST {{baseUrl}}/time-slots/generate
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "branchId": 1,
+  "year": 2026,
+  "month": 7
+}
+
+
+### ==========================================
+### 3. TÍNH NĂNG MỚI CHO CUSTOMER
+### ==========================================
+
+#### 3.1 Đổi mật khẩu khi đang login (Change Password)
+PUT {{baseUrl}}/auth/change-password
+Authorization: Bearer {{customerToken}}
+Content-Type: application/json
+
+{
+  "oldPassword": "123456",
+  "newPassword": "newpassword123"
+}
+
+###
+# Test đăng nhập lại bằng mật khẩu mới
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "usernameOrEmail": "khoavh@gmail.com",
+  "password": "newpassword123"
+}
+
+###
+# Khôi phục lại mật khẩu cũ để tránh ảnh hưởng test sau
+PUT {{baseUrl}}/auth/change-password
+Authorization: Bearer {{customerToken}}
+Content-Type: application/json
+
+{
+  "oldPassword": "newpassword123",
+  "newPassword": "123456"
+}
+
+###
+
+#### 3.2 Lịch sử & Số dư điểm an toàn qua JWT (/me)
+# Lấy lịch sử giao dịch của CHÍNH MÌNH (Customer)
+GET {{baseUrl}}/loyalty-transactions/me
+Authorization: Bearer {{customerToken}}
+
+###
+# Lấy số dư điểm hiện tại của CHÍNH MÌNH (Customer)
+GET {{baseUrl}}/loyalty-transactions/me/balance
+Authorization: Bearer {{customerToken}}
+
+###
+# Xem hạng Loyalty hiện tại của CHÍNH MÌNH (Customer)
+GET {{baseUrl}}/loyalty-tiers/evaluation/me
+Authorization: Bearer {{customerToken}}
+
+
+### ==========================================
+### 4. LỌC VÀ ĐỔI LỊCH BOOKING (CUSTOMER)
+### ==========================================
+
+#### 4.1 Lọc booking theo trạng thái
+# Lấy danh sách booking đang chờ (pending)
+GET {{baseUrl}}/customer/bookings/my?status=pending
+Authorization: Bearer {{customerToken}}
+
+###
+
+#### 4.2 Đổi lịch đặt xe (Reschedule booking)
+# Đổi bookingId = 1 sang timeSlotId mới
+# Điều kiện: Booking phải ở trạng thái pending
+PUT {{baseUrl}}/customer/bookings/1/reschedule
+Authorization: Bearer {{customerToken}}
+Content-Type: application/json
+
+{
+  "newSlotId": 5,
+  "note": "Thay đổi lịch hẹn sang giờ mới"
+}
