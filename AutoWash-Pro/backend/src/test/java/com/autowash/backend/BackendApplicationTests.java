@@ -265,7 +265,6 @@ class BackendApplicationTests {
         });
         System.out.println("=== END PASSWORD UPDATE ===");
     }
-
     @Test
     void hashAllPlaintextPasswords() {
         System.out.println("=== START HASHING ALL PLAINTEXT PASSWORDS ===");
