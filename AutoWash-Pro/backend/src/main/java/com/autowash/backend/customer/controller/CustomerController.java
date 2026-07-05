@@ -19,6 +19,7 @@ public class CustomerController {
 
     // Lấy profile của chính mình
     @GetMapping("/me")
+    @PreAuthorize("hasRole('CUSTOMER')")
     public ResponseEntity<CustomerProfileResponse> getMyProfile(
             @org.springframework.security.core.annotation.AuthenticationPrincipal com.autowash.backend.security.CustomUserDetails userDetails) {
         return ResponseEntity.ok(customerService.getCustomerProfile(userDetails.getId()));
@@ -26,6 +27,7 @@ public class CustomerController {
 
     // Cập nhật profile của chính mình
     @PutMapping("/me")
+    @PreAuthorize("hasRole('CUSTOMER')")
     public ResponseEntity<CustomerProfileResponse> updateMyProfile(
             @org.springframework.security.core.annotation.AuthenticationPrincipal com.autowash.backend.security.CustomUserDetails userDetails,
             @Valid @RequestBody CustomerUpdateRequest request) {

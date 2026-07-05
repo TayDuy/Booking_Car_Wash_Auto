@@ -12,7 +12,10 @@ import com.autowash.backend.common.exception.BusinessException;
 import com.autowash.backend.common.exception.ResourceNotFoundException;
 import com.autowash.backend.servicepackage.entity.ServicePackage;
 import com.autowash.backend.servicepackage.repository.ServicePackageRepository;
+import com.autowash.backend.customer.entity.Customer;
+import com.autowash.backend.customer.repository.CustomerRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,6 +40,7 @@ public class BookingDetailServiceImpl implements BookingDetailService {
     private final BookingDetailRepository bookingDetailRepository;
     private final BookingRepository bookingRepository;
     private final ServicePackageRepository servicePackageRepository;
+    private final CustomerRepository customerRepository;
 
     /**
      * Thêm dịch vụ vào booking.
@@ -52,10 +56,20 @@ public class BookingDetailServiceImpl implements BookingDetailService {
     @Transactional
     public BookingDetailItemResponseDTO addDetail(
             Integer bookingId,
-            BookingDetailRequestDTO request) {
+            BookingDetailRequestDTO request,
+            Integer userId) {
 
         // Tìm booking theo id, ném exception nếu không tồn tại
         Booking booking = findBookingOrThrow(bookingId);
+
+        // Kiểm tra quyền sở hữu nếu là CUSTOMER
+        if (userId != null) {
+            Customer customer = customerRepository.findByUser_Id(userId)
+                    .orElseThrow(() -> new BusinessException("Không tìm thấy khách hàng", HttpStatus.FORBIDDEN));
+            if (!booking.getCustomer().getCustomerId().equals(customer.getCustomerId())) {
+                throw new BusinessException("Bạn không có quyền chỉnh sửa dịch vụ của lịch đặt này", HttpStatus.FORBIDDEN);
+            }
+        }
 
         // Kiểm tra booking có đang ở trạng thái cho phép chỉnh sửa không
         validateBookingEditable(booking);
@@ -113,9 +127,26 @@ public class BookingDetailServiceImpl implements BookingDetailService {
     @Transactional(readOnly = true)
     public List<BookingDetailItemResponseDTO> getByBookingId(
             Integer bookingId) {
+        return getByBookingId(bookingId, null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<BookingDetailItemResponseDTO> getByBookingId(
+            Integer bookingId,
+            Integer userId) {
 
         // Kiểm tra booking có tồn tại không trước khi truy vấn detail
-        findBookingOrThrow(bookingId);
+        Booking booking = findBookingOrThrow(bookingId);
+
+        // Kiểm tra quyền sở hữu nếu là CUSTOMER
+        if (userId != null) {
+            Customer customer = customerRepository.findByUser_Id(userId)
+                    .orElseThrow(() -> new BusinessException("Không tìm thấy khách hàng", HttpStatus.FORBIDDEN));
+            if (!booking.getCustomer().getCustomerId().equals(customer.getCustomerId())) {
+                throw new BusinessException("Bạn không có quyền truy cập lịch đặt này", HttpStatus.FORBIDDEN);
+            }
+        }
 
         // Lấy tất cả detail theo bookingId, map sang DTO và trả về
         return bookingDetailRepository
@@ -143,6 +174,12 @@ public class BookingDetailServiceImpl implements BookingDetailService {
     @Override
     @Transactional(readOnly = true)
     public BookingDetailItemResponseDTO getById(Integer detailId) {
+        return getById(detailId, null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public BookingDetailItemResponseDTO getById(Integer detailId, Integer userId) {
 
         // Tìm booking detail theo id, ném exception nếu không tồn tại
         BookingDetail detail =
@@ -150,6 +187,15 @@ public class BookingDetailServiceImpl implements BookingDetailService {
                         .orElseThrow(() ->
                                 new ResourceNotFoundException(
                                         "BookingDetail", "id", detailId));
+
+        // Kiểm tra quyền sở hữu nếu là CUSTOMER
+        if (userId != null) {
+            Customer customer = customerRepository.findByUser_Id(userId)
+                    .orElseThrow(() -> new BusinessException("Không tìm thấy khách hàng", HttpStatus.FORBIDDEN));
+            if (!detail.getBooking().getCustomer().getCustomerId().equals(customer.getCustomerId())) {
+                throw new BusinessException("Bạn không có quyền truy cập lịch đặt này", HttpStatus.FORBIDDEN);
+            }
+        }
 
         // Chuyển đổi entity sang DTO và trả về
         return BookingDetailItemResponseDTO.from(detail);
@@ -164,7 +210,7 @@ public class BookingDetailServiceImpl implements BookingDetailService {
      */
     @Override
     @Transactional
-    public void removeDetail(Integer detailId) {
+    public void removeDetail(Integer detailId, Integer userId) {
 
         // Tìm booking detail theo id, ném exception nếu không tồn tại
         BookingDetail detail =
@@ -172,6 +218,15 @@ public class BookingDetailServiceImpl implements BookingDetailService {
                         .orElseThrow(() ->
                                 new ResourceNotFoundException(
                                         "BookingDetail", "id", detailId));
+
+        // Kiểm tra quyền sở hữu nếu là CUSTOMER
+        if (userId != null) {
+            Customer customer = customerRepository.findByUser_Id(userId)
+                    .orElseThrow(() -> new BusinessException("Không tìm thấy khách hàng", HttpStatus.FORBIDDEN));
+            if (!detail.getBooking().getCustomer().getCustomerId().equals(customer.getCustomerId())) {
+                throw new BusinessException("Bạn không có quyền xóa dịch vụ của lịch đặt này", HttpStatus.FORBIDDEN);
+            }
+        }
 
         // Kiểm tra booking cha có đang ở trạng thái cho phép chỉnh sửa không
         validateBookingEditable(detail.getBooking());

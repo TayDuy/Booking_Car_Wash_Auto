@@ -56,4 +56,17 @@ public class Customer {
 
     @Column(name = "joined_at", nullable = false, insertable = false, updatable = false)
     private LocalDateTime joinedAt;
+
+    @PrePersist
+    protected void onCreate() {
+        if (this.totalPoints == null) {
+            this.totalPoints = 0;
+        }
+        if (this.totalVisits == null) {
+            this.totalVisits = 0;
+        }
+        if (this.totalSpending == null) {
+            this.totalSpending = ZERO;
+        }
+    }
 }

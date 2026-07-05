@@ -160,7 +160,7 @@ function PaymentPage() {
 
     async function handleGetBookingDetail(id) {
         try {
-            const response = await axiosClient.get(`/bookings/${id}`);
+            const response = await axiosClient.get(`/customer/bookings/${id}`);
             const result = response.data;
             setBookingDetail(result);
         } catch (error) {
