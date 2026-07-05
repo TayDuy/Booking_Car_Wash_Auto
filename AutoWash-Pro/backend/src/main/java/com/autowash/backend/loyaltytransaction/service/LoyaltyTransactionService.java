@@ -17,7 +17,17 @@ public interface LoyaltyTransactionService {
     );
 
     /**
+     * CUSTOMER xem lịch sử giao dịch của chính mình.
+     */
+    List<LoyaltyTransactionResponseDTO> getMyTransactions(Integer userId, String transactionType);
+
+    /**
      * Lấy số điểm hiện tại của customer.
      */
     LoyaltyBalanceResponseDTO getCustomerBalance(Integer customerId);
+
+    /**
+     * CUSTOMER xem số dư điểm của chính mình.
+     */
+    LoyaltyBalanceResponseDTO getMyBalance(Integer userId);
 }

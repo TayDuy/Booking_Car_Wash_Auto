@@ -3,6 +3,7 @@ package com.autowash.backend.loyaltytier.service.impl;
 import com.autowash.backend.customer.entity.Customer;
 import com.autowash.backend.customer.repository.CustomerRepository;
 import com.autowash.backend.loyaltytier.dto.CustomerTierEvaluationResponseDTO;
+import com.autowash.backend.loyaltytier.dto.CustomerTierResponseDTO;
 import com.autowash.backend.loyaltytier.entity.LoyaltyTier;
 import com.autowash.backend.loyaltytier.mapper.LoyaltyTierMapper;
 import com.autowash.backend.loyaltytier.repository.LoyaltyTierRepository;
@@ -36,6 +37,30 @@ public class LoyaltyTierEvaluationServiceImpl implements LoyaltyTierEvaluationSe
     private final LoyaltyTierRepository loyaltyTierRepository;
     private final LoyaltyTransactionRepository loyaltyTransactionRepository;
     private final LoyaltyTierMapper loyaltyTierMapper;
+
+    @Override
+    @Transactional(readOnly = true)
+    public CustomerTierResponseDTO getCustomerTierByUserId(Integer userId) {
+        Customer customer = customerRepository.findByUser_Id(userId)
+                .orElseThrow(() -> new EntityNotFoundException(
+                        "Customer khong ton tai voi userId = " + userId
+                ));
+
+        String tierName = null;
+        if (customer.getTierId() != null) {
+            LoyaltyTier tier = loyaltyTierRepository.findById(customer.getTierId()).orElse(null);
+            tierName = tier != null ? tier.getTierName() : null;
+        }
+
+        return CustomerTierResponseDTO.builder()
+                .customerId(customer.getCustomerId())
+                .tierId(customer.getTierId())
+                .tierName(tierName)
+                .currentPoints(customer.getTotalPoints())
+                .totalVisits(customer.getTotalVisits())
+                .totalSpending(customer.getTotalSpending())
+                .build();
+    }
 
     /**
      * CUSTOMER tự đánh giá hạng của chính mình.

@@ -149,6 +149,7 @@ public class RewardController {
      * POST /api/v1/rewards/{id}/redeem
      */
     @PostMapping("/{id}/redeem")
+    @PreAuthorize("hasAnyRole('CUSTOMER', 'STAFF', 'ADMIN')")
     public ResponseEntity<RedeemRewardResponseDTO> redeemReward(
             @PathVariable("id") Integer rewardId,
             @Valid @RequestBody RedeemRewardRequestDTO dto

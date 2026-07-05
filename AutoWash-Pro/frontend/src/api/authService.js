@@ -47,6 +47,14 @@ export async function loginWithGoogle(supabaseToken) {
   return response.data.data;
 }
 
+export async function changePassword(oldPassword, newPassword) {
+  const response = await axiosClient.put("/auth/change-password", {
+    oldPassword,
+    newPassword,
+  });
+  return response.data;
+}
+
 export async function logoutFromServer() {
   try {
     await axiosClient.post("/auth/logout");

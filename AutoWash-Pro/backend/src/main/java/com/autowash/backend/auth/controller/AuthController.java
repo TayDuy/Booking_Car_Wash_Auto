@@ -156,6 +156,14 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.success("Đăng nhập Google thành công!!!",response));
     }
 
+    @PutMapping("/change-password")
+    public ResponseEntity<ApiResponse<Void>> changePassword(
+            @Valid @RequestBody ChangePasswordRequestDTO request,
+            @AuthenticationPrincipal com.autowash.backend.security.CustomUserDetails userDetails) {
+        authService.changePassword(userDetails.getId(), request.getOldPassword(), request.getNewPassword());
+        return ResponseEntity.ok(ApiResponse.success("Đổi mật khẩu thành công", null));
+    }
+
     @PostMapping("/forgot-password/request")
     public ResponseEntity<ApiResponse<Void>> requestForgotPassword(
             @Valid @RequestBody ForgotPasswordRequestDTO request,

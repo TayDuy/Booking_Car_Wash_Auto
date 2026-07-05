@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import customerApi from '../../../api/customerApi';
 import vehicleApi from '../../../api/vehicleApi';
 import bookingApi from '../../../api/bookingApi';
-import { logout } from '../../../api/authService';
+import { logout, changePassword } from '../../../api/authService';
 
 const ProfilePage = () => {
   const navigate = useNavigate();
@@ -32,6 +32,16 @@ const ProfilePage = () => {
     gender: '',
     dateOfBirth: ''
   });
+
+  // Change Password
+  const [showChangePassword, setShowChangePassword] = useState(false);
+  const [passwordForm, setPasswordForm] = useState({
+    oldPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+  const [passwordError, setPasswordError] = useState('');
+  const [passwordSuccess, setPasswordSuccess] = useState('');
 
   // State for dynamic components
   const [vehicles, setVehicles] = useState([]);
@@ -78,16 +88,14 @@ const ProfilePage = () => {
           console.error('Lỗi tải danh sách xe:', vehErr);
         }
 
-        // Load bookings using customerId returned from backend
-        if (userData.customerId) {
-          try {
-            const bookRes = await bookingApi.myBookings(userData.customerId);
-            if (bookRes.data) {
-              setBookings(bookRes.data);
-            }
-          } catch (bookErr) {
-            console.error('Lỗi tải lịch sử đặt lịch:', bookErr);
+        // Load bookings
+        try {
+          const bookRes = await bookingApi.myBookings();
+          if (bookRes.data) {
+            setBookings(bookRes.data);
           }
+        } catch (bookErr) {
+          console.error('Lỗi tải lịch sử đặt lịch:', bookErr);
         }
       }
     } catch (err) {
@@ -101,6 +109,38 @@ const ProfilePage = () => {
     const element = document.getElementById(id);
     if (element) {
       element.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+    setPasswordError('');
+    setPasswordSuccess('');
+
+    if (!passwordForm.oldPassword || !passwordForm.newPassword || !passwordForm.confirmPassword) {
+      setPasswordError('Vui lòng điền đầy đủ thông tin');
+      return;
+    }
+    if (passwordForm.newPassword.length < 8) {
+      setPasswordError('Mật khẩu mới phải có ít nhất 8 ký tự');
+      return;
+    }
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      setPasswordError('Mật khẩu xác nhận không khớp');
+      return;
+    }
+    if (passwordForm.oldPassword === passwordForm.newPassword) {
+      setPasswordError('Mật khẩu mới phải khác mật khẩu cũ');
+      return;
+    }
+
+    try {
+      await changePassword(passwordForm.oldPassword, passwordForm.newPassword);
+      setPasswordSuccess('Đổi mật khẩu thành công');
+      setPasswordForm({ oldPassword: '', newPassword: '', confirmPassword: '' });
+      setShowChangePassword(false);
+    } catch (err) {
+      setPasswordError(err.response?.data?.message || 'Đổi mật khẩu thất bại');
     }
   };
 
@@ -322,6 +362,21 @@ const ProfilePage = () => {
                     <p>Hồ Chí Minh, Việt Nam</p>
                   </div>
                 </div>
+              </section>
+
+              {/* Change Password Section */}
+              <section className="card card-shadow">
+                <div className="card-header">
+                  <h3 className="card-title">
+                    <span className="material-symbols-outlined text-primary">lock</span>
+                    Mật khẩu
+                  </h3>
+                  <button className="btn-edit" onClick={() => setShowChangePassword(true)}>
+                    <span className="material-symbols-outlined icon-small">edit</span>
+                    Đổi mật khẩu
+                  </button>
+                </div>
+                {passwordSuccess && <div style={{ color: '#2e7d32', fontSize: '14px', fontWeight: '500', margin: '0 0 8px 0' }}>{passwordSuccess}</div>}
               </section>
 
               {/* My Vehicles Section */}
@@ -627,6 +682,45 @@ const ProfilePage = () => {
             <div className="modal-footer">
               <button type="button" className="btn-secondary" onClick={() => setShowAddVehicleModal(false)}>Hủy</button>
               <button type="submit" className="btn-primary">Đăng ký xe</button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Change Password Modal */}
+      {showChangePassword && (
+        <div className="modal-overlay">
+          <form className="modal-content" onSubmit={handleChangePassword}>
+            <div className="modal-header">
+              <h3 className="modal-title">
+                <span className="material-symbols-outlined">lock</span>
+                Đổi mật khẩu
+              </h3>
+              <button type="button" className="btn-close" onClick={() => { setShowChangePassword(false); setPasswordError(''); }}>
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            <div className="modal-body">
+              {passwordError && <div style={{ color: '#ba1a1a', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}>{passwordError}</div>}
+              <div className="form-group">
+                <label>Mật khẩu cũ</label>
+                <input type="password" className="form-input" value={passwordForm.oldPassword}
+                  onChange={e => setPasswordForm({...passwordForm, oldPassword: e.target.value})} required />
+              </div>
+              <div className="form-group">
+                <label>Mật khẩu mới</label>
+                <input type="password" className="form-input" value={passwordForm.newPassword}
+                  onChange={e => setPasswordForm({...passwordForm, newPassword: e.target.value})} required />
+              </div>
+              <div className="form-group">
+                <label>Xác nhận mật khẩu mới</label>
+                <input type="password" className="form-input" value={passwordForm.confirmPassword}
+                  onChange={e => setPasswordForm({...passwordForm, confirmPassword: e.target.value})} required />
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="btn-secondary" onClick={() => { setShowChangePassword(false); setPasswordError(''); }}>Hủy</button>
+              <button type="submit" className="btn-primary">Lưu mật khẩu</button>
             </div>
           </form>
         </div>

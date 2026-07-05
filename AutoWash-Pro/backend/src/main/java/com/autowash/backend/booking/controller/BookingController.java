@@ -2,6 +2,7 @@ package com.autowash.backend.booking.controller;
 
 import com.autowash.backend.booking.dto.BookingCreateRequestDTO;
 import com.autowash.backend.booking.dto.BookingCreateResponseDTO;
+import com.autowash.backend.booking.dto.BookingRescheduleRequestDTO;
 import com.autowash.backend.booking.dto.BookingResponseDTO;
 import com.autowash.backend.booking.dto.BookingSummaryResponseDTO;
 import com.autowash.backend.booking.dto.BookingUpdateRequestDTO;
@@ -76,20 +77,20 @@ public class BookingController {
     }
 
     /**
-     * CUSTOMER xem danh sách booking của mình
+     * CUSTOMER xem danh sách booking của mình, có thể lọc theo trạng thái
      *
      * GET:
-     * /api/v1/bookings/my/{customerId}
+     * /api/v1/bookings/my?status=pending
      */
-    @GetMapping("/bookings/my/{customerId}")
+    @GetMapping("/bookings/my")
     @PreAuthorize("hasRole('CUSTOMER')")
     public ResponseEntity<List<BookingSummaryResponseDTO>> getMyBookings(
-            @PathVariable Integer customerId,
-            @AuthenticationPrincipal CustomUserDetails userDetails
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestParam(required = false) String status
     ) {
 
         return ResponseEntity.ok(
-                bookingService.getBookingsByCustomer(customerId, userDetails.getId())
+                bookingService.getMyBookings(userDetails.getId(), status)
         );
     }
 
@@ -108,6 +109,25 @@ public class BookingController {
 
         return ResponseEntity.ok(
                 bookingService.getBookingById(bookingId, userDetails.getId())
+        );
+    }
+
+    /**
+     * CUSTOMER thay đổi lịch (reschedule slot + note) — chỉ áp dụng cho booking pending.
+     *
+     * PUT:
+     * /api/v1/bookings/{bookingId}/reschedule
+     */
+    @PutMapping("/bookings/{bookingId}/reschedule")
+    @PreAuthorize("hasRole('CUSTOMER')")
+    public ResponseEntity<BookingResponseDTO> rescheduleBooking(
+            @PathVariable Integer bookingId,
+            @Valid @RequestBody BookingRescheduleRequestDTO request,
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+
+        return ResponseEntity.ok(
+                bookingService.rescheduleBooking(bookingId, userDetails.getId(), request)
         );
     }
 
