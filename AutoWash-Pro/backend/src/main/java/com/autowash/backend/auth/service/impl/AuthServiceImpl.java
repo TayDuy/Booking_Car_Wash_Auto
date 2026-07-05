@@ -45,6 +45,8 @@ public class AuthServiceImpl implements AuthService {
     private final RefreshTokenService refreshTokenService;
 
     private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(AuthServiceImpl.class);
+    private static final java.security.SecureRandom secureRandom = new java.security.SecureRandom();
+
 
     @org.springframework.beans.factory.annotation.Value("${supabase.url}")
     private String supabaseUrl;
@@ -247,7 +249,8 @@ public class AuthServiceImpl implements AuthService {
         } else {
             // Chống Timing-based email enumeration bằng cách giả lập thời gian xử lý (DB queries + gửi email)
             long elapsed = System.currentTimeMillis() - startTime;
-            long targetDelay = 350 + (long) (Math.random() * 250); // 350ms - 600ms
+            long targetDelay = 350 + secureRandom.nextInt(250); // 350ms - 600ms
+
             if (elapsed < targetDelay) {
                 try {
                     Thread.sleep(targetDelay - elapsed);
