@@ -201,6 +201,13 @@ public class BookingServiceImpl implements BookingService {
     @Override
     @Transactional(readOnly = true)
     public List<BookingSummaryResponseDTO> getBookingsByCustomer(Integer customerId, Integer userId) {
+        return getBookingsByCustomer(customerId, userId, null);
+    }
+
+    /** Lấy danh sách booking theo customer + status, sắp xếp mới nhất trước. */
+    @Override
+    @Transactional(readOnly = true)
+    public List<BookingSummaryResponseDTO> getBookingsByCustomer(Integer customerId, Integer userId, String status) {
         if (userId != null) {
             Customer customer = customerRepository.findByUser_Id(userId)
                     .orElseThrow(() -> new BusinessException("Không tìm thấy khách hàng", HttpStatus.FORBIDDEN));
@@ -208,8 +215,26 @@ public class BookingServiceImpl implements BookingService {
                 throw new BusinessException("Bạn không có quyền truy cập danh sách đặt lịch này", HttpStatus.FORBIDDEN);
             }
         }
-        List<Booking> bookings = bookingRepository.findByCustomerWithAssociations(customerId);
+        List<Booking> bookings;
+        if (status != null && !status.isBlank()) {
+            try {
+                BookingStatus bookingStatus = BookingStatus.valueOf(status);
+                bookings = bookingRepository.findByCustomerWithAssociationsAndStatus(customerId, bookingStatus);
+            } catch (IllegalArgumentException e) {
+                throw new BusinessException("Trạng thái không hợp lệ: " + status, HttpStatus.BAD_REQUEST);
+            }
+        } else {
+            bookings = bookingRepository.findByCustomerWithAssociations(customerId);
+        }
         return mapToSummaryResponses(bookings);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<BookingSummaryResponseDTO> getMyBookings(Integer userId, String status) {
+        Customer customer = customerRepository.findByUser_Id(userId)
+                .orElseThrow(() -> new BusinessException("Không tìm thấy hồ sơ khách hàng", HttpStatus.NOT_FOUND));
+        return getBookingsByCustomer(customer.getCustomerId(), userId, status);
     }
 
     private List<BookingSummaryResponseDTO> mapToSummaryResponses(List<Booking> bookings) {
@@ -335,6 +360,59 @@ public class BookingServiceImpl implements BookingService {
         }
 
         booking.setStatus(BookingStatus.completed);
+
+        Booking saved = bookingRepository.save(booking);
+        return bookingMapper.toResponse(saved, bookingDetailRepository.findByBooking(saved));
+    }
+
+    // ── RESCHEDULE ────────────────────────────────────────────────────────────
+
+    @Override
+    @Transactional
+    public BookingResponseDTO rescheduleBooking(Integer bookingId, Integer userId, BookingRescheduleRequestDTO request) {
+        Booking booking = findBookingOrThrow(bookingId);
+
+        Customer owner = customerRepository.findByUser_Id(userId)
+                .orElseThrow(() -> new BusinessException("Không tìm thấy hồ sơ khách hàng", HttpStatus.NOT_FOUND));
+
+        if (!booking.getCustomer().getCustomerId().equals(owner.getCustomerId())) {
+            throw new BusinessException("Bạn không có quyền sửa lịch đặt này", HttpStatus.FORBIDDEN);
+        }
+
+        if (!BookingStatus.pending.equals(booking.getStatus())) {
+            throw new BusinessException(
+                    "Chỉ có thể thay đổi lịch đặt ở trạng thái pending. Hiện tại: " + booking.getStatus(),
+                    HttpStatus.CONFLICT);
+        }
+
+        if (request.getNote() != null) {
+            booking.setNote(request.getNote());
+        }
+
+        if (request.getNewSlotId() != null) {
+            TimeSlot oldSlot = booking.getSlot();
+            if (oldSlot.getSlotId().equals(request.getNewSlotId())) {
+                throw new BusinessException("Khung giờ mới trùng với khung giờ hiện tại", HttpStatus.BAD_REQUEST);
+            }
+
+            oldSlot.decrementBookings();
+            timeSlotRepository.save(oldSlot);
+
+            TimeSlot newSlot = timeSlotRepository.findByIdForUpdate(request.getNewSlotId())
+                    .orElseThrow(() -> new ResourceNotFoundException("TimeSlot", "id", request.getNewSlotId()));
+
+            if (!newSlot.hasCapacity()) {
+                throw new BusinessException("Slot mới đã đầy, vui lòng chọn khung giờ khác", HttpStatus.CONFLICT);
+            }
+
+            newSlot.incrementBookings();
+            timeSlotRepository.save(newSlot);
+
+            booking.setSlot(newSlot);
+            booking.setBranch(newSlot.getBranch());
+            booking.setStartTime(LocalDateTime.of(newSlot.getSlotDate(), newSlot.getStartTime()));
+            booking.setEndTime(LocalDateTime.of(newSlot.getSlotDate(), newSlot.getEndTime()));
+        }
 
         Booking saved = bookingRepository.save(booking);
         return bookingMapper.toResponse(saved, bookingDetailRepository.findByBooking(saved));

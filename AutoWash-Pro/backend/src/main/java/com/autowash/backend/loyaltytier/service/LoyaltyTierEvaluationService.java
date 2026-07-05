@@ -1,6 +1,7 @@
 package com.autowash.backend.loyaltytier.service;
 
 import com.autowash.backend.loyaltytier.dto.CustomerTierEvaluationResponseDTO;
+import com.autowash.backend.loyaltytier.dto.CustomerTierResponseDTO;
 
 import java.util.List;
 
@@ -16,6 +17,14 @@ import java.util.List;
  * Controller sẽ gọi interface này, không gọi trực tiếp class implementation.
  */
 public interface LoyaltyTierEvaluationService {
+
+    /**
+     * CUSTOMER xem hạng hiện tại (không trigger re-evaluation).
+     *
+     * @param userId ID của user trong bảng account/user, lấy từ JWT.
+     * @return thông tin hạng hiện tại của customer.
+     */
+    CustomerTierResponseDTO getCustomerTierByUserId(Integer userId);
 
     /**
      * CUSTOMER tự đánh giá và cập nhật hạng của chính mình.

@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import customerApi from '../../../api/customerApi';
 import bookingApi from '../../../api/bookingApi';
 import './BookingHistory.css';
 
@@ -50,10 +49,7 @@ export default function BookingHistory() {
   const fetchBookings = useCallback(async () => {
     try {
       setLoading(true);
-      const profileRes = await customerApi.profile();
-      const customerId = profileRes.data?.customerId;
-      if (!customerId) return;
-      const res = await bookingApi.myBookings(customerId);
+      const res = await bookingApi.myBookings();
       setBookings(res.data || []);
     } catch (err) {
       console.error('Lỗi tải lịch sử đặt lịch:', err);

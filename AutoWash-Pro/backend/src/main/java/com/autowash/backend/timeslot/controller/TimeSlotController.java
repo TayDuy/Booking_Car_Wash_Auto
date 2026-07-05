@@ -117,6 +117,7 @@ public class TimeSlotController {
     }
 
     @PostMapping("/generate")
+    @PreAuthorize("hasAnyRole('STAFF', 'ADMIN')")
     public ResponseEntity<GenerateSlotsResponseDTO> generateMonthlySlots(
             @Valid @RequestBody GenerateSlotsRequestDTO request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(service.generateMonthlySlots(request));

@@ -216,6 +216,26 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
+    @Transactional
+    public void changePassword(Integer userId, String oldPassword, String newPassword) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException("Không tìm thấy người dùng", HttpStatus.NOT_FOUND));
+
+        if (!passwordEncoder.matches(oldPassword, user.getPassword())) {
+            throw new BusinessException("Mật khẩu cũ không đúng", HttpStatus.BAD_REQUEST);
+        }
+
+        if (passwordEncoder.matches(newPassword, user.getPassword())) {
+            throw new BusinessException("Mật khẩu mới phải khác mật khẩu cũ", HttpStatus.BAD_REQUEST);
+        }
+
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+
+        refreshTokenService.deleteByUserId(user.getId());
+    }
+
+    @Override
     public void requestForgotPasswordOtp(String email, String requestIp) {
         String normalizedEmail = normalizeEmail(email);
         long startTime = System.currentTimeMillis();
@@ -248,6 +268,10 @@ public class AuthServiceImpl implements AuthService {
 
         if (!otpService.isEmailVerified(normalizedEmail, OtpService.PURPOSE_PASSWORD_RESET)) {
             otpService.verifyOtp(normalizedEmail, otp.trim(), OtpService.PURPOSE_PASSWORD_RESET);
+        }
+
+        if (passwordEncoder.matches(newPassword, user.getPassword())) {
+            throw new BusinessException("Mật khẩu mới phải khác mật khẩu cũ", HttpStatus.BAD_REQUEST);
         }
 
         user.setPassword(passwordEncoder.encode(newPassword));

@@ -1,5 +1,7 @@
 package com.autowash.backend.loyaltytransaction.service.impl;
 
+import com.autowash.backend.common.exception.ResourceNotFoundException;
+import com.autowash.backend.customer.repository.CustomerRepository;
 import com.autowash.backend.loyaltytransaction.dto.LoyaltyBalanceResponseDTO;
 import com.autowash.backend.loyaltytransaction.dto.LoyaltyTransactionResponseDTO;
 import com.autowash.backend.loyaltytransaction.entity.LoyaltyTransaction;
@@ -19,6 +21,7 @@ public class LoyaltyTransactionServiceImpl implements LoyaltyTransactionService 
 
     private final LoyaltyTransactionRepository loyaltyTransactionRepository;
     private final LoyaltyTransactionMapper loyaltyTransactionMapper;
+    private final CustomerRepository customerRepository;
 
     @Override
     public List<LoyaltyTransactionResponseDTO> getCustomerTransactions(
@@ -41,6 +44,22 @@ public class LoyaltyTransactionServiceImpl implements LoyaltyTransactionService 
         return transactions.stream()
                 .map(loyaltyTransactionMapper::toResponse)
                 .toList();
+    }
+
+    @Override
+    public List<LoyaltyTransactionResponseDTO> getMyTransactions(Integer userId, String transactionType) {
+        Integer customerId = customerRepository.findByUser_Id(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Customer", "userId", userId))
+                .getCustomerId();
+        return getCustomerTransactions(customerId, transactionType);
+    }
+
+    @Override
+    public LoyaltyBalanceResponseDTO getMyBalance(Integer userId) {
+        Integer customerId = customerRepository.findByUser_Id(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Customer", "userId", userId))
+                .getCustomerId();
+        return getCustomerBalance(customerId);
     }
 
     @Override
