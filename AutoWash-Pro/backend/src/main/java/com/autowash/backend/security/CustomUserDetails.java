@@ -21,10 +21,8 @@ public class CustomUserDetails implements UserDetails {
         this.username = user.getEmail() != null ? user.getEmail() : user.getUsername();
         this.password = user.getPassword();
         this.enabled = "active".equalsIgnoreCase(user.getStatus());
-        String rawRole = user.getRole() != null ? user.getRole().toUpperCase() : "CUSTOMER";
-        String securityRole = "EMPLOYEE".equals(rawRole) ? "STAFF" : rawRole;
         this.authorities = Collections.singletonList(
-                new SimpleGrantedAuthority("ROLE_" + securityRole)
+                new SimpleGrantedAuthority("ROLE_" + (user.getRole() != null ? user.getRole().toUpperCase() : "CUSTOMER"))
         );
     }
 
