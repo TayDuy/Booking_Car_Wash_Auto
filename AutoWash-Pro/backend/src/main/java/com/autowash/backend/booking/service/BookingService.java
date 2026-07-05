@@ -31,6 +31,10 @@ public interface BookingService {
      */
     BookingResponseDTO cancelOwnBooking(Integer bookingId, Integer userId);
 
+    BookingResponseDTO confirmBooking(Integer bookingId);
+
+    BookingResponseDTO checkInBooking(Integer bookingId);
+
     BookingResponseDTO completeBooking(Integer bookingId);
 
     BookingResponseDTO rescheduleBooking(Integer bookingId, Integer userId, BookingRescheduleRequestDTO request);
