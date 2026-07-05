@@ -107,7 +107,7 @@ function AppRoutes() {
       <Route
         path="/manager"
         element={
-          <ProtectedRoute allowedRoles={["MANAGER"]}>
+          <ProtectedRoute allowedRoles={["MANAGER", "EMPLOYEE", "STAFF"]}>
             <ManagerLayout />
           </ProtectedRoute>
         }

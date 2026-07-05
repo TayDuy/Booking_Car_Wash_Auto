@@ -36,7 +36,7 @@ function LoginPage() {
       return;
     }
 
-    if (normalizedRole === "MANAGER") {
+    if (normalizedRole === "MANAGER" || normalizedRole === "EMPLOYEE" || normalizedRole === "STAFF") {
       navigate("/manager/dashboard", { replace: true });
       return;
     }
