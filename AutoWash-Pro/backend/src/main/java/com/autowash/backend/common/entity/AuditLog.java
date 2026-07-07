@@ -28,8 +28,8 @@ public class AuditLog {
     //chi tiết cụ thể. ví dụ: "customer -> admin"
     private String details;
 
-    //Thời gian xảy ra, tự động lấy thời gian hiện tại khi tạo
+    // Thời gian xảy ra, tự động lấy thời gian hiện tại khi tạo
+    @Builder.Default
     @Column(nullable = false)
     private LocalDateTime timestamp = LocalDateTime.now();
-
 }
