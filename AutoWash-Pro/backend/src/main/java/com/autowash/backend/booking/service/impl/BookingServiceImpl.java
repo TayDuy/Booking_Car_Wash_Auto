@@ -36,6 +36,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import com.autowash.backend.auditlog.service.AuditLogService;
 @Service
 @RequiredArgsConstructor
 public class BookingServiceImpl implements BookingService {
@@ -49,6 +50,7 @@ public class BookingServiceImpl implements BookingService {
     private final EmployeeRepository employeeRepository;
     private final ServicePackageRepository servicePackageRepository;
     private final BookingMapper bookingMapper;
+    private final AuditLogService auditLogService;
 
     // ── CREATE ──────────────────────────────────────────────────────────────
 
@@ -148,6 +150,12 @@ public class BookingServiceImpl implements BookingService {
         Booking savedBooking = bookingRepository.save(booking);
         details.forEach(d -> d.setBooking(savedBooking));
         bookingDetailRepository.saveAll(details);
+        auditLogService.log(
+                "CREATE_BOOKING",
+                "admin",
+                savedBooking.getCustomer().getCustomerId(),
+                "Tạo booking " + savedBooking.getBookingCode()
+        );
 
         return bookingMapper.toCreateResponse(savedBooking, details);
     }
@@ -201,6 +209,12 @@ public class BookingServiceImpl implements BookingService {
         }
 
         Booking saved = bookingRepository.save(booking);
+        auditLogService.log(
+                "UPDATE_BOOKING",
+                "admin",
+                saved.getCustomer().getCustomerId(),
+                "Cập nhật booking " + saved.getBookingCode()
+        );
         return bookingMapper.toResponse(saved, bookingDetailRepository.findByBooking(saved));
     }
 
@@ -222,6 +236,12 @@ public class BookingServiceImpl implements BookingService {
         timeSlotRepository.save(slot);
 
         Booking saved = bookingRepository.save(booking);
+        auditLogService.log(
+                "CANCEL_BOOKING",
+                "admin",
+                saved.getCustomer().getCustomerId(),
+                "Hủy booking " + saved.getBookingCode()
+        );
         return bookingMapper.toResponse(saved, bookingDetailRepository.findByBooking(saved));
     }
 
@@ -248,6 +268,12 @@ public class BookingServiceImpl implements BookingService {
         booking.setStatus(BookingStatus.completed);
 
         Booking saved = bookingRepository.save(booking);
+        auditLogService.log(
+                "COMPLETE_BOOKING",
+                "admin",
+                saved.getCustomer().getCustomerId(),
+                "Hoàn thành booking " + saved.getBookingCode()
+        );
         return bookingMapper.toResponse(saved, bookingDetailRepository.findByBooking(saved));
     }
 
@@ -266,6 +292,12 @@ public class BookingServiceImpl implements BookingService {
         booking.setStatus(BookingStatus.confirmed);
 
         Booking saved = bookingRepository.save(booking);
+        auditLogService.log(
+                "CONFIRM_BOOKING",
+                "admin",
+                saved.getCustomer().getCustomerId(),
+                "Xác nhận booking " + saved.getBookingCode()
+        );
         return bookingMapper.toResponse(saved, bookingDetailRepository.findByBooking(saved));
     }
 

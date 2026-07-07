@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { isLoggedIn } from "../../api/authService";
-import AdminNotificationPage from "../admin/AdminNotificationPage.jsx";
+import AdminNotificationPage from "../../features/admin/pages/AdminNotificationPage";
 import CustomerNotificationPage from "../customer/CustomerNotificationPage";
 
 export default function NotificationPage() {

@@ -21,6 +21,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.List;
+import com.autowash.backend.auditlog.service.AuditLogService;
 
 /**
  * Implementation của {@link PromotionService}.
@@ -41,6 +42,7 @@ public class PromotionServiceImpl implements PromotionService {
     private final UserRepository userRepository;
     private final PromotionMapper promotionMapper;
     private final PromotionUseRepository promotionUseRepository;
+    private final AuditLogService auditLogService;
 
     // ── CRUD ────────────────────────────────────────────────────────────────
 
@@ -60,7 +62,17 @@ public class PromotionServiceImpl implements PromotionService {
                         "User không tồn tại: " + createdByEmail));
 
         Promotion promotion = promotionMapper.toEntity(dto, tier, creator);
-        return promotionMapper.toDTO(promotionRepository.save(promotion));
+
+        Promotion savedPromotion = promotionRepository.save(promotion);
+
+        auditLogService.log(
+                "CREATE_PROMOTION",
+                createdByEmail,
+                null,
+                "Tạo khuyến mãi " + savedPromotion.getPromotionName()
+        );
+
+        return promotionMapper.toDTO(savedPromotion);
     }
 
     /** {@inheritDoc} */
@@ -110,7 +122,17 @@ public class PromotionServiceImpl implements PromotionService {
         Promotion promotion = findOrThrow(id);
         LoyaltyTier tier = resolveTier(dto.getTargetTierId());
         promotionMapper.updateEntity(promotion, dto, tier);
-        return promotionMapper.toDTO(promotionRepository.save(promotion));
+
+        Promotion savedPromotion = promotionRepository.save(promotion);
+
+        auditLogService.log(
+                "UPDATE_PROMOTION",
+                "admin",
+                null,
+                "Cập nhật khuyến mãi " + savedPromotion.getPromotionName()
+        );
+
+        return promotionMapper.toDTO(savedPromotion);
     }
 
     /**
@@ -123,7 +145,15 @@ public class PromotionServiceImpl implements PromotionService {
     public void deactivate(Integer id) {
         Promotion promotion = findOrThrow(id);
         promotion.setStatus(PromotionStatus.inactive);
+
         promotionRepository.save(promotion);
+
+        auditLogService.log(
+                "DELETE_PROMOTION",
+                "admin",
+                null,
+                "Vô hiệu hóa khuyến mãi " + promotion.getPromotionName()
+        );
     }
 
     // ── Apply logic ─────────────────────────────────────────────────────────

@@ -29,6 +29,9 @@ import ManageCustomersPage from "./features/admin/pages/ManageCustomersPage";
 import ManageVehiclesPage from "./features/admin/pages/ManageVehiclesPage";
 import ManageBranchesPage from "./features/admin/pages/ManageBranchesPage";
 import ManageServicesPage from "./features/admin/pages/ManageServicesPage";
+import ManagePromotionsPage from "./features/admin/pages/ManagePromotionsPage";
+import ReportsPage from "./features/admin/pages/ReportsPage";
+import AuditLogsPage from "./features/admin/pages/AuditLogsPage";
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <BrowserRouter>
@@ -58,7 +61,10 @@ ReactDOM.createRoot(document.getElementById("root")).render(
           <Route path="vehicles" element={<ManageVehiclesPage/>}/>
           <Route path="branches" element={<ManageBranchesPage />} />
           <Route path="services" element={<ManageServicesPage />} />
+          <Route path="promotions" element={<ManagePromotionsPage />} />
           <Route path="notifications" element={<AdminNotificationPage />} />
+          <Route path="reports" element={<ReportsPage />} />
+          <Route path="audit-logs" element={<AuditLogsPage />} />
         </Route>
       </Routes>
     </BrowserRouter>

@@ -42,7 +42,7 @@ const menuGroups = [
     title: "Báo cáo & hệ thống",
     items: [
       { label: "Báo cáo", path: "/admin/reports", icon: BarChart3 },
-      { label: "Nhật ký hệ thống", path: "/admin/logs", icon: ScrollText },
+      { label: "Nhật ký hệ thống", path: "/admin/audit-logs", icon: ScrollText },
       { label: "Phân quyền", path: "/admin/roles", icon: ShieldCheck },
       { label: "Cấu hình", path: "/admin/settings", icon: Settings },
     ],
