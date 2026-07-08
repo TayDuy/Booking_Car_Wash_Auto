@@ -16,13 +16,16 @@ import com.autowash.backend.auditlog.service.AuditLogService;
 @RequiredArgsConstructor
 public class CustomerServiceImpl implements CustomerService {
 
+    private static final String CUSTOMER_NOT_FOUND_MSG = "Không tìm thấy khách hàng";
+    private static final String ADMIN_USER = "admin";
+
     private final CustomerRepository customerRepository;
     private final AuditLogService auditLogService;
 
     @Override
     public CustomerProfileResponse getCustomerProfile(Integer userId) {
         Customer customer = customerRepository.findByUser_Id(userId)  // ← fix
-                .orElseThrow(() -> new BusinessException("Không tìm thấy khách hàng", HttpStatus.NOT_FOUND));
+                .orElseThrow(() -> new BusinessException(CUSTOMER_NOT_FOUND_MSG, HttpStatus.NOT_FOUND));
         return mapToResponse(customer);
     }
 
@@ -30,7 +33,7 @@ public class CustomerServiceImpl implements CustomerService {
     @Transactional
     public CustomerProfileResponse updateCustomerProfile(Integer userId, CustomerUpdateRequest request) {
         Customer customer = customerRepository.findByUser_Id(userId)  // ← fix
-                .orElseThrow(() -> new BusinessException("Không tìm thấy khách hàng", HttpStatus.NOT_FOUND));
+                .orElseThrow(() -> new BusinessException(CUSTOMER_NOT_FOUND_MSG, HttpStatus.NOT_FOUND));
 
         customer.setFullName(request.getFullName());
         customer.setDateOfBirth(request.getDateOfBirth());
@@ -45,7 +48,7 @@ public class CustomerServiceImpl implements CustomerService {
         Customer updateCustomer = customerRepository.save(customer);
         auditLogService.log(
                 "UPDATE_PROFILE",
-                "admin",
+                ADMIN_USER,
                 updateCustomer.getCustomerId(),
                 "Khách hàng cập nhật hồ sơ"
         );
@@ -95,7 +98,7 @@ public class CustomerServiceImpl implements CustomerService {
     @Transactional
     public CustomerProfileResponse updateCustomer(Integer customerId, CustomerUpdateRequest request) {
         Customer customer = customerRepository.findById(customerId)
-                .orElseThrow(() -> new BusinessException("Không tìm thấy khách hàng", HttpStatus.NOT_FOUND));
+                .orElseThrow(() -> new BusinessException(CUSTOMER_NOT_FOUND_MSG, HttpStatus.NOT_FOUND));
 
         customer.setFullName(request.getFullName());
         customer.setDateOfBirth(request.getDateOfBirth());
@@ -109,7 +112,7 @@ public class CustomerServiceImpl implements CustomerService {
         Customer updatedCustomer = customerRepository.save(customer);
         auditLogService.log(
                 "UPDATE_CUSTOMER",
-                "admin",
+                ADMIN_USER,
                 updatedCustomer.getCustomerId(),
                 "Admin cập nhật khách hàng " + updatedCustomer.getFullName()
         );
@@ -120,13 +123,13 @@ public class CustomerServiceImpl implements CustomerService {
     @Transactional
     public void deleteCustomer(Integer customerId) {
         Customer customer = customerRepository.findById(customerId)
-                .orElseThrow(() -> new BusinessException("Không tìm thấy khách hàng", HttpStatus.NOT_FOUND));
+                .orElseThrow(() -> new BusinessException(CUSTOMER_NOT_FOUND_MSG, HttpStatus.NOT_FOUND));
 
         if (customer.getUser() != null) {
             customer.getUser().setStatus("inactive");
             auditLogService.log(
                     "DELETE_CUSTOMER",
-                    "admin",
+                    ADMIN_USER,
                     customer.getCustomerId(),
                     "Khóa khách hàng " + customer.getFullName()
             );

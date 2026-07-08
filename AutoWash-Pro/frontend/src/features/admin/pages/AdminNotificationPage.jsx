@@ -63,7 +63,7 @@ function NotifCard({ item, onMark }) {
                 </div>
                 {!item.seen && (
                     <div className="an-card__actions">
-                        <button className="an-btn" onClick={() => onMark && onMark(item.id)}>Đánh dấu đã đọc</button>
+                        <button className="an-btn" onClick={() => onMark?.(item.id)}>Đánh dấu đã đọc</button>
                     </div>
                 )}
             </div>
