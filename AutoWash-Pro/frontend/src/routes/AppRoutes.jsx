@@ -18,6 +18,7 @@ import BookingHistory from "../features/booking/pages/BookingHistory";
 import ProfilePage from "../features/customer/pages/ProfilePage";
 import CustomerNotificationPage from "../features/customer/pages/CustomerNotificationPage";
 import SupportPage from "../features/customer/pages/Helpcenter";
+import ServicesPage from "../features/services/pages/ServicesPage";
 
 import BookingPage from "../features/booking/pages/BookingPage";
 import BookingDetailPage from "../features/booking/pages/BookingDetailPage";
@@ -76,6 +77,7 @@ function AppRoutes() {
       >
         <Route index element={<Navigate to="home" replace />} />
         <Route path="home" element={<HomePage />} />
+        <Route path="services" element={<ServicesPage />} />
         <Route path="booking" element={<BookingPage />} />
         <Route path="booking/:bookingId" element={<BookingDetailPage />} />
         <Route path="history" element={<BookingHistory />} />

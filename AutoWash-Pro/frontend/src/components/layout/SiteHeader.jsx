@@ -110,6 +110,13 @@ export default function SiteHeader() {
         </button>
 
         <button
+          className={isActive("/customer/services") ? "active-link" : ""}
+          onClick={() => navigate("/customer/services")}
+        >
+          Dịch vụ
+        </button>
+
+        <button
           className={isActive("/customer/booking") ? "active-link" : ""}
           onClick={() => navigate("/customer/booking")}
         >
