@@ -153,6 +153,15 @@ public class BookingController {
                 bookingService.getAllBookings()
         );
     }
+    @GetMapping("/staff/bookings/{bookingId}")
+    @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
+    public ResponseEntity<BookingResponseDTO> getBookingByIdForStaff(
+        @PathVariable Integer bookingId
+    )   {
+          return ResponseEntity.ok(
+                bookingService.getBookingById(bookingId, null)
+          );
+        }
 
     /**
      * STAFF / ADMIN cập nhật booking.

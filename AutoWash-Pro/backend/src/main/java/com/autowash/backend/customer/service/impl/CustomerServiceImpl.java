@@ -11,12 +11,13 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
-
+import com.autowash.backend.auditlog.service.AuditLogService;
 @Service
 @RequiredArgsConstructor
 public class CustomerServiceImpl implements CustomerService {
 
     private final CustomerRepository customerRepository;
+    private final AuditLogService auditLogService;
 
     @Override
     public CustomerProfileResponse getCustomerProfile(Integer userId) {
@@ -42,6 +43,12 @@ public class CustomerServiceImpl implements CustomerService {
         }
 
         Customer updateCustomer = customerRepository.save(customer);
+        auditLogService.log(
+                "UPDATE_PROFILE",
+                "admin",
+                updateCustomer.getCustomerId(),
+                "Khách hàng cập nhật hồ sơ"
+        );
         return mapToResponse(updateCustomer);
     }
     @Override
@@ -82,5 +89,47 @@ public class CustomerServiceImpl implements CustomerService {
         if ("female".equalsIgnoreCase(gender)) return "Nữ";
         if ("other".equalsIgnoreCase(gender)) return "Khác";
         return gender;
+    }
+
+    @Override
+    @Transactional
+    public CustomerProfileResponse updateCustomer(Integer customerId, CustomerUpdateRequest request) {
+        Customer customer = customerRepository.findById(customerId)
+                .orElseThrow(() -> new BusinessException("Không tìm thấy khách hàng", HttpStatus.NOT_FOUND));
+
+        customer.setFullName(request.getFullName());
+        customer.setDateOfBirth(request.getDateOfBirth());
+        customer.setGender(translateGenderToEnglish(request.getGender()));
+
+        if (customer.getUser() != null) {
+            customer.getUser().setPhone(request.getPhone());
+            customer.getUser().setEmail(request.getEmail());
+        }
+
+        Customer updatedCustomer = customerRepository.save(customer);
+        auditLogService.log(
+                "UPDATE_CUSTOMER",
+                "admin",
+                updatedCustomer.getCustomerId(),
+                "Admin cập nhật khách hàng " + updatedCustomer.getFullName()
+        );
+        return mapToResponse(updatedCustomer);
+    }
+
+    @Override
+    @Transactional
+    public void deleteCustomer(Integer customerId) {
+        Customer customer = customerRepository.findById(customerId)
+                .orElseThrow(() -> new BusinessException("Không tìm thấy khách hàng", HttpStatus.NOT_FOUND));
+
+        if (customer.getUser() != null) {
+            customer.getUser().setStatus("inactive");
+            auditLogService.log(
+                    "DELETE_CUSTOMER",
+                    "admin",
+                    customer.getCustomerId(),
+                    "Khóa khách hàng " + customer.getFullName()
+            );
+        }
     }
 }

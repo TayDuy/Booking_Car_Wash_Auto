@@ -88,6 +88,10 @@ public class PromotionMapper {
         target.setStartDate(dto.getStartDate());
         target.setEndDate(dto.getEndDate());
         target.setUsageLimit(dto.getUsageLimit());
-        // Không cập nhật: promotionId, status, createdBy
-    }
+        if (dto.getStatus() != null) {
+        target.setStatus(dto.getStatus());
+        }
+
+        // Không cập nhật: promotionId, createdBy
+}
 }

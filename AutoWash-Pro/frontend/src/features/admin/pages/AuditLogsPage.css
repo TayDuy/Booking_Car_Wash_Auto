@@ -1,0 +1,135 @@
+.audit-page {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.audit-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.audit-table th,
+.audit-table td {
+  padding: 14px 16px;
+  text-align: left;
+  border-bottom: 1px solid #eef2f7;
+  vertical-align: middle;
+}
+
+.audit-table thead th {
+  background: #f8fafc;
+  font-weight: 700;
+  color: #334155;
+}
+
+.audit-table tbody tr:hover {
+  background: #f8fbff;
+}
+
+.audit-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.audit-badge.success {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.audit-badge.warning {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.audit-badge.danger {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.audit-badge.info {
+  background: #dbeafe;
+  color: #2563eb;
+}
+
+.audit-badge.default {
+  background: #e2e8f0;
+  color: #475569;
+}
+
+.empty-state {
+  padding: 60px 20px;
+  text-align: center;
+  color: #64748b;
+  font-size: 15px;
+}
+
+.booking-table-wrap {
+  overflow-x: auto;
+}
+
+.manage-toolbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.manage-search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 420px;
+  max-width: 100%;
+  background: #fff;
+  border: 1px solid #dbe3ef;
+  border-radius: 12px;
+  padding: 0 14px;
+}
+
+.manage-search input {
+  flex: 1;
+  height: 46px;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 15px;
+}
+
+.refresh-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 18px;
+  border: none;
+  border-radius: 12px;
+  background: #2563eb;
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.25s;
+}
+
+.refresh-btn:hover {
+  background: #1d4ed8;
+}
+
+@media (max-width: 768px) {
+  .manage-toolbar {
+    flex-direction: column;
+  }
+
+  .manage-search {
+    width: 100%;
+  }
+
+  .audit-table th,
+  .audit-table td {
+    white-space: nowrap;
+  }
+}
