@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from "react";
-import { useNavigate, useLocation, Link } from "react-router-dom";
+import { useNavigate, useLocation, Link, useSearchParams } from "react-router-dom";
 import { getActiveServices } from "../../../api/servicePackageService";
 import useAuth from "../../../hooks/useAuth";
 import "./ServicesPage.css";
@@ -32,6 +32,7 @@ const CATEGORIES = [
   { id: "wash", label: "🧼 Rửa xe" },
   { id: "interior", label: "🧽 Nội thất" },
   { id: "polish", label: "✨ Đánh bóng" },
+  { id: "addon", label: "🔧 Add-on" },
   { id: "vip", label: "👑 Combo VIP" },
 ];
 
@@ -42,9 +43,11 @@ export default function ServicesPage() {
   const user = auth?.user;
   const isCustomerScope = location.pathname.startsWith("/customer");
 
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeCategory = searchParams.get("cat") || "all";
+
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeCategory, setActiveCategory] = useState("all");
   const [openFaqIndex, setOpenFaqIndex] = useState(null);
 
   useEffect(() => {
@@ -68,6 +71,9 @@ export default function ServicesPage() {
     const name = (service.serviceName || service.name || "").toLowerCase();
     const desc = (service.description || "").toLowerCase();
 
+    if (name.includes("add-on") || name.includes("addon") || name.includes("phụ trợ") || name.includes("nước hoa")) {
+      return "addon";
+    }
     if (name.includes("vip") || name.includes("diamond") || name.includes("kim cương") || name.includes("combo")) {
       return "vip";
     }
@@ -82,6 +88,7 @@ export default function ServicesPage() {
 
   const getIcon = (service) => {
     const name = (service.serviceName || service.name || "").toLowerCase();
+    if (name.includes("add-on") || name.includes("addon")) return "🔧";
     if (name.includes("vip") || name.includes("diamond") || name.includes("kim cương") || name.includes("combo")) return "👑";
     if (name.includes("đánh bóng") || name.includes("polish") || name.includes("nano") || name.includes("ceramic")) return "✨";
     if (name.includes("nội thất") || name.includes("interior") || name.includes("hút bụi")) return "🧽";
@@ -161,7 +168,7 @@ export default function ServicesPage() {
             <button
               key={cat.id}
               className={`category-tab-btn ${activeCategory === cat.id ? "active" : ""}`}
-              onClick={() => setActiveCategory(cat.id)}
+              onClick={() => setSearchParams(cat.id === "all" ? {} : { cat: cat.id }, { replace: true })}
             >
               {cat.label}
             </button>

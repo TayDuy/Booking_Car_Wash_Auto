@@ -66,9 +66,9 @@ function LandingPage() {
                   Đặt lịch ngay
                 </Link>
 
-                <a href="#services" className="secondary-button">
+                <Link to="/services" className="secondary-button">
                   Khám phá dịch vụ
-                </a>
+                </Link>
               </div>
 
               <div className="landing-stats">
@@ -281,7 +281,7 @@ function LandingPage() {
 
           <div>
             <h4>Liên kết</h4>
-            <a href="#services">Dịch vụ</a>
+            <Link to="/services">Dịch vụ</Link>
             <a href="#process">Quy trình</a>
             <a href="#pricing">Bảng giá</a>
           </div>
