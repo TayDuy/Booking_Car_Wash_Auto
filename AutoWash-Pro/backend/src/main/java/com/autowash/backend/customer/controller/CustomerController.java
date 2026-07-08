@@ -41,6 +41,7 @@ public class CustomerController {
     }
 
     @PutMapping("/{customerId}")
+    @PreAuthorize("hasAnyRole('STAFF', 'ADMIN')")
     public ResponseEntity<CustomerProfileResponse> updateCustomer(
             @PathVariable Integer customerId,
             @Valid @RequestBody CustomerUpdateRequest request
@@ -51,6 +52,7 @@ public class CustomerController {
     }
 
     @DeleteMapping("/{customerId}")
+    @PreAuthorize("hasAnyRole('STAFF', 'ADMIN')")
     public ResponseEntity<Void> deleteCustomer(
             @PathVariable Integer customerId
     ) {
