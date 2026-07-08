@@ -21,6 +21,8 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 
 import java.util.Map;
 
+import com.autowash.backend.security.LoginRateLimitFilter;
+
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
@@ -28,11 +30,14 @@ public class SecurityConfig {
 
     private final CustomUserDetailsService userDetailsService;
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final LoginRateLimitFilter loginRateLimitFilter;
 
     public SecurityConfig(CustomUserDetailsService userDetailsService,
-            JwtAuthenticationFilter jwtAuthenticationFilter) {
+            JwtAuthenticationFilter jwtAuthenticationFilter,
+            LoginRateLimitFilter loginRateLimitFilter) {
         this.userDetailsService = userDetailsService;
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+        this.loginRateLimitFilter = loginRateLimitFilter;
     }
 
     @Bean
@@ -94,6 +99,9 @@ public class SecurityConfig {
                                 "/api/v1/auth/forgot-password/reset",
                                 "/api/v1/payments/vnpay-return",
                                 "/api/v1/payments/vnpay-ipn",
+                                "/api/v1/notifications/stream",
+                                "/api/v1/branches",
+                                "/api/v1/service-packages/active",
                                 "/actuator/health"
                         ).permitAll()
 
@@ -107,8 +115,8 @@ public class SecurityConfig {
                         .anyRequest().authenticated())
 
                 .authenticationProvider(authenticationProvider())
-                .addFilterBefore(jwtAuthenticationFilter,
-                        UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(loginRateLimitFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }

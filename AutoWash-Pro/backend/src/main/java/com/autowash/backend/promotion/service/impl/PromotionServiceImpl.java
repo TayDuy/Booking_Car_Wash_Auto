@@ -140,9 +140,11 @@ public class PromotionServiceImpl implements PromotionService {
      * </ol>
      */
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public PromotionApplyResponseDTO applyPromotion(PromotionApplyRequestDTO req) {
-        Promotion promotion = findOrThrow(req.getPromotionId());
+        Promotion promotion = promotionRepository.findByIdWithLock(req.getPromotionId())
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException(
+                        "Promotion không tồn tại: " + req.getPromotionId()));
 
         boolean alreadyUsed = promotionUseRepository
                 .existsByPromotionIdAndCustomerId(

@@ -37,6 +37,7 @@ public class CustomerRewardServiceImpl implements CustomerRewardService {
     private final BookingRepository bookingRepository;
     private final LoyaltyTransactionService loyaltyTransactionService;
     private final CustomerRewardMapper customerRewardMapper;
+    private final com.autowash.backend.user.repository.UserRepository userRepository;
 
     @Override
     @Transactional
@@ -162,6 +163,20 @@ public class CustomerRewardServiceImpl implements CustomerRewardService {
 
     private void validateCustomerOwner(Integer customerId, Integer userId) {
         if (userId == null) {
+            throw new BusinessException(
+                    "Không thể xác thực người dùng",
+                    HttpStatus.FORBIDDEN
+            );
+        }
+
+        com.autowash.backend.user.entity.User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(
+                        "Không tìm thấy tài khoản người dùng",
+                        HttpStatus.FORBIDDEN
+                ));
+
+        String role = user.getRole();
+        if ("admin".equalsIgnoreCase(role) || "staff".equalsIgnoreCase(role)) {
             return;
         }
 

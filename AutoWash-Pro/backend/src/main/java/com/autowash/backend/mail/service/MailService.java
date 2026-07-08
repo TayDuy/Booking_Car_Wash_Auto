@@ -25,4 +25,9 @@ public interface MailService {
             LocalTime endTime,
             BigDecimal totalPrice
     );
+
+    /**
+     * Gửi email cảnh báo khi mật khẩu tài khoản bị thay đổi
+     */
+    void sendPasswordChangedEmail(String toEmail, String username);
 }

@@ -58,7 +58,7 @@ export default function BookingPage() {
   const [selectedBranch, setSelectedBranch] = useState(null);
   const [vehicleType, setVehicleType] = useState("4_seats");
   const [note, setNote] = useState("");
-  const [selectedService, setSelectedService] = useState(null);
+  const [cartItems, setCartItems] = useState([]);
   const [selectedTime, setSelectedTime] = useState(null);
   const [licensePlate, setLicensePlate] = useState("");
   const [brand, setBrand] = useState("");
@@ -120,14 +120,11 @@ export default function BookingPage() {
             isPopular: idx === 1
           }));
           setServices(merged);
-          setSelectedService(merged[0].serviceId);
         } else {
           setServices(DEFAULT_SERVICES);
-          setSelectedService(DEFAULT_SERVICES[0].serviceId);
         }
       } catch (err) {
         setServices(DEFAULT_SERVICES);
-        setSelectedService(DEFAULT_SERVICES[0].serviceId);
       }
     };
     loadServices();
@@ -251,16 +248,48 @@ export default function BookingPage() {
     loadSlots();
   }, [selectedBranch, selectedDate]);
 
-  const selectedServiceData = services.find(s => s.serviceId === selectedService);
   const selectedSlotData = slots.find(s => s.slotId === selectedTime);
 
-  const price = selectedServiceData ? selectedServiceData.basePrice : 0;
+  const cartServiceData = cartItems.map(item => {
+    const svc = services.find(s => s.serviceId === item.serviceId);
+    return { ...item, serviceData: svc };
+  });
+  const subtotalBeforeFees = cartServiceData.reduce((sum, item) => {
+    const price = item.serviceData ? item.serviceData.basePrice : 0;
+    return sum + price * item.quantity;
+  }, 0);
   const surcharge = vehicleType === "7_seats" ? 50000 : 0;
-  const subtotal = price + surcharge;
+  const subtotal = subtotalBeforeFees + surcharge;
   const tax = Math.round(subtotal * 0.08);
   const discount = paymentMethod === "online" ? Math.round(subtotal * 0.05) : 0;
   const total = subtotal + tax - discount;
-  const rewardPoints = Math.floor(price / 10000);
+  const totalDuration = cartServiceData.reduce((sum, item) => sum + (item.serviceData ? item.serviceData.durationMinutes * item.quantity : 0), 0);
+  const rewardPoints = Math.floor(subtotalBeforeFees / 10000);
+
+  const addToCart = (serviceId) => {
+    setCartItems(prev => {
+      const existing = prev.find(i => i.serviceId === serviceId);
+      if (existing) {
+        return prev.map(i => i.serviceId === serviceId ? { ...i, quantity: i.quantity + 1 } : i);
+      }
+      return [...prev, { serviceId, quantity: 1 }];
+    });
+  };
+
+  const removeFromCart = (serviceId) => {
+    setCartItems(prev => prev.filter(i => i.serviceId !== serviceId));
+  };
+
+  const updateCartQuantity = (serviceId, delta) => {
+    setCartItems(prev => prev.map(i => {
+      if (i.serviceId !== serviceId) return i;
+      const nextQty = i.quantity + delta;
+      return nextQty > 0 ? { ...i, quantity: nextQty } : i;
+    }));
+  };
+
+  const isInCart = (serviceId) => cartItems.some(i => i.serviceId === serviceId);
+  const getCartQty = (serviceId) => cartItems.find(i => i.serviceId === serviceId)?.quantity || 0;
 
   const previousMonth = () => {
     setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
@@ -296,7 +325,7 @@ export default function BookingPage() {
   };
 
   const handleBooking = async () => {
-    if (!selectedService) { alert("Vui lòng chọn gói dịch vụ!"); return; }
+    if (cartItems.length === 0) { alert("Vui lòng chọn ít nhất một dịch vụ!"); return; }
     if (!agreeTerms) { alert("Vui lòng xác nhận thông tin dịch vụ và điều khoản dịch vụ để tiếp tục!"); return; }
 
     const customerIdRaw = localStorage.getItem("customerId");
@@ -319,7 +348,7 @@ export default function BookingPage() {
         slotId: selectedTime,
         branchId: selectedBranch,
         note,
-        details: [{ serviceId: selectedService, quantity: 1 }]
+        details: cartItems.map(item => ({ serviceId: item.serviceId, quantity: item.quantity }))
       };
       const response = await bookingApi.create(bookingData);
       const result = response.data;
@@ -346,18 +375,20 @@ export default function BookingPage() {
                 <h3>1. Chọn dịch vụ</h3>
               </div>
               <div className="services-card-grid">
-                {services.slice(0, 3).map(service => (
+                {services.slice(0, 3).map(service => {
+                  const inCart = isInCart(service.serviceId);
+                  const qty = getCartQty(service.serviceId);
+                  return (
                     <div
                         key={service.serviceId}
-                        className={`service-item-card ${selectedService === service.serviceId ? "active-card" : ""} ${service.isPopular ? "popular-card" : ""}`}
-                        onClick={() => setSelectedService(service.serviceId)}
+                        className={`service-item-card ${inCart ? "active-card" : ""} ${service.isPopular ? "popular-card" : ""}`}
                     >
                       {service.isPopular && <span className="popular-badge">PHỔ BIẾN</span>}
-                      <div className="service-img-holder">
+                      <div className="service-img-holder" onClick={() => { if (!inCart) addToCart(service.serviceId); }}>
                         <img src={service.imageUrl || DEFAULT_SERVICES[0].imageUrl} alt={service.serviceName} />
                       </div>
                       <div className="service-details-box">
-                        <div className="service-meta-header">
+                        <div className="service-meta-header" onClick={() => { if (!inCart) addToCart(service.serviceId); }}>
                           <h4>{service.serviceName}</h4>
                           <span className="service-price-label">{service.basePrice?.toLocaleString()}đ</span>
                         </div>
@@ -370,9 +401,39 @@ export default function BookingPage() {
                         <div className="service-duration-info">
                           <span>⏱ {service.durationMinutes} phút</span>
                         </div>
+                        <div className="service-cart-actions">
+                          {inCart ? (
+                            <div className="cart-qty-control">
+                              <button
+                                type="button"
+                                className="cart-qty-btn"
+                                onClick={(e) => { e.stopPropagation(); updateCartQuantity(service.serviceId, -1); }}
+                                disabled={qty <= 1}
+                              >−</button>
+                              <span className="cart-qty-value">{qty}</span>
+                              <button
+                                type="button"
+                                className="cart-qty-btn"
+                                onClick={(e) => { e.stopPropagation(); updateCartQuantity(service.serviceId, 1); }}
+                              >+</button>
+                              <button
+                                type="button"
+                                className="cart-remove-btn"
+                                onClick={(e) => { e.stopPropagation(); removeFromCart(service.serviceId); }}
+                              >✕</button>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              className="cart-add-btn"
+                              onClick={() => addToCart(service.serviceId)}
+                            >+ Thêm vào giỏ</button>
+                          )}
+                        </div>
                       </div>
                     </div>
-                ))}
+                  );
+                })}
               </div>
             </section>
 
@@ -615,15 +676,29 @@ export default function BookingPage() {
             <div className="secure-checkout-badge">🛡 THANH TOÁN BẢO MẬT</div>
             <h3>Tóm tắt đơn hàng</h3>
             <div className="summary-billing-breakdown">
-              <div className="billing-row prime-service">
-                <span className="service-title">{selectedServiceData ? selectedServiceData.serviceName : "Chưa chọn gói"}</span>
-                <span className="service-cost">{price.toLocaleString()}đ</span>
-              </div>
+              {cartServiceData.length === 0 ? (
+                <div className="billing-row prime-service">
+                  <span className="service-title">Chưa chọn dịch vụ</span>
+                </div>
+              ) : (
+                cartServiceData.map(item => (
+                  <div key={item.serviceId} className="billing-row prime-service" style={{ justifyContent: 'space-between' }}>
+                    <span className="service-title">
+                      {item.serviceData?.serviceName}
+                      <span className="cart-item-qty-badge" style={{ marginLeft: '6px', fontSize: '12px', color: 'var(--color-text-muted)' }}>
+                        x{item.quantity}
+                      </span>
+                    </span>
+                    <span className="service-cost">{(item.serviceData?.basePrice * item.quantity || 0).toLocaleString()}đ</span>
+                  </div>
+                ))
+              )}
               <div className="selected-datetime-preview">
                 <p>{selectedDate.getDate()} {monthNames[selectedDate.getMonth()]}, {selectedDate.getFullYear()}{selectedSlotData && ` • ${selectedSlotData.startTime}`}</p>
+                {totalDuration > 0 && <p style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>⏱ Tổng thời gian: ~{totalDuration} phút</p>}
               </div>
               <div className="billing-fees-list">
-                <div className="fee-line"><span>Giá cơ bản</span><span>{price.toLocaleString()}đ</span></div>
+                <div className="fee-line"><span>Giá dịch vụ</span><span>{subtotalBeforeFees.toLocaleString()}đ</span></div>
                 <div className="fee-line">
                   <span>Phụ phí xe ({vehicleType === "4_seats" ? "4 chỗ" : "7 chỗ"})</span>
                   <span>{surcharge > 0 ? `+${surcharge.toLocaleString()}đ` : "Miễn phí"}</span>

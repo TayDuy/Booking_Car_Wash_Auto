@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
     Car, LayoutGrid, BarChart2, Calendar, Archive, Megaphone, Bell,
     HelpCircle, Settings, Plus, Edit, Trash2, RefreshCw
@@ -26,12 +26,14 @@ const SIDEBAR_NAV = [
 
 export default function ManageCatalog() {
     const navigate = useNavigate();
+    const location = useLocation();
 
     // ==========================================
     // 1. STATE MANAGEMENT (Quản lý trạng thái biến)
     // Trong React, khi giá trị của State thay đổi, giao diện sẽ tự động vẽ lại (re-render)
     // ==========================================
-    const [activeTab, setActiveTab] = useState("branches"); // Tab đang hiển thị: "branches", "bays", hoặc "packages"
+    const initialTab = location.pathname.includes("services") ? "packages" : "branches";
+    const [activeTab, setActiveTab] = useState(initialTab); // Tab đang hiển thị: "branches", "bays", hoặc "packages"
     const [loading, setLoading] = useState(false); // Trạng thái đang tải dữ liệu từ server
 
     // Dữ liệu danh sách lấy từ Backend
