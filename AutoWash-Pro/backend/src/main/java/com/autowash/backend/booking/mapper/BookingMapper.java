@@ -119,6 +119,8 @@ public class BookingMapper {
                 .bookingDetailId(detail.getBookingDetailId())
                 .serviceId(detail.getService().getServiceId())
                 .serviceName(detail.getService().getServiceName())
+                .description(detail.getService().getDescription())
+                .durationMinutes(detail.getService().getDurationMinutes())
                 .quantity(detail.getQuantity())
                 .unitPrice(detail.getUnitPrice())
                 .subTotal(detail.getSubTotal())

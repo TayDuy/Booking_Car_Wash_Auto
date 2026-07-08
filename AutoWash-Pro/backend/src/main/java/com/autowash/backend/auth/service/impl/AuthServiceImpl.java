@@ -29,6 +29,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
+import com.autowash.backend.mail.service.MailService;
+
 import java.util.Map;
 import java.util.Optional;
 
@@ -43,6 +45,7 @@ public class AuthServiceImpl implements AuthService {
     private final OtpService otpService;
     private final LoyaltyTierRepository loyaltyTierRepository;
     private final RefreshTokenService refreshTokenService;
+    private final MailService mailService;
 
     private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(AuthServiceImpl.class);
     private static final java.security.SecureRandom secureRandom = new java.security.SecureRandom();
@@ -61,7 +64,8 @@ public class AuthServiceImpl implements AuthService {
                            CustomerRepository customerRepository,
                            OtpService otpService,
                            LoyaltyTierRepository loyaltyTierRepository,
-                           RefreshTokenService refreshTokenService) {
+                           RefreshTokenService refreshTokenService,
+                           MailService mailService) {
         this.authenticationManager = authenticationManager;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
@@ -70,26 +74,71 @@ public class AuthServiceImpl implements AuthService {
         this.otpService = otpService;
         this.loyaltyTierRepository = loyaltyTierRepository;
         this.refreshTokenService = refreshTokenService;
+        this.mailService = mailService;
     }
 
     @Override
-    @Transactional
+    @Transactional(noRollbackFor = BusinessException.class)
     public LoginResponseDTO login(LoginRequestDTO request) {
-        Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(
-                        request.getUsername().trim().toLowerCase(),
-                        request.getPassword()
-                )
-        );
+        String identifier = request.getUsername().trim();
+        User user = userRepository.findByEmailIgnoreCase(identifier)
+                .or(() -> userRepository.findByUsernameIgnoreCase(identifier))
+                .orElse(null);
 
-        SecurityContextHolder.getContext().setAuthentication(authentication);
+        if (user != null && user.getLockoutEndTime() != null) {
+            if (user.getLockoutEndTime().isAfter(java.time.LocalDateTime.now())) {
+                long seconds = java.time.Duration.between(java.time.LocalDateTime.now(), user.getLockoutEndTime()).getSeconds();
+                if (seconds < 0) seconds = 0;
+                String formatted = String.format("%02d:%02d", seconds / 60, seconds % 60);
+                throw new BusinessException(
+                        "Tài khoản đã bị tạm khóa do nhập sai mật khẩu quá 5 lần. Vui lòng thử lại sau " + formatted + " phút.",
+                        HttpStatus.BAD_REQUEST
+                );
+            } else {
+                user.setFailedAttempts(0);
+                user.setLockoutEndTime(null);
+                userRepository.save(user);
+            }
+        }
 
-        CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
-        User user = userRepository.findById(userDetails.getId())
-                .orElseThrow(() -> new BusinessException("Khong tim thay nguoi dung", HttpStatus.NOT_FOUND));
+        try {
+            Authentication authentication = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(
+                            request.getUsername().trim().toLowerCase(),
+                            request.getPassword()
+                    )
+            );
 
-        String token = jwtTokenProvider.generateToken(authentication);
-        return buildLoginResponse(token, user);
+            SecurityContextHolder.getContext().setAuthentication(authentication);
+
+            CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
+            User loggedUser = userRepository.findById(userDetails.getId())
+                    .orElseThrow(() -> new BusinessException("Khong tim thay nguoi dung", HttpStatus.NOT_FOUND));
+
+            loggedUser.setFailedAttempts(0);
+            loggedUser.setLockoutEndTime(null);
+            userRepository.save(loggedUser);
+
+            String token = jwtTokenProvider.generateToken(authentication);
+            return buildLoginResponse(token, loggedUser);
+
+        } catch (org.springframework.security.core.AuthenticationException e) {
+            if (user != null) {
+                int attempts = (user.getFailedAttempts() != null ? user.getFailedAttempts() : 0) + 1;
+                user.setFailedAttempts(attempts);
+                if (attempts >= 5) {
+                    user.setLockoutEndTime(java.time.LocalDateTime.now().plusMinutes(5));
+                    userRepository.save(user);
+                    throw new BusinessException(
+                            "Tài khoản đã bị tạm khóa do nhập sai mật khẩu quá 5 lần. Vui lòng thử lại sau 05:00 phút.",
+                            HttpStatus.BAD_REQUEST
+                    );
+                } else {
+                    userRepository.save(user);
+                }
+            }
+            throw new BusinessException("Tài khoản hoặc mật khẩu không chính xác", HttpStatus.BAD_REQUEST);
+        }
     }
 
     @Override
@@ -99,16 +148,10 @@ public class AuthServiceImpl implements AuthService {
         String normalizedEmail = request.getEmail().trim().toLowerCase();
         String normalizedPhone = normalizePhone(request.getPhone());
 
-        if (userRepository.existsByEmailIgnoreCase(normalizedEmail)) {
-            throw new BusinessException("Email '" + normalizedEmail + "' da duoc su dung");
-        }
-
-        if (userRepository.existsByUsernameIgnoreCase(normalizedUsername)) {
-            throw new BusinessException("Tai khoan '" + request.getUsername() + "' da duoc su dung");
-        }
-
-        if (userRepository.existsByPhone(normalizedPhone)) {
-            throw new BusinessException("So dien thoai '" + normalizedPhone + "' da duoc su dung");
+        if (userRepository.existsByEmailIgnoreCase(normalizedEmail)
+                || userRepository.existsByUsernameIgnoreCase(normalizedUsername)
+                || userRepository.existsByPhone(normalizedPhone)) {
+            throw new BusinessException("Thông tin đăng ký (email, tài khoản hoặc số điện thoại) đã được sử dụng");
         }
 
         if (!otpService.isEmailVerified(normalizedEmail)) {
@@ -235,6 +278,10 @@ public class AuthServiceImpl implements AuthService {
         userRepository.save(user);
 
         refreshTokenService.deleteByUserId(user.getId());
+
+        if (org.springframework.util.StringUtils.hasText(user.getEmail())) {
+            mailService.sendPasswordChangedEmail(user.getEmail(), user.getUsername());
+        }
     }
 
     @Override
@@ -249,7 +296,7 @@ public class AuthServiceImpl implements AuthService {
         } else {
             // Chống Timing-based email enumeration bằng cách giả lập thời gian xử lý (DB queries + gửi email)
             long elapsed = System.currentTimeMillis() - startTime;
-            long targetDelay = 350 + secureRandom.nextInt(250); // 350ms - 600ms
+            long targetDelay = 1500 + secureRandom.nextInt(2000); // 1500ms - 3500ms
 
             if (elapsed < targetDelay) {
                 try {
@@ -281,6 +328,10 @@ public class AuthServiceImpl implements AuthService {
         userRepository.save(user);
         refreshTokenService.deleteByUserId(user.getId());
         otpService.clearVerification(normalizedEmail, OtpService.PURPOSE_PASSWORD_RESET);
+
+        if (org.springframework.util.StringUtils.hasText(user.getEmail())) {
+            mailService.sendPasswordChangedEmail(user.getEmail(), user.getUsername());
+        }
     }
 
     private LoginResponseDTO buildLoginResponse(String token, User user) {

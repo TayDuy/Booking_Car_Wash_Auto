@@ -231,6 +231,92 @@
     font-weight: 500;
 }
 
+/* Cart actions */
+.service-cart-actions {
+    margin-top: 10px;
+    display: flex;
+    align-items: center;
+}
+
+.cart-add-btn {
+    background: var(--accent-color);
+    color: #fff;
+    border: none;
+    padding: 6px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+    width: 100%;
+}
+
+.cart-add-btn:hover {
+    background: var(--accent-hover);
+}
+
+.cart-qty-control {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+}
+
+.cart-qty-btn {
+    width: 32px;
+    height: 32px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: #fff;
+    color: var(--text-main);
+    font-size: 18px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+}
+
+.cart-qty-btn:hover:not(:disabled) {
+    border-color: var(--accent-color);
+    color: var(--accent-color);
+}
+
+.cart-qty-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.cart-qty-value {
+    font-size: 16px;
+    font-weight: 700;
+    min-width: 24px;
+    text-align: center;
+    color: var(--text-main);
+}
+
+.cart-remove-btn {
+    margin-left: auto;
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+}
+
+.cart-remove-btn:hover {
+    background: #fee2e2;
+    color: #dc2626;
+}
+
 /* ====================================================================
    BƯỚC 2: CHỌN THỜI GIAN (SCHEDULER SPLIT VIEW)
    ==================================================================== */

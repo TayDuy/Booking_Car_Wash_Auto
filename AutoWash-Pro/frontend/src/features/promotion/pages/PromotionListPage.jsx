@@ -7,7 +7,7 @@ import {
   getMyRewards,
   redeemReward,
 } from "../../../api/customerRewardApi";
-import { evaluateCustomerTier } from "../../../api/loyaltyApi";
+import { getMyTier } from "../../../api/loyaltyApi";
 
 function PromotionListPage() {
   const navigate = useNavigate();
@@ -67,12 +67,13 @@ function PromotionListPage() {
           promotionApi.list(),
           getAllRewards(),
           customerId ? getMyRewards(customerId) : Promise.resolve([]),
-          customerId ? evaluateCustomerTier(customerId) : Promise.resolve(null),
+          getMyTier(),
         ]);
 
       if (promotionRes.status === "fulfilled") {
         const rawPromotions = promotionRes.value?.data || promotionRes.value || [];
-        setLoyaltyInfo(rawLoyalty);
+        const rawTier = loyaltyRes.status === "fulfilled" ? (loyaltyRes.value?.data || loyaltyRes.value || null) : null;
+        setLoyaltyInfo(rawTier);
 
         const mappedPromotions = Array.isArray(rawPromotions)
           ? rawPromotions.map(mapPromotion)

@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -132,13 +133,15 @@ public class RewardController {
      *
      * GET /api/v1/rewards/redeemable?customerId=1&vehicleType=car
      */
+    @PreAuthorize("hasAnyRole('CUSTOMER', 'STAFF', 'ADMIN')")
     @GetMapping("/redeemable")
     public ResponseEntity<List<RewardResponseDTO>> getRedeemableRewards(
             @RequestParam Integer customerId,
-            @RequestParam String vehicleType
+            @RequestParam String vehicleType,
+            @AuthenticationPrincipal com.autowash.backend.security.CustomUserDetails userDetails
     ) {
         List<RewardResponseDTO> rewards =
-                rewardService.getRedeemableRewards(customerId, vehicleType);
+                rewardService.getRedeemableRewards(customerId, vehicleType, userDetails.getId());
 
         return ResponseEntity.ok(rewards);
     }
@@ -152,10 +155,11 @@ public class RewardController {
     @PreAuthorize("hasAnyRole('CUSTOMER', 'STAFF', 'ADMIN')")
     public ResponseEntity<RedeemRewardResponseDTO> redeemReward(
             @PathVariable("id") Integer rewardId,
-            @Valid @RequestBody RedeemRewardRequestDTO dto
+            @Valid @RequestBody RedeemRewardRequestDTO dto,
+            @AuthenticationPrincipal com.autowash.backend.security.CustomUserDetails userDetails
     ) {
         RedeemRewardResponseDTO response =
-                rewardService.redeemReward(rewardId, dto);
+                rewardService.redeemReward(rewardId, dto, userDetails.getId());
 
         return ResponseEntity.ok(response);
     }

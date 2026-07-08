@@ -125,6 +125,11 @@ const ProfilePage = () => {
       setPasswordError('Mật khẩu mới phải có ít nhất 8 ký tự');
       return;
     }
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/;
+    if (!passwordRegex.test(passwordForm.newPassword)) {
+      setPasswordError('Mật khẩu mới phải chứa ít nhất 1 chữ hoa, 1 chữ thường và 1 số');
+      return;
+    }
     if (passwordForm.newPassword !== passwordForm.confirmPassword) {
       setPasswordError('Mật khẩu xác nhận không khớp');
       return;
