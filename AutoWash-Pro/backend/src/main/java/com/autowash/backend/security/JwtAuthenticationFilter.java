@@ -46,8 +46,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     CustomUserDetails customDetails = (CustomUserDetails) userDetails;
                     String tokenPwdSig = jwtTokenProvider.getPasswordSignatureFromToken(jwt);
                     String currentPwdSig = jwtTokenProvider.generatePasswordSignature(customDetails.getPassword());
-                    if (tokenPwdSig != null && !tokenPwdSig.equals(currentPwdSig)) {
-                        throw new io.jsonwebtoken.security.SignatureException("Token has been invalidated because password changed");
+                    if (tokenPwdSig == null || !tokenPwdSig.equals(currentPwdSig)) {
+                        throw new io.jsonwebtoken.security.SignatureException("Token signature mismatch or missing password signature claim");
                     }
                 }
 
