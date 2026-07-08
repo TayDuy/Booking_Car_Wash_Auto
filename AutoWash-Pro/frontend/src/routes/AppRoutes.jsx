@@ -55,6 +55,9 @@ function AppRoutes() {
       {/* Landing page */}
       <Route path="/" element={<LandingPage />} />
 
+      {/* Public Services Showcase */}
+      <Route path="/services" element={<ServicesPage />} />
+
       {/* Unauthorized page */}
       <Route path="/unauthorized" element={<UnauthorizedPage />} />
 

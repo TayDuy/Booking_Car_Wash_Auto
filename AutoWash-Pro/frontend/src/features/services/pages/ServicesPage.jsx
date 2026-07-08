@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import { getActiveServices } from "../../../api/servicePackageService";
+import useAuth from "../../../hooks/useAuth";
 import "./ServicesPage.css";
 
 const FAQ_ITEMS = [
@@ -36,6 +37,11 @@ const CATEGORIES = [
 
 export default function ServicesPage() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const auth = useAuth();
+  const user = auth?.user;
+  const isCustomerScope = location.pathname.startsWith("/customer");
+
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState("all");
@@ -97,6 +103,34 @@ export default function ServicesPage() {
 
   return (
     <div className="services-showcase-page">
+      {/* Public Landing Header */}
+      {!isCustomerScope && (
+        <header className="landing-header">
+          <div className="app-container landing-header-inner">
+            <Link to="/" className="landing-logo">
+              <img src="/logo.png" alt="Logo" style={{ height: "36px", width: "auto" }} />
+              WashFlow Pro
+            </Link>
+
+            <nav className="landing-nav">
+              <Link to="/services">Dịch vụ</Link>
+              <a href="/#process">Đặt lịch</a>
+              <a href="/#pricing">Bảng giá</a>
+              <a href="/#contact">Liên hệ</a>
+            </nav>
+
+            <div className="landing-actions">
+              <Link to="/auth/login" className="landing-login">
+                Đăng nhập
+              </Link>
+              <Link to="/auth/register" className="landing-register">
+                Đăng ký
+              </Link>
+            </div>
+          </div>
+        </header>
+      )}
+
       {/* Hero Section */}
       <section className="services-hero">
         <div className="app-container hero-container">
@@ -107,7 +141,13 @@ export default function ServicesPage() {
               Khám phá các gói chăm sóc xe toàn diện ứng dụng công nghệ rửa không chạm thông minh, 
               giúp làm sạch sâu tối đa và bảo vệ sơn xe của bạn bền đẹp theo thời gian.
             </p>
-            <button className="hero-cta-btn" onClick={() => navigate("/customer/booking")}>
+            <button 
+              className="hero-cta-btn" 
+              onClick={() => {
+                if (user) navigate("/customer/booking");
+                else navigate("/auth/login?redirect=/customer/booking");
+              }}
+            >
               Đặt lịch rửa xe ngay
             </button>
           </div>
@@ -115,7 +155,7 @@ export default function ServicesPage() {
       </section>
 
       {/* Sticky Filter Bar */}
-      <div className="category-sticky-bar">
+      <div className="category-sticky-bar" style={!isCustomerScope ? { top: 0 } : {}}>
         <div className="app-container bar-container">
           {CATEGORIES.map((cat) => (
             <button
@@ -153,7 +193,13 @@ export default function ServicesPage() {
                       <span className="card-price">{formatPrice(svc.basePrice)}</span>
                       <span className="card-duration">⏱ {svc.durationMinutes} phút</span>
                     </div>
-                    <button className="card-book-btn" onClick={() => navigate("/customer/booking")}>
+                    <button 
+                      className="card-book-btn" 
+                      onClick={() => {
+                        if (user) navigate("/customer/booking");
+                        else navigate("/auth/login?redirect=/customer/booking");
+                      }}
+                    >
                       Đặt ngay
                     </button>
                   </div>
@@ -214,6 +260,22 @@ export default function ServicesPage() {
           </div>
         </div>
       </section>
+
+      {/* Public Footer */}
+      {!isCustomerScope && (
+        <footer className="global-footer-bar" style={{ borderTop: "1px solid #e2e8f0", marginTop: "40px" }}>
+          <div className="footer-brand-info">
+            <h4>WashFlow Pro</h4>
+            <p>© 2026 WashFlow Pro Automation. Tất cả quyền được bảo lưu.</p>
+          </div>
+          <div className="footer-nav-links">
+            <a href="#">Liên hệ</a>
+            <a href="#">Chính sách bảo mật</a>
+            <a href="#">Điều khoản dịch vụ</a>
+            <a href="#">Hỗ trợ</a>
+          </div>
+        </footer>
+      )}
     </div>
   );
 }
