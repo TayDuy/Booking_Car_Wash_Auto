@@ -27,6 +27,7 @@ public class VehicleServiceImpl implements VehicleService {
     private final BookingRepository bookingRepository;
 
     @Override
+    @Transactional(readOnly = true)
     public List<VehicleResponse> getMyVehicles(Integer userId) {
         Customer customer = customerRepository.findByUser_Id(userId)
                 .orElseThrow(() -> new BusinessException("Không tìm thấy khách hàng", HttpStatus.NOT_FOUND));
@@ -37,6 +38,7 @@ public class VehicleServiceImpl implements VehicleService {
     }
     
     @Override
+    @Transactional(readOnly = true)
     public List<VehicleResponse> getAllVehicles() {
         return vehicleRespository.findAll()
             .stream()
@@ -45,6 +47,7 @@ public class VehicleServiceImpl implements VehicleService {
     }
 
     @Override
+    @Transactional
     public VehicleResponse addVehicle(Integer userId, VehicleRequest request) {
         Customer customer = customerRepository.findByUser_Id(userId)
                 .orElseThrow(() -> new BusinessException("Không tìm thấy khách hàng", HttpStatus.NOT_FOUND));

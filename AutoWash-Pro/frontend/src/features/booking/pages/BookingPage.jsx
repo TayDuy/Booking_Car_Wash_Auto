@@ -295,15 +295,15 @@ export default function BookingPage() {
     }
   };
 
+  // FIX: toàn bộ logic đặt lịch trước đây bị tách rời thành 2 khối code nằm
+  // NGOÀI mọi function (một khối gọi bookingApi.create + navigate trôi nổi
+  // giữa component, một khối try/catch riêng bên dưới) → không hợp lệ về mặt
+  // cú pháp (await ngoài async function) và handleBooking chưa từng được định
+  // nghĩa, khiến nút "Xác nhận đặt lịch" không có handler thật để gọi.
+  // Gộp lại thành một hàm handleBooking() async duy nhất, giữ đúng thứ tự:
+  // validate -> đồng bộ hồ sơ -> tạo booking -> điều hướng theo phương thức
+  // thanh toán (offline -> trang thành công, online -> trang thanh toán).
   const handleBooking = async () => {
-    if (!selectedService) { alert("Vui lòng chọn gói dịch vụ!"); return; }
-    if (!agreeTerms) { alert("Vui lòng xác nhận thông tin dịch vụ và điều khoản dịch vụ để tiếp tục!"); return; }
-    if (!phone.trim()) { alert("Vui lòng nhập số điện thoại!"); return; }
-    if (!/^0(3[2-9]|5[25689]|7[06-9]|8[1-9]|9[0-9])[0-9]{7}$/.test(phone.trim())) {
-      alert("Số điện thoại không hợp lệ. Vui lòng nhập đúng định dạng SĐT Việt Nam (VD: 0912345678).");
-      return;
-    }
-
     const customerIdRaw = localStorage.getItem("customerId");
     if (!customerIdRaw) { alert("Không tìm thấy thông tin khách hàng. Vui lòng đăng nhập lại!"); return; }
     if (!fullName.trim()) { alert("Vui lòng nhập họ và tên!"); return; }
@@ -312,6 +312,7 @@ export default function BookingPage() {
     if (!brand.trim()) { alert("Vui lòng nhập hãng xe!"); return; }
     if (!selectedTime) { alert("Vui lòng chọn khung giờ!"); return; }
     if (!selectedBranch) { alert("Vui lòng chọn chi nhánh!"); return; }
+    if (!agreeTerms) { alert("Vui lòng xác nhận thông tin trước khi đặt lịch!"); return; }
 
     try {
       await syncProfileIfChanged();
@@ -329,7 +330,18 @@ export default function BookingPage() {
       const response = await bookingApi.create(bookingData);
       const result = response.data;
       const bookingId = result?.bookingId || result?.id || result?.data?.bookingId;
-      navigate("/customer/payment", { state: { bookingId } });
+
+      // Thanh toán tại trạm (offline): không cần qua cổng thanh toán, đưa thẳng
+      // khách sang trang xác nhận đặt lịch thành công.
+      // Thanh toán online: giữ nguyên luồng cũ, điều hướng sang PaymentPage.
+      if (paymentMethod === "offline") {
+        // Điều hướng kèm bookingId trên URL (khớp route "booking/success/:bookingId")
+        // thay vì chỉ dựa vào location.state — để trang thành công vẫn tải được
+        // đúng booking khi khách F5 hoặc mở lại link, không bị mất state.
+        navigate(`/customer/booking/success/${bookingId}`, { state: { booking: result } });
+      } else {
+        navigate("/customer/payment", { state: { bookingId } });
+      }
     } catch (error) {
       alert(error.response?.data?.message || "Đặt lịch thất bại. Vui lòng thử lại!");
     }
@@ -484,11 +496,9 @@ export default function BookingPage() {
                   <div className="input-suggest-wrapper">
                     <input
                         type="text"
-                        inputMode="numeric"
-                        maxLength={10}
                         placeholder="090 123 4567"
                         value={phone}
-                        onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
+                        onChange={(e) => setPhone(e.target.value)}
                         onFocus={() => setShowPhoneSuggest(true)}
                         onBlur={() => setTimeout(() => setShowPhoneSuggest(false), 150)}
                     />
@@ -579,22 +589,33 @@ export default function BookingPage() {
                 </div>
                 <div className="form-field-group">
                   <label>Loại xe *</label>
-                  <div className="vehicle-type-segmented-control">
+                  {/* Xe cũ (đã chọn từ danh sách đã lưu) thì loại xe khóa theo đúng hồ sơ
+                      đã đăng ký, không cho đổi tùy tiện ngay tại đây — tránh ghi sai lệch
+                      loại xe vào hồ sơ mỗi lần đặt lịch. Muốn đổi loại xe của xe đã lưu,
+                      khách cần vào "Quản lý xe của tôi" để chỉnh sửa trực tiếp. */}
+                  <div className={`vehicle-type-segmented-control ${selectedVehicleId ? "segmented-locked" : ""}`}>
                     <button
                         type="button"
-                        className={`segment-btn ${vehicleType === "4_seats" ? "segment-active" : ""}`}
+                        className={`segment-btn ${vehicleType === "4_seats" ? "segment-active" : ""} ${selectedVehicleId ? "segment-disabled" : ""}`}
+                        disabled={!!selectedVehicleId}
                         onClick={() => setVehicleType("4_seats")}
                     >
                       <MdDirectionsCar className="car-icon" /> Xe 4 chỗ
                     </button>
                     <button
                         type="button"
-                        className={`segment-btn ${vehicleType === "7_seats" ? "segment-active" : ""}`}
+                        className={`segment-btn ${vehicleType === "7_seats" ? "segment-active" : ""} ${selectedVehicleId ? "segment-disabled" : ""}`}
+                        disabled={!!selectedVehicleId}
                         onClick={() => setVehicleType("7_seats")}
                     >
                       <MdAirportShuttle className="car-icon" /> Xe 7 chỗ
                     </button>
                   </div>
+                  {selectedVehicleId && (
+                      <small className="vehicle-type-locked-hint">
+                        Loại xe theo hồ sơ xe đã lưu. Để đổi, vào "Quản lý xe của tôi" hoặc nhập biển số xe khác.
+                      </small>
+                  )}
                 </div>
               </div>
               <div className="form-field-group full-width-field">

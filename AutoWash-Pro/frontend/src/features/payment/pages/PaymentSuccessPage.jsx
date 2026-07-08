@@ -2,8 +2,9 @@ import "./PaymentSuccessPage.css";
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { CheckCircle2, Copy, Home, ListChecks, MapPin } from "lucide-react";
+import { BACKEND_ROOT_URL } from "../../../api/axiosClient";
 
-const API_BASE = "http://localhost:8080";
+const API_BASE = BACKEND_ROOT_URL;
 const STORE_NAME = "AutoWash Pro";
 
 // Trang này CHỈ hiển thị kết quả thanh toán đã thành công (đọc lại), không tạo
@@ -174,7 +175,8 @@ function PaymentSuccessPage() {
                 </div>
                 <h1>Thanh Toán Thành Công!</h1>
                 <p className="pay-success-subtitle">
-                    Cảm ơn bạn đã sử dụng dịch vụ của {STORE_NAME}. VNPAY đã xác nhận giao dịch của bạn,
+                    Cảm ơn bạn đã sử dụng dịch vụ của {STORE_NAME}.{" "}
+                    {paymentResult?.paymentMethod === "paypal" ? "PayPal" : "VNPAY"} đã xác nhận giao dịch của bạn,
                     booking của bạn giờ đã được thanh toán.
                 </p>
 
@@ -231,7 +233,9 @@ function PaymentSuccessPage() {
                             </div>
                             <div>
                                 <span>Phương thức</span>
-                                <strong>🏦 VNPAY QR</strong>
+                                <strong>
+                                    {paymentResult?.paymentMethod === "paypal" ? "🅿️ PayPal" : "🏦 VNPAY QR"}
+                                </strong>
                             </div>
                         </div>
 

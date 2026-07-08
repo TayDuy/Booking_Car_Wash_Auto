@@ -101,7 +101,12 @@ public class SecurityConfig {
                                 // VNPAY gọi callback trực tiếp (server-to-server hoặc redirect trình duyệt),
                                 // KHÔNG mang theo JWT của user nên phải để public, nếu không sẽ luôn bị 401.
                                 "/api/v1/payments/vnpay-return",
-                                "/api/v1/payments/vnpay-ipn"
+                                "/api/v1/payments/vnpay-ipn",
+
+                                // PAYPAL gọi redirect trình duyệt về đây sau khi khách approve/hủy thanh toán,
+                                // cũng KHÔNG mang theo JWT của user nên phải để public như VNPAY.
+                                "/api/v1/payments/paypal-return",
+                                "/api/v1/payments/paypal-cancel"
                         ).permitAll()
 
                         // ─── Admin only ────────────────────────────────────────────────────
