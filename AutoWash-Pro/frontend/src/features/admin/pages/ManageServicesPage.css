@@ -1,0 +1,134 @@
+.create-btn {
+  height: 42px;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: none;
+  border-radius: 12px;
+  background: #0052cc;
+  color: white;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.action-btn.edit {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.service-modal {
+  width: 720px;
+  max-width: calc(100vw - 32px);
+  background: white;
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 30px 80px rgba(15, 23, 42, 0.3);
+}
+
+.service-form {
+  padding: 24px;
+}
+
+.service-form .form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.service-form .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.service-form .form-group.full {
+  grid-column: span 2;
+}
+
+.service-form label {
+  color: #344054;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.service-form input,
+.service-form select,
+.service-form textarea {
+  padding: 0 12px;
+  border: 1px solid #d7dce4;
+  border-radius: 10px;
+  outline: none;
+  background: white;
+  font-size: 14px;
+}
+
+.service-form input,
+.service-form select {
+  height: 44px;
+}
+
+.service-form textarea {
+  padding-top: 12px;
+  resize: vertical;
+}
+
+.service-form input:focus,
+.service-form select:focus,
+.service-form textarea:focus {
+  border-color: #0052cc;
+  box-shadow: 0 0 0 4px rgba(0, 82, 204, 0.14);
+}
+
+.checkbox-group {
+  grid-column: span 2;
+}
+
+.checkbox-label {
+  flex-direction: row !important;
+  align-items: center;
+  gap: 10px !important;
+}
+
+.checkbox-label input {
+  width: 18px;
+  height: 18px;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.cancel-modal-btn,
+.save-btn {
+  height: 42px;
+  padding: 0 18px;
+  border: none;
+  border-radius: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.cancel-modal-btn {
+  background: #f1f5f9;
+  color: #334155;
+}
+
+.save-btn {
+  background: #0052cc;
+  color: white;
+}
+
+@media (max-width: 720px) {
+  .service-form .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .service-form .form-group.full,
+  .checkbox-group {
+    grid-column: span 1;
+  }
+}
