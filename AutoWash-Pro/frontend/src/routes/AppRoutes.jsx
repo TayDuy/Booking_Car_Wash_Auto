@@ -37,6 +37,8 @@ import AdminNotificationPage from "../features/admin/pages/AdminNotificationPage
 import ReportsPage from "../features/admin/pages/ReportsPage";
 import ManageCatalog from "../features/admin/pages/ManageCatalog";
 import AuditLogsPage from "../features/admin/pages/AuditLogsPage";
+import ManageBranchesPage from "../features/admin/pages/ManageBranchesPage";
+import ManageServicesPage from "../features/admin/pages/ManageServicesPage";
 
 import ManagerDashboardPage from "../features/manager/pages/ManagerDashboardPage";
 import ManagerBookingsPage from "../features/manager/pages/ManagerBookingsPage";
@@ -101,8 +103,8 @@ function AppRoutes() {
         <Route path="customers" element={<ManageCustomersPage />} />
         <Route path="promotions" element={<ManagePromotionsPage />} />
         <Route path="vehicles" element={<ManageVehiclesPage />} />
-        <Route path="branches" element={<ManageCatalog />} />
-        <Route path="services" element={<ManageCatalog />} />
+        <Route path="branches" element={<ManageBranchesPage />} />
+        <Route path="services" element={<ManageServicesPage />} />
         <Route path="notifications" element={<AdminNotificationPage />} />
         <Route path="reports" element={<ReportsPage />} />
         <Route path="audit-logs" element={<AuditLogsPage />} />
