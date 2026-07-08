@@ -28,7 +28,7 @@ function LandingPage() {
           </Link>
 
           <nav className="landing-nav">
-            <Link to="/customer/services">Dịch vụ</Link>
+            <Link to="/services">Dịch vụ</Link>
             <a href="#process">Đặt lịch</a>
             <a href="#pricing">Bảng giá</a>
             <a href="#contact">Liên hệ</a>
