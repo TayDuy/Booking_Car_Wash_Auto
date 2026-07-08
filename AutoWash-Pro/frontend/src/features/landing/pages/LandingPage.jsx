@@ -1,7 +1,23 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { getActiveServices } from "../../../api/servicePackageService";
 import "./LandingPage.css";
 
 function LandingPage() {
+  const [services, setServices] = useState([]);
+
+  useEffect(() => {
+    getActiveServices()
+      .then((res) => {
+        const list = res.data?.data || res.data || [];
+        setServices(Array.isArray(list) ? list : []);
+      })
+      .catch(() => {});
+  }, []);
+
+  const formatPrice = (price) =>
+    (price ?? 0).toLocaleString("vi-VN") + " VND";
+
   return (
     <div className="landing-page">
       <header className="landing-header">
@@ -168,41 +184,65 @@ function LandingPage() {
             </div>
 
             <div className="pricing-grid">
-              <article className="pricing-card">
-                <h3>Gói Cơ Bản</h3>
-                <strong>150.000 VND</strong>
-                <ul>
-                  <li>Rửa không chạm</li>
-                  <li>Làm khô tự động</li>
-                  <li>Vệ sinh lốp xe</li>
-                </ul>
-                <Link to="/auth/register">Chọn gói</Link>
-              </article>
+              {services.length === 0 && (
+                <>
+                  <article className="pricing-card">
+                    <h3>Rửa xe cơ bản</h3>
+                    <strong>100.000 VND</strong>
+                    <ul>
+                      <li>Rửa ngoài, xịt gầm nhẹ</li>
+                      <li>Lau khô</li>
+                      <li>30 phút</li>
+                    </ul>
+                    <Link to="/auth/register">Chọn gói</Link>
+                  </article>
 
-              <article className="pricing-card featured">
-                <span>Phổ biến nhất</span>
-                <h3>Gói Cao Cấp</h3>
-                <strong>350.000 VND</strong>
-                <ul>
-                  <li>Tất cả từ gói cơ bản</li>
-                  <li>Phủ nano bảo vệ sơn</li>
-                  <li>Vệ sinh nội thất cơ bản</li>
-                  <li>Khử mùi khoang xe</li>
-                </ul>
-                <Link to="/auth/register">Chọn gói</Link>
-              </article>
+                  <article className="pricing-card featured">
+                    <span>Phổ biến</span>
+                    <h3>Rửa xe cao cấp</h3>
+                    <strong>180.000 VND</strong>
+                    <ul>
+                      <li>Rửa cao áp</li>
+                      <li>Vệ sinh mâm lốp</li>
+                      <li>Lau khô kỹ</li>
+                      <li>45 phút</li>
+                    </ul>
+                    <Link to="/auth/register">Chọn gói</Link>
+                  </article>
 
-              <article className="pricing-card">
-                <h3>Gói Đặc Biệt</h3>
-                <strong>600.000 VND</strong>
-                <ul>
-                  <li>Tất cả từ gói cao cấp</li>
-                  <li>Đánh bóng bề mặt chuyên sâu</li>
-                  <li>Tẩy ố kính và lazang</li>
-                  <li>Bảo dưỡng khoang máy</li>
-                </ul>
-                <Link to="/auth/register">Chọn gói</Link>
-              </article>
+                  <article className="pricing-card">
+                    <h3>Vệ sinh nội thất</h3>
+                    <strong>150.000 VND</strong>
+                    <ul>
+                      <li>Hút bụi</li>
+                      <li>Lau taplo</li>
+                      <li>Khử mùi nhanh</li>
+                      <li>45 phút</li>
+                    </ul>
+                    <Link to="/auth/register">Chọn gói</Link>
+                  </article>
+                </>
+              )}
+
+              {services.slice(0, 6).map((svc, idx) => (
+                <article
+                  key={svc.serviceId}
+                  className={`pricing-card${idx === 1 ? " featured" : ""}`}
+                >
+                  {idx === 1 && <span>Phổ biến nhất</span>}
+                  <h3>{svc.serviceName}</h3>
+                  <strong>{formatPrice(svc.basePrice)}</strong>
+                  <p style={{ margin: "0 0 16px", fontSize: 14, lineHeight: 1.6, color: idx === 1 ? "rgba(255,255,255,0.86)" : "#5d6678" }}>
+                    {svc.description}
+                  </p>
+                  <ul>
+                    <li>⏱ {svc.durationMinutes} phút</li>
+                    <li>Giá chưa bao gồm phụ phí</li>
+                    <li>Áp dụng tại tất cả chi nhánh</li>
+                  </ul>
+                  <Link to="/auth/register">Chọn gói</Link>
+                </article>
+              ))}
             </div>
           </div>
         </section>
