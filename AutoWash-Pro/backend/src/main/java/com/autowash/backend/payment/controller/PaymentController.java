@@ -150,6 +150,54 @@ public class PaymentController {
         return redirectTo(failureUrl(payment.getBookingId(), "payment_failed"));
     }
 
+    // ── PAYPAL ────────────────────────────────────────────────────────────────
+
+    /**
+     * Tạo PayPal Order cho payment {id} — gọi khi khách chọn phương thức PayPal.
+     * Trả về orderId + approvalUrl để frontend redirect (window.location.href = approvalUrl).
+     */
+    @PostMapping("/{id}/paypal-order")
+    public ResponseEntity<Map<String, String>> createPaypalOrder(@PathVariable Integer id) {
+        return ResponseEntity.ok(paymentService.createPaypalOrder(id));
+    }
+
+    /**
+     * PayPal redirect trình duyệt (KHÔNG kèm JWT) về đây sau khi khách approve thanh toán,
+     * kèm query "token" = PayPal order id (và "PayerID"). Capture ngay tại đây rồi
+     * redirect tiếp về trang thanh toán frontend — cùng pattern với vnpay-return.
+     */
+    @GetMapping("/paypal-return")
+    public ResponseEntity<Void> paypalReturn(@RequestParam("token") String orderId) {
+        PaymentResponseDTO payment;
+        try {
+            payment = paymentService.processPaypalPayment(orderId);
+        } catch (Exception e) {
+            return redirectTo(failureUrl(null, "paypal_capture_failed"));
+        }
+
+        if (payment.getPaymentStatus() == PaymentStatus.paid) {
+            return redirectTo(successUrl(payment.getPaymentId()));
+        }
+        return redirectTo(failureUrl(payment.getBookingId(), "paypal_not_completed"));
+    }
+
+    /**
+     * Khách bấm "Cancel"/quay lại từ trang PayPal — đánh dấu payment failed và
+     * redirect về trang thanh toán để khách có thể thử lại.
+     */
+    @GetMapping("/paypal-cancel")
+    public ResponseEntity<Void> paypalCancel(@RequestParam(value = "token", required = false) String orderId) {
+        Integer bookingId = null;
+        if (orderId != null) {
+            try {
+                bookingId = paymentService.markPaypalFailed(orderId).getBookingId();
+            } catch (Exception ignored) {
+                // orderId không hợp lệ/không tìm thấy — vẫn redirect về trang thanh toán bình thường.
+            }
+        }
+        return redirectTo(failureUrl(bookingId, "paypal_cancelled"));
+    }
+
     private String successUrl(Integer paymentId) {
         return UriComponentsBuilder.fromUriString(FRONTEND_BASE_URL + "/customer/payment")
                 .queryParam("paymentId", paymentId)

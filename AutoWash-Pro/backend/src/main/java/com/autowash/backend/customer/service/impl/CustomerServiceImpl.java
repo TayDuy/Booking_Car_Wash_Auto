@@ -28,6 +28,7 @@ public class CustomerServiceImpl implements CustomerService {
     private final PasswordEncoder passwordEncoder;
 
     @Override
+    @Transactional(readOnly = true)
     public CustomerProfileResponse getCustomerProfile(Integer userId) {
         Customer customer = customerRepository.findByUser_Id(userId)  // ← fix
                 .orElseThrow(() -> new BusinessException("Không tìm thấy khách hàng", HttpStatus.NOT_FOUND));
@@ -54,6 +55,7 @@ public class CustomerServiceImpl implements CustomerService {
         return mapToResponse(updateCustomer);
     }
     @Override
+    @Transactional(readOnly = true)
     public List<CustomerProfileResponse> getAllCustomers() {
         return customerRepository.findAll()
                 .stream()

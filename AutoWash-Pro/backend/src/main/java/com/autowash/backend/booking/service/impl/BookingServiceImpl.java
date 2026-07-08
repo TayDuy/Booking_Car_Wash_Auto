@@ -103,12 +103,27 @@ public class BookingServiceImpl implements BookingService {
         String normalizedPlate = request.getLicensePlate().trim().toUpperCase();
         Vehicle vehicle = vehicleRepository.findByLicensePlateAndCustomer_CustomerId(normalizedPlate, customer.getCustomerId())
                 .map(existing -> {
+                    boolean needsUpdate = false;
+
                     // Xe đã có sẵn của đúng customer này -> kích hoạt lại nếu trước đó bị soft-delete
                     if (!Boolean.TRUE.equals(existing.getIsActive())) {
                         existing.setIsActive(true);
-                        return vehicleRepository.save(existing);
+                        needsUpdate = true;
                     }
-                    return existing;
+
+                    // FIX: trước đây khi khách chọn xe cũ và đổi loại xe (4 chỗ <-> 7 chỗ)
+                    // ngay trên trang booking, lựa chọn đó chỉ được dùng để tính phụ phí
+                    // cho lần đặt này rồi bị bỏ qua — hồ sơ xe (Vehicle) vẫn giữ loại xe
+                    // cũ. Lần đặt lịch sau đó, xe lại được autofill với loại xe sai.
+                    // Giờ đồng bộ luôn: nếu loại xe chọn trên booking khác với loại xe
+                    // đang lưu trong hồ sơ, cập nhật lại hồ sơ xe cho khớp.
+                    Vehicle.VehicleType requestedType = resolveVehicleType(request.getVehicleType());
+                    if (existing.getVehicleType() != requestedType) {
+                        existing.setVehicleType(requestedType);
+                        needsUpdate = true;
+                    }
+
+                    return needsUpdate ? vehicleRepository.save(existing) : existing;
                 })
                 .orElseGet(() -> {
                     // Không tìm thấy xe của customer này với biển số đó -> tạo mới

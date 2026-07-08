@@ -51,6 +51,16 @@ public interface PaymentRepository extends JpaRepository<Payment, Integer> {
     List<Payment> findByPaymentMethod(PaymentMethod paymentMethod);
 
     /**
+     * Tìm payment theo PayPal order id — dùng khi PayPal redirect về paypal-return
+     * (query param "token") để xác định payment tương ứng cần capture.
+     */
+    Optional<Payment> findByPaypalOrderId(String paypalOrderId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT p FROM Payment p WHERE p.paypalOrderId = :orderId")
+    Optional<Payment> findByPaypalOrderIdForUpdate(@Param("orderId") String orderId);
+
+    /**
      * FR-7: Lấy các payment đã paid trong khoảng thời gian — dùng để tính điểm loyalty.
      * Batch job chạy định kỳ hoặc admin reconcile cuối ngày.
      */

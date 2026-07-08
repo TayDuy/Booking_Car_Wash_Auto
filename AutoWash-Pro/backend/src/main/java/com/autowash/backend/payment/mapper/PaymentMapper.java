@@ -93,6 +93,9 @@ public class PaymentMapper {
                 .vnpayBankCode(payment.getVnpayBankCode())
                 .vnpayCardType(payment.getVnpayCardType())
                 .vnpayResponseCode(payment.getVnpayResponseCode())
+                .paypalOrderId(payment.getPaypalOrderId())
+                .paypalCaptureId(payment.getPaypalCaptureId())
+                .paypalPayerEmail(payment.getPaypalPayerEmail())
                 // Audit
                 .createdAt(payment.getCreatedAt())
                 .updatedAt(payment.getUpdatedAt())
