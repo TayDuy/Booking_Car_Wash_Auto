@@ -574,8 +574,8 @@ const ProfilePage = () => {
                   </div>
                 </div>
                 <div className="sub-features">
-                  {subInfo.features.map((feature, i) => (
-                    <div key={i} className="sub-feature">
+                  {subInfo.features.map((feature) => (
+                    <div key={feature} className="sub-feature">
                       <span className="material-symbols-outlined text-secondary">check_circle</span>
                       {feature}
                     </div>

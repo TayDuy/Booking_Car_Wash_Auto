@@ -195,11 +195,9 @@ export default function ManageBookingsPage() {
       </div>
 
       <div className="manage-card">
-        {loading ? (
-          <div className="empty-state">Đang tải danh sách đặt lịch...</div>
-        ) : filteredBookings.length === 0 ? (
-          <div className="empty-state">Không có đơn đặt lịch phù hợp.</div>
-        ) : (
+        {loading && <div className="empty-state">Đang tải danh sách đặt lịch...</div>}
+        {!loading && filteredBookings.length === 0 && <div className="empty-state">Không có đơn đặt lịch phù hợp.</div>}
+        {!loading && filteredBookings.length > 0 && (
           <div className="booking-table-wrap">
             <table className="booking-table">
               <thead>

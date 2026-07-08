@@ -394,8 +394,8 @@ export default function BookingPage() {
                         </div>
                         <p className="service-brief">{service.description}</p>
                         <ul className="service-feature-checklist">
-                          {(service.features || []).map((feature, idx) => (
-                              <li key={idx}><span>✓</span> {feature}</li>
+                          {(service.features || []).map((feature) => (
+                              <li key={feature}><span>✓</span> {feature}</li>
                           ))}
                         </ul>
                         <div className="service-duration-info">
@@ -465,7 +465,7 @@ export default function BookingPage() {
                           selectedDate.getFullYear() === currentDate.getFullYear();
                       return (
                           <div
-                              key={index}
+                              key={day !== null ? `day-${day}` : `blank-${index}`}
                               className={`calendar-day-number-cell p-2 rounded cursor-pointer transition-colors ${day ? "clickable-day hover:bg-primary-container hover:text-on-primary-container" : "blank-day text-on-surface-variant opacity-50"} ${isSelected ? "day-selected-active bg-primary text-on-primary font-bold shadow-sm" : ""}`}
                               onClick={() => { if (day) setSelectedDate(new Date(currentDate.getFullYear(), currentDate.getMonth(), day)); }}
                           >

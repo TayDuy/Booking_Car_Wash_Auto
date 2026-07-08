@@ -18,7 +18,7 @@ public class LoginRateLimitFilter extends OncePerRequestFilter {
 
     private final Map<String, List<Long>> ipRequestTimestamps = new ConcurrentHashMap<>();
     private static final int MAX_REQUESTS_PER_MINUTE = 10;
-    private static final long TIME_WINDOW_MS = 60 * 1000; // 1 minute
+    private static final long TIME_WINDOW_MS = 60L * 1000; // 1 minute
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)

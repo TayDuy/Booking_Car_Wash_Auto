@@ -4,6 +4,7 @@ import com.autowash.backend.auth.service.OtpService;
 import com.autowash.backend.common.exception.BusinessException;
 import com.autowash.backend.otp.entity.OtpVerification;
 import com.autowash.backend.otp.repository.OtpRepository;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -15,6 +16,7 @@ import java.security.SecureRandom;
 import java.time.LocalDateTime;
 
 @Service
+@Slf4j
 public class OtpServiceImpl implements OtpService {
 
     private static final int OTP_MAX_ATTEMPTS = 5;
@@ -64,9 +66,9 @@ public class OtpServiceImpl implements OtpService {
         mailService.sendOtpEmail(normalizedEmail, otpCode, normalizedPurpose);
 
         if (logOtpCode) {
-            System.out.println("========================================");
-            System.out.println("OTP code for " + normalizedEmail + ": " + otpCode);
-            System.out.println("========================================");
+            log.info("========================================");
+            log.info("OTP code for {}: {}", normalizedEmail, otpCode);
+            log.info("========================================");
         }
     }
 

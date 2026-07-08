@@ -12,7 +12,7 @@ import java.util.concurrent.ConcurrentHashMap;
 @Service
 public class SseTicketServiceImpl implements SseTicketService {
 
-    private static final long TICKET_TTL_MS = 60 * 1000; // 60 seconds
+    private static final long TICKET_TTL_MS = 60L * 1000; // 60 seconds
 
     private final Map<String, TicketInfo> ticketMap = new ConcurrentHashMap<>();
 

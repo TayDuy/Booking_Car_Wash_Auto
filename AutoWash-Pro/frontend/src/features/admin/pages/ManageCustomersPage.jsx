@@ -215,11 +215,9 @@ function ManageCustomersPage() {
         </div>
 
         <div className="um-table-wrap">
-          {loading ? (
-            <div style={{ padding: "40px", textAlign: "center", color: "#64748b" }}>Đang tải danh sách khách hàng...</div>
-          ) : filteredCustomers.length === 0 ? (
-            <div style={{ padding: "40px", textAlign: "center", color: "#64748b" }}>Không có khách hàng phù hợp.</div>
-          ) : (
+          {loading && <div style={{ padding: "40px", textAlign: "center", color: "#64748b" }}>Đang tải danh sách khách hàng...</div>}
+          {!loading && filteredCustomers.length === 0 && <div style={{ padding: "40px", textAlign: "center", color: "#64748b" }}>Không có khách hàng phù hợp.</div>}
+          {!loading && filteredCustomers.length > 0 && (
             <table className="um-table">
               <thead>
                 <tr>

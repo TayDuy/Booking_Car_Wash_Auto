@@ -85,21 +85,7 @@ public class AuthServiceImpl implements AuthService {
                 .or(() -> userRepository.findByUsernameIgnoreCase(identifier))
                 .orElse(null);
 
-        if (user != null && user.getLockoutEndTime() != null) {
-            if (user.getLockoutEndTime().isAfter(java.time.LocalDateTime.now())) {
-                long seconds = java.time.Duration.between(java.time.LocalDateTime.now(), user.getLockoutEndTime()).getSeconds();
-                if (seconds < 0) seconds = 0;
-                String formatted = String.format("%02d:%02d", seconds / 60, seconds % 60);
-                throw new BusinessException(
-                        "Tài khoản đã bị tạm khóa do nhập sai mật khẩu quá 5 lần. Vui lòng thử lại sau " + formatted + " phút.",
-                        HttpStatus.BAD_REQUEST
-                );
-            } else {
-                user.setFailedAttempts(0);
-                user.setLockoutEndTime(null);
-                userRepository.save(user);
-            }
-        }
+        checkUserLockout(user);
 
         try {
             Authentication authentication = authenticationManager.authenticate(
@@ -123,21 +109,45 @@ public class AuthServiceImpl implements AuthService {
             return buildLoginResponse(token, loggedUser);
 
         } catch (org.springframework.security.core.AuthenticationException e) {
-            if (user != null) {
-                int attempts = (user.getFailedAttempts() != null ? user.getFailedAttempts() : 0) + 1;
-                user.setFailedAttempts(attempts);
-                if (attempts >= 5) {
-                    user.setLockoutEndTime(java.time.LocalDateTime.now().plusMinutes(5));
-                    userRepository.save(user);
-                    throw new BusinessException(
-                            "Tài khoản đã bị tạm khóa do nhập sai mật khẩu quá 5 lần. Vui lòng thử lại sau 05:00 phút.",
-                            HttpStatus.BAD_REQUEST
-                    );
-                } else {
-                    userRepository.save(user);
-                }
-            }
+            handleFailedLoginAttempts(user);
             throw new BusinessException("Tài khoản hoặc mật khẩu không chính xác", HttpStatus.BAD_REQUEST);
+        }
+    }
+
+    private void checkUserLockout(User user) {
+        if (user == null || user.getLockoutEndTime() == null) {
+            return;
+        }
+        if (user.getLockoutEndTime().isAfter(java.time.LocalDateTime.now())) {
+            long seconds = java.time.Duration.between(java.time.LocalDateTime.now(), user.getLockoutEndTime()).getSeconds();
+            if (seconds < 0) seconds = 0;
+            String formatted = String.format("%02d:%02d", seconds / 60, seconds % 60);
+            throw new BusinessException(
+                    "Tài khoản đã bị tạm khóa do nhập sai mật khẩu quá 5 lần. Vui lòng thử lại sau " + formatted + " phút.",
+                    HttpStatus.BAD_REQUEST
+            );
+        } else {
+            user.setFailedAttempts(0);
+            user.setLockoutEndTime(null);
+            userRepository.save(user);
+        }
+    }
+
+    private void handleFailedLoginAttempts(User user) {
+        if (user == null) {
+            return;
+        }
+        int attempts = (user.getFailedAttempts() != null ? user.getFailedAttempts() : 0) + 1;
+        user.setFailedAttempts(attempts);
+        if (attempts >= 5) {
+            user.setLockoutEndTime(java.time.LocalDateTime.now().plusMinutes(5));
+            userRepository.save(user);
+            throw new BusinessException(
+                    "Tài khoản đã bị tạm khóa do nhập sai mật khẩu quá 5 lần. Vui lòng thử lại sau 05:00 phút.",
+                    HttpStatus.BAD_REQUEST
+            );
+        } else {
+            userRepository.save(user);
         }
     }
 
