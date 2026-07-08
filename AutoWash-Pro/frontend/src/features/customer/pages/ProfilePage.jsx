@@ -125,8 +125,10 @@ const ProfilePage = () => {
       setPasswordError('Mật khẩu mới phải có ít nhất 8 ký tự');
       return;
     }
-    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/;
-    if (!passwordRegex.test(passwordForm.newPassword)) {
+    const hasLowercase = /[a-z]/.test(passwordForm.newPassword);
+    const hasUppercase = /[A-Z]/.test(passwordForm.newPassword);
+    const hasDigit = /\d/.test(passwordForm.newPassword);
+    if (!hasLowercase || !hasUppercase || !hasDigit) {
       setPasswordError('Mật khẩu mới phải chứa ít nhất 1 chữ hoa, 1 chữ thường và 1 số');
       return;
     }
