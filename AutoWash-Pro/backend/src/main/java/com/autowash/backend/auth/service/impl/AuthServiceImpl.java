@@ -142,8 +142,10 @@ public class AuthServiceImpl implements AuthService {
         if (attempts >= 5) {
             user.setLockoutEndTime(java.time.LocalDateTime.now().plusMinutes(5));
             userRepository.save(user);
+            long seconds = 300;
+            String formatted = String.format("%02d:%02d", seconds / 60, seconds % 60);
             throw new BusinessException(
-                    "Tài khoản đã bị tạm khóa do nhập sai mật khẩu quá 5 lần. Vui lòng thử lại sau 05:00 phút.",
+                    "Tài khoản đã bị tạm khóa do nhập sai mật khẩu quá 5 lần. Vui lòng thử lại sau " + formatted + " phút.",
                     HttpStatus.BAD_REQUEST
             );
         } else {
