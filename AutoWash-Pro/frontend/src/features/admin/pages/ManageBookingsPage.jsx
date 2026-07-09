@@ -20,6 +20,7 @@ export default function ManageBookingsPage() {
 
     try {
       const response = await bookingApi.list();
+      console.log("ADMIN BOOKINGS:", response.data);
 
       const result = response.data?.data || response.data || [];
 
@@ -69,9 +70,7 @@ export default function ManageBookingsPage() {
       return;
     }
 
-    const confirmCancel = window.confirm(
-      "Bạn có chắc muốn hủy đơn đặt lịch này không?",
-    );
+    const confirmCancel = window.confirm("Bạn có chắc muốn hủy đơn đặt lịch này không?");
     if (!confirmCancel) return;
 
     try {
@@ -195,9 +194,11 @@ export default function ManageBookingsPage() {
       </div>
 
       <div className="manage-card">
-        {loading && <div className="empty-state">Đang tải danh sách đặt lịch...</div>}
-        {!loading && filteredBookings.length === 0 && <div className="empty-state">Không có đơn đặt lịch phù hợp.</div>}
-        {!loading && filteredBookings.length > 0 && (
+        {loading ? (
+          <div className="empty-state">Đang tải danh sách đặt lịch...</div>
+        ) : filteredBookings.length === 0 ? (
+          <div className="empty-state">Không có đơn đặt lịch phù hợp.</div>
+        ) : (
           <div className="booking-table-wrap">
             <table className="booking-table">
               <thead>
@@ -234,9 +235,9 @@ export default function ManageBookingsPage() {
                       {Array.isArray(booking.serviceNames)
                         ? booking.serviceNames.join(", ")
                         : booking.serviceName ||
-                          booking.service?.serviceName ||
-                          booking.service ||
-                          "N/A"}
+                        booking.service?.serviceName ||
+                        booking.service ||
+                        "N/A"}
                     </td>
                     <td>
                       {booking.bookingDate
@@ -246,9 +247,7 @@ export default function ManageBookingsPage() {
                           : booking.time || "N/A"}
                     </td>
                     <td>
-                      <span
-                        className={`status-badge ${getStatusClass(booking.status)}`}
-                      >
+                      <span className={`status-badge ${getStatusClass(booking.status)}`}>
                         {booking.status || "pending"}
                       </span>
                     </td>
@@ -261,24 +260,13 @@ export default function ManageBookingsPage() {
                         >
                           <Eye size={16} />
                         </button>
-                        {booking.status === "pending" && (
-                          <button
-                            className="action-btn complete"
-                            title="Xác nhận đặt lịch"
-                            onClick={() => handleConfirmBooking(booking)}
-                          >
-                            <CheckCircle size={16} />
-                          </button>
-                        )}
-                        {(booking.status === "confirmed" || booking.status === "in_progress") && (
-                          <button
-                            className="action-btn complete"
-                            title="Hoàn thành đặt lịch"
-                            onClick={() => handleCompleteBooking(booking)}
-                          >
-                            <CheckCircle size={16} />
-                          </button>
-                        )}
+                        <button
+                          className="action-btn complete"
+                          title="Hoàn thành booking"
+                          onClick={() => handleConfirmBooking(booking)}
+                        >
+                          <CheckCircle size={16} />
+                        </button>
                         <button
                           className="action-btn cancel"
                           title="Hủy booking"

@@ -3,9 +3,10 @@ import { Search, Eye, Pencil, Trash2 } from "lucide-react";
 import customerApi from "../../../api/customerApi";
 import "./ManageCustomersPage.css";
 
-function ManageCustomersPage() {
+export default function ManageCustomersPage() {
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
+
   const [keyword, setKeyword] = useState("");
 
   const [showForm, setShowForm] = useState(false);
@@ -18,7 +19,6 @@ function ManageCustomersPage() {
     gender: "",
     dateOfBirth: "",
   });
-
   useEffect(() => {
     loadCustomers();
   }, []);
@@ -26,15 +26,17 @@ function ManageCustomersPage() {
   async function loadCustomers() {
     try {
       const response = await customerApi.list();
+
       console.log("CUSTOMER API:", response.data);
+
       const result = response.data?.data || response.data || [];
-      if (Array.isArray(result)) {
+
+      if (Array.isArray(result))
         setCustomers(result);
-      } else if (Array.isArray(result.content)) {
+      else if (Array.isArray(result.content))
         setCustomers(result.content);
-      } else {
+      else
         setCustomers([]);
-      }
     } catch (e) {
       console.error(e);
       setCustomers([]);
@@ -42,14 +44,13 @@ function ManageCustomersPage() {
       setLoading(false);
     }
   }
-
   const filteredCustomers = useMemo(() => {
     return customers.filter((customer) => {
       const text = [
         customer.fullName,
         customer.email,
         customer.phone,
-        customer.customerId ? customer.customerId.toString() : "",
+        customer.customerId
       ]
         .join(" ")
         .toLowerCase();
@@ -57,32 +58,6 @@ function ManageCustomersPage() {
       return text.includes(keyword.toLowerCase());
     });
   }, [customers, keyword]);
-
-  const stats = useMemo(() => {
-    const total = customers.length;
-    const locked = customers.filter(c => c.user?.status === 'locked' || c.status === 'inactive').length;
-    const active = total - locked;
-    return [
-      {
-        icon: "👥",
-        label: "TỔNG SỐ KHÁCH HÀNG",
-        value: total.toLocaleString(),
-        tone: "blue",
-      },
-      {
-        icon: "👤",
-        label: "HOẠT ĐỘNG",
-        value: active.toLocaleString(),
-        tone: "cyan",
-      },
-      {
-        icon: "🚫",
-        label: "ĐÃ KHÓA",
-        value: locked.toLocaleString(),
-        tone: "red",
-      },
-    ];
-  }, [customers]);
 
   function handleViewCustomer(customer) {
     setSelectedCustomer(customer);
@@ -150,146 +125,94 @@ function ManageCustomersPage() {
       alert(error.response?.data?.message || "Xóa/khóa khách hàng thất bại.");
     }
   }
-
-  const getInitials = (name) => {
-    if (!name) return "KH";
-    return name
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .slice(0, 2)
-      .toUpperCase();
-  };
-
-  const getTierLabel = (tierId) => {
-    switch (tierId) {
-      case 4: return "Khách hàng Bạch Kim";
-      case 3: return "Khách hàng Vàng";
-      case 2: return "Khách hàng Bạc";
-      default: return "Thành viên";
-    }
-  };
-
   return (
-    <div className="user-management-page">
-      <div className="um-header">
+    <div className="manage-page">
+      <div className="manage-header">
         <div>
-          <h1>Quản lý người dùng</h1>
-          <p>
-            Quản lý thông tin và trạng thái tài khoản khách hàng trong hệ thống WashFlow Pro.
-          </p>
+          <h1>Quản lý khách hàng</h1>
+          <p>Theo dõi thông tin khách hàng trong hệ thống.</p>
         </div>
 
-        <div className="um-header-actions" style={{ display: 'flex', gap: '10px' }}>
-          <div className="um-search-box" style={{ display: 'flex', alignItems: 'center', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '5px 15px' }}>
-            <Search size={16} color="#64748b" style={{ marginRight: '8px' }} />
-            <input
-              style={{ border: 'none', outline: 'none', fontSize: '14px' }}
-              placeholder="Tìm tên, email, SĐT..."
-              value={keyword}
-              onChange={(e) => setKeyword(e.target.value)}
-            />
-          </div>
+        <button className="refresh-btn" onClick={loadCustomers}>
+          Làm mới
+        </button>
+      </div>
+
+      <div className="manage-toolbar">
+        <div className="manage-search">
+          <Search size={18} />
+
+          <input
+            placeholder="Tìm theo tên, email, số điện thoại..."
+            value={keyword}
+            onChange={(e) => setKeyword(e.target.value)}
+          />
         </div>
       </div>
 
-      <section className="um-stat-grid">
-        {stats.map((item) => (
-          <div className="um-stat-card" key={item.label}>
-            <div className={`um-stat-icon ${item.tone}`}>{item.icon}</div>
-            <div>
-              <span>{item.label}</span>
-              <strong>{item.value}</strong>
-            </div>
-          </div>
-        ))}
-      </section>
-
-      <section className="um-table-card">
-        <div className="um-table-toolbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div className="um-filter-group">
-            <button className="active" type="button">
-              Khách hàng ({filteredCustomers.length})
-            </button>
-          </div>
-        </div>
-
-        <div className="um-table-wrap">
-          {loading && <div style={{ padding: "40px", textAlign: "center", color: "#64748b" }}>Đang tải danh sách khách hàng...</div>}
-          {!loading && filteredCustomers.length === 0 && <div style={{ padding: "40px", textAlign: "center", color: "#64748b" }}>Không có khách hàng phù hợp.</div>}
-          {!loading && filteredCustomers.length > 0 && (
-            <table className="um-table">
+      <div className="manage-card">
+        {loading ? (
+          <div className="empty-state">Đang tải danh sách khách hàng...</div>
+        ) : filteredCustomers.length === 0 ? (
+          <div className="empty-state">Không có khách hàng phù hợp.</div>
+        ) : (
+          <div className="booking-table-wrap">
+            <table className="booking-table">
               <thead>
                 <tr>
+                  <th>#</th>
                   <th>ID</th>
-                  <th>Họ và tên</th>
-                  <th>Liên hệ</th>
-                  <th>Vai trò</th>
-                  <th>Trạng thái</th>
-                  <th>Ngày gia nhập</th>
+                  <th>Họ tên</th>
+                  <th>Email</th>
+                  <th>Số điện thoại</th>
+                  <th>Điểm</th>
                   <th>Thao tác</th>
                 </tr>
               </thead>
 
               <tbody>
-                {filteredCustomers.map((customer) => {
-                  const isLocked = customer.user?.status === 'locked' || customer.status === 'inactive';
-                  return (
-                    <tr key={customer.customerId || customer.id}>
-                      <td className="um-user-id">#US-{customer.customerId}</td>
+                {filteredCustomers.map((customer, index) => (
+                  <tr key={customer.customerId || customer.id || index}>
+                    <td>{index + 1}</td>
+                    <td>{customer.customerId || "N/A"}</td>
+                    <td>{customer.fullName || customer.name || "N/A"}</td>
+                    <td>{customer.email || customer.user?.email || "N/A"}</td>
+                    <td>{customer.phone || customer.user?.phone || "N/A"}</td>
+                    <td>{customer.totalPoints ?? customer.loyaltyPoints ?? customer.points ?? 0}</td>
+                    <td>
+                      <div className="action-group">
+                        <button
+                          className="action-btn view"
+                          title="Xem chi tiết"
+                          onClick={() => handleViewCustomer(customer)}
+                        >
+                          <Eye size={16} />
+                        </button>
 
-                      <td>
-                        <div className="um-user-cell">
-                          <div className="um-avatar">{getInitials(customer.fullName)}</div>
-                          <div>
-                            <strong>{customer.fullName || "N/A"}</strong>
-                            <span>{getTierLabel(customer.tierId)}</span>
-                          </div>
-                        </div>
-                      </td>
+                        <button
+                          className="action-btn edit"
+                          title="Sửa khách hàng"
+                          onClick={() => openEditForm(customer)}
+                        >
+                          <Pencil size={16} />
+                        </button>
 
-                      <td>
-                        <div className="um-contact">
-                          <span>{customer.email || "N/A"}</span>
-                          <small>{customer.phone || "N/A"}</small>
-                        </div>
-                      </td>
-
-                      <td>
-                        <span className="um-role customer">
-                          Customer
-                        </span>
-                      </td>
-
-                      <td>
-                        <span className={`um-status ${isLocked ? "locked" : "active"}`}>
-                          {isLocked ? "Bị khóa" : "Đang hoạt động"}
-                        </span>
-                      </td>
-
-                      <td>{customer.joinedAt ? new Date(customer.joinedAt).toLocaleDateString('vi-VN') : "N/A"}</td>
-
-                      <td>
-                        <div className="um-actions">
-                          <button type="button" title="Xem chi tiết" onClick={() => handleViewCustomer(customer)}>
-                            <Eye size={16} />
-                          </button>
-                          <button type="button" title="Chỉnh sửa" onClick={() => openEditForm(customer)}>
-                            <Pencil size={16} />
-                          </button>
-                          <button type="button" title="Xóa/Khóa" onClick={() => handleDeleteCustomer(customer)}>
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
+                        <button
+                          className="action-btn cancel"
+                          title="Xóa/khóa khách hàng"
+                          onClick={() => handleDeleteCustomer(customer)}
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
-          )}
-        </div>
-      </section>
+          </div>
+        )}
+      </div>
 
       {selectedCustomer && (
         <div className="modal-backdrop">
@@ -300,21 +223,19 @@ function ManageCustomersPage() {
             </div>
 
             <div className="detail-content">
-              <p><strong>ID:</strong> #US-{selectedCustomer.customerId || "N/A"}</p>
+              <p><strong>ID:</strong> {selectedCustomer.customerId || "N/A"}</p>
               <p><strong>Họ và tên:</strong> {selectedCustomer.fullName || "N/A"}</p>
               <p><strong>Email:</strong> {selectedCustomer.email || "N/A"}</p>
               <p><strong>SĐT:</strong> {selectedCustomer.phone || "N/A"}</p>
               <p><strong>Giới tính:</strong> {selectedCustomer.gender || "N/A"}</p>
               <p><strong>Ngày sinh:</strong> {selectedCustomer.dateOfBirth || "N/A"}</p>
-              <p><strong>Điểm tích lũy:</strong> {selectedCustomer.totalPoints ?? 0} đ</p>
-              <p><strong>Số lượt rửa xe:</strong> {selectedCustomer.totalVisits ?? 0}</p>
+              <p><strong>Điểm:</strong> {selectedCustomer.totalPoints ?? selectedCustomer.loyaltyPoints ?? selectedCustomer.points ?? 0}</p>
+              <p><strong>Lượt ghé:</strong> {selectedCustomer.totalVisits ?? 0}</p>
               <p><strong>Tổng chi tiêu:</strong> {Number(selectedCustomer.totalSpending || 0).toLocaleString("vi-VN")} đ</p>
-              <p><strong>Hạng thành viên:</strong> {getTierLabel(selectedCustomer.tierId)}</p>
             </div>
           </div>
         </div>
       )}
-
       {showForm && (
         <div className="modal-backdrop">
           <div className="customer-modal">
@@ -397,5 +318,3 @@ function ManageCustomersPage() {
     </div>
   );
 }
-
-export default ManageCustomersPage;
