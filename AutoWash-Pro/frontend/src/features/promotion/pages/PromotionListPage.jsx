@@ -8,6 +8,10 @@ import {
   redeemReward,
 } from "../../../api/customerRewardApi";
 import { getMyTier } from "../../../api/loyaltyApi";
+import {
+  getMyTransactionHistory,
+  getMyPointBalance,
+} from "../../../api/loyaltyTransactionApi";
 
 function PromotionListPage() {
   const navigate = useNavigate();
@@ -19,6 +23,9 @@ function PromotionListPage() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
   const [loyaltyInfo, setLoyaltyInfo] = useState(null);
+  const [pointBalance, setPointBalance] = useState(0);
+  const [pointHistory, setPointHistory] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
   const [animatedPoints, setAnimatedPoints] = useState(0);
 
   const customerId = localStorage.getItem("customerId");
@@ -62,12 +69,13 @@ function PromotionListPage() {
       setLoading(true);
       setMessage("");
 
-      const [promotionRes, rewardRes, voucherRes, loyaltyRes] =
+      const [promotionRes, rewardRes, voucherRes, loyaltyRes, balanceRes] =
         await Promise.allSettled([
           promotionApi.list(),
           getAllRewards(),
           customerId ? getMyRewards(customerId) : Promise.resolve([]),
           getMyTier(),
+          getMyPointBalance(),
         ]);
 
       if (promotionRes.status === "fulfilled") {
@@ -90,6 +98,11 @@ function PromotionListPage() {
       if (voucherRes.status === "fulfilled") {
         const rawVouchers = voucherRes.value?.data || voucherRes.value || [];
         setMyVouchers(Array.isArray(rawVouchers) ? rawVouchers : []);
+      }
+
+      if (balanceRes.status === "fulfilled") {
+        const data = balanceRes.value?.data || balanceRes.value || {};
+        setPointBalance(Number(data.currentPoints || data.points || 0));
       }
     } catch (error) {
       console.error("Load offer center error:", error);
@@ -202,9 +215,31 @@ function PromotionListPage() {
     }
   }
 
+  async function loadPointHistory() {
+    if (historyLoading) return;
+    setHistoryLoading(true);
+    try {
+      const res = await getMyTransactionHistory();
+      const list = res?.data || res || [];
+      setPointHistory(Array.isArray(list) ? list : []);
+    } catch (err) {
+      console.error("Load point history error:", err);
+      setPointHistory([]);
+    } finally {
+      setHistoryLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (!loading && customerId) {
+      loadPointHistory();
+    }
+  }, [loading]);
+
   function getCurrentPoints() {
     return Number(
-      loyaltyInfo?.currentPoints ||
+      pointBalance ||
+        loyaltyInfo?.currentPoints ||
         loyaltyInfo?.totalPoints ||
         loyaltyInfo?.points ||
         0
@@ -375,7 +410,7 @@ function PromotionListPage() {
 
             <div className="member-point-row">
               <strong>
-                {formatPoint(localStorage.getItem("totalPoints") || 0)}
+                {formatPoint(pointBalance)}
               </strong>
               <span>điểm</span>
             </div>
@@ -716,55 +751,65 @@ function PromotionListPage() {
           </div>
 
           <div className="point-history-card">
-            <table>
-              <thead>
-                <tr>
-                  <th>Ngày</th>
-                  <th>Hoạt động</th>
-                  <th>Loại</th>
-                  <th>Điểm</th>
-                  <th>Số dư sau</th>
-                </tr>
-              </thead>
+            {historyLoading ? (
+              <div className="history-loading-state">
+                <div className="offer-loading-spinner"></div>
+                <p>Đang tải lịch sử tích điểm...</p>
+              </div>
+            ) : pointHistory.length === 0 ? (
+              <div className="history-empty-state">
+                <p>Chưa có giao dịch tích điểm nào.</p>
+              </div>
+            ) : (
+              <>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Ngày</th>
+                      <th>Hoạt động</th>
+                      <th>Loại</th>
+                      <th>Điểm</th>
+                      <th>Số dư sau</th>
+                    </tr>
+                  </thead>
 
-              <tbody>
-                <tr>
-                  <td>03/07/2026</td>
-                  <td>Đổi thưởng: Voucher giảm 50k</td>
-                  <td>redeem</td>
-                  <td className="point-minus">-300</td>
-                  <td>1.300</td>
-                </tr>
+                  <tbody>
+                    {pointHistory.map((tx) => {
+                      const isEarn = tx.transactionType === "earn";
+                      return (
+                        <tr key={tx.loyaltyTransactionId}>
+                          <td>
+                            {tx.createdAt
+                              ? new Date(tx.createdAt).toLocaleDateString("vi-VN")
+                              : "---"}
+                          </td>
+                          <td>{tx.note || "Giao dịch điểm thưởng"}</td>
+                          <td>
+                            <span className={`tx-type-badge ${isEarn ? "earn" : "redeem"}`}>
+                              {isEarn ? "Cộng" : "Trừ"}
+                            </span>
+                          </td>
+                          <td className={isEarn ? "point-plus" : "point-minus"}>
+                            {isEarn ? "+" : ""}
+                            {formatPoint(Math.abs(tx.points))}
+                          </td>
+                          <td>{formatPoint(tx.balanceAfter)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
 
-                <tr>
-                  <td>02/07/2026</td>
-                  <td>Cộng điểm từ booking BK-20260702-86D31B</td>
-                  <td>earn</td>
-                  <td className="point-plus">+1.600</td>
-                  <td>1.900</td>
-                </tr>
-
-                <tr>
-                  <td>02/07/2026</td>
-                  <td>Cộng điểm từ booking BK-20260702-A2A20F</td>
-                  <td>earn</td>
-                  <td className="point-plus">+100</td>
-                  <td>300</td>
-                </tr>
-
-                <tr>
-                  <td>02/07/2026</td>
-                  <td>Cộng điểm từ booking BK-20260702-E6ABE9</td>
-                  <td>earn</td>
-                  <td className="point-plus">+100</td>
-                  <td>200</td>
-                </tr>
-              </tbody>
-            </table>
-
-            <button type="button" className="history-load-more">
-              Tải thêm lịch sử
-            </button>
+                <button
+                  type="button"
+                  className="history-load-more"
+                  onClick={loadPointHistory}
+                  disabled={historyLoading}
+                >
+                  {historyLoading ? "Đang tải..." : "Tải lại"}
+                </button>
+              </>
+            )}
           </div>
         </section>
       </main>

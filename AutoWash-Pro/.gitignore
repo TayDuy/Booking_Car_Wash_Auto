@@ -6,3 +6,5 @@ backend/target/
 *.log
 .DS_Store
 .scannerwork/
+strix_runs/
+sonar-project.properties
