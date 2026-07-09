@@ -945,6 +945,36 @@
   background: #d9e2ff;
 }
 
+.history-loading-state,
+.history-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  gap: 12px;
+  color: #64748b;
+  font-size: 14px;
+}
+
+.tx-type-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.tx-type-badge.earn {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+.tx-type-badge.redeem {
+  background: #fce4ec;
+  color: #c62828;
+}
+
 /* Responsive */
 @media (max-width: 1180px) {
   .offer-top-grid {

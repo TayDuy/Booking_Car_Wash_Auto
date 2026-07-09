@@ -1,10 +1,26 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { getActiveServices } from "../../../api/servicePackageService";
+import PublicHeader from "../../../components/layout/PublicHeader";
+import PublicFooter from "../../../components/layout/PublicFooter";
+import heroImage from "../../../assets/hero.png";
 import "./LandingPage.css";
+
+function PricingSkeletonCard() {
+  return (
+    <article className="pricing-card skeleton">
+      <div className="skeleton-box skeleton-title" style={{ height: "24px", width: "60%", marginBottom: "16px" }} />
+      <div className="skeleton-box skeleton-price" style={{ height: "36px", width: "40%", marginBottom: "20px" }} />
+      <div className="skeleton-box skeleton-desc" style={{ height: "14px", width: "100%", marginBottom: "8px" }} />
+      <div className="skeleton-box skeleton-desc" style={{ height: "14px", width: "80%", marginBottom: "24px" }} />
+      <div className="skeleton-box skeleton-btn" style={{ height: "40px", width: "100%" }} />
+    </article>
+  );
+}
 
 function LandingPage() {
   const [services, setServices] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     getActiveServices()
@@ -12,7 +28,8 @@ function LandingPage() {
         const list = res.data?.data || res.data || [];
         setServices(Array.isArray(list) ? list : []);
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, []);
 
   const formatPrice = (price) =>
@@ -20,30 +37,7 @@ function LandingPage() {
 
   return (
     <div className="landing-page">
-      <header className="landing-header">
-        <div className="app-container landing-header-inner">
-          <Link to="/" className="landing-logo">
-            <img src="/logo.png" alt="Logo" style={{ height: "36px", width: "auto" }} />
-            WashFlow Pro
-          </Link>
-
-          <nav className="landing-nav">
-            <Link to="/services">Dịch vụ</Link>
-            <a href="#process">Đặt lịch</a>
-            <a href="#pricing">Bảng giá</a>
-            <a href="#contact">Liên hệ</a>
-          </nav>
-
-          <div className="landing-actions">
-            <Link to="/auth/login" className="landing-login">
-              Đăng nhập
-            </Link>
-            <Link to="/auth/register" className="landing-register">
-              Đăng ký
-            </Link>
-          </div>
-        </div>
-      </header>
+      <PublicHeader />
 
       <main>
         <section className="landing-hero">
@@ -88,7 +82,7 @@ function LandingPage() {
             </div>
 
             <div className="landing-hero-visual">
-              <img src="/src/assets/hero.png" alt="Dịch vụ rửa xe tự động WashFlow Pro" />
+              <img src={heroImage} alt="Dịch vụ rửa xe tự động WashFlow Pro" />
 
               <div className="hero-floating-card">
                 <strong>100% không chạm</strong>
@@ -184,65 +178,33 @@ function LandingPage() {
             </div>
 
             <div className="pricing-grid">
-              {services.length === 0 && (
-                <>
-                  <article className="pricing-card">
-                    <h3>Rửa xe cơ bản</h3>
-                    <strong>100.000 VND</strong>
+              {loading ? (
+                Array.from({ length: 3 }).map((_, idx) => (
+                  <PricingSkeletonCard key={idx} />
+                ))
+              ) : services.length === 0 ? (
+                <div style={{ gridColumn: "1 / -1", textAlign: "center", padding: "40px", color: "#64748b" }}>
+                  Không tìm thấy gói dịch vụ nào đang hoạt động.
+                </div>
+              ) : (
+                services.slice(0, 6).map((svc, idx) => (
+                  <article
+                    key={svc.serviceId || svc.id}
+                    className={`pricing-card${idx === 1 ? " featured" : ""}`}
+                  >
+                    {idx === 1 && <span>Phổ biến nhất</span>}
+                    <h3>{svc.serviceName || svc.name}</h3>
+                    <strong>{formatPrice(svc.basePrice)}</strong>
+                    <p className="pricing-desc">{svc.description}</p>
                     <ul>
-                      <li>Rửa ngoài, xịt gầm nhẹ</li>
-                      <li>Lau khô</li>
-                      <li>30 phút</li>
+                      <li>⏱ {svc.durationMinutes} phút</li>
+                      <li>Giá chưa bao gồm phụ phí</li>
+                      <li>Áp dụng tại tất cả chi nhánh</li>
                     </ul>
                     <Link to="/auth/register">Chọn gói</Link>
                   </article>
-
-                  <article className="pricing-card featured">
-                    <span>Phổ biến</span>
-                    <h3>Rửa xe cao cấp</h3>
-                    <strong>180.000 VND</strong>
-                    <ul>
-                      <li>Rửa cao áp</li>
-                      <li>Vệ sinh mâm lốp</li>
-                      <li>Lau khô kỹ</li>
-                      <li>45 phút</li>
-                    </ul>
-                    <Link to="/auth/register">Chọn gói</Link>
-                  </article>
-
-                  <article className="pricing-card">
-                    <h3>Vệ sinh nội thất</h3>
-                    <strong>150.000 VND</strong>
-                    <ul>
-                      <li>Hút bụi</li>
-                      <li>Lau taplo</li>
-                      <li>Khử mùi nhanh</li>
-                      <li>45 phút</li>
-                    </ul>
-                    <Link to="/auth/register">Chọn gói</Link>
-                  </article>
-                </>
+                ))
               )}
-
-              {services.slice(0, 6).map((svc, idx) => (
-                <article
-                  key={svc.serviceId}
-                  className={`pricing-card${idx === 1 ? " featured" : ""}`}
-                >
-                  {idx === 1 && <span>Phổ biến nhất</span>}
-                  <h3>{svc.serviceName}</h3>
-                  <strong>{formatPrice(svc.basePrice)}</strong>
-                  <p style={{ margin: "0 0 16px", fontSize: 14, lineHeight: 1.6, color: idx === 1 ? "rgba(255,255,255,0.86)" : "#5d6678" }}>
-                    {svc.description}
-                  </p>
-                  <ul>
-                    <li>⏱ {svc.durationMinutes} phút</li>
-                    <li>Giá chưa bao gồm phụ phí</li>
-                    <li>Áp dụng tại tất cả chi nhánh</li>
-                  </ul>
-                  <Link to="/auth/register">Chọn gói</Link>
-                </article>
-              ))}
             </div>
           </div>
         </section>
@@ -269,42 +231,7 @@ function LandingPage() {
         </section>
       </main>
 
-      <footer className="landing-footer" id="contact">
-        <div className="app-container landing-footer-grid">
-          <div>
-            <h3>WashFlow Pro</h3>
-            <p>
-              Hệ thống đặt lịch rửa xe tự động, tiện lợi và chuyên nghiệp cho
-              khách hàng hiện đại.
-            </p>
-          </div>
-
-          <div>
-            <h4>Liên kết</h4>
-            <Link to="/services">Dịch vụ</Link>
-            <a href="#process">Quy trình</a>
-            <a href="#pricing">Bảng giá</a>
-          </div>
-
-          <div>
-            <h4>Hỗ trợ</h4>
-            <Link to="/customer/support">Trợ giúp</Link>
-            <Link to="/auth/login">Đăng nhập</Link>
-            <Link to="/auth/register">Đăng ký</Link>
-          </div>
-
-          <div>
-            <h4>Liên hệ</h4>
-            <p>123 Đường Công Nghệ, TP.HCM</p>
-            <p>1900 8888</p>
-            <p>support@washflow.vn</p>  
-          </div>
-        </div>
-
-        <div className="landing-copyright">
-          © 2026 WashFlow Pro. All rights reserved.
-        </div>
-      </footer>
+      <PublicFooter />
     </div>
   );
 }

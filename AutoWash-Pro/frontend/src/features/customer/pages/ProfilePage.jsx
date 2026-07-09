@@ -5,6 +5,8 @@ import customerApi from '../../../api/customerApi';
 import vehicleApi from '../../../api/vehicleApi';
 import bookingApi from '../../../api/bookingApi';
 import { logout, changePassword } from '../../../api/authService';
+import { getMyTier } from '../../../api/loyaltyApi';
+import { getMyPointBalance } from '../../../api/loyaltyTransactionApi';
 
 const ProfilePage = () => {
   const navigate = useNavigate();
@@ -58,6 +60,8 @@ const ProfilePage = () => {
   });
 
   const [vehicleError, setVehicleError] = useState('');
+  const [loyaltyInfo, setLoyaltyInfo] = useState(null);
+  const [pointBalance, setPointBalance] = useState(0);
 
   useEffect(() => {
     fetchProfileAndData();
@@ -97,6 +101,23 @@ const ProfilePage = () => {
         } catch (bookErr) {
           console.error('Lỗi tải lịch sử đặt lịch:', bookErr);
         }
+      }
+      // Load loyalty data
+      try {
+        const [tierRes, balanceRes] = await Promise.allSettled([
+          getMyTier(),
+          getMyPointBalance(),
+        ]);
+        if (tierRes.status === "fulfilled") {
+          const raw = tierRes.value?.data || tierRes.value || null;
+          setLoyaltyInfo(raw);
+        }
+        if (balanceRes.status === "fulfilled") {
+          const data = balanceRes.value?.data || balanceRes.value || {};
+          setPointBalance(Number(data.currentPoints || data.points || 0));
+        }
+      } catch (loyaltyErr) {
+        console.error('Lỗi tải thông tin hạng thành viên:', loyaltyErr);
       }
     } catch (err) {
       console.error('Lỗi khi tải hồ sơ:', err);
@@ -236,15 +257,45 @@ const ProfilePage = () => {
   };
 
   const getTierName = (id) => {
+    if (id === 4) return 'Bạch Kim';
     if (id === 3) return 'Vàng';
     if (id === 2) return 'Bạc';
     return 'Đồng';
   };
 
   const getPointsNeeded = (points) => {
-    if (points >= 3000) return 0;
-    return 3000 - points;
+    if (points >= 5000) return 0;
+    if (points >= 1500) return 5000 - points;
+    if (points >= 500) return 1500 - points;
+    return 500 - points;
   };
+
+  const getNextTierName = (points) => {
+    if (points >= 5000) return 'Tối đa';
+    if (points >= 1500) return 'Bạch Kim';
+    if (points >= 500) return 'Vàng';
+    return 'Bạc';
+  };
+
+  function getCurrentTierName() {
+    return (
+      loyaltyInfo?.currentTierName ||
+      loyaltyInfo?.newTierName ||
+      loyaltyInfo?.tierName ||
+      getTierName(user.tierId)
+    );
+  }
+
+  function getCurrentPoints() {
+    return Number(
+      pointBalance ||
+        loyaltyInfo?.currentPoints ||
+        loyaltyInfo?.totalPoints ||
+        loyaltyInfo?.points ||
+        user.totalPoints ||
+        0
+    );
+  }
 
   // Dynamic Subscription details based on user tierId
   const getSubscriptionDetails = (tierId) => {
@@ -544,21 +595,25 @@ const ProfilePage = () => {
                 <div className="loyalty-header">
                   <div>
                     <p className="loyalty-label">Hạng thành viên</p>
-                    <h3 className="loyalty-tier">{getTierName(user.tierId)}</h3>
+                    <h3 className="loyalty-tier">{getCurrentTierName()}</h3>
                   </div>
-                  <span className="material-symbols-outlined icon-star" style={{ fontVariationSettings: "'FILL' 1" }}>stars</span>
+                  <span className="material-symbols-outlined icon-star">stars</span>
                 </div>
                 <div className="loyalty-body">
                   <div className="loyalty-points-row">
                     <span className="points-label">Số dư hiện tại</span>
-                    <span className="points-value">{user.totalPoints || 0} điểm</span>
+                    <span className="points-value">{getCurrentPoints().toLocaleString("vi-VN")} điểm</span>
                   </div>
                   <div className="progress-track">
-                    <div className="progress-fill" style={{ width: `${Math.min((user.totalPoints || 0) / 3000 * 100, 100)}%` }}></div>
+                    <div className="progress-fill" style={{ width: `${Math.min((getCurrentPoints() || 0) / 5000 * 100, 100)}%` }}></div>
                   </div>
-                  <p className="points-hint">Chỉ còn {getPointsNeeded(user.totalPoints || 0)} điểm nữa để đạt hạng Bạch Kim!</p>
+                  {getPointsNeeded(getCurrentPoints()) > 0 ? (
+                    <p className="points-hint">Chỉ còn {getPointsNeeded(getCurrentPoints())} điểm nữa để đạt hạng {getNextTierName(getCurrentPoints())}!</p>
+                  ) : (
+                    <p className="points-hint">Chúc mừng! Bạn đã đạt hạng thành viên cao nhất.</p>
+                  )}
                 </div>
-                <button className="btn-loyalty">Đổi phần thưởng</button>
+                <button className="btn-loyalty" onClick={() => navigate('/customer/promotions')}>Đổi phần thưởng</button>
               </section>
 
               {/* Subscription Details */}

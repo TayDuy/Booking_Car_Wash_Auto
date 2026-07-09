@@ -1,7 +1,10 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { useNavigate, useLocation, Link, useSearchParams } from "react-router-dom";
+import { LayoutGrid, Droplets, Armchair, Sparkles, Wrench, Gem, Clock, Shield, Zap, Diamond, ChevronDown, ChevronUp } from "lucide-react";
 import { getActiveServices } from "../../../api/servicePackageService";
 import useAuth from "../../../hooks/useAuth";
+import PublicHeader from "../../../components/layout/PublicHeader";
+import PublicFooter from "../../../components/layout/PublicFooter";
 import "./ServicesPage.css";
 
 const FAQ_ITEMS = [
@@ -28,13 +31,38 @@ const FAQ_ITEMS = [
 ];
 
 const CATEGORIES = [
-  { id: "all", label: "🚗 Tất cả" },
-  { id: "wash", label: "🧼 Rửa xe" },
-  { id: "interior", label: "🧽 Nội thất" },
-  { id: "polish", label: "✨ Đánh bóng" },
-  { id: "addon", label: "🔧 Add-on" },
-  { id: "vip", label: "👑 Combo VIP" },
+  { id: "all", label: "Tất cả", icon: LayoutGrid },
+  { id: "wash", label: "Rửa xe", icon: Droplets },
+  { id: "interior", label: "Nội thất", icon: Armchair },
+  { id: "polish", label: "Đánh bóng", icon: Sparkles },
+  { id: "addon", label: "Add-on", icon: Wrench },
+  { id: "vip", label: "Combo VIP", icon: Gem },
 ];
+
+function SkeletonCard() {
+  return (
+    <article className="service-showcase-card skeleton">
+      <div className="service-card-banner skeleton-box" style={{ borderRadius: "14px 14px 0 0", margin: "-24px -24px 24px -24px", height: "120px", position: "relative" }}>
+        <div className="skeleton-box skeleton-icon" style={{ position: "absolute", bottom: "-20px", left: "24px", width: "48px", height: "48px", borderRadius: "12px" }} />
+      </div>
+      <div className="card-header">
+        <div className="skeleton-box skeleton-tag" />
+      </div>
+      <div className="card-body">
+        <div className="skeleton-box skeleton-title" />
+        <div className="skeleton-box skeleton-desc" />
+        <div className="skeleton-box skeleton-desc short" />
+      </div>
+      <div className="card-footer">
+        <div className="card-meta">
+          <div className="skeleton-box skeleton-price" />
+          <div className="skeleton-box skeleton-duration" />
+        </div>
+        <div className="skeleton-box skeleton-btn" />
+      </div>
+    </article>
+  );
+}
 
 export default function ServicesPage() {
   const navigate = useNavigate();
@@ -88,11 +116,27 @@ export default function ServicesPage() {
 
   const getIcon = (service) => {
     const name = (service.serviceName || service.name || "").toLowerCase();
-    if (name.includes("add-on") || name.includes("addon")) return "🔧";
-    if (name.includes("vip") || name.includes("diamond") || name.includes("kim cương") || name.includes("combo")) return "👑";
-    if (name.includes("đánh bóng") || name.includes("polish") || name.includes("nano") || name.includes("ceramic")) return "✨";
-    if (name.includes("nội thất") || name.includes("interior") || name.includes("hút bụi")) return "🧽";
-    return "💧";
+    if (name.includes("add-on") || name.includes("addon")) return Wrench;
+    if (name.includes("vip") || name.includes("diamond") || name.includes("kim cương") || name.includes("combo")) return Gem;
+    if (name.includes("đánh bóng") || name.includes("polish") || name.includes("nano") || name.includes("ceramic")) return Sparkles;
+    if (name.includes("nội thất") || name.includes("interior") || name.includes("hút bụi")) return Armchair;
+    return Droplets;
+  };
+
+  const getCategoryGradient = (service) => {
+    const category = getCategory(service);
+    switch (category) {
+      case "vip":
+        return "linear-gradient(135deg, #e11d48 0%, #be123c 100%)";
+      case "polish":
+        return "linear-gradient(135deg, #a855f7 0%, #7e22ce 100%)";
+      case "interior":
+        return "linear-gradient(135deg, #0ea5e9 0%, #0369a1 100%)";
+      case "addon":
+        return "linear-gradient(135deg, #64748b 0%, #475569 100%)";
+      default:
+        return "linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)";
+    }
   };
 
   const filteredServices = useMemo(() => {
@@ -104,41 +148,28 @@ export default function ServicesPage() {
     setOpenFaqIndex(openFaqIndex === index ? null : index);
   };
 
+  const handleFaqKeyDown = (e, index) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      toggleFaq(index);
+    }
+  };
+
   const formatPrice = (price) => {
     return Number(price ?? 0).toLocaleString("vi-VN") + "đ";
   };
 
+  const handleBooking = () => {
+    if (user) navigate("/customer/booking");
+    else navigate("/auth/login?redirect=/customer/booking");
+  };
+
+  const ServiceIcon = getIcon;
+
   return (
     <div className="services-showcase-page">
-      {/* Public Landing Header */}
-      {!isCustomerScope && (
-        <header className="landing-header">
-          <div className="app-container landing-header-inner">
-            <Link to="/" className="landing-logo">
-              <img src="/logo.png" alt="Logo" style={{ height: "36px", width: "auto" }} />
-              WashFlow Pro
-            </Link>
+      {!isCustomerScope && <PublicHeader />}
 
-            <nav className="landing-nav">
-              <Link to="/services">Dịch vụ</Link>
-              <a href="/#process">Đặt lịch</a>
-              <a href="/#pricing">Bảng giá</a>
-              <a href="/#contact">Liên hệ</a>
-            </nav>
-
-            <div className="landing-actions">
-              <Link to="/auth/login" className="landing-login">
-                Đăng nhập
-              </Link>
-              <Link to="/auth/register" className="landing-register">
-                Đăng ký
-              </Link>
-            </div>
-          </div>
-        </header>
-      )}
-
-      {/* Hero Section */}
       <section className="services-hero">
         <div className="app-container hero-container">
           <div className="hero-content">
@@ -148,103 +179,82 @@ export default function ServicesPage() {
               Khám phá các gói chăm sóc xe toàn diện ứng dụng công nghệ rửa không chạm thông minh, 
               giúp làm sạch sâu tối đa và bảo vệ sơn xe của bạn bền đẹp theo thời gian.
             </p>
-            <button 
-              className="hero-cta-btn" 
-              onClick={() => {
-                if (user) navigate("/customer/booking");
-                else navigate("/auth/login?redirect=/customer/booking");
-              }}
-            >
+            <button className="hero-cta-btn" onClick={handleBooking}>
               Đặt lịch rửa xe ngay
             </button>
           </div>
         </div>
       </section>
 
-      {/* Sticky Filter Bar */}
-      <div className="category-sticky-bar" style={!isCustomerScope ? { top: 0 } : {}}>
+      <div className={`category-sticky-bar ${isCustomerScope ? "inside-layout" : ""}`}>
         <div className="app-container bar-container">
-          {CATEGORIES.map((cat) => (
-            <button
-              key={cat.id}
-              className={`category-tab-btn ${activeCategory === cat.id ? "active" : ""}`}
-              onClick={() => setSearchParams(cat.id === "all" ? {} : { cat: cat.id }, { replace: true })}
-            >
-              {cat.label}
-            </button>
-          ))}
+          {CATEGORIES.map((cat) => {
+            const Icon = cat.icon;
+            return (
+              <button
+                key={cat.id}
+                className={`category-tab-btn ${activeCategory === cat.id ? "active" : ""}`}
+                onClick={() => setSearchParams(cat.id === "all" ? {} : { cat: cat.id }, { replace: true })}
+              >
+                <Icon size={16} strokeWidth={2} />
+                {cat.label}
+              </button>
+            );
+          })}
         </div>
       </div>
 
-      {/* Services Grid */}
       <section className="services-list-section">
         <div className="app-container">
           {loading ? (
-            <div className="services-loading">Đang tải danh sách dịch vụ...</div>
+            <div className="services-grid">
+              {Array.from({ length: 6 }).map((_, idx) => (
+                <SkeletonCard key={idx} />
+              ))}
+            </div>
           ) : filteredServices.length === 0 ? (
-            <div className="services-empty">Không tìm thấy gói dịch vụ nào trong mục này.</div>
+            <div className="services-empty">
+              <Droplets size={48} className="empty-icon" />
+              <p>Không tìm thấy gói dịch vụ nào trong mục này.</p>
+            </div>
           ) : (
             <div className="services-grid">
-              {filteredServices.map((svc) => (
-                <article className="service-showcase-card" key={svc.serviceId || svc.id}>
-                  <div className="card-header">
-                    <span className="card-icon">{getIcon(svc)}</span>
-                    {svc.durationMinutes >= 45 && <span className="popular-tag">Chăm sóc sâu</span>}
-                  </div>
-                  <div className="card-body">
-                    <h3>{svc.serviceName || svc.name}</h3>
-                    <p className="card-desc">{svc.description || "Dịch vụ chăm sóc và làm sạch xe chuyên nghiệp chất lượng cao."}</p>
-                  </div>
-                  <div className="card-footer">
-                    <div className="card-meta">
-                      <span className="card-price">{formatPrice(svc.basePrice)}</span>
-                      <span className="card-duration">⏱ {svc.durationMinutes} phút</span>
+              {filteredServices.map((svc) => {
+                const Icon = getIcon(svc);
+                const bannerStyle = svc.imageUrl 
+                  ? { backgroundImage: `url(${svc.imageUrl})` }
+                  : { background: getCategoryGradient(svc) };
+                return (
+                  <article className="service-showcase-card" key={svc.serviceId || svc.id}>
+                    <div className="service-card-banner" style={bannerStyle}>
+                      <span className="card-icon">
+                        <Icon size={24} strokeWidth={1.5} />
+                      </span>
                     </div>
-                    <button 
-                      className="card-book-btn" 
-                      onClick={() => {
-                        if (user) navigate("/customer/booking");
-                        else navigate("/auth/login?redirect=/customer/booking");
-                      }}
-                    >
-                      Đặt ngay
-                    </button>
-                  </div>
-                </article>
-              ))}
+                    <div className="card-header">
+                      {svc.durationMinutes >= 45 && <span className="popular-tag">Chăm sóc sâu</span>}
+                    </div>
+                    <div className="card-body">
+                      <h3>{svc.serviceName || svc.name}</h3>
+                      <p className="card-desc">{svc.description || "Dịch vụ chăm sóc và làm sạch xe chuyên nghiệp chất lượng cao."}</p>
+                    </div>
+                    <div className="card-footer">
+                      <div className="card-meta">
+                        <span className="card-price">{formatPrice(svc.basePrice)}</span>
+                        <span className="card-duration"><Clock size={12} strokeWidth={2} /> {svc.durationMinutes} phút</span>
+                      </div>
+                      <button className="card-book-btn" onClick={handleBooking}>
+                        Đặt ngay
+                      </button>
+                    </div>
+                  </article>
+                );
+              })}
             </div>
           )}
         </div>
       </section>
 
-      {/* Why Choose Us */}
-      <section className="benefits-section">
-        <div className="app-container">
-          <div className="section-header">
-            <span>Giá Trị Vượt Trội</span>
-            <h2>Tại Sao Nên Chọn WashFlow Pro?</h2>
-          </div>
-          <div className="benefits-grid">
-            <div className="benefit-card">
-              <div className="benefit-icon">🛡️</div>
-              <h3>An Toàn Tuyệt Đối</h3>
-              <p>Công nghệ không chạm loại bỏ ma sát vật lý trực tiếp, ngăn ngừa xước dăm và bảo vệ bề mặt sơn nguyên bản.</p>
-            </div>
-            <div className="benefit-card">
-              <div className="benefit-icon">⏱️</div>
-              <h3>Tiết Kiệm Thời Gian</h3>
-              <p>Hệ thống đặt lịch thông minh giúp xe của bạn được phục vụ ngay khi tới chi nhánh, không phải xếp hàng.</p>
-            </div>
-            <div className="benefit-card">
-              <div className="benefit-icon">💎</div>
-              <h3>Chất Lượng Cam Kết</h3>
-              <p>Sử dụng các loại dung dịch chăm sóc đạt chuẩn thế giới cùng quy trình kiểm định chất lượng khắt khe.</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* FAQ Section */}
       <section className="faq-section">
         <div className="app-container faq-container">
           <div className="section-header">
@@ -255,12 +265,24 @@ export default function ServicesPage() {
             {FAQ_ITEMS.map((item, idx) => {
               const isOpen = openFaqIndex === idx;
               return (
-                <div className={`faq-item ${isOpen ? "open" : ""}`} key={idx} onClick={() => toggleFaq(idx)}>
+                <div
+                  className={`faq-item ${isOpen ? "open" : ""}`}
+                  key={idx}
+                  onClick={() => toggleFaq(idx)}
+                  onKeyDown={(e) => handleFaqKeyDown(e, idx)}
+                  tabIndex={0}
+                  role="button"
+                  aria-expanded={isOpen}
+                >
                   <div className="faq-question">
                     <span>{item.question}</span>
-                    <span className="faq-arrow">{isOpen ? "▲" : "▼"}</span>
+                    <span className="faq-arrow">
+                      {isOpen ? <ChevronUp size={14} strokeWidth={2} /> : <ChevronDown size={14} strokeWidth={2} />}
+                    </span>
                   </div>
-                  {isOpen && <div className="faq-answer">{item.answer}</div>}
+                  <div className="faq-answer-wrapper">
+                    <div className="faq-answer">{item.answer}</div>
+                  </div>
                 </div>
               );
             })}
@@ -268,21 +290,7 @@ export default function ServicesPage() {
         </div>
       </section>
 
-      {/* Public Footer */}
-      {!isCustomerScope && (
-        <footer className="global-footer-bar" style={{ borderTop: "1px solid #e2e8f0", marginTop: "40px" }}>
-          <div className="footer-brand-info">
-            <h4>WashFlow Pro</h4>
-            <p>© 2026 WashFlow Pro Automation. Tất cả quyền được bảo lưu.</p>
-          </div>
-          <div className="footer-nav-links">
-            <a href="#">Liên hệ</a>
-            <a href="#">Chính sách bảo mật</a>
-            <a href="#">Điều khoản dịch vụ</a>
-            <a href="#">Hỗ trợ</a>
-          </div>
-        </footer>
-      )}
+      {!isCustomerScope && <PublicFooter />}
     </div>
   );
 }
