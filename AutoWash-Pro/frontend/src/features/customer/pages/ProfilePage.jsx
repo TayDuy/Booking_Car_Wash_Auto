@@ -427,11 +427,11 @@ const ProfilePage = () => {
                 <div className="card-header" style={{ marginBottom: '8px' }}>
                   <h3 className="card-title">
                     <span className="material-symbols-outlined text-primary">lock</span>
-                    Mật khẩu
+                    <span>Mật khẩu</span>
                   </h3>
                   <button className="btn-edit" onClick={() => setShowChangePassword(true)}>
                     <span className="material-symbols-outlined icon-small">edit</span>
-                    Đổi mật khẩu
+                    <span>Đổi mật khẩu</span>
                   </button>
                 </div>
                 <div className="card-body" style={{ padding: '0 8px 8px 8px' }}>
@@ -448,11 +448,11 @@ const ProfilePage = () => {
                 <div className="card-header">
                   <h3 className="card-title">
                     <span className="material-symbols-outlined text-primary">directions_car</span>
-                    Xe của tôi
+                    <span>Xe của tôi</span>
                   </h3>
                   <button className="btn-add" onClick={() => setShowAddVehicleModal(true)}>
                     <span className="material-symbols-outlined icon-small">add_circle</span>
-                    Thêm xe mới
+                    <span>Thêm xe mới</span>
                   </button>
                 </div>
                 
@@ -488,7 +488,7 @@ const ProfilePage = () => {
                               <span className="material-symbols-outlined icon-small">
                                 {vehicle.isActive ? 'check_circle' : 'do_not_disturb_on'}
                               </span>
-                              {vehicle.isActive ? 'Đang hoạt động' : 'Ngừng hoạt động'}
+                              <span>{vehicle.isActive ? 'Đang hoạt động' : 'Ngừng hoạt động'}</span>
                             </button>
                           </span>
                         </div>
@@ -503,7 +503,7 @@ const ProfilePage = () => {
                 <div className="table-header">
                   <h3 className="card-title">
                     <span className="material-symbols-outlined text-primary">history</span>
-                    Lịch sử đặt lịch
+                    <span>Lịch sử đặt lịch</span>
                   </h3>
                   <button className="link-primary" onClick={() => navigate('/customer/history')}>Xem tất cả</button>
                 </div>
