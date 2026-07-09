@@ -92,30 +92,9 @@ function AdminLayout() {
         </div>
       </aside>
 
-      <section className="st-admin-content">
-        <header className="st-topbar">
-          <div className="st-search">
-            <span>⌕</span>
-            <input type="text" placeholder="Tìm kiếm dữ liệu, khách hàng..." />
-          </div>
-
-          <div className="st-top-actions">
-            <button type="button">🔔</button>
-            <button type="button">?</button>
-
-            <div className="st-time">
-              <strong>14:20 PM</strong>
-              <span>Hôm nay, 24/10/2023</span>
-            </div>
-
-            <button type="button">📅</button>
-          </div>
-        </header>
-
-        <main className="st-main">
+      <main className="st-main">
           <Outlet />
         </main>
-      </section>
     </div>
   );
 }

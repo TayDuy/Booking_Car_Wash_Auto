@@ -92,9 +92,11 @@ export default function AuditLogsPage() {
       </div>
 
       <div className="manage-card">
-        {loading && <div className="empty-state">Đang tải nhật ký hệ thống...</div>}
-        {!loading && filteredLogs.length === 0 && <div className="empty-state">Chưa có nhật ký phù hợp.</div>}
-        {!loading && filteredLogs.length > 0 && (
+        {loading ? (
+          <div className="empty-state">Đang tải nhật ký hệ thống...</div>
+        ) : filteredLogs.length === 0 ? (
+          <div className="empty-state">Chưa có nhật ký phù hợp.</div>
+        ) : (
           <div className="booking-table-wrap">
             <table className="booking-table audit-table">
               <thead>
