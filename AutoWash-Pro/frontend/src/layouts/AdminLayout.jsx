@@ -20,26 +20,13 @@ function AdminLayout() {
           </div>
 
           <nav className="st-menu">
+            <div className="st-menu-title">TỔNG QUAN</div>
             <NavLink to="/admin/dashboard">
               <span>▦</span>
               Bảng điều khiển
             </NavLink>
 
-            <NavLink to="/admin/customers">
-              <span>👥</span>
-              Quản lý người dùng
-            </NavLink>
-
-            <NavLink to="/admin/customers">
-              <span>👤</span>
-              Quản lý khách hàng
-            </NavLink>
-
-            <NavLink to="/admin/staff">
-              <span>👥</span>
-              Quản lý nhân viên
-            </NavLink>
-
+            <div className="st-menu-title">QUẢN LÝ CƠ SỞ</div>
             <NavLink to="/admin/branches">
               <span>🏢</span>
               Quản lý chi nhánh
@@ -50,38 +37,42 @@ function AdminLayout() {
               Quản lý dịch vụ
             </NavLink>
 
+            <div className="st-menu-title">QUẢN LÝ NGHIỆP VỤ</div>
+            <NavLink to="/admin/customers">
+              <span>👥</span>
+              Quản lý khách hàng
+            </NavLink>
+
+            <NavLink to="/admin/vehicles">
+              <span>🚗</span>
+              Quản lý phương tiện
+            </NavLink>
+
             <NavLink to="/admin/bookings">
               <span>📅</span>
               Quản lý đặt lịch
             </NavLink>
 
             <div className="st-menu-title">MARKETING & SALES</div>
-
             <NavLink to="/admin/promotions">
               <span>🏷</span>
               Khuyến mãi
             </NavLink>
 
-            <NavLink to="/admin/rewards">
-              <span>🎁</span>
-              Phần thưởng
-            </NavLink>
-
-            <NavLink to="/admin/loyalty">
-              <span>🏆</span>
-              Hạng thành viên
-            </NavLink>
-
             <div className="st-menu-title">HỆ THỐNG</div>
+            <NavLink to="/admin/notifications">
+              <span>🔔</span>
+              Thông báo
+            </NavLink>
 
             <NavLink to="/admin/reports">
               <span>📊</span>
               Báo cáo
             </NavLink>
 
-            <NavLink to="/admin/settings">
-              <span>⚙</span>
-              Cài đặt
+            <NavLink to="/admin/audit-logs">
+              <span>📋</span>
+              Nhật ký hệ thống
             </NavLink>
           </nav>
         </div>

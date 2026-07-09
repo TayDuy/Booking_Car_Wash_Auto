@@ -364,8 +364,8 @@ const ProfilePage = () => {
             <div className="col-left">
               
               {/* Personal Info Card */}
-              <section id="personal-info" className="card card-shadow">
-                <div className="card-header">
+              <section id="personal-info" className="card card-shadow no-pad">
+                <div className="table-header">
                   <h3 className="card-title">
                     <span className="material-symbols-outlined text-primary">person</span>
                     Thông tin cá nhân
@@ -383,7 +383,7 @@ const ProfilePage = () => {
                   )}
                 </div>
                 
-                <div className="info-grid">
+                <div className="info-grid info-grid-inset">
                   <div className="info-item">
                     <label>Họ và tên</label>
                     {!isEditing ? <p>{user.fullName || 'Chưa cập nhật'}</p> : 
@@ -423,8 +423,8 @@ const ProfilePage = () => {
               </section>
 
               {/* Change Password Section */}
-              <section className="card card-shadow">
-                <div className="card-header" style={{ marginBottom: '8px' }}>
+              <section className="card card-shadow no-pad">
+                <div className="table-header">
                   <h3 className="card-title">
                     <span className="material-symbols-outlined text-primary">lock</span>
                     <span>Mật khẩu</span>
@@ -434,18 +434,18 @@ const ProfilePage = () => {
                     <span>Đổi mật khẩu</span>
                   </button>
                 </div>
-                <div className="card-body" style={{ padding: '0 8px 8px 8px' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <span style={{ fontSize: '18px', letterSpacing: '4px', fontWeight: 'bold', color: '#64748b' }}>••••••••</span>
-                    <span style={{ fontSize: '13px', color: '#94a3b8' }}>Nên thay đổi mật khẩu định kỳ để đảm bảo an toàn cho tài khoản của bạn.</span>
+                <div className="password-preview-wrap">
+                  <div className="password-preview">
+                    <span className="password-dots">••••••••</span>
+                    <span className="password-hint">Nên thay đổi mật khẩu định kỳ để đảm bảo an toàn cho tài khoản của bạn.</span>
                   </div>
+                  {passwordSuccess && <div className="password-success">{passwordSuccess}</div>}
                 </div>
-                {passwordSuccess && <div style={{ color: '#2e7d32', fontSize: '14px', fontWeight: '500', margin: '8px 8px 0 8px' }}>{passwordSuccess}</div>}
               </section>
 
               {/* My Vehicles Section */}
-              <section id="vehicles" className="section-vehicles">
-                <div className="card-header">
+              <section id="vehicles" className="card card-shadow no-pad">
+                <div className="table-header">
                   <h3 className="card-title">
                     <span className="material-symbols-outlined text-primary">directions_car</span>
                     <span>Xe của tôi</span>
@@ -456,7 +456,7 @@ const ProfilePage = () => {
                   </button>
                 </div>
                 
-                <div className="vehicles-grid">
+                <div className="vehicles-grid vehicles-grid-inset">
                   {vehicles.length === 0 ? (
                     <div className="card card-shadow" style={{ gridColumn: 'span 2', textAlign: 'center', padding: '32px', color: 'var(--on-surface-variant)' }}>
                       Bạn chưa thêm phương tiện nào. Hãy nhấn nút thêm xe để bắt đầu!
