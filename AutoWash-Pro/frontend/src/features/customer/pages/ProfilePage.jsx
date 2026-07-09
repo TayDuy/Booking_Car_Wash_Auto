@@ -424,7 +424,7 @@ const ProfilePage = () => {
 
               {/* Change Password Section */}
               <section className="card card-shadow">
-                <div className="card-header">
+                <div className="card-header" style={{ marginBottom: '8px' }}>
                   <h3 className="card-title">
                     <span className="material-symbols-outlined text-primary">lock</span>
                     Mật khẩu
@@ -434,7 +434,13 @@ const ProfilePage = () => {
                     Đổi mật khẩu
                   </button>
                 </div>
-                {passwordSuccess && <div style={{ color: '#2e7d32', fontSize: '14px', fontWeight: '500', margin: '0 0 8px 0' }}>{passwordSuccess}</div>}
+                <div className="card-body" style={{ padding: '0 8px 8px 8px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <span style={{ fontSize: '18px', letterSpacing: '4px', fontWeight: 'bold', color: '#64748b' }}>••••••••</span>
+                    <span style={{ fontSize: '13px', color: '#94a3b8' }}>Nên thay đổi mật khẩu định kỳ để đảm bảo an toàn cho tài khoản của bạn.</span>
+                  </div>
+                </div>
+                {passwordSuccess && <div style={{ color: '#2e7d32', fontSize: '14px', fontWeight: '500', margin: '8px 8px 0 8px' }}>{passwordSuccess}</div>}
               </section>
 
               {/* My Vehicles Section */}
