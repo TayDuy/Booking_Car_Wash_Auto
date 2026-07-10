@@ -17,16 +17,15 @@ import com.autowash.backend.payment.entity.Payment;
 import com.autowash.backend.payment.entity.Payment.PaymentStatus;
 import com.autowash.backend.payment.mapper.PaymentMapper;
 import com.autowash.backend.payment.repository.PaymentRepository;
+import com.autowash.backend.payment.service.PayPalService;
 import com.autowash.backend.payment.service.PaymentService;
 import com.autowash.backend.promotion.entity.Promotion;
 import com.autowash.backend.promotion.repository.PromotionRepository;
 import com.autowash.backend.reward.entity.Reward;
 import com.autowash.backend.reward.repository.RewardRepository;
-import com.autowash.backend.mail.service.MailService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,6 +33,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @Service
@@ -47,8 +47,8 @@ public class PaymentServiceImpl implements PaymentService {
     private final PromotionRepository          promotionRepository;
     private final RewardRepository             rewardRepository;
     private final LoyaltyTransactionRepository loyaltyTransactionRepository;
-    private final PaymentMapper                paymentMapper;
-    private final MailService                  mailService;
+    private final PaymentMapper paymentMapper;
+    private final PayPalService                payPalService;
 
     // Tỉ lệ tích điểm: cứ 10,000 VND = 1 điểm
     private static final BigDecimal POINTS_PER_VND = BigDecimal.valueOf(10_000);
@@ -129,9 +129,9 @@ public class PaymentServiceImpl implements PaymentService {
     @Transactional
     public PaymentResponseDTO updateStatus(Integer paymentId, PaymentUpdateRequestDTO request) {
         return switch (request.getPaymentStatus()) {
-            case paid      -> processPayment(paymentId, null, null, null, null);
+            case paid      -> processPayment(paymentId);
             case cancelled -> cancelPayment(paymentId);
-            case failed    -> markFailed(paymentId, null, null, null, null);
+            case failed    -> markFailed(paymentId);
             default -> throw new BusinessException(
                     "Trạng thái không hợp lệ: " + request.getPaymentStatus());
         };
@@ -156,24 +156,115 @@ public class PaymentServiceImpl implements PaymentService {
         payment.setVnpayCardType(cardType);
         payment.setVnpayResponseCode(responseCode);
 
+        Payment saved = finalizePaid(payment);
+
+        log.info("Payment {} processed, loyalty points earned for customer {}",
+                paymentId, saved.getBooking().getCustomer().getCustomerId());
+
+        return paymentMapper.toResponse(saved);
+    }
+
+    // ── PAYPAL ────────────────────────────────────────────────────────────────
+
+    @Override
+    @Transactional
+    public Map<String, String> createPaypalOrder(Integer paymentId) {
+        Payment payment = findPaymentOrThrow(paymentId);
+
+        if (!PaymentStatus.unpaid.equals(payment.getPaymentStatus())) {
+            throw new BusinessException(
+                    "Chỉ có thể tạo đơn PayPal cho payment ở trạng thái unpaid, hiện tại: "
+                            + payment.getPaymentStatus());
+        }
+
+        // Cập nhật phương thức thanh toán sang PayPal phòng trường hợp payment được tạo ban đầu bằng VNPAY
+        payment.setPaymentMethod(Payment.PaymentMethod.paypal);
+
+        String description = "Thanh toan don hang #" + payment.getPaymentId()
+                + " - " + payment.getBooking().getBookingCode();
+
+        Map<String, String> order = payPalService.createOrder(
+                payment.getFinalAmount(), payment.getPaymentId(), description);
+
+        payment.setPaypalOrderId(order.get("orderId"));
+        paymentRepository.save(payment);
+
+        log.info("PayPal order created: paymentId={}, orderId={}", paymentId, order.get("orderId"));
+        return order;
+    }
+
+    @Override
+    @Transactional
+    public PaymentResponseDTO processPaypalPayment(String paypalOrderId) {
+        Payment payment = paymentRepository.findByPaypalOrderIdForUpdate(paypalOrderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Payment", "paypalOrderId", paypalOrderId));
+
+        // Idempotent: nếu đã paid rồi (ví dụ PayPal redirect về 2 lần) thì trả luôn kết quả hiện tại.
+        if (PaymentStatus.paid.equals(payment.getPaymentStatus())) {
+            return paymentMapper.toResponse(payment);
+        }
+
+        if (!PaymentStatus.unpaid.equals(payment.getPaymentStatus())) {
+            throw new BusinessException(
+                    "Payment phải ở trạng thái unpaid, hiện tại: " + payment.getPaymentStatus());
+        }
+
+        Map<String, String> captureResult = payPalService.captureOrder(paypalOrderId);
+        String status = captureResult.get("status");
+
+        if (!"COMPLETED".equalsIgnoreCase(status)) {
+            payment.setPaymentStatus(PaymentStatus.failed);
+            Payment saved = paymentRepository.save(payment);
+            log.warn("PayPal capture không COMPLETED (status={}) cho orderId={}", status, paypalOrderId);
+            return paymentMapper.toResponse(saved);
+        }
+
+        payment.setPaymentStatus(PaymentStatus.paid);
+        payment.setPaidAt(LocalDateTime.now());
+        payment.setPaypalCaptureId(captureResult.get("captureId"));
+        payment.setPaypalPayerEmail(captureResult.get("payerEmail"));
+
+        Payment saved = finalizePaid(payment);
+
+        log.info("Payment {} processed via PayPal, loyalty points earned for customer {}",
+                saved.getPaymentId(), saved.getBooking().getCustomer().getCustomerId());
+
+        return paymentMapper.toResponse(saved);
+    }
+
+    @Override
+    @Transactional
+    public PaymentResponseDTO markPaypalFailed(String paypalOrderId) {
+        Payment payment = paymentRepository.findByPaypalOrderIdForUpdate(paypalOrderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Payment", "paypalOrderId", paypalOrderId));
+
+        if (!PaymentStatus.unpaid.equals(payment.getPaymentStatus())) {
+            // Đã paid hoặc đã failed từ trước — không cần xử lý lại.
+            return paymentMapper.toResponse(payment);
+        }
+
+        payment.setPaymentStatus(PaymentStatus.failed);
+        Payment saved = paymentRepository.save(payment);
+        log.info("Payment {} marked failed (PayPal cancelled), orderId={}", saved.getPaymentId(), paypalOrderId);
+        return paymentMapper.toResponse(saved);
+    }
+
+    /**
+     * Logic chung khi một payment chuyển sang "paid" (dùng cho cả VNPAY và PayPal):
+     * lưu payment, tích điểm loyalty (FR-7), cộng total_spending cho customer.
+     */
+    private Payment finalizePaid(Payment payment) {
         Payment saved = paymentRepository.save(payment);
 
         // FR-7: Tích điểm loyalty
         earnLoyaltyPoints(saved);
 
-        // Cập nhật total_spending và total_visits của customer
+        // Cập nhật total_spending của customer
         Customer customer = saved.getBooking().getCustomer();
         customer.setTotalSpending(customer.getTotalSpending().add(saved.getFinalAmount()));
-        customer.setTotalVisits(customer.getTotalVisits() != null ? customer.getTotalVisits() + 1 : 1);
         customerRepository.save(customer);
 
-        // Gửi email xác nhận thanh toán thành công
-        sendPaymentConfirmationEmailAsync(saved);
-
-        log.info("Payment {} processed, loyalty points earned for customer {}",
-                paymentId, customer.getCustomerId());
-
-        return paymentMapper.toResponse(saved);
+        return saved;
     }
 
     @Override
@@ -374,38 +465,5 @@ public class PaymentServiceImpl implements PaymentService {
         return bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Booking", "id", bookingId));
-    }
-
-    // ── PRIVATE — gửi email xác nhận thanh toán (bất đồng bộ) ───────────────
-
-    private void sendPaymentConfirmationEmailAsync(Payment payment) {
-        try {
-            com.autowash.backend.customer.entity.Customer customer = payment.getBooking().getCustomer();
-            String toEmail = customer.getUser() != null ? customer.getUser().getEmail() : null;
-            if (toEmail == null) return;
-
-            com.autowash.backend.booking.entity.Booking booking = payment.getBooking();
-            java.util.List<com.autowash.backend.booking.dto.BookingDetailItemResponseDTO> details =
-                    bookingDetailService.getByBookingId(booking.getBookingId());
-
-            String serviceNames = details.stream()
-                    .map(com.autowash.backend.booking.dto.BookingDetailItemResponseDTO::getServiceName)
-                    .collect(java.util.stream.Collectors.joining(", "));
-
-            mailService.sendBookingConfirmationEmail(
-                    toEmail,
-                    customer.getFullName(),
-                    booking.getBookingCode(),
-                    booking.getBranch().getBranchName(),
-                    booking.getBranch().getAddress(),
-                    serviceNames,
-                    booking.getSlot().getSlotDate(),
-                    booking.getSlot().getStartTime(),
-                    booking.getSlot().getEndTime(),
-                    payment.getFinalAmount()
-            );
-        } catch (Exception e) {
-            log.error("Lỗi khi gửi email xác nhận thanh toán #{}: {}", payment.getPaymentId(), e.getMessage(), e);
-        }
     }
 }

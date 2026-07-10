@@ -1,8 +1,9 @@
 import "./PaymentPage.css";
 import { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import axiosClient from "../../../api/axiosClient";
+import { BACKEND_ROOT_URL } from "../../../api/axiosClient";
 
+const API_BASE = BACKEND_ROOT_URL;
 const STORE_NAME = "AutoWash Pro";
 
 // VNPAY sandbox hết hạn giao dịch sau 15 phút kể từ vnp_CreateDate
@@ -13,18 +14,19 @@ function PaymentPage() {
     const location = useLocation();
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
-
+    const bookingIdFromBookingPage = location.state?.bookingId;
+    const bookingIdFromQuery = searchParams.get("bookingId");
     const paymentIdFromQuery = searchParams.get("paymentId");
     const paymentFailedFromQuery = searchParams.get("paymentFailed");
     const failReasonFromQuery = searchParams.get("reason");
-    const bookingIdFromQuery = searchParams.get("bookingId");
-
-    const bookingIdFromBookingPage = location.state?.bookingId;
-    const bookingId = bookingIdFromBookingPage ? String(bookingIdFromBookingPage) : (bookingIdFromQuery ? String(bookingIdFromQuery) : "");
-    // VNPAY là phương thức duy nhất hiện hỗ trợ QR thật, nên fix cứng luôn.
-    // Lưu ý: enum PaymentMethod ở backend không có "vnpay", nên khi tạo payment
-    // vẫn phải gửi "bank_transfer" để pass validation — QR hiển thị là QR VNPAY thật.
-    const paymentMethod = "bank_transfer";
+    const bookingId = bookingIdFromBookingPage
+        ? String(bookingIdFromBookingPage)
+        : (bookingIdFromQuery || "");
+    // Khách chọn giữa VNPAY (QR nội địa) và PayPal (thẻ/ví quốc tế).
+    // "vnpay" -> gửi paymentMethod="bank_transfer" cho backend (enum không có "vnpay").
+    // "paypal" -> gửi paymentMethod="paypal" thẳng, khớp enum PaymentMethod.paypal.
+    const [selectedMethod, setSelectedMethod] = useState("vnpay");
+    const paymentMethod = selectedMethod === "paypal" ? "paypal" : "bank_transfer";
 
     // Promotion & Reward LUÔN LÀ TUỲ CHỌN — nếu khách không có mã/điểm thì cứ để
     // trống, hàm handleCreatePayment bên dưới đã tự gửi null khi rỗng nên việc
@@ -57,11 +59,20 @@ function PaymentPage() {
         setQrLoading(true);
         setErrorMessage("");
         try {
-            const response = await axiosClient.get(`/payments/${id}/vnpay-qr`, {
-                responseType: "blob"
+            const response = await fetch(`${API_BASE}/api/v1/payments/${id}/vnpay-qr`, {
+                method: "GET",
+                headers: {
+                    Authorization: `Bearer ${localStorage.getItem("token")}`,
+                },
             });
 
-            const blob = response.data;
+            if (!response.ok) {
+                // Endpoint lỗi trả JSON message, còn thành công trả ảnh nên đọc text để báo lỗi.
+                const text = await response.text().catch(() => "");
+                throw new Error(text || `Không tạo được QR VNPAY (HTTP ${response.status})`);
+            }
+
+            const blob = await response.blob();
 
             // Revoke URL cũ trước khi tạo URL mới để tránh leak bộ nhớ.
             if (qrObjectUrlRef.current) {
@@ -71,7 +82,7 @@ function PaymentPage() {
             qrObjectUrlRef.current = objectUrl;
             setQrImageUrl(objectUrl);
         } catch (error) {
-            setErrorMessage(error.response?.data?.message || "Không tạo được mã QR VNPAY");
+            setErrorMessage(error.message || "Không tạo được mã QR VNPAY");
         } finally {
             setQrLoading(false);
         }
@@ -102,10 +113,12 @@ function PaymentPage() {
             return;
         }
 
-        // Chỉ cho tạo payment khi booking đã hoàn tất dịch vụ.
+        // Cho phép tạo payment ngay cả khi booking đang pending/confirmed/in_progress.
+        // Chỉ chặn khi booking đã bị hủy hoặc khách không đến — 2 trạng thái này
+        // không còn ý nghĩa để thanh toán.
         if (bookingDetail && (bookingDetail.status === "cancelled" || bookingDetail.status === "no_show")) {
             setErrorMessage(
-                "Không thể thanh toán cho lịch đặt đã bị hủy hoặc không đến."
+                `Không thể thanh toán cho booking đã ở trạng thái "${bookingDetail.status}".`
             );
             return;
         }
@@ -121,17 +134,112 @@ function PaymentPage() {
 
         try {
             setIsLoading(true);
-            const response = await axiosClient.post("/payments", data);
-            const result = response.data;
+            const response = await fetch(`${API_BASE}/api/v1/payments`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${localStorage.getItem("token")}`,
+                },
+                body: JSON.stringify(data),
+            });
 
-            setPaymentResult(result);
-            setPaymentId(result.paymentId);
-            setErrorMessage("");
-            // Tạo payment xong -> gọi backend sinh QR VNPAY thật cho paymentId vừa tạo
-            await fetchVnpayQrImage(result.paymentId);
+            const result = await response.json();
+
+            if (response.ok) {
+                setPaymentResult(result);
+                setPaymentId(result.paymentId);
+                setErrorMessage("");
+                // Tạo payment xong -> gọi backend sinh QR VNPAY thật cho paymentId vừa tạo
+                await fetchVnpayQrImage(result.paymentId);
+            } else {
+                setPaymentResult(null);
+                setErrorMessage(result.message);
+            }
         } catch (error) {
-            setPaymentResult(null);
-            setErrorMessage(error.response?.data?.message || "Cannot create payment");
+            setErrorMessage("Network Error");
+            console.log("Cannot create payment", error);
+        } finally {
+            setIsLoading(false);
+        }
+    }
+
+    // Tạo payment (nếu chưa có) với paymentMethod="paypal", sau đó tạo PayPal Order
+    // và redirect trình duyệt sang trang PayPal để khách đăng nhập & xác nhận thanh toán.
+    // Khi khách approve xong, PayPal tự redirect trình duyệt về backend (paypal-return),
+    // backend capture rồi redirect tiếp về đúng trang này với ?paymentId=... (giống VNPAY).
+    async function handlePayPalPay() {
+        setErrorMessage("");
+
+        if (!bookingId) {
+            setErrorMessage("Please enter Booking ID");
+            return;
+        }
+        if (isNaN(Number(bookingId)) || Number(bookingId) <= 0) {
+            setErrorMessage("Booking ID must be a number greater than 0");
+            return;
+        }
+        if (bookingDetail && (bookingDetail.status === "cancelled" || bookingDetail.status === "no_show")) {
+            setErrorMessage(
+                `Không thể thanh toán cho booking đã ở trạng thái "${bookingDetail.status}".`
+            );
+            return;
+        }
+
+        setIsLoading(true);
+        try {
+            let currentPaymentId = paymentId;
+
+            // Chưa có payment -> tạo mới với paymentMethod = "paypal".
+            if (!currentPaymentId) {
+                const data = {
+                    bookingId: Number(bookingId),
+                    paymentMethod: "paypal",
+                    promotionId: promotionId ? Number(promotionId) : null,
+                    rewardId: rewardId ? Number(rewardId) : null,
+                };
+
+                const response = await fetch(`${API_BASE}/api/v1/payments`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${localStorage.getItem("token")}`,
+                    },
+                    body: JSON.stringify(data),
+                });
+                const result = await response.json();
+
+                if (!response.ok) {
+                    setErrorMessage(result.message || "Không tạo được payment");
+                    return;
+                }
+
+                setPaymentResult(result);
+                currentPaymentId = result.paymentId;
+                setPaymentId(currentPaymentId);
+            }
+
+            // Tạo PayPal Order cho payment vừa có -> nhận approvalUrl để redirect.
+            const orderResponse = await fetch(
+                `${API_BASE}/api/v1/payments/${currentPaymentId}/paypal-order`,
+                {
+                    method: "POST",
+                    headers: {
+                        Authorization: `Bearer ${localStorage.getItem("token")}`,
+                    },
+                }
+            );
+            const orderResult = await orderResponse.json();
+
+            if (!orderResponse.ok) {
+                setErrorMessage(orderResult.message || "Không tạo được đơn hàng PayPal");
+                return;
+            }
+
+            // Điều hướng cả trang sang PayPal (không phải điều hướng nội bộ React Router).
+            window.location.href = orderResult.approvalUrl;
+        } catch (error) {
+            setErrorMessage("Network Error");
+            console.log("Cannot create PayPal order", error);
         } finally {
             setIsLoading(false);
         }
@@ -145,26 +253,48 @@ function PaymentPage() {
         if (!paymentId) return;
 
         try {
-            const response = await axiosClient.get(`/payments/${paymentId}`);
-            const result = response.data;
+            const response = await fetch(`${API_BASE}/api/v1/payments/${paymentId}`, {
+                method: "GET",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${localStorage.getItem("token")}`
+                },
+            });
 
-            setPaymentResult(result);
-            if (!silent) setErrorMessage("");
-        } catch (error) {
-            if (!silent) {
+            const result = await response.json();
+
+            if (response.ok) {
+                setPaymentResult(result);
+                if (!silent) setErrorMessage("");
+            } else if (!silent) {
                 setPaymentResult(null);
-                setErrorMessage(error.response?.data?.message || "Cannot get payment");
+                setErrorMessage(result.message);
             }
+        } catch (error) {
+            if (!silent) setErrorMessage("Network Error");
+            console.log("Cannot get payment", error);
         }
     }
 
     async function handleGetBookingDetail(id) {
         try {
-            const response = await axiosClient.get(`/customer/bookings/${id}`);
-            const result = response.data;
-            setBookingDetail(result);
+            const response = await fetch(`http://localhost:8080/api/v1/bookings/${id}`, {
+                method: "GET",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${localStorage.getItem("token")}`
+                }
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+                setBookingDetail(result);
+            } else {
+                console.log(result.message);
+            }
         } catch (error) {
-            // No console.log to avoid leaking token/PII
+            console.log("Cannot get booking detail", error);
         }
     }
 
@@ -182,6 +312,9 @@ function PaymentPage() {
                 invalid_order: "Không xác định được đơn hàng thanh toán.",
                 order_not_found: "Không tìm thấy đơn hàng tương ứng.",
                 payment_failed: "Giao dịch không thành công. Vui lòng thử lại.",
+                paypal_cancelled: "Bạn đã hủy thanh toán PayPal. Vui lòng thử lại nếu muốn tiếp tục.",
+                paypal_not_completed: "PayPal chưa xác nhận hoàn tất giao dịch. Vui lòng thử lại.",
+                paypal_capture_failed: "Không xác nhận được thanh toán PayPal. Vui lòng thử lại.",
             };
             setErrorMessage(
                 reasonMessages[failReasonFromQuery] || "Thanh toán không thành công. Vui lòng thử lại."
@@ -220,6 +353,7 @@ function PaymentPage() {
     // hủy / không đến. Không còn chờ trạng thái "completed" nữa.
     useEffect(() => {
         if (
+            selectedMethod === "vnpay" &&
             bookingId &&
             bookingDetail &&
             bookingDetail.status !== "cancelled" &&
@@ -231,7 +365,7 @@ function PaymentPage() {
             handleCreatePayment().then(() => {});
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [bookingId, bookingDetail?.status]);
+    }, [bookingId, bookingDetail?.status, selectedMethod]);
 
     // Khi có mã QR mới -> reset đồng hồ về 15:00 (khớp vnp_ExpireDate ở backend)
     // và bắt đầu đếm ngược mỗi giây.
@@ -250,7 +384,7 @@ function PaymentPage() {
     // Khi VNPAY gọi vnpay-ipn về backend và cập nhật status -> paid, poll này sẽ tự
     // phát hiện ra và dừng lại (không cần khách bấm nút "đã thanh toán" thủ công nữa).
     useEffect(() => {
-        if (!paymentId || paymentResult?.paymentStatus === "paid" || timeLeft <= 0) {
+        if (!paymentId || !qrImageUrl || paymentResult?.paymentStatus === "paid" || timeLeft <= 0) {
             return;
         }
         const poller = setInterval(() => {
@@ -258,7 +392,7 @@ function PaymentPage() {
         }, 5000);
         return () => clearInterval(poller);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [paymentId, paymentResult?.paymentStatus, timeLeft > 0]);
+    }, [paymentId, qrImageUrl, paymentResult?.paymentStatus, timeLeft > 0]);
 
     // Revoke object URL của ảnh QR khi rời trang, tránh leak bộ nhớ.
     useEffect(() => {
@@ -290,18 +424,23 @@ function PaymentPage() {
 
     const orderCode = paymentId ? `PAY${paymentId}` : "—";
     const isPaid = paymentResult?.paymentStatus === "paid";
+    const originalAmount = Number(paymentResult?.originalAmount || bookingDetail?.totalAmount || 0);
+    const discountAmount = Number(paymentResult?.discountAmount || 0);
+    const finalAmountVnd = Number(paymentResult?.finalAmount || bookingDetail?.totalAmount || 0);
+
+    // Phương thức thực tế đã dùng — ưu tiên payment đã tạo trên server (paymentResult),
+    // fallback về lựa chọn hiện tại trên UI khi chưa tạo payment.
+    const effectiveMethod =
+        paymentResult?.paymentMethod === "paypal" || selectedMethod === "paypal" ? "paypal" : "vnpay";
+
+    const firstService = bookingDetail?.details?.[0] ||
+        bookingDetail?.bookingDetail?.[0] ||
+        null;
 
     // Chỉ chặn thanh toán khi booking đã hủy / khách không đến.
     // Mọi trạng thái khác (pending/confirmed/in_progress/completed) đều cho phép thanh toán.
     const isBookingUnpayable =
         bookingDetail && (bookingDetail.status === "cancelled" || bookingDetail.status === "no_show");
-    const originalAmount = Number(paymentResult?.originalAmount || bookingDetail?.totalAmount || 0);
-    const discountAmount = Number(paymentResult?.discountAmount || 0);
-    const finalAmountVnd = Number(paymentResult?.finalAmount || bookingDetail?.totalAmount || 0);
-
-    const firstService = bookingDetail?.details?.[0] ||
-        bookingDetail?.bookingDetail?.[0] ||
-        null;
 
     return (
         <>
@@ -325,13 +464,25 @@ function PaymentPage() {
                                 </div>
 
                                 <div className="payment-method-grid">
-                                    <div className="method-card active">
+                                    <div
+                                        className={`method-card ${selectedMethod === "vnpay" ? "active" : ""} ${isPaid ? "disabled" : ""}`}
+                                        title={isPaid ? "Đã thanh toán thành công — không thể đổi phương thức" : ""}
+                                        onClick={() => {
+                                            if (!isPaid) setSelectedMethod("vnpay");
+                                        }}
+                                    >
                                         <span className="method-icon">▦</span>
                                         <span>VNPAY</span>
                                     </div>
-                                    <div className="method-card disabled" title="Sắp ra mắt">
-                                        <span className="method-icon">💳</span>
-                                        <span>Thẻ Quốc tế</span>
+                                    <div
+                                        className={`method-card ${selectedMethod === "paypal" ? "active" : ""} ${isPaid ? "disabled" : ""}`}
+                                        title={isPaid ? "Đã thanh toán thành công — không thể đổi phương thức" : ""}
+                                        onClick={() => {
+                                            if (!isPaid) setSelectedMethod("paypal");
+                                        }}
+                                    >
+                                        <span className="method-icon">🅿️</span>
+                                        <span>PayPal</span>
                                     </div>
                                     <div className="method-card disabled" title="Sắp ra mắt">
                                         <span className="method-icon">👛</span>
@@ -339,25 +490,41 @@ function PaymentPage() {
                                     </div>
                                 </div>
 
-                                <div className="method-summary-box">
-                                    <span className="method-summary-icon">▦</span>
-                                    <div>
-                                        <strong>Thanh toán qua VNPAY</strong>
-                                        <p>Hỗ trợ tất cả ứng dụng ngân hàng tại Việt Nam</p>
+                                {selectedMethod === "paypal" ? (
+                                    <div className="method-summary-box">
+                                        <span className="method-summary-icon">🅿️</span>
+                                        <div>
+                                            <strong>Thanh toán qua PayPal</strong>
+                                            <p>Hỗ trợ thẻ Visa/Mastercard quốc tế và số dư PayPal. Số tiền sẽ được quy đổi sang USD.</p>
+                                        </div>
                                     </div>
-                                </div>
-
-                                {bookingDetail && bookingDetail.status !== "completed" && (
-                                    <div className="method-alert">
-                                        Booking đang ở trạng thái "<strong>{bookingDetail.status}</strong>". Mã QR sẽ được tạo sau khi quản lý xác nhận dịch vụ.
+                                ) : (
+                                    <div className="method-summary-box">
+                                        <span className="method-summary-icon">▦</span>
+                                        <div>
+                                            <strong>Thanh toán qua VNPAY</strong>
+                                            <p>Hỗ trợ tất cả ứng dụng ngân hàng tại Việt Nam</p>
+                                        </div>
                                     </div>
                                 )}
-                                {bookingDetail?.status === "completed" && !paymentId && !qrLoading && (
+
+                                {isBookingUnpayable && (
+                                    <div className="method-alert">
+                                        Booking đang ở trạng thái "<strong>{bookingDetail.status}</strong>" nên không thể thanh toán.
+                                    </div>
+                                )}
+                                {selectedMethod === "vnpay" && bookingDetail && !isBookingUnpayable && !paymentId && !qrLoading && (
                                     <p className="method-hint">Đang chuẩn bị mã QR thanh toán...</p>
                                 )}
-                                {qrLoading && <p className="method-hint">Đang tạo mã QR...</p>}
+                                {selectedMethod === "vnpay" && qrLoading && <p className="method-hint">Đang tạo mã QR...</p>}
+                                {selectedMethod === "paypal" && !isBookingUnpayable && (
+                                    <p className="method-hint">
+                                        Bấm "Thanh toán qua PayPal" bên dưới — bạn sẽ được chuyển sang trang PayPal
+                                        để đăng nhập và xác nhận thanh toán.
+                                    </p>
+                                )}
 
-                                {paymentId && qrImageUrl && (
+                                {selectedMethod === "vnpay" && paymentId && qrImageUrl && (
                                     <div className="qr-panel">
                                         <div className="qr-panel-header">
                                             <span>Quét mã QR bằng App VNPAY / Mobile Banking</span>
@@ -482,7 +649,7 @@ function PaymentPage() {
                             </div>
                             <div className="summary-item">
                                 <span>Phương thức</span>
-                                <span>🏦 VNPAY QR</span>
+                                <span>{effectiveMethod === "paypal" ? "🅿️ PayPal" : "🏦 VNPAY QR"}</span>
                             </div>
                             <div className="summary-item no-border">
                                 <span>Trạng thái</span>
@@ -531,15 +698,17 @@ function PaymentPage() {
 
                             <button
                                 className="pay-now-button"
-                                onClick={handleCreatePayment}
-                                disabled={isLoading || isBookingUnpayable}
+                                onClick={effectiveMethod === "paypal" ? handlePayPalPay : handleCreatePayment}
+                                disabled={isLoading || isBookingUnpayable || (effectiveMethod === "vnpay" && isPaid)}
                             >
                                 <span>
                                     {isLoading
                                         ? "Đang xử lý..."
                                         : isBookingUnpayable
                                             ? "Booking không thể thanh toán"
-                                            : (paymentId ? "Tạo lại mã QR" : "Xác Nhận & Hoàn Tất")}
+                                            : effectiveMethod === "paypal"
+                                                ? (paymentId ? "Tiếp tục với PayPal" : "Thanh Toán Qua PayPal")
+                                                : (paymentId ? "Tạo lại mã QR" : "Xác Nhận & Hoàn Tất")}
                                 </span>
                                 {!isLoading && !isBookingUnpayable && (
                                     <span className="pay-now-arrow" aria-hidden="true">→</span>

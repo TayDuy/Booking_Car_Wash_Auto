@@ -54,6 +54,10 @@ public class PaymentResponseDTO {
     private String vnpayCardType;
     private String vnpayResponseCode;
 
+    private String paypalOrderId;
+    private String paypalCaptureId;
+    private String paypalPayerEmail;
+
     /** Audit timestamps. */
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

@@ -2,8 +2,9 @@ import "./PaymentSuccessPage.css";
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { CheckCircle2, Copy, Home, ListChecks, MapPin } from "lucide-react";
-import axiosClient from "../../../api/axiosClient";
+import { BACKEND_ROOT_URL } from "../../../api/axiosClient";
 
+const API_BASE = BACKEND_ROOT_URL;
 const STORE_NAME = "AutoWash Pro";
 
 // Trang này CHỈ hiển thị kết quả thanh toán đã thành công (đọc lại), không tạo
@@ -35,9 +36,12 @@ function PaymentSuccessPage() {
         let cancelled = false;
         async function loadPayment() {
             try {
-                const response = await axiosClient.get(`/payments/${paymentIdFromQuery}`);
+                const res = await fetch(`${API_BASE}/api/v1/payments/${paymentIdFromQuery}`, {
+                    headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+                });
+                const result = await res.json();
                 if (cancelled) return;
-                setPaymentResult(response.data);
+                if (res.ok) setPaymentResult(result);
             } catch (error) {
                 console.log("Cannot load payment result", error);
             } finally {
@@ -60,8 +64,11 @@ function PaymentSuccessPage() {
         let cancelled = false;
         async function loadBooking() {
             try {
-                const response = await axiosClient.get(`/customer/bookings/${bookingId}`);
-                if (!cancelled) setBookingDetail(response.data);
+                const res = await fetch(`${API_BASE}/api/v1/bookings/${bookingId}`, {
+                    headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+                });
+                const result = await res.json();
+                if (!cancelled && res.ok) setBookingDetail(result);
             } catch (error) {
                 console.log("Cannot load booking detail", error);
             } finally {
@@ -83,8 +90,11 @@ function PaymentSuccessPage() {
         let cancelled = false;
         async function loadVehicles() {
             try {
-                const response = await axiosClient.get("/vehicles");
-                if (!cancelled && Array.isArray(response.data)) setVehicles(response.data);
+                const res = await fetch(`${API_BASE}/api/v1/vehicles`, {
+                    headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+                });
+                const result = await res.json();
+                if (!cancelled && res.ok && Array.isArray(result)) setVehicles(result);
             } catch (error) {
                 console.log("Cannot load vehicle list", error);
             }
@@ -165,7 +175,8 @@ function PaymentSuccessPage() {
                 </div>
                 <h1>Thanh Toán Thành Công!</h1>
                 <p className="pay-success-subtitle">
-                    Cảm ơn bạn đã sử dụng dịch vụ của {STORE_NAME}. VNPAY đã xác nhận giao dịch của bạn,
+                    Cảm ơn bạn đã sử dụng dịch vụ của {STORE_NAME}.{" "}
+                    {paymentResult?.paymentMethod === "paypal" ? "PayPal" : "VNPAY"} đã xác nhận giao dịch của bạn,
                     booking của bạn giờ đã được thanh toán.
                 </p>
 
@@ -222,7 +233,9 @@ function PaymentSuccessPage() {
                             </div>
                             <div>
                                 <span>Phương thức</span>
-                                <strong>🏦 VNPAY QR</strong>
+                                <strong>
+                                    {paymentResult?.paymentMethod === "paypal" ? "🅿️ PayPal" : "🏦 VNPAY QR"}
+                                </strong>
                             </div>
                         </div>
 
