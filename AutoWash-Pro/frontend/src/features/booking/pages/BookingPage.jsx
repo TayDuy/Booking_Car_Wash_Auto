@@ -249,22 +249,53 @@ export default function BookingPage() {
         const visibleSlots = rawSlots.filter(slot => slot.status !== "closed");
 
         if (visibleSlots.length > 0) {
-          const formattedSlots = visibleSlots
-              .map(slot => {
-                const max = slot.maxCapacity ?? 1;
-                const current = slot.currentBookings ?? 0;
-                const remaining = Math.max(max - current, 0);
-                const isOpen = slot.status === "open" && remaining > 0;
-                return {
-                  ...slot,
-                  statusType: !isOpen ? "FULL" : (remaining <= 1 ? "PEAK" : "NORMAL"),
-                  statusLabel: isOpen ? `Còn ${remaining} chỗ` : "Hết chỗ",
-                  available: isOpen,
-                };
-              })
-              // Slot còn chỗ hiện lên trước, slot hết chỗ dồn xuống cuối — dễ chọn hơn
-              // nhưng khách vẫn thấy được toàn bộ khung giờ trong ngày.
-              .sort((a, b) => Number(b.available) - Number(a.available));
+          // ── GOM NHÓM SLOT THEO KHUNG GIỜ ──────────────────────────
+          // Backend trả mỗi bay (Bay 1, 2, 3, 4) một slot riêng cho cùng startTime.
+          // Khách không cần chọn bay — chỉ cần biết "08:00 còn bao nhiêu chỗ".
+          // Ta gom tất cả slot cùng startTime → 1 nút duy nhất, cộng dồn remaining.
+          const groupMap = new Map();
+          visibleSlots.forEach(slot => {
+            const key = slot.startTime;
+            const max = slot.maxCapacity ?? 1;
+            const current = slot.currentBookings ?? 0;
+            const remaining = Math.max(max - current, 0);
+            const isOpen = slot.status === "open" && remaining > 0;
+
+            if (!groupMap.has(key)) {
+              groupMap.set(key, {
+                startTime: key,
+                endTime: slot.endTime,
+                totalRemaining: 0,
+                totalMax: 0,
+                bestSlotId: null,
+                childSlots: [],
+              });
+            }
+            const group = groupMap.get(key);
+            group.totalRemaining += remaining;
+            group.totalMax += max;
+            group.childSlots.push({ slotId: slot.slotId, remaining, isOpen });
+            if (isOpen && group.bestSlotId === null) {
+              group.bestSlotId = slot.slotId;
+            }
+          });
+
+          const formattedSlots = Array.from(groupMap.values()).map(g => {
+            const available = g.totalRemaining > 0;
+            let statusType = "NORMAL";
+            if (!available) statusType = "FULL";
+            else if (g.totalRemaining <= 2) statusType = "PEAK";
+            else if (g.totalRemaining >= g.totalMax * 0.7) statusType = "ECO";
+
+            return {
+              slotId: g.bestSlotId ?? g.childSlots[0]?.slotId,
+              startTime: g.startTime,
+              endTime: g.endTime,
+              statusType,
+              statusLabel: available ? `Còn ${g.totalRemaining} chỗ` : "Hết chỗ",
+              available,
+            };
+          }).sort((a, b) => a.startTime.localeCompare(b.startTime));
 
           setSlots(formattedSlots);
           const firstAvailable = formattedSlots.find(s => s.available);
@@ -364,6 +395,8 @@ export default function BookingPage() {
     if (!brand.trim()) { alert("Vui lòng nhập hãng xe!"); return; }
     if (!selectedTime) { alert("Vui lòng chọn khung giờ!"); return; }
     if (!selectedBranch) { alert("Vui lòng chọn chi nhánh!"); return; }
+
+    if (depositRequired) setPaymentMethod("online");
 
     try {
       await syncProfileIfChanged();
@@ -551,7 +584,7 @@ export default function BookingPage() {
                           if (isSelected) className += " pill-selected";
                           return (
                               <button key={slot.slotId} type="button" disabled={isDisabled} className={className} onClick={() => setSelectedTime(slot.slotId)}>
-                                <span className="slot-clock-text">{slot.startTime}</span>
+                                <span className="slot-clock-text">{(slot.startTime || "").replace(/:00$/, "")}</span>
                                 <span className="slot-status-subtext">{isSelected ? "Đã chọn" : slot.statusLabel}</span>
                               </button>
                           );
