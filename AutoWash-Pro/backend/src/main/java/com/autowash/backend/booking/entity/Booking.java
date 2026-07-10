@@ -123,6 +123,16 @@ public class Booking {
     @Column(name = "note", length = 255)
     private String note;
 
+    @Column(name = "check_in_at")
+    private LocalDateTime checkInAt;
+
+    @Column(name = "completed_at")
+    private LocalDateTime completeAt;
+
+    @Column(name = "loyalty_point_granted", nullable = false)
+    @Builder.Default
+    private Boolean loyaltyPointGranted = false;
+
     @LastModifiedDate
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;

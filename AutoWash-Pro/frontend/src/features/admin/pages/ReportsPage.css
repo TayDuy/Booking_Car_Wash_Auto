@@ -1,0 +1,158 @@
+.reports-page {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.report-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+}
+
+.report-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 18px;
+  padding: 22px;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.04);
+}
+
+.report-card p {
+  margin: 0;
+  color: #64748b;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.report-card h2 {
+  margin: 6px 0 0;
+  color: #0f172a;
+  font-size: 24px;
+  font-weight: 800;
+}
+
+.report-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.report-icon.blue {
+  background: #dbeafe;
+  color: #2563eb;
+}
+
+.report-icon.green {
+  background: #dcfce7;
+  color: #16a34a;
+}
+
+.report-icon.purple {
+  background: #ede9fe;
+  color: #7c3aed;
+}
+
+.report-icon.orange {
+  background: #ffedd5;
+  color: #ea580c;
+}
+
+.report-grid {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  gap: 20px;
+}
+
+.report-title {
+  margin: 0 0 22px;
+  font-size: 20px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.bar-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.bar-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.bar-label {
+  display: flex;
+  justify-content: space-between;
+  color: #334155;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.bar-track {
+  width: 100%;
+  height: 12px;
+  background: #e5e7eb;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.bar-fill {
+  height: 100%;
+  background: #2563eb;
+  border-radius: 999px;
+}
+
+.summary-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.summary-list div {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 0;
+  border-bottom: 1px solid #eef2f7;
+}
+
+.summary-list div:last-child {
+  border-bottom: none;
+}
+
+.summary-list span {
+  color: #64748b;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.summary-list strong {
+  color: #0f172a;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+@media (max-width: 1200px) {
+  .report-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .report-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .report-stats {
+    grid-template-columns: 1fr;
+  }
+}

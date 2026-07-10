@@ -19,6 +19,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
+import java.util.Map;
+import com.autowash.backend.security.LoginRateLimitFilter;
+
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
@@ -26,11 +29,14 @@ public class SecurityConfig {
 
     private final CustomUserDetailsService userDetailsService;
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final LoginRateLimitFilter loginRateLimitFilter;
 
     public SecurityConfig(CustomUserDetailsService userDetailsService,
-                          JwtAuthenticationFilter jwtAuthenticationFilter) {
+            JwtAuthenticationFilter jwtAuthenticationFilter,
+            LoginRateLimitFilter loginRateLimitFilter) {
         this.userDetailsService = userDetailsService;
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+        this.loginRateLimitFilter = loginRateLimitFilter;
     }
 
     @Bean
@@ -102,11 +108,14 @@ public class SecurityConfig {
                                 // KHÔNG mang theo JWT của user nên phải để public, nếu không sẽ luôn bị 401.
                                 "/api/v1/payments/vnpay-return",
                                 "/api/v1/payments/vnpay-ipn",
-
                                 // PAYPAL gọi redirect trình duyệt về đây sau khi khách approve/hủy thanh toán,
                                 // cũng KHÔNG mang theo JWT của user nên phải để public như VNPAY.
                                 "/api/v1/payments/paypal-return",
-                                "/api/v1/payments/paypal-cancel"
+                                "/api/v1/payments/paypal-cancel",
+                                "/api/v1/notifications/stream",
+                                "/api/v1/branches",
+                                "/api/v1/service-packages/active",
+                                "/actuator/health"
                         ).permitAll()
 
                         // ─── Admin only ────────────────────────────────────────────────────
@@ -128,8 +137,8 @@ public class SecurityConfig {
                 .authenticationProvider(authenticationProvider())
                 // Chạy JWT filter trước UsernamePasswordAuthenticationFilter
                 // để Spring Security nhận diện user từ token trước khi kiểm tra quyền
-                .addFilterBefore(jwtAuthenticationFilter,
-                        UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(loginRateLimitFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }

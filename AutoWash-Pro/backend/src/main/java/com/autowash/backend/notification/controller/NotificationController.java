@@ -31,6 +31,8 @@ import java.util.List;
  * </ul>
  * userId luôn lấy từ JWT — client không tự truyền userId.</p>
  */
+import com.autowash.backend.auth.service.SseTicketService;
+
 @RestController
 @RequestMapping("/api/v1/notifications")
 @RequiredArgsConstructor
@@ -38,7 +40,8 @@ public class NotificationController {
 
     private final NotificationService notificationService;
     private final UserRepository userRepository;
-    private final SseService sseService; // ← inject SseService
+    private final SseService sseService;
+    private final SseTicketService sseTicketService;
 
     // ── SSE STREAM ────────────────────────────────────────────────────────────
 
@@ -47,13 +50,10 @@ public class NotificationController {
      * Client giữ kết nối này mở — server đẩy xuống khi có thông báo mới.
      *
      * <p>{@code GET /api/v1/notifications/stream}</p>
-     *
-     * <p>Client tự reconnect nếu mất mạng — SSE hỗ trợ sẵn,
-     * không cần xử lý thêm.</p>
      */
     @GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public SseEmitter stream(@AuthenticationPrincipal UserDetails currentUser) {
-        Integer userId = resolveUserId(currentUser);
+    public SseEmitter stream(@RequestParam String ticket) {
+        Integer userId = sseTicketService.consume(ticket);
         return sseService.register(userId); // đăng ký kết nối, trả về emitter
     }
 

@@ -38,61 +38,64 @@ export async function markAllRead(){
   return resp.data;
 }
 
-export function subscribeSSE(onMessage){
+export function subscribeSSE(onMessage) {
   let es = null;
-  let closed = false;
+  let active = true;
   let retryCount = 0;
-  const MAX_RETRIES = 3;
+  const MAX_RETRIES = 5;
 
-  function open(){
-    const token = localStorage.getItem('token');
-    const headers = token ? `?token=${token}` : '';
-    es = new EventSource(`${BASE_URL}/stream${headers}`);
+  const connect = async () => {
+    if (!active) return;
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
 
-    es.onmessage = (e) => {
-      try{ const d = JSON.parse(e.data); onMessage(d); }catch(err){ console.warn('SSE parse', err); }
-    };
+      const resp = await axiosClient.post('/auth/sse-ticket');
+      const ticket = resp.data?.data || resp.data;
 
-    es.onopen = () => { retryCount = 0; };
+      es = new EventSource(`${BASE_URL}/stream?ticket=${ticket}`);
 
-    es.onerror = async (err) => {
-      console.warn('SSE error', err);
-      if (closed) return;
-      es.close();
+      es.onopen = () => {
+        retryCount = 0; // Reset on successful connection
+      };
 
-      if (retryCount >= MAX_RETRIES) {
-        console.warn('SSE: đã thử lại tối đa số lần, dừng kết nối.');
-        return;
-      }
-      retryCount += 1;
-
-      // Token hết hạn (15 phút) → gọi /auth/refresh để lấy token mới rồi mở lại kết nối,
-      // thay vì giữ nguyên token cũ và bị 401 lặp lại liên tục.
-      const refreshToken = localStorage.getItem('refreshToken');
-      if (!refreshToken) return;
-
-      try {
-        const res = await axios.post('http://localhost:8080/api/v1/auth/refresh', { refreshToken });
-        const { accessToken, refreshToken: newRefreshToken } = res.data.data;
-        localStorage.setItem('token', accessToken);
-        if (newRefreshToken) localStorage.setItem('refreshToken', newRefreshToken);
-
-        if (!closed) {
-          setTimeout(open, 500);
+      es.onmessage = (e) => {
+        try {
+          const d = JSON.parse(e.data);
+          onMessage(d);
+        } catch (err) {
+          console.warn('SSE parse', err);
         }
-      } catch (refreshErr) {
-        console.warn('SSE: refresh token thất bại, dừng kết nối thông báo real-time.', refreshErr);
-      }
-    };
-  }
+      };
 
-  open();
+      es.onerror = (err) => {
+        console.warn('SSE connection error. Closing and retrying...', err);
+        es.close();
+        handleRetry();
+      };
+    } catch (err) {
+      console.error('SSE ticket request failed.', err);
+      handleRetry();
+    }
+  };
 
-  // Trả về object có .close() giống EventSource để chỗ gọi (SiteHeader) dùng được như cũ
+  const handleRetry = () => {
+    if (retryCount >= MAX_RETRIES) {
+      console.warn(`SSE subscription: reached max retry limit (${MAX_RETRIES}). Stopping auto-reconnect.`);
+      return;
+    }
+    retryCount++;
+    const delay = Math.min(30000, 1000 * Math.pow(2, retryCount)); // Exponential backoff: 2s, 4s, 8s, 16s, 30s
+    console.log(`SSE reconnecting in ${delay / 1000}s (attempt ${retryCount}/${MAX_RETRIES})...`);
+    setTimeout(connect, delay);
+  };
+
+  connect();
+
   return {
-    close(){
-      closed = true;
-      es?.close?.();
+    close: () => {
+      active = false;
+      if (es) es.close();
     }
   };
 }

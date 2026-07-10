@@ -16,22 +16,25 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
-
 import java.util.UUID;
-
+import com.autowash.backend.auditlog.service.AuditLogService;
 @Service
 @RequiredArgsConstructor
 public class CustomerServiceImpl implements CustomerService {
 
+    private static final String CUSTOMER_NOT_FOUND_MSG = "Không tìm thấy khách hàng";
+    private static final String ADMIN_USER = "admin";
+
     private final CustomerRepository customerRepository;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final AuditLogService auditLogService;
 
     @Override
     @Transactional(readOnly = true)
     public CustomerProfileResponse getCustomerProfile(Integer userId) {
         Customer customer = customerRepository.findByUser_Id(userId)  // ← fix
-                .orElseThrow(() -> new BusinessException("Không tìm thấy khách hàng", HttpStatus.NOT_FOUND));
+                .orElseThrow(() -> new BusinessException(CUSTOMER_NOT_FOUND_MSG, HttpStatus.NOT_FOUND));
         return mapToResponse(customer);
     }
 
@@ -39,7 +42,7 @@ public class CustomerServiceImpl implements CustomerService {
     @Transactional
     public CustomerProfileResponse updateCustomerProfile(Integer userId, CustomerUpdateRequest request) {
         Customer customer = customerRepository.findByUser_Id(userId)  // ← fix
-                .orElseThrow(() -> new BusinessException("Không tìm thấy khách hàng", HttpStatus.NOT_FOUND));
+                .orElseThrow(() -> new BusinessException(CUSTOMER_NOT_FOUND_MSG, HttpStatus.NOT_FOUND));
 
         customer.setFullName(request.getFullName());
         customer.setDateOfBirth(request.getDateOfBirth());
@@ -52,6 +55,12 @@ public class CustomerServiceImpl implements CustomerService {
         }
 
         Customer updateCustomer = customerRepository.save(customer);
+        auditLogService.log(
+                "UPDATE_PROFILE",
+                ADMIN_USER,
+                updateCustomer.getCustomerId(),
+                "Khách hàng cập nhật hồ sơ"
+        );
         return mapToResponse(updateCustomer);
     }
     @Override
@@ -158,5 +167,47 @@ public class CustomerServiceImpl implements CustomerService {
         if ("female".equalsIgnoreCase(gender)) return "Nữ";
         if ("other".equalsIgnoreCase(gender)) return "Khác";
         return gender;
+    }
+
+    @Override
+    @Transactional
+    public CustomerProfileResponse updateCustomer(Integer customerId, CustomerUpdateRequest request) {
+        Customer customer = customerRepository.findById(customerId)
+                .orElseThrow(() -> new BusinessException(CUSTOMER_NOT_FOUND_MSG, HttpStatus.NOT_FOUND));
+
+        customer.setFullName(request.getFullName());
+        customer.setDateOfBirth(request.getDateOfBirth());
+        customer.setGender(translateGenderToEnglish(request.getGender()));
+
+        if (customer.getUser() != null) {
+            customer.getUser().setPhone(request.getPhone());
+            customer.getUser().setEmail(request.getEmail());
+        }
+
+        Customer updatedCustomer = customerRepository.save(customer);
+        auditLogService.log(
+                "UPDATE_CUSTOMER",
+                ADMIN_USER,
+                updatedCustomer.getCustomerId(),
+                "Admin cập nhật khách hàng " + updatedCustomer.getFullName()
+        );
+        return mapToResponse(updatedCustomer);
+    }
+
+    @Override
+    @Transactional
+    public void deleteCustomer(Integer customerId) {
+        Customer customer = customerRepository.findById(customerId)
+                .orElseThrow(() -> new BusinessException(CUSTOMER_NOT_FOUND_MSG, HttpStatus.NOT_FOUND));
+
+        if (customer.getUser() != null) {
+            customer.getUser().setStatus("inactive");
+            auditLogService.log(
+                    "DELETE_CUSTOMER",
+                    ADMIN_USER,
+                    customer.getCustomerId(),
+                    "Khóa khách hàng " + customer.getFullName()
+            );
+        }
     }
 }

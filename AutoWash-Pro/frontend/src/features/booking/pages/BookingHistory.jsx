@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import customerApi from '../../../api/customerApi';
+
 import bookingApi from '../../../api/bookingApi';
 import './BookingHistory.css';
 
@@ -50,10 +50,7 @@ export default function BookingHistory() {
   const fetchBookings = useCallback(async () => {
     try {
       setLoading(true);
-      const profileRes = await customerApi.profile();
-      const customerId = profileRes.data?.customerId;
-      if (!customerId) return;
-      const res = await bookingApi.myBookings(customerId);
+      const res = await bookingApi.myBookings();
       setBookings(res.data || []);
     } catch (err) {
       console.error('Lỗi tải lịch sử đặt lịch:', err);
@@ -376,6 +373,8 @@ export default function BookingHistory() {
                                 <thead>
                                 <tr>
                                   <th>Dịch vụ</th>
+                                  <th>Mô tả</th>
+                                  <th>Thời gian</th>
                                   <th>SL</th>
                                   <th>Đơn giá</th>
                                   <th>Thành tiền</th>
@@ -385,6 +384,10 @@ export default function BookingHistory() {
                                 {detailModal.details.map(d => (
                                     <tr key={d.bookingDetailId}>
                                       <td>{d.serviceName}</td>
+                                      <td style={{ color: 'var(--on-surface-variant)', maxWidth: '180px', fontSize: '13px' }}>
+                                        {d.description || '—'}
+                                      </td>
+                                      <td>{d.durationMinutes ? `${d.durationMinutes}p` : '—'}</td>
                                       <td>{d.quantity}</td>
                                       <td>{fmt.format(d.unitPrice || 0)}</td>
                                       <td>{fmt.format(d.subTotal || 0)}</td>
@@ -395,6 +398,15 @@ export default function BookingHistory() {
                               <div className="bh-services-total">
                                 <span className="bh-services-total-label">Tổng cộng</span>
                                 <span className="bh-services-total-value">{fmt.format(detailModal.totalAmount || 0)}</span>
+                              </div>
+                              <div style={{ marginTop: '12px', textAlign: 'right' }}>
+                                <button
+                                  className="bh-btn-detail"
+                                  onClick={() => navigate(`/customer/booking/${detailModal.bookingId}`)}
+                                  style={{ fontSize: '13px', padding: '6px 16px' }}
+                                >
+                                  Xem chi tiết →
+                                </button>
                               </div>
                             </>
                         )}

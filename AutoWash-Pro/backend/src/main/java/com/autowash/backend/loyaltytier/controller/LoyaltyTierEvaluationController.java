@@ -1,6 +1,7 @@
 package com.autowash.backend.loyaltytier.controller;
 
 import com.autowash.backend.loyaltytier.dto.CustomerTierEvaluationResponseDTO;
+import com.autowash.backend.loyaltytier.dto.CustomerTierResponseDTO;
 import com.autowash.backend.loyaltytier.service.LoyaltyTierEvaluationService;
 import com.autowash.backend.security.CustomUserDetails;
 import lombok.RequiredArgsConstructor;
@@ -21,7 +22,7 @@ import java.util.List;
  * - Đánh giá một customer bất kỳ.
  * - Đánh giá toàn bộ customer.
  *
- * STAFF / BRANCH_MANAGER:
+ * STAFF:
  * - Đánh giá customer thuộc chi nhánh.
  */
 @RestController
@@ -49,14 +50,29 @@ public class LoyaltyTierEvaluationController {
     }
 
     /**
-     * ADMIN / STAFF / BRANCH_MANAGER đánh giá một customer cụ thể.
+     * CUSTOMER xem hạng hiện tại (không trigger re-evaluation).
+     *
+     * GET /api/v1/loyalty-tiers/evaluation/me
+     */
+    @GetMapping("/me")
+    @PreAuthorize("hasRole('CUSTOMER')")
+    public ResponseEntity<CustomerTierResponseDTO> getMyTier(
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        return ResponseEntity.ok(
+                loyaltyTierEvaluationService.getCustomerTierByUserId(userDetails.getId())
+        );
+    }
+
+    /**
+     * ADMIN / STAFF đánh giá một customer cụ thể.
      *
      * POST /api/v1/loyalty-tiers/evaluation/customers/{customerId}
      *
      * Ở đây {customerId} là customer.customer_id, không phải account.user_id.
      */
     @PostMapping("/customers/{customerId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF', 'BRANCH_MANAGER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     public ResponseEntity<CustomerTierEvaluationResponseDTO> evaluateOneCustomer(
             @PathVariable Integer customerId
     ) {
@@ -66,12 +82,12 @@ public class LoyaltyTierEvaluationController {
     }
 
     /**
-     * BRANCH_MANAGER / STAFF đánh giá toàn bộ customer thuộc một chi nhánh.
+     * STAFF / ADMIN đánh giá toàn bộ customer thuộc một chi nhánh.
      *
      * POST /api/v1/loyalty-tiers/evaluation/branches/{branchId}/customers
      */
     @PostMapping("/branches/{branchId}/customers")
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF', 'BRANCH_MANAGER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     public ResponseEntity<List<CustomerTierEvaluationResponseDTO>> evaluateCustomersByBranch(
             @PathVariable Integer branchId
     ) {

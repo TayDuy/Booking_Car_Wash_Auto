@@ -16,4 +16,8 @@ public interface CustomerService {
      * STAFF/ADMIN tạo tài khoản khách hàng hộ — tạo đồng thời cả User + Customer.
      */
     AdminCreateCustomerResponseDTO createCustomerByStaff(AdminCreateCustomerRequestDTO request);
+
+    CustomerProfileResponse updateCustomer(Integer customerId, CustomerUpdateRequest request);
+
+    void deleteCustomer(Integer customerId);
 }

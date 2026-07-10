@@ -1,6 +1,7 @@
 package com.autowash.backend.servicepackage.controller;
 
 import com.autowash.backend.common.dto.ApiResponse;
+import com.autowash.backend.servicepackage.dto.ServicePackageDetailResponseDTO;
 import com.autowash.backend.servicepackage.dto.ServicePackageRequestDTO;
 import com.autowash.backend.servicepackage.dto.ServicePackageResponseDTO;
 import com.autowash.backend.servicepackage.service.ServicePackageService;
@@ -49,6 +50,15 @@ public class ServicePackageController {
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<ServicePackageResponseDTO>> getById(@PathVariable Integer id) {
         return ResponseEntity.ok(ApiResponse.success(service.getById(id)));
+    }
+
+    /**
+     * GET /api/v1/service-packages/{id}/detail
+     * Lấy chi tiết dịch vụ kèm bảng giá theo loại xe.
+     */
+    @GetMapping("/{id}/detail")
+    public ResponseEntity<ApiResponse<ServicePackageDetailResponseDTO>> getDetail(@PathVariable Integer id) {
+        return ResponseEntity.ok(ApiResponse.success(service.getDetailById(id)));
     }
 
     /**
