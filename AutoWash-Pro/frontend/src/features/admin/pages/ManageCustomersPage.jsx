@@ -27,7 +27,7 @@ export default function ManageCustomersPage() {
     try {
       const response = await customerApi.list();
 
-      console.log("CUSTOMER API:", response.data);
+
 
       const result = response.data?.data || response.data || [];
 

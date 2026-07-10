@@ -35,7 +35,7 @@ export default function ManagePromotionsPage() {
 
     try {
       const response = await promotionApi.list();
-      console.log("PROMOTION API:", response.data);
+
 
       const result = response.data?.data || response.data || [];
 

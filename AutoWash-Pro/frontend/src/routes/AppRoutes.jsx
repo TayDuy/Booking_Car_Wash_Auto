@@ -36,7 +36,6 @@ import ManagePromotionsPage from "../features/admin/pages/ManagePromotionsPage";
 import ManageVehiclesPage from "../features/admin/pages/ManageVehiclesPage";
 import AdminNotificationPage from "../features/admin/pages/AdminNotificationPage";
 import ReportsPage from "../features/admin/pages/ReportsPage";
-import ManageCatalog from "../features/admin/pages/ManageCatalog";
 import AuditLogsPage from "../features/admin/pages/AuditLogsPage";
 import ManageBranchesPage from "../features/admin/pages/ManageBranchesPage";
 import ManageServicesPage from "../features/admin/pages/ManageServicesPage";

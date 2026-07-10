@@ -31,7 +31,7 @@ export default function ManageServicesPage() {
 
     try {
       const response = await servicePackageApi.list();
-      console.log("SERVICE API:", response.data);
+
 
       const result = response.data?.data || response.data || [];
 
