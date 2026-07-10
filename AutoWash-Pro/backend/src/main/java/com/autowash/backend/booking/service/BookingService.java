@@ -14,10 +14,6 @@ public interface BookingService {
 
     List<BookingSummaryResponseDTO> getBookingsByCustomer(Integer customerId, Integer userId);
 
-    List<BookingSummaryResponseDTO> getBookingsByCustomer(Integer customerId, Integer userId, String status);
-
-    List<BookingSummaryResponseDTO> getMyBookings(Integer userId, String status);
-
     BookingResponseDTO updateBooking(
             Integer bookingId,
             BookingUpdateRequestDTO request
@@ -31,11 +27,5 @@ public interface BookingService {
      */
     BookingResponseDTO cancelOwnBooking(Integer bookingId, Integer userId);
 
-    BookingResponseDTO confirmBooking(Integer bookingId);
-
-    BookingResponseDTO checkInBooking(Integer bookingId);
-
     BookingResponseDTO completeBooking(Integer bookingId);
-
-    BookingResponseDTO rescheduleBooking(Integer bookingId, Integer userId, BookingRescheduleRequestDTO request);
 }

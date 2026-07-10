@@ -80,12 +80,9 @@ public class RedeemController {
      */
     @PreAuthorize("hasRole('CUSTOMER')")  // Chỉ CUSTOMER mới được đổi điểm
     @PostMapping
-    public ResponseEntity<RedeemResponseDTO> redeem(
-            @Valid @RequestBody RedeemRequestDTO dto,
-            @org.springframework.security.core.annotation.AuthenticationPrincipal com.autowash.backend.security.CustomUserDetails userDetails
-    ) {
+    public ResponseEntity<RedeemResponseDTO> redeem(@Valid @RequestBody RedeemRequestDTO dto) {
         // @Valid kích hoạt Bean Validation trên RedeemRequestDTO
         // Nếu vi phạm → MethodArgumentNotValidException → GlobalExceptionHandler → 400
-        return ResponseEntity.ok(redeemService.redeem(dto, userDetails.getId()));
+        return ResponseEntity.ok(redeemService.redeem(dto));
     }
 }

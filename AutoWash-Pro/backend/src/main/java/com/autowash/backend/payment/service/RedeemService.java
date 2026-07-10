@@ -27,32 +27,9 @@ public class RedeemService {
     private final CustomerRepository           customerRepository;
     private final LoyaltyTransactionRepository loyaltyTransactionRepository;
     private final PaymentRepository            paymentRepository;
-    private final com.autowash.backend.user.repository.UserRepository userRepository;
 
     @Transactional
-    public RedeemResponseDTO redeem(RedeemRequestDTO dto, Integer userId) {
-
-        // Validate ownership
-        if (userId == null) {
-            throw new BusinessException("Yêu cầu xác thực người dùng", HttpStatus.FORBIDDEN);
-        }
-
-        com.autowash.backend.user.entity.User user = userRepository.findById(userId)
-                .orElseThrow(() -> new BusinessException("Không tìm thấy tài khoản", HttpStatus.FORBIDDEN));
-
-        if (!"admin".equalsIgnoreCase(user.getRole()) && !"staff".equalsIgnoreCase(user.getRole())) {
-            Customer authenticatedCustomer = customerRepository.findByUser_Id(userId)
-                    .orElseThrow(() -> new BusinessException(
-                            "Không tìm thấy khách hàng ứng với tài khoản đăng nhập",
-                            HttpStatus.FORBIDDEN
-                    ));
-            if (!authenticatedCustomer.getCustomerId().equals(dto.getCustomerId())) {
-                throw new BusinessException(
-                        "Bạn không có quyền đổi điểm cho khách hàng khác",
-                        HttpStatus.FORBIDDEN
-                );
-            }
-        }
+    public RedeemResponseDTO redeem(RedeemRequestDTO dto) {
 
         // ── 1. Load và validate Reward ────────────────────────────────────────
         Reward reward = rewardRepository.findById(dto.getRewardId())
