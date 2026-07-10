@@ -41,6 +41,10 @@ public class OtpVerification {
     @Column(name = "attempt_count", nullable = false, columnDefinition = "integer default 0 not null")
     private Integer attemptCount = 0;
 
+    @Builder.Default
+    @Column(nullable = false, length = 20)
+    private String phone = "";
+
     @Column(name = "request_ip", length = 45)
     private String requestIp;
 

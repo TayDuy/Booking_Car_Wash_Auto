@@ -36,6 +36,8 @@ public class RewardServiceImpl implements RewardService {
     private final RewardRepository rewardRepository;
     private final RewardMapper rewardMapper;
     private final LoyaltyTransactionRepository loyaltyTransactionRepository;
+    private final com.autowash.backend.customer.repository.CustomerRepository customerRepository;
+    private final com.autowash.backend.user.repository.UserRepository userRepository;
 
     /**
      * {@inheritDoc}
@@ -105,7 +107,9 @@ public class RewardServiceImpl implements RewardService {
     }
 
     @Override
-    public List<RewardResponseDTO> getRedeemableRewards(Integer customerId, String vehicleType) {
+    public List<RewardResponseDTO> getRedeemableRewards(Integer customerId, String vehicleType, Integer userId) {
+        validateCustomerOwner(customerId, userId);
+
         Integer currentPoints = getCurrentPoints(customerId);
 
         Reward.RewardStatus activeStatus = parseEnumIgnoreCase(Reward.RewardStatus.class, "active");
@@ -135,7 +139,9 @@ public class RewardServiceImpl implements RewardService {
     */
     @Override
     @Transactional
-    public RedeemRewardResponseDTO redeemReward(Integer rewardId, RedeemRewardRequestDTO dto) {
+    public RedeemRewardResponseDTO redeemReward(Integer rewardId, RedeemRewardRequestDTO dto, Integer userId) {
+        validateCustomerOwner(dto.customerId(), userId);
+
         Reward reward = findOrThrow(rewardId);
 
         Reward.RewardStatus activeStatus = parseEnumIgnoreCase(Reward.RewardStatus.class, "active");
@@ -229,4 +235,36 @@ public class RewardServiceImpl implements RewardService {
                 ));
         }
 
+    private void validateCustomerOwner(Integer customerId, Integer userId) {
+        if (userId == null) {
+            throw new com.autowash.backend.common.exception.BusinessException(
+                    "Yêu cầu xác thực người dùng",
+                    org.springframework.http.HttpStatus.FORBIDDEN
+            );
+        }
+
+        com.autowash.backend.user.entity.User user = userRepository.findById(userId)
+                .orElseThrow(() -> new com.autowash.backend.common.exception.BusinessException(
+                        "Không tìm thấy tài khoản người dùng",
+                        org.springframework.http.HttpStatus.FORBIDDEN
+                ));
+
+        String role = user.getRole();
+        if ("admin".equalsIgnoreCase(role) || "staff".equalsIgnoreCase(role)) {
+            return;
+        }
+
+        com.autowash.backend.customer.entity.Customer authenticatedCustomer = customerRepository.findByUser_Id(userId)
+                .orElseThrow(() -> new com.autowash.backend.common.exception.BusinessException(
+                        "Không tìm thấy khách hàng ứng với tài khoản đăng nhập",
+                        org.springframework.http.HttpStatus.FORBIDDEN
+                ));
+
+        if (!authenticatedCustomer.getCustomerId().equals(customerId)) {
+            throw new com.autowash.backend.common.exception.BusinessException(
+                    "Bạn không có quyền thao tác với dữ liệu của khách hàng khác",
+                    org.springframework.http.HttpStatus.FORBIDDEN
+            );
+        }
+    }
 }

@@ -30,6 +30,13 @@ function LoginPage() {
   };
 
   const redirectByRole = (role) => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const redirectUrl = searchParams.get("redirect");
+    if (redirectUrl) {
+      navigate(redirectUrl, { replace: true });
+      return;
+    }
+
     const normalizedRole = String(role || "").toUpperCase();
 
     if (normalizedRole === "ADMIN") {
@@ -37,7 +44,7 @@ function LoginPage() {
       return;
     }
 
-    if (normalizedRole === "MANAGER") {
+    if (normalizedRole === "MANAGER" || normalizedRole === "STAFF") {
       navigate("/manager/dashboard", { replace: true });
       return;
     }

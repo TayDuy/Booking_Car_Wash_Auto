@@ -40,6 +40,13 @@ public class User {
     @Column(name = "role", nullable = false, length = 10)
     private String role = "customer";
 
+    @Column(name = "failed_attempts")
+    @Builder.Default
+    private Integer failedAttempts = 0;
+
+    @Column(name = "lockout_end_time")
+    private LocalDateTime lockoutEndTime;
+
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

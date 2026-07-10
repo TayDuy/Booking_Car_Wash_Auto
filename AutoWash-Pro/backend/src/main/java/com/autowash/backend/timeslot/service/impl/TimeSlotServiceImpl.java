@@ -198,6 +198,7 @@ public class TimeSlotServiceImpl implements TimeSlotService {
         int totalCandidates = 0;
         LocalDate today = LocalDate.now();
 
+        int[] totalCandidatesRef = {0};
         for (WashBay bay : bays) {
             // 1 query duy nhất lấy hết slot hiện có của bay trong cả tháng
             List<TimeSlot> existing = slotRepository.findByWashBay_BayIdAndSlotDateBetween(
@@ -207,54 +208,10 @@ public class TimeSlotServiceImpl implements TimeSlotService {
                 existingByDate.computeIfAbsent(ts.getSlotDate(), d -> new ArrayList<>()).add(ts);
             }
 
-            for (int day = 1; day <= daysInMonth; day++) {
-                LocalDate date = yearMonth.atDay(day);
-
-                if (date.isBefore(today)) {
-                    skippedReasons.add(bay.getBayName() + " " + date + ": ngày trong quá khứ");
-                    totalCandidates += dailyRanges.size();
-                    continue;
-                }
-                if (!allowedDays.contains(date.getDayOfWeek())) {
-                    continue;
-                }
-
-                List<TimeSlot> daySlots = existingByDate.computeIfAbsent(date, d -> new ArrayList<>());
-
-                for (LocalTime[] range : dailyRanges) {
-                    totalCandidates++;
-                    LocalTime start = range[0];
-                    LocalTime end = range[1];
-
-                    boolean overlaps = daySlots.stream().anyMatch(ts ->
-                            ts.getStartTime().isBefore(end) && ts.getEndTime().isAfter(start));
-
-                    if (overlaps) {
-                        if (!request.isSkipExisting()) {
-                            throw new IllegalArgumentException(
-                                    "Bay '" + bay.getBayName() + "' đã có slot chồng giờ " +
-                                            date + " " + start + "-" + end);
-                        }
-                        skippedReasons.add(bay.getBayName() + " " + date + " " + start + "-" + end
-                                + ": đã tồn tại/chồng giờ");
-                        continue;
-                    }
-
-                    TimeSlot slot = TimeSlot.builder()
-                            .branch(branch)
-                            .washBay(bay)
-                            .slotDate(date)
-                            .startTime(start)
-                            .endTime(end)
-                            .maxCapacity(request.getMaxCapacity())
-                            .status(SlotStatus.open)
-                            .build();
-
-                    toInsert.add(slot);
-                    daySlots.add(slot);
-                }
-            }
+            processBayMonthlySlots(bay, branch, yearMonth, daysInMonth, allowedDays, dailyRanges,
+                    existingByDate, toInsert, skippedReasons, totalCandidatesRef, today, request);
         }
+        totalCandidates = totalCandidatesRef[0];
 
         List<TimeSlot> saved = slotRepository.saveAll(toInsert); // batch insert
 
@@ -269,6 +226,61 @@ public class TimeSlotServiceImpl implements TimeSlotService {
                 .build();
     }
 
+    private void processBayMonthlySlots(
+            WashBay bay, Branch branch, YearMonth yearMonth, int daysInMonth,
+            Set<DayOfWeek> allowedDays, List<LocalTime[]> dailyRanges,
+            Map<LocalDate, List<TimeSlot>> existingByDate, List<TimeSlot> toInsert,
+            List<String> skippedReasons, int[] totalCandidatesRef, LocalDate today,
+            GenerateSlotsRequestDTO request
+    ) {
+        for (int day = 1; day <= daysInMonth; day++) {
+            LocalDate date = yearMonth.atDay(day);
+
+            if (date.isBefore(today)) {
+                skippedReasons.add(bay.getBayName() + " " + date + ": ngày trong quá khứ");
+                totalCandidatesRef[0] += dailyRanges.size();
+                continue;
+            }
+            if (!allowedDays.contains(date.getDayOfWeek())) {
+                continue;
+            }
+
+            List<TimeSlot> daySlots = existingByDate.computeIfAbsent(date, d -> new ArrayList<>());
+
+            for (LocalTime[] range : dailyRanges) {
+                totalCandidatesRef[0]++;
+                LocalTime start = range[0];
+                LocalTime end = range[1];
+
+                boolean overlaps = daySlots.stream().anyMatch(ts ->
+                        ts.getStartTime().isBefore(end) && ts.getEndTime().isAfter(start));
+
+                if (overlaps) {
+                    if (!request.isSkipExisting()) {
+                        throw new IllegalArgumentException(
+                                "Bay '" + bay.getBayName() + "' đã có slot chồng giờ " +
+                                        date + " " + start + "-" + end);
+                    }
+                    skippedReasons.add(bay.getBayName() + " " + date + " " + start + "-" + end
+                            + ": đã tồn tại/chồng giờ");
+                    continue;
+                }
+
+                TimeSlot slot = TimeSlot.builder()
+                        .branch(branch)
+                        .washBay(bay)
+                        .slotDate(date)
+                        .startTime(start)
+                        .endTime(end)
+                        .maxCapacity(request.getMaxCapacity())
+                        .status(SlotStatus.open)
+                        .build();
+
+                toInsert.add(slot);
+                daySlots.add(slot);
+            }
+        }
+    }
     private List<LocalTime[]> buildDailyTimeRanges(
             LocalTime openTime, LocalTime closeTime, int durationMinutes,
             LocalTime breakStart, LocalTime breakEnd) {

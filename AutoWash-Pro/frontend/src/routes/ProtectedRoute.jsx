@@ -10,7 +10,7 @@ function ProtectedRoute({ children, allowedRoles }) {
     return <Navigate to="/auth/login" replace />;
   }
 
-  if (allowedRoles && allowedRoles.length) {
+  if (allowedRoles?.length) {
     const userRoleUpper = user?.role?.toUpperCase();
     const hasRole = allowedRoles.some(r => r.toUpperCase() === userRoleUpper);
     if (!hasRole) {

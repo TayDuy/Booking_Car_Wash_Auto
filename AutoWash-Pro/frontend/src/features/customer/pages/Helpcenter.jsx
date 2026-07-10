@@ -136,7 +136,7 @@ function ContactCard({ icon: Icon, iconBg, title, subtitle, cta, variant, onClic
 export default function HelpCenter() {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [messages, setMessages] = useState([
-    { sender: "bot", text: "Xin chào! Cảm ơn bạn đã liên hệ với bộ phận hỗ trợ khách hàng của WashFlow Pro. Chúng tôi có thể giúp gì cho bạn hôm nay?" }
+    { id: "msg-init", sender: "bot", text: "Xin chào! Cảm ơn bạn đã liên hệ với bộ phận hỗ trợ khách hàng của WashFlow Pro. Chúng tôi có thể giúp gì cho bạn hôm nay?" }
   ]);
   const [inputValue, setInputValue] = useState("");
   const [isTyping, setIsTyping] = useState(false);
@@ -151,7 +151,7 @@ export default function HelpCenter() {
   const handleSendMessage = () => {
     if (!inputValue.trim()) return;
     
-    const userMsg = { sender: "user", text: inputValue };
+    const userMsg = { id: `msg-${Date.now()}-user`, sender: "user", text: inputValue };
     setMessages(prev => [...prev, userMsg]);
     setInputValue("");
     setIsTyping(true);
@@ -170,7 +170,7 @@ export default function HelpCenter() {
         replyText = "Chúng tôi đang áp dụng chương trình giảm giá 20% cho khách hàng lần đầu đặt lịch qua ứng dụng và nhiều ưu đãi tích điểm cho các hạng thành viên Vàng/Bạc. Bạn xem thêm tại mục 'Ưu đãi' nhé!";
       }
 
-      setMessages(prev => [...prev, { sender: "bot", text: replyText }]);
+      setMessages(prev => [...prev, { id: `msg-${Date.now()}-bot`, sender: "bot", text: replyText }]);
     }, 1500);
   };
 
@@ -295,9 +295,9 @@ export default function HelpCenter() {
           </div>
 
           <div className="wf-chat-body">
-            {messages.map((msg, index) => (
+            {messages.map((msg) => (
               <div 
-                key={index} 
+                key={msg.id} 
                 className={`wf-chat-message wf-chat-message--${msg.sender}`}
               >
                 {msg.text}

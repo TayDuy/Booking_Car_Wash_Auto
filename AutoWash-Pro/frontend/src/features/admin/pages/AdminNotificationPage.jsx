@@ -1,9 +1,20 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from 'react-router-dom';
-import {
-    Car, LayoutGrid, BarChart2, Calendar, Archive, Megaphone, Bell,
-    HelpCircle, Settings, Search, SlidersHorizontal, CheckCheck,
-    AlertTriangle, Star, ThumbsUp, Clock,
+import { useNavigate } from "react-router-dom";
+import { 
+    Bell, 
+    CheckCheck, 
+    Search, 
+    LayoutGrid, 
+    BarChart2, 
+    Calendar, 
+    Archive, 
+    Megaphone, 
+    Settings, 
+    ThumbsUp, 
+    Star, 
+    AlertTriangle, 
+    Clock, 
+    HelpCircle 
 } from "lucide-react";
 import "./AdminNotificationPage.css";
 import { getAll, createNotification, createBulk, markAllRead, markAsRead, subscribeSSE, getUnread, countUnread } from '../../../api/notificationService';
@@ -182,7 +193,7 @@ export default function AdminNotificationPage() {
         }catch(err){ console.error('load unread', err); }
     }
 
-    React.useEffect(()=>{
+    useEffect(()=>{
         // ensure role and redirect
         if(!isLoggedIn()){ navigate('/login'); return; }
         setRole(getRole());
