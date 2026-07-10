@@ -16,6 +16,11 @@ const bookingApi = {
   checkIn: (id) => axiosClient.patch(`/staff/bookings/${id}/check-in`),
   complete: (id) => axiosClient.patch(`/staff/bookings/${id}/complete`),
   cancelByStaff: (id) => axiosClient.patch(`/staff/bookings/${id}/cancel`),
+
+  // Admin-only APIs
+  adminList: (params) => axiosClient.get('/admin/bookings', { params }),
+  adminUpdate: (id, payload) => axiosClient.put(`/admin/bookings/${id}`, payload),
+  adminCancel: (id) => axiosClient.patch(`/admin/bookings/${id}/cancel`),
 }
 
 export default bookingApi

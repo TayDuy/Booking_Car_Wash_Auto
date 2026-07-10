@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { Eye, Search, XCircle, CheckCircle } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Eye, Search, XCircle, CheckCircle, CheckCheck } from "lucide-react";
 import bookingApi from "../../../api/bookingApi";
 import "./ManageBookingsPage.css";
 
@@ -19,8 +19,7 @@ export default function ManageBookingsPage() {
     setLoading(true);
 
     try {
-      const response = await bookingApi.list();
-      console.log("ADMIN BOOKINGS:", response.data);
+      const response = await bookingApi.adminList();
 
       const result = response.data?.data || response.data || [];
 
@@ -74,7 +73,7 @@ export default function ManageBookingsPage() {
     if (!confirmCancel) return;
 
     try {
-      await bookingApi.cancelByStaff(bookingId);
+      await bookingApi.adminCancel(bookingId);
       alert("Hủy booking thành công.");
       loadBookings();
     } catch (error) {
@@ -261,9 +260,16 @@ export default function ManageBookingsPage() {
                           <Eye size={16} />
                         </button>
                         <button
+                          className="action-btn confirm"
+                          title="Xác nhận booking"
+                          onClick={() => handleConfirmBooking(booking)}
+                        >
+                          <CheckCheck size={16} />
+                        </button>
+                        <button
                           className="action-btn complete"
                           title="Hoàn thành booking"
-                          onClick={() => handleConfirmBooking(booking)}
+                          onClick={() => handleCompleteBooking(booking)}
                         >
                           <CheckCircle size={16} />
                         </button>

@@ -40,7 +40,7 @@ export default function ManageBranchesPage() {
         try {
             const response = await getBranches();
 
-            console.log("BRANCH API:", response.data);
+
 
             const result = response.data?.data || response.data || [];
 

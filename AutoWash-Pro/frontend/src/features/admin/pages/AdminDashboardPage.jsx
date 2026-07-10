@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import bookingApi from "../../../api/bookingApi";
 import { getBranches } from "../../../api/branchService";
+import auditLogApi from "../../../api/auditLogApi";
 import {
   CalendarCheck,
   DollarSign,
@@ -11,18 +12,14 @@ import {
 } from "lucide-react";
 import "./AdminDashboardPage.css";
 
-const logs = [
-  { icon: "📅", text: "Admin Dashboard đã tải dữ liệu đặt lịch", time: "Vừa xong", type: "blue" },
-  { icon: "🏢", text: "Admin Dashboard đã tải dữ liệu chi nhánh", time: "Vừa xong", type: "green" },
-  { icon: "🛡️", text: "Nhật ký hệ thống sẽ hiển thị khi backend cung cấp API audit log", time: "System", type: "orange" },
-];
-
 export default function AdminDashboardPage() {
   const [bookings, setBookings] = useState([]);
   const [bookingLoading, setBookingLoading] = useState(true);
 
   const [branches, setBranches] = useState([]);
   const [branchLoading, setBranchLoading] = useState(true);
+
+  const [auditLogs, setAuditLogs] = useState([]);
 
   const totalBookings = bookings.length;
   const totalBranches = branches.length;
@@ -44,7 +41,7 @@ export default function AdminDashboardPage() {
     {
       title: "Tổng đặt lịch",
       value: bookingLoading ? "..." : totalBookings,
-      change: "Dữ liệu từ hệ thống",
+      change: "Tổng số đơn trong hệ thống",
       icon: CalendarCheck,
       color: "blue",
     },
@@ -58,14 +55,14 @@ export default function AdminDashboardPage() {
     {
       title: "Đơn hoàn thành",
       value: bookingLoading ? "..." : completedBookings,
-      change: "Booking completed",
+      change: "Đã hoàn tất",
       icon: Users,
       color: "purple",
     },
     {
-      title: "Xe đã phục vụ",
-      value: bookingLoading ? "..." : completedBookings,
-      change: "Tạm tính theo đơn hoàn thành",
+      title: "Đang hoạt động",
+      value: bookingLoading ? "..." : (totalBookings - completedBookings),
+      change: "Đơn chưa hoàn thành",
       icon: Car,
       color: "orange",
     },
@@ -74,12 +71,8 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     async function loadBookings() {
       try {
-        const response = await bookingApi.list();
-
-        console.log("BOOKING API RESPONSE:", response.data);
-
+        const response = await bookingApi.adminList();
         const result = response.data?.data || response.data || [];
-
         if (Array.isArray(result)) {
           setBookings(result);
         } else if (Array.isArray(result.content)) {
@@ -87,8 +80,7 @@ export default function AdminDashboardPage() {
         } else {
           setBookings([]);
         }
-      } catch (error) {
-        console.error("Load bookings failed:", error);
+      } catch {
         setBookings([]);
       } finally {
         setBookingLoading(false);
@@ -98,11 +90,7 @@ export default function AdminDashboardPage() {
     async function loadBranches() {
       try {
         const response = await getBranches();
-
-        console.log("BRANCH API RESPONSE:", response.data);
-
         const result = response.data?.data || response.data || [];
-
         if (Array.isArray(result)) {
           setBranches(result);
         } else if (Array.isArray(result.content)) {
@@ -110,22 +98,33 @@ export default function AdminDashboardPage() {
         } else {
           setBranches([]);
         }
-      } catch (error) {
-        console.error("Load branches failed:", error);
+      } catch {
         setBranches([]);
       } finally {
         setBranchLoading(false);
       }
     }
 
+    async function loadAuditLogs() {
+      try {
+        const response = await auditLogApi.getAll();
+        const result = response.data?.data || response.data || [];
+        setAuditLogs(Array.isArray(result) ? result.slice(0, 5) : []);
+      } catch {
+        setAuditLogs([]);
+      }
+    }
+
     loadBookings();
     loadBranches();
+    loadAuditLogs();
   }, []);
+
   return (
     <div className="admin-dashboard">
       <div className="dashboard-heading">
         <div>
-          <h1>Xin chào, Admin! 👋</h1>
+          <h1>Xin chào, Admin!</h1>
           <p>Chào mừng bạn quay trở lại hệ thống WashFlow Pro.</p>
         </div>
 
@@ -164,26 +163,9 @@ export default function AdminDashboardPage() {
             <button>7 ngày qua</button>
           </div>
 
-          <div className="fake-chart">
-            <div className="chart-line"></div>
-            <div className="chart-point point-1"></div>
-            <div className="chart-point point-2"></div>
-            <div className="chart-point point-3"></div>
-            <div className="chart-point point-4"></div>
-            <div className="chart-tooltip">
-              <strong>25.680.000 đ</strong>
-              <span>09/06/2025</span>
-            </div>
-          </div>
-
-          <div className="chart-labels">
-            <span>03/06</span>
-            <span>04/06</span>
-            <span>05/06</span>
-            <span>06/06</span>
-            <span>07/06</span>
-            <span>08/06</span>
-            <span>09/06</span>
+          <div className="revenue-placeholder">
+            <p>Biểu đồ doanh thu sẽ được hiển thị tại đây.</p>
+            <p><small>Kết nối với API reports/dashboard để có dữ liệu thực tế.</small></p>
           </div>
         </div>
 
@@ -293,17 +275,21 @@ export default function AdminDashboardPage() {
         <div className="dashboard-panel">
           <div className="panel-header">
             <h3>Nhật ký hệ thống mới nhất</h3>
-            <a href="/admin/logs">Xem tất cả</a>
+            <a href="/admin/audit-logs">Xem tất cả</a>
           </div>
 
           <div className="log-list">
-            {logs.map((log, index) => (
-              <div className="log-item" key={index}>
-                <div className={`log-icon ${log.type}`}>{log.icon}</div>
-                <p>{log.text}</p>
-                <span>{log.time}</span>
-              </div>
-            ))}
+            {auditLogs.length === 0 ? (
+              <p>Chưa có nhật ký hệ thống.</p>
+            ) : (
+              auditLogs.map((log, index) => (
+                <div className="log-item" key={log.id || index}>
+                  <div className="log-icon blue">📋</div>
+                  <p>{log.action || log.details || "Không có mô tả"}</p>
+                  <span>{log.performedBy || ""}</span>
+                </div>
+              ))
+            )}
           </div>
         </div>
       </section>
