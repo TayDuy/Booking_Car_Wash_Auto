@@ -280,10 +280,19 @@ export default function BookingPage() {
             }
           });
 
+          // Nếu ngày đang xem là hôm nay → lọc bỏ các khung giờ đã qua
+          const now = new Date();
+          const isToday = selectedDate.getFullYear() === now.getFullYear()
+            && selectedDate.getMonth() === now.getMonth()
+            && selectedDate.getDate() === now.getDate();
+          const currentHHMM = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+
           const formattedSlots = Array.from(groupMap.values()).map(g => {
-            const available = g.totalRemaining > 0;
+            // Nếu hôm nay và startTime đã qua → đánh dấu hết chỗ
+            const isPast = isToday && g.startTime.substring(0, 5) <= currentHHMM;
+            const available = !isPast && g.totalRemaining > 0;
             let statusType = "NORMAL";
-            if (!available) statusType = "FULL";
+            if (!available) statusType = isPast ? "FULL" : (g.totalRemaining <= 0 ? "FULL" : (g.totalRemaining <= 2 ? "PEAK" : "NORMAL"));
             else if (g.totalRemaining <= 2) statusType = "PEAK";
             else if (g.totalRemaining >= g.totalMax * 0.7) statusType = "ECO";
 
@@ -292,7 +301,7 @@ export default function BookingPage() {
               startTime: g.startTime,
               endTime: g.endTime,
               statusType,
-              statusLabel: available ? `Còn ${g.totalRemaining} chỗ` : "Hết chỗ",
+              statusLabel: isPast ? "Đã qua" : (available ? `Còn ${g.totalRemaining} chỗ` : "Hết chỗ"),
               available,
             };
           }).sort((a, b) => a.startTime.localeCompare(b.startTime));
@@ -340,6 +349,9 @@ export default function BookingPage() {
   const total = subtotal + tax - discount;
   const totalDuration = (selectedPackage?.durationMinutes || 0) + selectedAddons.reduce((sum, s) => sum + (s.durationMinutes || 0), 0);
   const rewardPoints = Math.floor(packagePrice / 10000);
+  const DEPOSIT_THRESHOLD = 500000;
+  const depositRequired = subtotal > DEPOSIT_THRESHOLD;
+
 
 
 
@@ -417,6 +429,12 @@ export default function BookingPage() {
       const response = await bookingApi.create(bookingData);
       const result = response.data;
       const bookingId = result?.bookingId || result?.id || result?.data?.bookingId;
+      if (paymentMethod === "offline" && !depositRequired) {
+        navigate("/customer/booking/success", {
+          state: { bookingId, bookingDetail: result }
+        });
+        return;
+      }
       navigate("/customer/payment", { state: { bookingId } });
     } catch (error) {
       alert(error.response?.data?.message || "Đặt lịch thất bại. Vui lòng thử lại!");
@@ -539,11 +557,16 @@ export default function BookingPage() {
                           selectedDate.getDate() === day &&
                           selectedDate.getMonth() === currentDate.getMonth() &&
                           selectedDate.getFullYear() === currentDate.getFullYear();
+                      // Chặn chọn ngày quá khứ
+                      const todayMidnight = new Date();
+                      todayMidnight.setHours(0, 0, 0, 0);
+                      const cellDate = day ? new Date(currentDate.getFullYear(), currentDate.getMonth(), day) : null;
+                      const isPastDay = cellDate && cellDate < todayMidnight;
                       return (
                           <div
                               key={day !== null ? `day-${day}` : `blank-${index}`}
-                              className={`calendar-day-number-cell p-2 rounded cursor-pointer transition-colors ${day ? "clickable-day hover:bg-primary-container hover:text-on-primary-container" : "blank-day text-on-surface-variant opacity-50"} ${isSelected ? "day-selected-active bg-primary text-on-primary font-bold shadow-sm" : ""}`}
-                              onClick={() => { if (day) setSelectedDate(new Date(currentDate.getFullYear(), currentDate.getMonth(), day)); }}
+                              className={`calendar-day-number-cell p-2 rounded transition-colors ${!day ? "blank-day text-on-surface-variant opacity-50" : isPastDay ? "past-day text-on-surface-variant opacity-30 cursor-not-allowed" : "clickable-day hover:bg-primary-container hover:text-on-primary-container cursor-pointer"} ${isSelected ? "day-selected-active bg-primary text-on-primary font-bold shadow-sm" : ""}`}
+                              onClick={() => { if (day && !isPastDay) setSelectedDate(new Date(currentDate.getFullYear(), currentDate.getMonth(), day)); }}
                           >
                             {day}
                           </div>
@@ -808,6 +831,11 @@ export default function BookingPage() {
             </div>
             <div className="payment-methods-selector">
               <h5>Phương thức thanh toán</h5>
+              {depositRequired && (
+                <div className="deposit-notice">
+                  Đơn hàng trên {DEPOSIT_THRESHOLD.toLocaleString()}đ yêu cầu đặt cọc trước — vui lòng chọn thanh toán online.
+                </div>
+              )}
               <label className={`method-option-card ${paymentMethod === "online" ? "method-active" : ""}`}>
                 <input type="radio" name="payment" value="online" checked={paymentMethod === "online"} onChange={() => setPaymentMethod("online")} />
                 <div className="method-label-content">
@@ -820,8 +848,8 @@ export default function BookingPage() {
                   </div>
                 </div>
               </label>
-              <label className={`method-option-card ${paymentMethod === "offline" ? "method-active" : ""}`}>
-                <input type="radio" name="payment" value="offline" checked={paymentMethod === "offline"} onChange={() => setPaymentMethod("offline")} />
+              <label className={`method-option-card ${paymentMethod === "offline" ? "method-active" : ""} ${depositRequired ? "method-disabled" : ""}`}>
+                <input type="radio" name="payment" value="offline" checked={paymentMethod === "offline"} onChange={() => { if (!depositRequired) setPaymentMethod("offline"); }} disabled={depositRequired} />
                 <div className="method-label-content">
                   <div className="method-text-main">Thanh toán sau (Tại trạm)</div>
                   <small>Thanh toán khi hoàn tất dịch vụ</small>
