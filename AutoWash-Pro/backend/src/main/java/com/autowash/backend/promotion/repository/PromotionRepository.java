@@ -51,4 +51,8 @@ public interface PromotionRepository extends JpaRepository<Promotion, Integer> {
     List<Promotion> findExpiredButActive(@Param("today") LocalDate today);
 
     boolean existsByPromotionName(String promotionName);
+
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT p FROM Promotion p WHERE p.promotionId = :id")
+    java.util.Optional<Promotion> findByIdWithLock(@org.springframework.data.repository.query.Param("id") Integer id);
 }

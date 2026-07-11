@@ -3,6 +3,7 @@ package com.autowash.backend.vehicle.controller;
 import com.autowash.backend.vehicle.dto.VehicleRequest;
 import com.autowash.backend.vehicle.dto.VehicleResponse;
 import com.autowash.backend.vehicle.service.VehicleService;
+import com.autowash.backend.common.exception.BusinessException;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -25,11 +26,12 @@ public class VehicleController {
     public ResponseEntity<List<VehicleResponse>> getAllVehiclesForAdmin() {
         return ResponseEntity.ok(vehicleService.getAllVehicles());
     }
+
     // Lấy danh sách xe của chính mình
     @GetMapping
     public ResponseEntity<List<VehicleResponse>> getMyVehicles(
             @org.springframework.security.core.annotation.AuthenticationPrincipal com.autowash.backend.security.CustomUserDetails userDetails) {
-        return ResponseEntity.ok(vehicleService.getMyVehicles(userDetails.getId()));
+        return ResponseEntity.ok(vehicleService.getMyVehicles(getUserId(userDetails)));
     }
 
     // Thêm xe mới
@@ -38,7 +40,7 @@ public class VehicleController {
             @org.springframework.security.core.annotation.AuthenticationPrincipal com.autowash.backend.security.CustomUserDetails userDetails,
             @Valid @RequestBody VehicleRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(vehicleService.addVehicle(userDetails.getId(), request));
+                .body(vehicleService.addVehicle(getUserId(userDetails), request));
     }
 
     // Sửa thông tin xe
@@ -47,7 +49,7 @@ public class VehicleController {
             @org.springframework.security.core.annotation.AuthenticationPrincipal com.autowash.backend.security.CustomUserDetails userDetails,
             @PathVariable Integer vehicleId,
             @Valid @RequestBody VehicleRequest request) {
-        return ResponseEntity.ok(vehicleService.updateVehicle(userDetails.getId(), vehicleId, request));
+        return ResponseEntity.ok(vehicleService.updateVehicle(getUserId(userDetails), vehicleId, request));
     }
 
     // Xóa xe (Soft delete)
@@ -55,7 +57,7 @@ public class VehicleController {
     public ResponseEntity<Void> deleteVehicle(
             @org.springframework.security.core.annotation.AuthenticationPrincipal com.autowash.backend.security.CustomUserDetails userDetails,
             @PathVariable Integer vehicleId) {
-        vehicleService.deleteVehicle(userDetails.getId(), vehicleId);
+        vehicleService.deleteVehicle(getUserId(userDetails), vehicleId);
         return ResponseEntity.noContent().build();
     }
 
@@ -64,10 +66,21 @@ public class VehicleController {
     public ResponseEntity<VehicleResponse> toggleActive(
             @org.springframework.security.core.annotation.AuthenticationPrincipal com.autowash.backend.security.CustomUserDetails userDetails,
             @PathVariable Integer vehicleId) {
-        return ResponseEntity.ok(vehicleService.toggleActive(userDetails.getId(), vehicleId));
+        return ResponseEntity.ok(vehicleService.toggleActive(getUserId(userDetails), vehicleId));
     }
+
     @PostConstruct
     public void init() {
         System.out.println("===== VehicleController loaded =====");
+    }
+
+    private Integer getUserId(com.autowash.backend.security.CustomUserDetails userDetails) {
+        if (userDetails == null) {
+            throw new BusinessException(
+                    "Chưa đăng nhập hoặc phiên làm việc đã hết hạn",
+                    HttpStatus.UNAUTHORIZED
+            );
+        }
+        return userDetails.getId();
     }
 }

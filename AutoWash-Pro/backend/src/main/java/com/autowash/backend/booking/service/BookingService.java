@@ -12,7 +12,7 @@ public interface BookingService {
 
     List<BookingSummaryResponseDTO> getAllBookings();
 
-    List<BookingSummaryResponseDTO> getBookingsByCustomer(Integer customerId, Integer userId);
+    List<BookingSummaryResponseDTO> getBookingsByCustomer(Integer customerId, Integer userId, Integer limit);
 
     BookingResponseDTO updateBooking(
             Integer bookingId,
@@ -21,9 +21,17 @@ public interface BookingService {
 
     BookingResponseDTO cancelBooking(Integer bookingId, Integer userId);
 
+    /**
+     * CUSTOMER hủy booking của chính mình — có kiểm tra quyền sở hữu.
+     * userId là id của User đang đăng nhập (lấy từ CustomUserDetails).
+     */
+    BookingResponseDTO cancelOwnBooking(Integer bookingId, Integer userId);
+
     BookingResponseDTO confirmBooking(Integer bookingId);
 
     BookingResponseDTO checkInBooking(Integer bookingId);
 
     BookingResponseDTO completeBooking(Integer bookingId);
+
+    BookingResponseDTO rescheduleBooking(Integer bookingId, Integer userId, BookingRescheduleRequestDTO request);
 }

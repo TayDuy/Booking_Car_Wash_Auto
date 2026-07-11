@@ -16,16 +16,15 @@ import com.autowash.backend.customer.entity.Customer;
 import com.autowash.backend.customer.repository.CustomerRepository;
 import com.autowash.backend.employee.entity.Employee;
 import com.autowash.backend.employee.repository.EmployeeRepository;
-import com.autowash.backend.loyaltytransaction.dto.LoyaltyBalanceResponseDTO;
-import com.autowash.backend.loyaltytransaction.service.LoyaltyTransactionService;
+import com.autowash.backend.promotion.entity.Promotion;
 import com.autowash.backend.servicepackage.entity.ServicePackage;
 import com.autowash.backend.servicepackage.repository.ServicePackageRepository;
-import com.autowash.backend.serviceprice.service.ServicePriceService;
 import com.autowash.backend.timeslot.entity.TimeSlot;
 import com.autowash.backend.timeslot.repository.TimeSlotRepository;
 import com.autowash.backend.vehicle.entity.Vehicle;
 import com.autowash.backend.vehicle.repository.VehicleRepository;
-import jakarta.validation.constraints.NotBlank;
+import com.autowash.backend.customerreward.entity.CustomerReward;
+import com.autowash.backend.customerreward.repository.CustomerRewardRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -56,8 +55,7 @@ public class BookingServiceImpl implements BookingService {
     private final ServicePackageRepository servicePackageRepository;
     private final BookingMapper bookingMapper;
     private final com.autowash.backend.mail.service.MailService mailService;
-    private final LoyaltyTransactionService loyaltyTransactionService;
-    private final ServicePriceService servicePriceService;
+    private final CustomerRewardRepository customerRewardRepository;
 
     // ── CREATE ──────────────────────────────────────────────────────────────
 
@@ -105,14 +103,40 @@ public class BookingServiceImpl implements BookingService {
                 .orElseThrow(() -> new ResourceNotFoundException("Customer", "id", request.getCustomerId()));
 
         // ← Thay vehicleRepository.findById bằng logic check biển số
-        Vehicle vehicle = vehicleRepository.findByLicensePlate(request.getLicensePlate())
+        String normalizedPlate = request.getLicensePlate().trim().toUpperCase();
+        Vehicle vehicle = vehicleRepository.findByLicensePlateAndCustomer_CustomerId(normalizedPlate, customer.getCustomerId())
+                .map(existing -> {
+                    boolean needsUpdate = false;
+
+                    // Xe đã có sẵn của đúng customer này -> kích hoạt lại nếu trước đó bị soft-delete
+                    if (!Boolean.TRUE.equals(existing.getIsActive())) {
+                        existing.setIsActive(true);
+                        needsUpdate = true;
+                    }
+
+                    // FIX: trước đây khi khách chọn xe cũ và đổi loại xe (4 chỗ <-> 7 chỗ)
+                    // ngay trên trang booking, lựa chọn đó chỉ được dùng để tính phụ phí
+                    // cho lần đặt này rồi bị bỏ qua — hồ sơ xe (Vehicle) vẫn giữ loại xe
+                    // cũ. Lần đặt lịch sau đó, xe lại được autofill với loại xe sai.
+                    // Giờ đồng bộ luôn: nếu loại xe chọn trên booking khác với loại xe
+                    // đang lưu trong hồ sơ, cập nhật lại hồ sơ xe cho khớp.
+                    Vehicle.VehicleType requestedType = resolveVehicleType(request.getVehicleType());
+                    if (existing.getVehicleType() != requestedType) {
+                        existing.setVehicleType(requestedType);
+                        needsUpdate = true;
+                    }
+
+                    return needsUpdate ? vehicleRepository.save(existing) : existing;
+                })
                 .orElseGet(() -> {
-                    // Sửa trong BookingServiceImpl.java chỗ tạo xe mới:
+                    // Không tìm thấy xe của customer này với biển số đó -> tạo mới
+                    // (kể cả khi biển số đã tồn tại dưới customer khác, vì 1 xe
+                    //  thực tế có thể đổi chủ / được nhiều khách nhập nhầm)
                     Vehicle newVehicle = Vehicle.builder()
                             .customer(customer)
-                            .licensePlate(request.getLicensePlate())
+                            .licensePlate(normalizedPlate)
                             .brand(request.getBrand())
-                            .model(request.getModel())   // ← THÊM dòng này
+                            .model(request.getModel())
                             .vehicleType(resolveVehicleType(request.getVehicleType()))
                             .isActive(true)
                             .build();
@@ -122,6 +146,17 @@ public class BookingServiceImpl implements BookingService {
         TimeSlot slot = timeSlotRepository.findByIdForUpdate(request.getSlotId())
                 .orElseThrow(() -> new ResourceNotFoundException("TimeSlot", "id", request.getSlotId()));
 
+        // ── CHẶN ĐẶT LỊCH QUÁ KHỨ ──────────────────────────────────────
+        // Ngăn khách đặt lịch cho ngày đã qua hoặc khung giờ đã trôi qua
+        // trong ngày hôm nay. Frontend đã chặn ở UI nhưng backend phải là
+        // lớp bảo vệ cuối cùng (defense-in-depth).
+        LocalDateTime slotStart = LocalDateTime.of(slot.getSlotDate(), slot.getStartTime());
+        if (slotStart.isBefore(LocalDateTime.now())) {
+            throw new BusinessException(
+                    "Không thể đặt lịch cho khung giờ đã qua. Vui lòng chọn thời gian trong tương lai.",
+                    HttpStatus.BAD_REQUEST);
+        }
+
         if (!slot.hasCapacity()) {
             throw new BusinessException("Slot đã đầy, vui lòng chọn khung giờ khác", HttpStatus.CONFLICT);
         }
@@ -129,17 +164,12 @@ public class BookingServiceImpl implements BookingService {
         Branch branch = branchRepository.findById(request.getBranchId())
                 .orElseThrow(() -> new ResourceNotFoundException("Branch", "id", request.getBranchId()));
 
-        String priceVehicleType = resolvePriceVehicleType(request.getVehicleType());
-
         List<BookingDetail> details = new ArrayList<>();
         for (BookingCreateRequestDTO.BookingDetailItem item : request.getDetails()) {
             ServicePackage servicePackage = servicePackageRepository.findById(item.getServiceId())
                     .orElseThrow(() -> new ResourceNotFoundException("ServicePackage", "id", item.getServiceId()));
 
-            BigDecimal unitPrice = servicePriceService.getActivePrice(
-                    item.getServiceId(),
-                    priceVehicleType
-            );
+            BigDecimal unitPrice = servicePackage.getBasePrice();
             BigDecimal subTotal = unitPrice.multiply(BigDecimal.valueOf(item.getQuantity()));
 
             details.add(BookingDetail.builder()
@@ -170,54 +200,15 @@ public class BookingServiceImpl implements BookingService {
         details.forEach(d -> d.setBooking(savedBooking));
         bookingDetailRepository.saveAll(details);
 
-        // Gửi email xác nhận đặt lịch bất đồng bộ
-        try {
-            String toEmail = customer.getUser() != null ? customer.getUser().getEmail() : null;
-            if (toEmail != null) {
-                String serviceNames = details.stream()
-                        .map(d -> d.getService().getServiceName())
-                        .collect(Collectors.joining(", "));
-                BigDecimal totalPrice = details.stream()
-                        .map(BookingDetail::getSubTotal)
-                        .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-                mailService.sendBookingConfirmationEmail(
-                        toEmail,
-                        customer.getFullName(),
-                        savedBooking.getBookingCode(),
-                        branch.getBranchName(),
-                        branch.getAddress(),
-                        serviceNames,
-                        slot.getSlotDate(),
-                        slot.getStartTime(),
-                        slot.getEndTime(),
-                        totalPrice
-                );
-            }
-        } catch (Exception e) {
-            log.error("Lỗi khi kích hoạt gửi email xác nhận đặt lịch: {}", e.getMessage(), e);
+        // Gửi email xác nhận đặt lịch — chỉ gửi khi thanh toán offline (tại trạm)
+        // Online payment → email sẽ được gửi sau khi thanh toán thành công ở PaymentServiceImpl
+        boolean isOffline = request.getPaymentMethod() == null
+                || "offline".equalsIgnoreCase(request.getPaymentMethod());
+        if (isOffline) {
+            sendConfirmationEmail(customer, savedBooking, branch, slot, details);
         }
 
         return bookingMapper.toCreateResponse(savedBooking, details);
-    }
-
-    private String resolvePriceVehicleType(String vehicleType) {
-        if (vehicleType == null || vehicleType.isBlank()) {
-            throw new BusinessException(
-                    "Loại xe không được để trống",
-                    HttpStatus.BAD_REQUEST
-            );
-        }
-        return switch (vehicleType.trim().toLowerCase()) {
-            case "4_seats", "4", "4 chỗ", "4 cho" -> "4_seats";
-            case "7_seats", "7", "7 chỗ", "7 cho" -> "7_seats";
-            case "16_seats", "16", "16 chỗ", "16 cho" -> "16_seats";
-
-            default -> throw new BusinessException(
-                    "Loại xe không hợp lệ. Chỉ hỗ trợ 4_seats, 7_seats, 16_seats",
-                    HttpStatus.BAD_REQUEST
-            );
-        };
     }
     // ── READ ─────────────────────────────────────────────────────────────────
 
@@ -248,7 +239,7 @@ public class BookingServiceImpl implements BookingService {
     /** Lấy danh sách booking theo customer, sắp xếp mới nhất trước. */
     @Override
     @Transactional(readOnly = true)
-    public List<BookingSummaryResponseDTO> getBookingsByCustomer(Integer customerId, Integer userId) {
+    public List<BookingSummaryResponseDTO> getBookingsByCustomer(Integer customerId, Integer userId, Integer limit) {
         if (userId != null) {
             Customer customer = customerRepository.findByUser_Id(userId)
                     .orElseThrow(() -> new BusinessException("Không tìm thấy khách hàng", HttpStatus.FORBIDDEN));
@@ -257,6 +248,9 @@ public class BookingServiceImpl implements BookingService {
             }
         }
         List<Booking> bookings = bookingRepository.findByCustomerWithAssociations(customerId);
+        if (limit != null && limit > 0 && bookings.size() > limit) {
+            bookings = bookings.subList(0, limit);
+        }
         return mapToSummaryResponses(bookings);
     }
 
@@ -298,40 +292,6 @@ public class BookingServiceImpl implements BookingService {
         return bookingMapper.toResponse(saved, bookingDetailRepository.findByBooking(saved));
     }
 
-    // ── STATUS TRANSITIONS ───────────────────────────────────────────────────
-
-    /**
-     * Hủy booking — giải phóng slot để người khác có thể đặt.
-     */
-    @Override
-    @Transactional
-    public BookingResponseDTO cancelBooking(Integer bookingId, Integer userId) {
-        Booking booking = findBookingOrThrow(bookingId);
-        if (!booking.isCancellable()) {
-            throw new BusinessException("Booking không thể hủy ở trạng thái hiện tại", HttpStatus.BAD_REQUEST);
-        }
-        if (userId != null) {
-            Customer customer = customerRepository.findByUser_Id(userId)
-                    .orElseThrow(() -> new BusinessException("Không tìm thấy khách hàng", HttpStatus.FORBIDDEN));
-            if (!booking.getCustomer().getCustomerId().equals(customer.getCustomerId())) {
-                throw new BusinessException("Bạn không có quyền hủy lịch đặt này", HttpStatus.FORBIDDEN);
-            }
-        }
-        booking.setStatus(BookingStatus.cancelled);
-
-        // Giảm số lượng đặt trên slot để mở lại capacity
-        // decrementBookings() trong entity tự chuyển status → open nếu còn chỗ
-        TimeSlot slot = booking.getSlot();
-        slot.decrementBookings();
-        timeSlotRepository.save(slot);
-
-        Booking saved = bookingRepository.save(booking);
-        return bookingMapper.toResponse(saved, bookingDetailRepository.findByBooking(saved));
-    }
-
-    /**
-     * Staff/Admin xác nhận booking: pending -> confirmed.
-     */
     @Override
     @Transactional
     public BookingResponseDTO confirmBooking(Integer bookingId) {
@@ -344,12 +304,10 @@ public class BookingServiceImpl implements BookingService {
         booking.setStatus(BookingStatus.confirmed);
 
         Booking saved = bookingRepository.save(booking);
-        return bookingMapper.toResponse(saved, bookingDetailRepository.findByBooking(saved));
+        List<BookingDetail> details = bookingDetailRepository.findByBooking(saved);
+        return bookingMapper.toResponse(saved, details);
     }
 
-    /**
-     * Nhân viên check-in khi khách đã tới chi nhánh: confirmed -> in_progress.
-     */
     @Override
     @Transactional
     public BookingResponseDTO checkInBooking(Integer bookingId) {
@@ -363,15 +321,131 @@ public class BookingServiceImpl implements BookingService {
         }
 
         booking.setStatus(BookingStatus.in_progress);
-        booking.setCheckInAt(LocalDateTime.now());
+
+        Booking saved = bookingRepository.save(booking);
+        List<BookingDetail> details = bookingDetailRepository.findByBooking(saved);
+        return bookingMapper.toResponse(saved, details);
+    }
+
+    @Override
+    @Transactional
+    public BookingResponseDTO rescheduleBooking(Integer bookingId, Integer userId, BookingRescheduleRequestDTO request) {
+        Booking booking = findBookingOrThrow(bookingId);
+
+        Customer owner = customerRepository.findByUser_Id(userId)
+                .orElseThrow(() -> new BusinessException("Không tìm thấy hồ sơ khách hàng", HttpStatus.NOT_FOUND));
+
+        if (!booking.getCustomer().getCustomerId().equals(owner.getCustomerId())) {
+            throw new BusinessException("Bạn không có quyền sửa lịch đặt này", HttpStatus.FORBIDDEN);
+        }
+
+        if (!BookingStatus.pending.equals(booking.getStatus())) {
+            throw new BusinessException(
+                    "Chỉ có thể thay đổi lịch đặt ở trạng thái pending. Hiện tại: " + booking.getStatus(),
+                    HttpStatus.CONFLICT);
+        }
+
+        TimeSlot newSlot = timeSlotRepository.findById(request.getNewSlotId())
+                .orElseThrow(() -> new ResourceNotFoundException("TimeSlot", "id", request.getNewSlotId()));
+
+        if (!newSlot.hasCapacity()) {
+            throw new BusinessException("Khung giờ mới đã đầy, vui lòng chọn khung giờ khác", HttpStatus.CONFLICT);
+        }
+
+        TimeSlot oldSlot = booking.getSlot();
+        oldSlot.decrementBookings();
+        timeSlotRepository.save(oldSlot);
+
+        newSlot.incrementBookings();
+        timeSlotRepository.save(newSlot);
+
+        booking.setSlot(newSlot);
+        if (request.getNote() != null) {
+            booking.setNote(request.getNote());
+        }
+
+        Booking saved = bookingRepository.save(booking);
+        List<BookingDetail> details = bookingDetailRepository.findByBooking(saved);
+        return bookingMapper.toResponse(saved, details);
+    }
+
+    // ── STATUS TRANSITIONS ───────────────────────────────────────────────────
+
+    /**
+     * Hủy booking — giải phóng slot để người khác có thể đặt.
+     *
+     * FIX (chế độ hủy lịch): trước đây hàm này KHÔNG kiểm tra trạng thái hiện tại
+     * của booking trước khi hủy — dù entity Booking đã có sẵn isCancellable()
+     * (chỉ cho phép hủy khi đang pending/confirmed) nhưng service không hề gọi nó.
+     * Hậu quả: có thể hủy 1 booking đã completed/cancelled/in_progress, và nếu hủy
+     * trùng nhiều lần sẽ gọi decrementBookings() nhiều lần → sai lệch số chỗ trống
+     * thật của slot so với dữ liệu.
+     *
+     * Dùng cho STAFF/ADMIN (hủy bất kỳ booking nào, không cần là chủ sở hữu).
+     */
+    @Override
+    @Transactional
+    public BookingResponseDTO cancelBooking(Integer bookingId, Integer userId) {
+        Booking booking = findBookingOrThrow(bookingId);
+        return doCancel(booking);
+    }
+
+    /**
+     * CUSTOMER hủy booking của chính mình.
+     *
+     * FIX (chế độ hủy lịch): trước đây endpoint hủy của customer chỉ check
+     * hasRole('CUSTOMER') mà KHÔNG kiểm tra bookingId đó có thuộc về khách
+     * đang đăng nhập hay không → bất kỳ khách nào cũng có thể hủy lịch của
+     * người khác nếu biết/đoán được bookingId. Giờ bắt buộc phải khớp customer.
+     */
+    @Override
+    @Transactional
+    public BookingResponseDTO cancelOwnBooking(Integer bookingId, Integer userId) {
+        Booking booking = findBookingOrThrow(bookingId);
+
+        Customer owner = customerRepository.findByUser_Id(userId)
+                .orElseThrow(() -> new BusinessException("Không tìm thấy hồ sơ khách hàng", HttpStatus.NOT_FOUND));
+
+        if (!booking.getCustomer().getCustomerId().equals(owner.getCustomerId())) {
+            throw new BusinessException("Bạn không có quyền hủy lịch đặt này", HttpStatus.FORBIDDEN);
+        }
+
+        return doCancel(booking);
+    }
+
+    /** Logic hủy dùng chung cho cả 2 luồng — validate trạng thái trước khi hủy. */
+    private BookingResponseDTO doCancel(Booking booking) {
+        if (!booking.isCancellable()) {
+            throw new BusinessException(
+                    "Không thể hủy lịch đang ở trạng thái '" + booking.getStatus() +
+                            "'. Chỉ có thể hủy khi đang chờ xác nhận (pending) hoặc đã xác nhận (confirmed).",
+                    HttpStatus.CONFLICT);
+        }
+        booking.setStatus(BookingStatus.cancelled);
+
+        // Hoàn trả voucher đổi thưởng nếu có về trạng thái UNUSED
+        customerRewardRepository.findByUsedBookingId(booking.getBookingId()).ifPresent(voucher -> {
+            voucher.setStatus("UNUSED");
+            voucher.setUsedBookingId(null);
+            voucher.setUsedAt(null);
+            customerRewardRepository.save(voucher);
+            log.info("[Booking] Hoàn trả voucher {} về trạng thái UNUSED do hủy lịch #{}", voucher.getVoucherCode(), booking.getBookingId());
+        });
+
+        // Giảm số lượng đặt trên slot để mở lại capacity
+        // decrementBookings() trong entity tự chuyển status → open nếu còn chỗ
+        TimeSlot slot = booking.getSlot();
+        slot.decrementBookings();
+        timeSlotRepository.save(slot);
 
         Booking saved = bookingRepository.save(booking);
         return bookingMapper.toResponse(saved, bookingDetailRepository.findByBooking(saved));
     }
 
     /**
-     * Hoàn thành booking: in_progress -> completed.
-     * Đây là điểm trigger cộng loyalty point và đánh giá lại tier.
+     * Hoàn thành booking — chuyển sang "completed".
+     * Chỉ được gọi khi booking đang ở trạng thái pending hoặc in_progress.
+     * Sau bước này client mới được tạo Payment cho booking.
      */
     @Override
     @Transactional
@@ -381,66 +455,17 @@ public class BookingServiceImpl implements BookingService {
         // FIX: RuntimeException -> BusinessException(BAD_REQUEST, ...)
         // → Đây là lỗi sai luồng nghiệp vụ (sai trạng thái), trả 400
         //   kèm message rõ ràng, thay vì 500 generic.
-        if (!BookingStatus.in_progress.equals(booking.getStatus())) {
-            throw new BusinessException(
-                    "Chỉ booking in_progress mới được hoàn thành",
-                    HttpStatus.BAD_REQUEST
-            );
+        if (!BookingStatus.in_progress.equals(booking.getStatus())
+                && !BookingStatus.pending.equals(booking.getStatus())) {
+            // FIX: BusinessException nhận (message, httpStatus) - đúng thứ tự tham số
+            throw new BusinessException("Chỉ có thể hoàn thành booking đang xử lý hoặc đang chờ",
+                    HttpStatus.BAD_REQUEST);
         }
 
         booking.setStatus(BookingStatus.completed);
-        booking.setCompleteAt(LocalDateTime.now());
 
-        grantLoyaltyPointIfNeeded(booking);
-
-        Booking savedBooking = bookingRepository.save(booking);
-
-        List<BookingDetail> details = bookingDetailRepository.findByBooking(savedBooking);
-
-        return bookingMapper.toResponse(savedBooking, details);
-    }
-    /**
-     * Chỉ cộng điểm một lần khi booking hoàn thaành.
-     */
-
-    private void grantLoyaltyPointIfNeeded(Booking booking) {
-        if (Boolean.TRUE.equals(booking.getLoyaltyPointGranted())) {
-            return;
-        }
-
-        List<BookingDetail> details = bookingDetailRepository.findByBooking(booking);
-
-        BigDecimal totalAmount = details.stream()
-                .map(detail -> detail.getSubTotal() == null
-                        ? BigDecimal.ZERO
-                        : detail.getSubTotal())
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        loyaltyTransactionService.earnPointsFromCompleteBooking(booking, totalAmount);
-
-        updateCustomerLoyaltyStats(booking.getCustomer(), totalAmount);
-
-        booking.setLoyaltyPointGranted(true);
-    }
-
-    private void updateCustomerLoyaltyStats(Customer customer, BigDecimal totalAmount) {
-        Integer currentVisits = customer.getTotalVisits() != null
-                ? customer.getTotalVisits()
-                : 0;
-
-        BigDecimal currentSpending = customer.getTotalSpending() != null
-                ? customer.getTotalSpending()
-                : BigDecimal.ZERO;
-
-        customer.setTotalVisits(currentVisits + 1);
-        customer.setTotalSpending(currentSpending.add(totalAmount));
-
-        LoyaltyBalanceResponseDTO balance =
-                loyaltyTransactionService.getCustomerBalance(customer.getCustomerId());
-
-        customer.setTotalPoints(balance.getCurrentPoints());
-
-        customerRepository.save(customer);
+        Booking saved = bookingRepository.save(booking);
+        return bookingMapper.toResponse(saved, bookingDetailRepository.findByBooking(saved));
     }
 
     // ── HELPERS ──────────────────────────────────────────────────────────────
@@ -477,15 +502,40 @@ public class BookingServiceImpl implements BookingService {
 
     // Sửa lại đúng — dùng Vehicle.VehicleType không phải Promotion.VehicleType
     private Vehicle.VehicleType resolveVehicleType(String vehicleType) {
-        if (vehicleType == null || vehicleType.isBlank()) {
-            return Vehicle.VehicleType.car;
-        }
-
-        return switch (vehicleType.trim().toLowerCase()) {
-            case "4_seats", "4", "4 chỗ", "4 cho" -> Vehicle.VehicleType.car;
-            case "7_seats", "7", "7 chỗ", "7 cho" -> Vehicle.VehicleType.suv;
-            case "16_seats", "16", "16 chỗ", "16 cho" -> Vehicle.VehicleType.suv;
+        return switch (vehicleType) {
+            case "4_seats" -> Vehicle.VehicleType.car;
+            case "7_seats" -> Vehicle.VehicleType.suv;
             default -> Vehicle.VehicleType.car;
         };
+    }
+
+    private void sendConfirmationEmail(Customer customer, Booking booking, Branch branch,
+                                        TimeSlot slot, List<BookingDetail> details) {
+        try {
+            String toEmail = customer.getUser() != null ? customer.getUser().getEmail() : null;
+            if (toEmail == null) return;
+
+            String serviceNames = details.stream()
+                    .map(d -> d.getService().getServiceName())
+                    .collect(Collectors.joining(", "));
+            BigDecimal totalPrice = details.stream()
+                    .map(BookingDetail::getSubTotal)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+            mailService.sendBookingConfirmationEmail(
+                    toEmail,
+                    customer.getFullName(),
+                    booking.getBookingCode(),
+                    branch.getBranchName(),
+                    branch.getAddress(),
+                    serviceNames,
+                    slot.getSlotDate(),
+                    slot.getStartTime(),
+                    slot.getEndTime(),
+                    totalPrice
+            );
+        } catch (Exception e) {
+            log.error("Lỗi khi gửi email xác nhận đặt lịch: {}", e.getMessage(), e);
+        }
     }
 }

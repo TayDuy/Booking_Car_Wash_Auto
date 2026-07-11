@@ -103,15 +103,17 @@
 }
 
 /* ====================================================================
-   BƯỚC 1: CHỌN DỊCH VỤ (SERVICES CARD GRID)
+   BƯỚC 1: CHỌN DỊCH VỤ (PACKAGE RADIO + ADD-ONS)
    ==================================================================== */
-.services-card-grid {
+
+/* -- Packages row (3 columns) -- */
+.services-packages-row {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 20px;
 }
 
-.service-item-card {
+.package-card {
     position: relative;
     border: 2px solid var(--border-color);
     border-radius: 14px;
@@ -121,114 +123,187 @@
     transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     display: flex;
     flex-direction: column;
+    outline: none;
 }
 
-.service-item-card:hover {
+.package-card:hover {
     transform: translateY(-4px);
     border-color: var(--accent-color);
     box-shadow: 0 12px 20px rgba(37, 99, 235, 0.08);
 }
 
-.service-item-card.active-card {
+.package-card.package-selected {
     border-color: var(--accent-color);
+    background: #f0f6ff;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+.package-card.package-popular {
+    border-color: #f59e0b;
+}
+
+.package-card.package-popular.package-selected {
+    border-color: var(--accent-color);
+}
+
+.package-body {
+    padding: 20px 20px 24px;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    gap: 6px;
+}
+
+.package-header {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+
+.package-header h4 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--primary-color);
+    line-height: 1.4;
+}
+
+.package-price {
+    font-size: 20px;
+    font-weight: 800;
+    color: var(--accent-color);
+}
+
+.package-duration {
+    font-size: 13px;
+    color: var(--text-muted);
+    font-weight: 500;
+    margin: 0;
+}
+
+.package-detail {
+    font-size: 13px;
+    color: var(--text-main);
+    line-height: 1.6;
+    margin: 8px 0 0 0;
+    padding: 12px;
     background: #f8fafc;
+    border-radius: 8px;
+    border-left: 3px solid var(--accent-color);
+}
+
+.package-radio-indicator {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 2px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    background: #fff;
+    z-index: 2;
+}
+
+.package-radio-indicator.radio-checked {
+    border-color: var(--accent-color);
+    background: var(--accent-color);
+}
+
+.radio-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #fff;
 }
 
 /* Huy hiệu phổ biến dán góc */
 .popular-badge {
     position: absolute;
     top: 12px;
-    right: 12px;
+    left: 12px;
     background: #f59e0b;
     color: #ffffff;
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 700;
-    padding: 4px 10px;
+    padding: 3px 10px;
     border-radius: 20px;
     z-index: 2;
     letter-spacing: 0.5px;
 }
 
-.service-img-holder {
-    width: 100%;
-    height: 140px;
-    background: #e2e8f0;
-    overflow: hidden;
+/* -- Add-ons section -- */
+.addons-section {
+    margin-top: 28px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border-color);
 }
 
-.service-img-holder img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    transition: transform 0.3s ease;
-}
-
-.service-item-card:hover .service-img-holder img {
-    transform: scale(1.05);
-}
-
-.service-details-box {
-    padding: 18px;
-    display: flex;
-    flex-direction: column;
-    flex-grow: 1;
-}
-
-.service-meta-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 10px;
-}
-
-.service-meta-header h4 {
-    margin: 0;
-    font-size: 16px;
+.addons-title {
+    font-size: 15px;
     font-weight: 600;
     color: var(--primary-color);
+    margin: 0 0 12px 0;
 }
 
-.service-price-label {
-    font-size: 16px;
-    font-weight: 700;
-    color: var(--accent-color);
-}
-
-.service-brief {
-    font-size: 13px;
-    color: var(--text-muted);
-    margin: 0 0 14px 0;
-    line-height: 1.5;
-}
-
-/* Danh sách tính năng có dấu tích xanh */
-.service-feature-checklist {
-    list-style: none;
-    padding: 0;
-    margin: 0 0 16px 0;
-    flex-grow: 1;
-}
-
-.service-feature-checklist li {
-    font-size: 13px;
-    color: var(--text-main);
-    margin-bottom: 8px;
+.addons-list {
     display: flex;
-    align-items: center;
+    flex-direction: column;
     gap: 8px;
 }
 
-.service-feature-checklist li span {
-    color: #16a34a;
-    font-weight: bold;
+.addon-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    background: #fff;
+    cursor: pointer;
+    transition: all 0.2s;
 }
 
-.service-duration-info {
+.addon-item:hover {
+    border-color: var(--accent-color);
+    background: #f8faff;
+}
+
+.addon-item.addon-checked {
+    border-color: var(--accent-color);
+    background: #eff6ff;
+}
+
+.addon-item input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--accent-color);
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.addon-name {
+    flex: 1;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-main);
+}
+
+.addon-price {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--accent-color);
+    white-space: nowrap;
+}
+
+.addon-duration {
     font-size: 12px;
     color: var(--text-muted);
-    border-top: 1px dashed var(--border-color);
-    padding-top: 10px;
-    font-weight: 500;
+    white-space: nowrap;
 }
 
 /* ====================================================================
@@ -424,6 +499,7 @@
 }
 
 .form-field-group input,
+.form-field-group select,
 .form-field-group textarea {
     padding: 12px 16px;
     border-radius: 8px;
@@ -435,9 +511,80 @@
 }
 
 .form-field-group input:focus,
+.form-field-group select:focus,
 .form-field-group textarea:focus {
     border-color: var(--accent-color);
     box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.08);
+}
+/* Gợi ý xe cũ / số điện thoại — dropdown autocomplete gắn ngay trong ô nhập */
+.input-suggest-wrapper {
+    position: relative;
+}
+
+.input-suggest-dropdown {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    right: 0;
+    background: #ffffff;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
+    z-index: 20;
+    overflow: hidden;
+    padding: 6px;
+}
+
+.input-suggest-heading {
+    font-size: 12px;
+    font-weight: 600;
+    color: #94a3b8;
+    padding: 6px 10px 4px;
+}
+
+.input-suggest-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 10px;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-main);
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.15s ease;
+}
+
+.input-suggest-item:hover {
+    background: #eff6ff;
+}
+
+.input-suggest-item-active {
+    background: #eff6ff;
+    color: var(--accent-color);
+}
+
+.suggest-item-icon {
+    color: var(--accent-color);
+    flex-shrink: 0;
+}
+
+.suggest-item-tag {
+    margin-left: auto;
+    font-size: 12px;
+    font-weight: 600;
+    color: #94a3b8;
+}
+
+.input-suggest-empty {
+    padding: 12px 10px;
+    font-size: 13px;
+    color: #94a3b8;
+    text-align: center;
 }
 
 /* Nút chuyển đổi (Segmented Control) thay thế thẻ select */
@@ -542,6 +689,35 @@
     margin-bottom: 6px;
 }
 
+.addons-summary {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed var(--border-color);
+}
+
+.addons-summary-title {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.billing-row.addon-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    color: var(--text-main);
+    padding-left: 8px;
+    margin-bottom: 4px;
+}
+
+.billing-row.addon-row .service-title {
+    font-weight: 400;
+}
+
 .selected-datetime-preview p {
     margin: 0 0 14px 0;
     font-size: 13px;
@@ -630,6 +806,17 @@
     font-weight: 600;
 }
 
+.deposit-notice {
+    font-size: 12px;
+    color: #dc2626;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 6px;
+    padding: 8px 12px;
+    margin-bottom: 12px;
+    font-weight: 500;
+}
+
 .method-option-card {
     display: flex;
     gap: 12px;
@@ -648,6 +835,16 @@
 .method-option-card.method-active {
     border-color: var(--accent-color);
     background: #f8fafc;
+}
+
+.method-option-card.method-disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: #f1f5f9;
+}
+
+.method-option-card.method-disabled:hover {
+    border-color: var(--border-color);
 }
 
 .method-option-card input[type="radio"] {
@@ -770,7 +967,7 @@
         padding: 20px;
     }
 
-    .services-card-grid {
+    .services-packages-row {
         grid-template-columns: repeat(2, 1fr);
     }
 
@@ -780,7 +977,7 @@
 }
 
 @media (max-width: 768px) {
-    .services-card-grid {
+    .services-packages-row {
         grid-template-columns: 1fr;
     }
 
@@ -965,8 +1162,20 @@
 /* Lưới các ô thời gian */
 .slots-grid-container {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+}
+
+/* Thông báo khi chưa có khung giờ thật nào (đang tải / không có slot / lỗi) */
+.slots-empty-state {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 24px 12px;
+    color: var(--text-muted);
+    font-size: 14px;
+    background: #f8fafc;
+    border: 1px dashed var(--border-color);
+    border-radius: 8px;
 }
 
 /* Base style cho từng ô giờ */
@@ -1039,4 +1248,224 @@
 .time-slot-pill-btn:disabled .slot-clock-text,
 .time-slot-pill-btn:disabled .slot-status-subtext {
     color: #d1d5db;
+}
+
+/* ====================================================================
+   BOOKING SERVICE CATEGORY TABS
+   ==================================================================== */
+.booking-service-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.booking-service-tab-btn {
+    padding: 8px 18px;
+    border: 1.5px solid var(--border-color);
+    border-radius: 9999px;
+    background: #ffffff;
+    color: var(--text-muted);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.booking-service-tab-btn:hover {
+    border-color: var(--accent-color);
+    color: var(--accent-color);
+    background: #f0f6ff;
+}
+
+.booking-service-tab-btn.active {
+    background: var(--accent-color);
+    color: #ffffff;
+    border-color: var(--accent-color);
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
+}
+
+/* Auto-fit grid: show as many columns as space allows */
+.services-packages-row {
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+}
+
+/* ====================================================================
+   ƯU ĐÃI CỦA BẠN (SIDEBAR PROMO SECTION)
+   ==================================================================== */
+.sidebar-promo-section {
+    margin-top: 16px;
+}
+
+.sidebar-promo-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 12px 16px;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    background: #ffffff;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--primary-color);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.sidebar-promo-toggle:hover {
+    background: var(--bg-main);
+    border-color: var(--accent-color);
+}
+
+.sidebar-promo-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--accent-color);
+    color: #ffffff;
+    font-size: 10px;
+    font-weight: 700;
+    margin-left: 6px;
+}
+
+.sidebar-promo-body {
+    margin-top: 8px;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    background: #ffffff;
+    padding: 16px;
+}
+
+.sidebar-promo-clear {
+    display: block;
+    width: 100%;
+    padding: 4px 0;
+    border: none;
+    background: transparent;
+    font-size: 12px;
+    color: var(--text-muted);
+    cursor: pointer;
+    text-align: left;
+    margin-bottom: 8px;
+    transition: color 0.2s;
+}
+
+.sidebar-promo-clear:hover {
+    color: var(--color-danger);
+}
+
+.sidebar-promo-group {
+    margin-bottom: 8px;
+}
+
+.sidebar-promo-group:last-of-type {
+    margin-bottom: 0;
+}
+
+.sidebar-promo-group-label {
+    display: block;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+}
+
+.sidebar-promo-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    background: var(--bg-main);
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-bottom: 6px;
+}
+
+.sidebar-promo-item:hover {
+    border-color: var(--accent-color);
+    background: #f0f6ff;
+}
+
+.sidebar-promo-item.selected {
+    border-color: var(--accent-color);
+    background: #f0f6ff;
+}
+
+.sidebar-promo-item input[type="radio"] {
+    margin-top: 3px;
+    accent-color: var(--accent-color);
+    flex-shrink: 0;
+}
+
+.sidebar-promo-item-content {
+    min-width: 0;
+    flex: 1;
+}
+
+.sidebar-promo-item-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.sidebar-promo-item-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--primary-color);
+}
+
+.sidebar-promo-item-badge {
+    flex-shrink: 0;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--accent-color);
+    color: #ffffff;
+}
+
+.sidebar-promo-item-badge--green {
+    background: #16a34a;
+}
+
+.sidebar-promo-item-desc {
+    display: block;
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 2px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.sidebar-promo-divider {
+    height: 1px;
+    background: var(--border-color);
+    margin: 12px 0;
+}
+
+.sidebar-promo-empty {
+    text-align: center;
+    padding: 12px 0;
+    font-size: 13px;
+    color: var(--text-muted);
+}
+
+.sidebar-promo-hint {
+    text-align: center;
+    font-size: 11px;
+    color: var(--text-muted);
+    margin: 12px 0 0 0;
+    padding-top: 8px;
+    border-top: 1px solid var(--border-color);
 }

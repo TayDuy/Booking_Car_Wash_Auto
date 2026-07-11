@@ -112,7 +112,10 @@ function ForgotPassword() {
       return;
     }
 
-    if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(newPassword)) {
+    const hasLowercase = /[a-z]/.test(newPassword);
+    const hasUppercase = /[A-Z]/.test(newPassword);
+    const hasDigit = /\d/.test(newPassword);
+    if (!hasLowercase || !hasUppercase || !hasDigit) {
       setErrorMessage("Mật khẩu phải chứa ít nhất 1 chữ hoa, 1 chữ thường và 1 số.");
       return;
     }

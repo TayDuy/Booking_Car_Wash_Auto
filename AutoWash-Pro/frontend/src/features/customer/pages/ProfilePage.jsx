@@ -4,13 +4,16 @@ import { useNavigate } from 'react-router-dom';
 import customerApi from '../../../api/customerApi';
 import vehicleApi from '../../../api/vehicleApi';
 import bookingApi from '../../../api/bookingApi';
-import { logout } from '../../../api/authService';
+import { logout, changePassword } from '../../../api/authService';
+import { getMyTier } from '../../../api/loyaltyApi';
+import { getMyPointBalance } from '../../../api/loyaltyTransactionApi';
 
 const ProfilePage = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [showAddVehicleModal, setShowAddVehicleModal] = useState(false);
+  const [editingVehicle, setEditingVehicle] = useState(null); // vehicle object đang chỉnh sửa
   
   const [user, setUser] = useState({
     customerId: null,
@@ -33,6 +36,16 @@ const ProfilePage = () => {
     dateOfBirth: ''
   });
 
+  // Change Password
+  const [showChangePassword, setShowChangePassword] = useState(false);
+  const [passwordForm, setPasswordForm] = useState({
+    oldPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+  const [passwordError, setPasswordError] = useState('');
+  const [passwordSuccess, setPasswordSuccess] = useState('');
+
   // State for dynamic components
   const [vehicles, setVehicles] = useState([]);
   const [bookings, setBookings] = useState([]);
@@ -48,6 +61,8 @@ const ProfilePage = () => {
   });
 
   const [vehicleError, setVehicleError] = useState('');
+  const [loyaltyInfo, setLoyaltyInfo] = useState(null);
+  const [pointBalance, setPointBalance] = useState(0);
 
   useEffect(() => {
     fetchProfileAndData();
@@ -78,17 +93,32 @@ const ProfilePage = () => {
           console.error('Lỗi tải danh sách xe:', vehErr);
         }
 
-        // Load bookings using customerId returned from backend
-        if (userData.customerId) {
-          try {
-            const bookRes = await bookingApi.myBookings(userData.customerId);
-            if (bookRes.data) {
-              setBookings(bookRes.data);
-            }
-          } catch (bookErr) {
-            console.error('Lỗi tải lịch sử đặt lịch:', bookErr);
+        // Load bookings (limit to 5 for profile dashboard)
+        try {
+          const bookRes = await bookingApi.myBookings(userData.customerId, 5);
+          if (bookRes.data) {
+            setBookings(bookRes.data);
           }
+        } catch (bookErr) {
+          console.error('Lỗi tải lịch sử đặt lịch:', bookErr);
         }
+      }
+      // Load loyalty data
+      try {
+        const [tierRes, balanceRes] = await Promise.allSettled([
+          getMyTier(),
+          getMyPointBalance(),
+        ]);
+        if (tierRes.status === "fulfilled") {
+          const raw = tierRes.value?.data || tierRes.value || null;
+          setLoyaltyInfo(raw);
+        }
+        if (balanceRes.status === "fulfilled") {
+          const data = balanceRes.value?.data || balanceRes.value || {};
+          setPointBalance(Number(data.currentPoints || data.points || 0));
+        }
+      } catch (loyaltyErr) {
+        console.error('Lỗi tải thông tin hạng thành viên:', loyaltyErr);
       }
     } catch (err) {
       console.error('Lỗi khi tải hồ sơ:', err);
@@ -101,6 +131,45 @@ const ProfilePage = () => {
     const element = document.getElementById(id);
     if (element) {
       element.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+    setPasswordError('');
+    setPasswordSuccess('');
+
+    if (!passwordForm.oldPassword || !passwordForm.newPassword || !passwordForm.confirmPassword) {
+      setPasswordError('Vui lòng điền đầy đủ thông tin');
+      return;
+    }
+    if (passwordForm.newPassword.length < 8) {
+      setPasswordError('Mật khẩu mới phải có ít nhất 8 ký tự');
+      return;
+    }
+    const hasLowercase = /[a-z]/.test(passwordForm.newPassword);
+    const hasUppercase = /[A-Z]/.test(passwordForm.newPassword);
+    const hasDigit = /\d/.test(passwordForm.newPassword);
+    if (!hasLowercase || !hasUppercase || !hasDigit) {
+      setPasswordError('Mật khẩu mới phải chứa ít nhất 1 chữ hoa, 1 chữ thường và 1 số');
+      return;
+    }
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      setPasswordError('Mật khẩu xác nhận không khớp');
+      return;
+    }
+    if (passwordForm.oldPassword === passwordForm.newPassword) {
+      setPasswordError('Mật khẩu mới phải khác mật khẩu cũ');
+      return;
+    }
+
+    try {
+      await changePassword(passwordForm.oldPassword, passwordForm.newPassword);
+      setPasswordSuccess('Đổi mật khẩu thành công');
+      setPasswordForm({ oldPassword: '', newPassword: '', confirmPassword: '' });
+      setShowChangePassword(false);
+    } catch (err) {
+      setPasswordError(err.response?.data?.message || 'Đổi mật khẩu thất bại');
     }
   };
 
@@ -188,16 +257,80 @@ const ProfilePage = () => {
     }
   };
 
+  // Edit Vehicle Handler
+  const handleEditVehicle = async (e) => {
+    e.preventDefault();
+    if (!editingVehicle) return;
+
+    const trimmedPlate = (editingVehicle.licensePlate || '').trim().toUpperCase();
+    const platePattern = /^[0-9]{2}[A-Z]-[0-9]{3,5}(\.[0-9]{1,2})?$/;
+    if (!platePattern.test(trimmedPlate)) {
+      alert('Biển số xe phải đúng định dạng (VD: 51A-12345)');
+      return;
+    }
+    if (!editingVehicle.brand?.trim() || !editingVehicle.model?.trim()) {
+      alert('Hãng xe và dòng xe không được để trống.');
+      return;
+    }
+    try {
+      const res = await vehicleApi.update(editingVehicle.vehicleId, {
+        licensePlate: trimmedPlate,
+        brand: editingVehicle.brand,
+        model: editingVehicle.model,
+        vehicleType: editingVehicle.vehicleType,
+        color: editingVehicle.color,
+        nickname: editingVehicle.nickname,
+      });
+      if (res.data) {
+        setVehicles(prev => prev.map(v => v.vehicleId === editingVehicle.vehicleId ? res.data : v));
+        setEditingVehicle(null);
+        alert('Cập nhật xe thành công!');
+      }
+    } catch (err) {
+      alert(err.response?.data?.message || 'Cập nhật xe thất bại.');
+    }
+  };
+
   const getTierName = (id) => {
+    if (id === 4) return 'Bạch Kim';
     if (id === 3) return 'Vàng';
     if (id === 2) return 'Bạc';
     return 'Đồng';
   };
 
   const getPointsNeeded = (points) => {
-    if (points >= 3000) return 0;
-    return 3000 - points;
+    if (points >= 5000) return 0;
+    if (points >= 1500) return 5000 - points;
+    if (points >= 500) return 1500 - points;
+    return 500 - points;
   };
+
+  const getNextTierName = (points) => {
+    if (points >= 5000) return 'Tối đa';
+    if (points >= 1500) return 'Bạch Kim';
+    if (points >= 500) return 'Vàng';
+    return 'Bạc';
+  };
+
+  function getCurrentTierName() {
+    return (
+      loyaltyInfo?.currentTierName ||
+      loyaltyInfo?.newTierName ||
+      loyaltyInfo?.tierName ||
+      getTierName(user.tierId)
+    );
+  }
+
+  function getCurrentPoints() {
+    return Number(
+      pointBalance ||
+        loyaltyInfo?.currentPoints ||
+        loyaltyInfo?.totalPoints ||
+        loyaltyInfo?.points ||
+        user.totalPoints ||
+        0
+    );
+  }
 
   // Dynamic Subscription details based on user tierId
   const getSubscriptionDetails = (tierId) => {
@@ -266,8 +399,8 @@ const ProfilePage = () => {
             <div className="col-left">
               
               {/* Personal Info Card */}
-              <section id="personal-info" className="card card-shadow">
-                <div className="card-header">
+              <section id="personal-info" className="card card-shadow no-pad">
+                <div className="table-header">
                   <h3 className="card-title">
                     <span className="material-symbols-outlined text-primary">person</span>
                     Thông tin cá nhân
@@ -285,7 +418,7 @@ const ProfilePage = () => {
                   )}
                 </div>
                 
-                <div className="info-grid">
+                <div className="info-grid info-grid-inset">
                   <div className="info-item">
                     <label>Họ và tên</label>
                     {!isEditing ? <p>{user.fullName || 'Chưa cập nhật'}</p> : 
@@ -324,20 +457,41 @@ const ProfilePage = () => {
                 </div>
               </section>
 
+              {/* Change Password Section */}
+              <section className="card card-shadow no-pad">
+                <div className="table-header">
+                  <h3 className="card-title">
+                    <span className="material-symbols-outlined text-primary">lock</span>
+                    <span>Mật khẩu</span>
+                  </h3>
+                  <button className="btn-edit" onClick={() => setShowChangePassword(true)}>
+                    <span className="material-symbols-outlined icon-small">edit</span>
+                    <span>Đổi mật khẩu</span>
+                  </button>
+                </div>
+                <div className="password-preview-wrap">
+                  <div className="password-preview">
+                    <span className="password-dots">••••••••</span>
+                    <span className="password-hint">Nên thay đổi mật khẩu định kỳ để đảm bảo an toàn cho tài khoản của bạn.</span>
+                  </div>
+                  {passwordSuccess && <div className="password-success">{passwordSuccess}</div>}
+                </div>
+              </section>
+
               {/* My Vehicles Section */}
-              <section id="vehicles" className="section-vehicles">
-                <div className="card-header">
+              <section id="vehicles" className="card card-shadow no-pad">
+                <div className="table-header">
                   <h3 className="card-title">
                     <span className="material-symbols-outlined text-primary">directions_car</span>
-                    Xe của tôi
+                    <span>Xe của tôi</span>
                   </h3>
                   <button className="btn-add" onClick={() => setShowAddVehicleModal(true)}>
                     <span className="material-symbols-outlined icon-small">add_circle</span>
-                    Thêm xe mới
+                    <span>Thêm xe mới</span>
                   </button>
                 </div>
                 
-                <div className="vehicles-grid">
+                <div className="vehicles-grid vehicles-grid-inset">
                   {vehicles.length === 0 ? (
                     <div className="card card-shadow" style={{ gridColumn: 'span 2', textAlign: 'center', padding: '32px', color: 'var(--on-surface-variant)' }}>
                       Bạn chưa thêm phương tiện nào. Hãy nhấn nút thêm xe để bắt đầu!
@@ -362,6 +516,10 @@ const ProfilePage = () => {
                         <div className="vehicle-footer">
                           <span className="vehicle-date">{vehicle.color ? `Màu: ${vehicle.color}` : 'Chưa nhập màu'}</span>
                           <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <button className="btn-edit" style={{ padding: '4px 10px', fontSize: '12px' }} onClick={() => setEditingVehicle({ ...vehicle })}>
+                              <span className="material-symbols-outlined icon-small">edit</span>
+                              <span>Sửa</span>
+                            </button>
                             <button 
                               className={`vehicle-status-toggle ${vehicle.isActive ? 'active' : 'inactive'}`} 
                               onClick={() => handleToggleActive(vehicle.vehicleId, vehicle.isActive)}
@@ -369,7 +527,7 @@ const ProfilePage = () => {
                               <span className="material-symbols-outlined icon-small">
                                 {vehicle.isActive ? 'check_circle' : 'do_not_disturb_on'}
                               </span>
-                              {vehicle.isActive ? 'Đang hoạt động' : 'Ngừng hoạt động'}
+                              <span>{vehicle.isActive ? 'Đang hoạt động' : 'Ngừng hoạt động'}</span>
                             </button>
                           </span>
                         </div>
@@ -384,7 +542,7 @@ const ProfilePage = () => {
                 <div className="table-header">
                   <h3 className="card-title">
                     <span className="material-symbols-outlined text-primary">history</span>
-                    Lịch sử đặt lịch
+                    <span>Lịch sử đặt lịch</span>
                   </h3>
                   <button className="link-primary" onClick={() => navigate('/customer/history')}>Xem tất cả</button>
                 </div>
@@ -482,21 +640,25 @@ const ProfilePage = () => {
                 <div className="loyalty-header">
                   <div>
                     <p className="loyalty-label">Hạng thành viên</p>
-                    <h3 className="loyalty-tier">{getTierName(user.tierId)}</h3>
+                    <h3 className="loyalty-tier">{getCurrentTierName()}</h3>
                   </div>
-                  <span className="material-symbols-outlined icon-star" style={{ fontVariationSettings: "'FILL' 1" }}>stars</span>
+                  <span className="material-symbols-outlined icon-star">stars</span>
                 </div>
                 <div className="loyalty-body">
                   <div className="loyalty-points-row">
                     <span className="points-label">Số dư hiện tại</span>
-                    <span className="points-value">{user.totalPoints || 0} điểm</span>
+                    <span className="points-value">{getCurrentPoints().toLocaleString("vi-VN")} điểm</span>
                   </div>
                   <div className="progress-track">
-                    <div className="progress-fill" style={{ width: `${Math.min((user.totalPoints || 0) / 3000 * 100, 100)}%` }}></div>
+                    <div className="progress-fill" style={{ width: `${Math.min((getCurrentPoints() || 0) / 5000 * 100, 100)}%` }}></div>
                   </div>
-                  <p className="points-hint">Chỉ còn {getPointsNeeded(user.totalPoints || 0)} điểm nữa để đạt hạng Bạch Kim!</p>
+                  {getPointsNeeded(getCurrentPoints()) > 0 ? (
+                    <p className="points-hint">Chỉ còn {getPointsNeeded(getCurrentPoints())} điểm nữa để đạt hạng {getNextTierName(getCurrentPoints())}!</p>
+                  ) : (
+                    <p className="points-hint">Chúc mừng! Bạn đã đạt hạng thành viên cao nhất.</p>
+                  )}
                 </div>
-                <button className="btn-loyalty">Đổi phần thưởng</button>
+                <button className="btn-loyalty" onClick={() => navigate('/customer/promotions')}>Đổi phần thưởng</button>
               </section>
 
               {/* Subscription Details */}
@@ -512,8 +674,8 @@ const ProfilePage = () => {
                   </div>
                 </div>
                 <div className="sub-features">
-                  {subInfo.features.map((feature, i) => (
-                    <div key={i} className="sub-feature">
+                  {subInfo.features.map((feature) => (
+                    <div key={feature} className="sub-feature">
                       <span className="material-symbols-outlined text-secondary">check_circle</span>
                       {feature}
                     </div>
@@ -627,6 +789,122 @@ const ProfilePage = () => {
             <div className="modal-footer">
               <button type="button" className="btn-secondary" onClick={() => setShowAddVehicleModal(false)}>Hủy</button>
               <button type="submit" className="btn-primary">Đăng ký xe</button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Edit Vehicle Modal */}
+      {editingVehicle && (
+        <div className="modal-overlay">
+          <form className="modal-content" onSubmit={handleEditVehicle}>
+            <div className="modal-header">
+              <h3 className="modal-title">
+                <span className="material-symbols-outlined">edit</span>
+                Chỉnh sửa xe
+              </h3>
+              <button type="button" className="btn-close" onClick={() => setEditingVehicle(null)}>
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            <div className="modal-body">
+              <div className="form-group">
+                <label>Biển số xe*</label>
+                <input 
+                  type="text" className="form-input"
+                  value={editingVehicle.licensePlate} 
+                  onChange={e => setEditingVehicle({...editingVehicle, licensePlate: e.target.value})} 
+                  required 
+                />
+              </div>
+              <div className="form-group">
+                <label>Hãng xe*</label>
+                <input 
+                  type="text" className="form-input"
+                  value={editingVehicle.brand} 
+                  onChange={e => setEditingVehicle({...editingVehicle, brand: e.target.value})} 
+                  required 
+                />
+              </div>
+              <div className="form-group">
+                <label>Dòng xe*</label>
+                <input 
+                  type="text" className="form-input"
+                  value={editingVehicle.model} 
+                  onChange={e => setEditingVehicle({...editingVehicle, model: e.target.value})} 
+                  required 
+                />
+              </div>
+              <div className="form-group">
+                <label>Loại xe*</label>
+                <select 
+                  className="form-select"
+                  value={editingVehicle.vehicleType} 
+                  onChange={e => setEditingVehicle({...editingVehicle, vehicleType: e.target.value})}
+                >
+                  <option value="car">Xe 4 chỗ</option>
+                  <option value="suv">Xe 7 chỗ</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Màu sắc</label>
+                <input 
+                  type="text" className="form-input"
+                  value={editingVehicle.color || ''} 
+                  onChange={e => setEditingVehicle({...editingVehicle, color: e.target.value})} 
+                />
+              </div>
+              <div className="form-group">
+                <label>Tên gọi / Nickname</label>
+                <input 
+                  type="text" className="form-input"
+                  value={editingVehicle.nickname || ''} 
+                  onChange={e => setEditingVehicle({...editingVehicle, nickname: e.target.value})} 
+                />
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="btn-secondary" onClick={() => setEditingVehicle(null)}>Hủy</button>
+              <button type="submit" className="btn-primary">Lưu thay đổi</button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Change Password Modal */}
+      {showChangePassword && (
+        <div className="modal-overlay">
+          <form className="modal-content" onSubmit={handleChangePassword}>
+            <div className="modal-header">
+              <h3 className="modal-title">
+                <span className="material-symbols-outlined">lock</span>
+                Đổi mật khẩu
+              </h3>
+              <button type="button" className="btn-close" onClick={() => { setShowChangePassword(false); setPasswordError(''); }}>
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            <div className="modal-body">
+              {passwordError && <div style={{ color: '#ba1a1a', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}>{passwordError}</div>}
+              <div className="form-group">
+                <label>Mật khẩu cũ</label>
+                <input type="password" className="form-input" value={passwordForm.oldPassword}
+                  onChange={e => setPasswordForm({...passwordForm, oldPassword: e.target.value})} required />
+              </div>
+              <div className="form-group">
+                <label>Mật khẩu mới</label>
+                <input type="password" className="form-input" value={passwordForm.newPassword}
+                  onChange={e => setPasswordForm({...passwordForm, newPassword: e.target.value})} required />
+              </div>
+              <div className="form-group">
+                <label>Xác nhận mật khẩu mới</label>
+                <input type="password" className="form-input" value={passwordForm.confirmPassword}
+                  onChange={e => setPasswordForm({...passwordForm, confirmPassword: e.target.value})} required />
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="btn-secondary" onClick={() => { setShowChangePassword(false); setPasswordError(''); }}>Hủy</button>
+              <button type="submit" className="btn-primary">Lưu mật khẩu</button>
             </div>
           </form>
         </div>

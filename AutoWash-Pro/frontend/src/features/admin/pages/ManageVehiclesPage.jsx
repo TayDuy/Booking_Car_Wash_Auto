@@ -28,7 +28,7 @@ export default function ManageVehiclesPage() {
   async function loadVehicles() {
     try {
       const response = await vehicleApi.list();
-      console.log("VEHICLE API:", response.data);
+
 
       const result = response.data?.data || response.data || [];
 

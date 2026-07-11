@@ -1,5 +1,9 @@
 package com.autowash.backend.reward.service.impl;
 
+import com.autowash.backend.common.exception.BusinessException;
+import com.autowash.backend.customer.entity.Customer;
+import com.autowash.backend.loyaltytier.entity.LoyaltyTier;
+import com.autowash.backend.loyaltytier.repository.LoyaltyTierRepository;
 import com.autowash.backend.loyaltytransaction.entity.LoyaltyTransaction;
 import com.autowash.backend.loyaltytransaction.repository.LoyaltyTransactionRepository;
 import com.autowash.backend.reward.dto.RedeemRewardRequestDTO;
@@ -36,6 +40,9 @@ public class RewardServiceImpl implements RewardService {
     private final RewardRepository rewardRepository;
     private final RewardMapper rewardMapper;
     private final LoyaltyTransactionRepository loyaltyTransactionRepository;
+    private final com.autowash.backend.customer.repository.CustomerRepository customerRepository;
+    private final com.autowash.backend.user.repository.UserRepository userRepository;
+    private final LoyaltyTierRepository loyaltyTierRepository;
 
     /**
      * {@inheritDoc}
@@ -105,8 +112,11 @@ public class RewardServiceImpl implements RewardService {
     }
 
     @Override
-    public List<RewardResponseDTO> getRedeemableRewards(Integer customerId, String vehicleType) {
+    public List<RewardResponseDTO> getRedeemableRewards(Integer customerId, String vehicleType, Integer userId) {
+        validateCustomerOwner(customerId, userId);
+
         Integer currentPoints = getCurrentPoints(customerId);
+        Integer customerTierLevel = getCustomerTierLevel(customerId);
 
         Reward.RewardStatus activeStatus = parseEnumIgnoreCase(Reward.RewardStatus.class, "active");
         Reward.RewardVehicleType requestedVehicleType =
@@ -117,6 +127,9 @@ public class RewardServiceImpl implements RewardService {
                 .filter(reward -> reward.getStatus().equals(activeStatus))
                 .filter(reward -> reward.getRequiredPoints() <= currentPoints)
                 .filter(reward -> isVehicleMatched(reward.getVehicleType(), requestedVehicleType))
+                .filter(reward -> reward.getRequiredTierLevel() == null
+                        || (customerTierLevel != null
+                        && customerTierLevel >= reward.getRequiredTierLevel()))
                 .map(rewardMapper::toResponse)
                 .toList();
     }
@@ -135,13 +148,25 @@ public class RewardServiceImpl implements RewardService {
     */
     @Override
     @Transactional
-    public RedeemRewardResponseDTO redeemReward(Integer rewardId, RedeemRewardRequestDTO dto) {
+    public RedeemRewardResponseDTO redeemReward(Integer rewardId, RedeemRewardRequestDTO dto, Integer userId) {
+        validateCustomerOwner(dto.customerId(), userId);
+
         Reward reward = findOrThrow(rewardId);
 
         Reward.RewardStatus activeStatus = parseEnumIgnoreCase(Reward.RewardStatus.class, "active");
 
         if (!reward.getStatus().equals(activeStatus)) {
             throw new IllegalArgumentException("Reward hiện không còn hoạt động");
+        }
+
+        // Kiểm tra hạng thành viên tối thiểu
+        Integer customerTierLevel = getCustomerTierLevel(dto.customerId());
+        if (reward.getRequiredTierLevel() != null
+                && (customerTierLevel == null || customerTierLevel < reward.getRequiredTierLevel())) {
+            throw new BusinessException(
+                    "Bạn cần đạt hạng thành viên cao hơn để đổi phần thưởng này",
+                    org.springframework.http.HttpStatus.FORBIDDEN
+            );
         }
 
         Reward.RewardVehicleType requestedVehicleType =
@@ -207,6 +232,14 @@ public class RewardServiceImpl implements RewardService {
                 .orElse(0);
     }
 
+    private Integer getCustomerTierLevel(Integer customerId) {
+        return customerRepository.findById(customerId)
+                .map(Customer::getTierId)
+                .flatMap(tierId -> loyaltyTierRepository.findById(tierId))
+                .map(LoyaltyTier::getPriorityLevel)
+                .orElse(null);
+    }
+
     private boolean isVehicleMatched(Reward.RewardVehicleType rewardVehicleType,
                                      Reward.RewardVehicleType requestedVehicleType) {
         boolean exactMatch = rewardVehicleType.equals(requestedVehicleType);
@@ -229,4 +262,36 @@ public class RewardServiceImpl implements RewardService {
                 ));
         }
 
+    private void validateCustomerOwner(Integer customerId, Integer userId) {
+        if (userId == null) {
+            throw new com.autowash.backend.common.exception.BusinessException(
+                    "Yêu cầu xác thực người dùng",
+                    org.springframework.http.HttpStatus.FORBIDDEN
+            );
+        }
+
+        com.autowash.backend.user.entity.User user = userRepository.findById(userId)
+                .orElseThrow(() -> new com.autowash.backend.common.exception.BusinessException(
+                        "Không tìm thấy tài khoản người dùng",
+                        org.springframework.http.HttpStatus.FORBIDDEN
+                ));
+
+        String role = user.getRole();
+        if ("admin".equalsIgnoreCase(role) || "staff".equalsIgnoreCase(role)) {
+            return;
+        }
+
+        com.autowash.backend.customer.entity.Customer authenticatedCustomer = customerRepository.findByUser_Id(userId)
+                .orElseThrow(() -> new com.autowash.backend.common.exception.BusinessException(
+                        "Không tìm thấy khách hàng ứng với tài khoản đăng nhập",
+                        org.springframework.http.HttpStatus.FORBIDDEN
+                ));
+
+        if (!authenticatedCustomer.getCustomerId().equals(customerId)) {
+            throw new com.autowash.backend.common.exception.BusinessException(
+                    "Bạn không có quyền thao tác với dữ liệu của khách hàng khác",
+                    org.springframework.http.HttpStatus.FORBIDDEN
+            );
+        }
+    }
 }

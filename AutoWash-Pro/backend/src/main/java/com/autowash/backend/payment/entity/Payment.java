@@ -84,6 +84,27 @@ public class Payment {
     @Column(name = "paid_at")
     private LocalDateTime paidAt;
 
+    @Column(name = "vnpay_transaction_no", length = 50)
+    private String vnpayTransactionNo;
+
+    @Column(name = "vnpay_bank_code", length = 20)
+    private String vnpayBankCode;
+
+    @Column(name = "vnpay_card_type", length = 20)
+    private String vnpayCardType;
+
+    @Column(name = "vnpay_response_code", length = 10)
+    private String vnpayResponseCode;
+
+    @Column(name = "paypal_order_id", length = 50)
+    private String paypalOrderId;
+
+    @Column(name = "paypal_capture_id", length = 50)
+    private String paypalCaptureId;
+
+    @Column(name = "paypal_payer_email", length = 100)
+    private String paypalPayerEmail;
+
     // ← Quản lý thủ công vì schema DB không có created_at/updated_at.
     //    Nếu muốn dùng @CreatedDate/@LastModifiedDate thì cần thêm
     //    2 cột này vào bảng payment trong DB và bật @EnableJpaAuditing.
@@ -103,6 +124,6 @@ public class Payment {
         this.updatedAt = LocalDateTime.now();
     }
 
-    public enum PaymentMethod { cash, bank_transfer, pos }
+    public enum PaymentMethod { cash, bank_transfer, pos, paypal }
     public enum PaymentStatus { unpaid, paid, failed, cancelled }
 }

@@ -26,7 +26,6 @@ class BackendApplicationTests {
 
     @Autowired
     private org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
-
     @Test
     void testQueryGenderValues() {
         try {
@@ -266,7 +265,6 @@ class BackendApplicationTests {
         });
         System.out.println("=== END PASSWORD UPDATE ===");
     }
-
     @Test
     void hashAllPlaintextPasswords() {
         System.out.println("=== START HASHING ALL PLAINTEXT PASSWORDS ===");

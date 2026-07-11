@@ -3,26 +3,29 @@ import "./BookingPage.css";
 import {
   FaDroplet,
   FaCalendarDays,
-  FaCarSide,
-  FaStore
+  FaCarSide
 } from "react-icons/fa6";
+import { FaPhoneAlt } from "react-icons/fa";
 import {
   MdDirectionsCar,
   MdAirportShuttle
 } from "react-icons/md";
 import bookingApi from "../../../api/bookingApi";
+import customerApi from "../../../api/customerApi";
 import vehicleApi from "../../../api/vehicleApi";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { getActiveServices } from "../../../api/servicePackageService";
 import { getBranches } from "../../../api/branchService";
-import { getAvailableSlots } from "../../../api/timeSlotService";
+import { getSlotsByBranchAndDate } from "../../../api/timeSlotService";
+import promotionApi from "../../../api/promotionApi";
+import { getMyRewards } from "../../../api/customerRewardApi";
 
 const DEFAULT_SERVICES = [
   {
     serviceId: 1,
     serviceName: "Gói Cơ Bản",
     basePrice: 350000,
-    imageUrl: "https://images.unsplash.com/photo-1520340356584-f9917d1ecc6f?auto=format&fit=crop&w=800&q=80",
+    imageUrl: "https://lh3.googleusercontent.com/aida/AP1WRLu0paW8-vyihBC1QtGpIREgGftVGqLPfl_B4JHyp6P4DxmKPxPip6boYICgifRpwilvyJkne_UZf3hxCwNfkPn40CXMxMySo2H4v-asx9ailbq1kiRZ76gUF21AWrhAHQycrOXXx9eCS9KbV8EE18bMjqcbRD5914eCyESZsOJ24u5QxwmC1RBl0atGZkOQkc7aXQqvz8kd3JKslVuRXR1weGyyMWPyw9ZkGOW7d4kSIn7D--iiqLV7Rw-1",
     features: ["Xà phòng pH trung tính", "Khăn Microfiber siêu thấm", "Làm khô khe kẽ bằng khí nén"],
     durationMinutes: 15,
     isPopular: false
@@ -31,7 +34,7 @@ const DEFAULT_SERVICES = [
     serviceId: 2,
     serviceName: "Gói Cao Cấp",
     basePrice: 750000,
-    imageUrl: "https://images.unsplash.com/photo-1607860108855-64acf2078ed9?auto=format&fit=crop&w=800&q=80",
+    imageUrl: "https://lh3.googleusercontent.com/aida/AP1WRLtsUQfoNHGvuu3_bYohhGOUlf19Bph-wu1Ool2o5TJ2KIby1rfNOE2SPm43MT6OuzVZSi0xDZ9dN0mTdQlt3jmruI217ptX3s3WMfFu8VvMXTqDrS0l2JBpjwfkhb98K0Lx1GFN2XzxfJPBFKf5mqmeE4ycJFrlHvMH-w2E7wH2GVo2yYnJD3oD7o64h9yf7Yuf1uswYAT41gFzoM5BP4_OlPOxKky-2cX4_4WYvelEePZ5n0tRGN1g1msF",
     features: ["Phủ bọt 3 lớp (Triple Foam)", "Dưỡng bóng lốp chuyên sâu", "Vệ sinh thảm lót chân"],
     durationMinutes: 30,
     isPopular: true
@@ -40,71 +43,157 @@ const DEFAULT_SERVICES = [
     serviceId: 3,
     serviceName: "Gói Kim Cương",
     basePrice: 1200000,
-    imageUrl: "https://images.unsplash.com/photo-1552930294-6b595f4c2974?auto=format&fit=crop&w=800&q=80",
+    imageUrl: "https://lh3.googleusercontent.com/aida/AP1WRLvi63JYKFsTVq5PCclrSGMPU633IBo-lrUgh1E6Xp2vqE9HYeiRjKz_yFA8oU9J-Fb9mgnHbJCMkmG8C-JvTN1ea6B64ru350hHw13-A1781Ok7-nj3neGtdvI3fxjJPhVt7e954SZyxGzNlBBSSFiKLR1ThfHYu8CRVUtkHxIt-GlMAx3UmmbfEven2UP6GLkaq8ZgVDDKqLXM-yDcbsDL4gb2AVRZHpjw72wgiThQWQvMyJhKC7VtlmQz",
     features: ["Wax Ceramic bảo vệ sơn", "Hút bụi & Vệ sinh nội thất", "Khử mùi diệt khuẩn chuyên sâu"],
     durationMinutes: 45,
     isPopular: false
   }
 ];
 
-const MOCK_SLOTS_DATA = [
-  { slotId: 101, startTime: "09:00 sáng", statusType: "ECO", statusLabel: "GIỜ ECO", available: true },
-  { slotId: 102, startTime: "09:30 sáng", statusType: "NORMAL", statusLabel: "Còn 3 chỗ", available: true },
-  { slotId: 103, startTime: "10:00 sáng", statusType: "NORMAL", statusLabel: "Còn 2 chỗ", available: true },
-  { slotId: 104, startTime: "10:30 sáng", statusType: "PEAK", statusLabel: "GIỜ CAO ĐIỂM", available: true },
-  { slotId: 105, startTime: "11:00 sáng", statusType: "NORMAL", statusLabel: "Còn 1 chỗ", available: true },
-  { slotId: 106, startTime: "11:30 sáng", statusType: "FULL", statusLabel: "Hết chỗ", available: false },
-  { slotId: 107, startTime: "12:00 sáng", available: true },
-  { slotId: 108, startTime: "12:30 trưa", available: true },
-];
-
 export default function BookingPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  const [selectedPromoId, setSelectedPromoId] = useState(
+    localStorage.getItem("selectedPromotionId") || ""
+  );
+  const [selectedPromoCode, setSelectedPromoCode] = useState(
+    localStorage.getItem("selectedPromotionCode") || ""
+  );
+  const [selectedPromoDiscount, setSelectedPromoDiscount] = useState(
+    localStorage.getItem("selectedPromotionDiscount") || ""
+  );
+  const [selectedVouchCode, setSelectedVouchCode] = useState(
+    localStorage.getItem("selectedVoucherCode") || ""
+  );
+  const [selectedRewardId, setSelectedRewardId] = useState(
+    localStorage.getItem("selectedRewardId") || ""
+  );
+  const [availableVouchers, setAvailableVouchers] = useState([]);
+  const [availablePromotions, setAvailablePromotions] = useState([]);
+  const [sidebarPromoOpen, setSidebarPromoOpen] = useState(false);
   const [services, setServices] = useState([]);
   const [branches, setBranches] = useState([]);
   const [slots, setSlots] = useState([]);
+  const [slotsError, setSlotsError] = useState(null);
 
   const [selectedBranch, setSelectedBranch] = useState(null);
   const [vehicleType, setVehicleType] = useState("4_seats");
   const [note, setNote] = useState("");
-  const [selectedService, setSelectedService] = useState(null);
+  const [selectedPackageId, setSelectedPackageId] = useState(null);
+  const [selectedAddonIds, setSelectedAddonIds] = useState([]);
   const [selectedTime, setSelectedTime] = useState(null);
   const [licensePlate, setLicensePlate] = useState("");
   const [brand, setBrand] = useState("");
+  const [savedVehicles, setSavedVehicles] = useState([]);
+  const [selectedVehicleId, setSelectedVehicleId] = useState(null);
+  const [fullName, setFullName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [profileData, setProfileData] = useState(null);
+  const [phoneSuggestions, setPhoneSuggestions] = useState([]);
+  const [showVehicleSuggest, setShowVehicleSuggest] = useState(false);
+  const [showPhoneSuggest, setShowPhoneSuggest] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("online");
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());
-
-  const [savedVehicles, setSavedVehicles] = useState([]);
-  const [selectedVehicleId, setSelectedVehicleId] = useState("");
+  const [activeServiceTab, setActiveServiceTab] = useState("all");
 
   const monthNames = [
     "Tháng 1", "Tháng 2", "Tháng 3", "Tháng 4", "Tháng 5", "Tháng 6",
     "Tháng 7", "Tháng 8", "Tháng 9", "Tháng 10", "Tháng 11", "Tháng 12"
   ];
 
+  const SERVICE_TABS = [
+    { id: "all", label: "Tất cả" },
+    { id: "wash", label: "Rửa xe" },
+    { id: "interior", label: "Nội thất" },
+    { id: "polish", label: "Đánh bóng" },
+    { id: "vip", label: "Combo VIP" }
+  ];
+
+  const getCategory = (service) => {
+    const name = (service.serviceName || service.name || "").toLowerCase();
+    const desc = (service.description || "").toLowerCase();
+
+    if (name.includes("add-on") || name.includes("addon") || name.includes("phụ trợ") || name.includes("nước hoa")) {
+      return "addon";
+    }
+    if (name.includes("vip") || name.includes("diamond") || name.includes("kim cương") || name.includes("combo")) {
+      return "vip";
+    }
+    if (name.includes("đánh bóng") || name.includes("polish") || name.includes("nano") || name.includes("ceramic") || desc.includes("đánh bóng") || desc.includes("nano")) {
+      return "polish";
+    }
+    if (name.includes("nội thất") || name.includes("interior") || name.includes("hút bụi") || desc.includes("nội thất") || desc.includes("hút bụi")) {
+      return "interior";
+    }
+    return "wash";
+  };
+
+  const mainPackages = React.useMemo(() => {
+    return services.filter(s => getCategory(s) !== "addon");
+  }, [services]);
+
+  const addonServices = React.useMemo(() => {
+    return services.filter(s => getCategory(s) === "addon");
+  }, [services]);
+
+  const filteredMainPackages = React.useMemo(() => {
+    if (activeServiceTab === "all") return mainPackages;
+    return mainPackages.filter(s => getCategory(s) === activeServiceTab);
+  }, [mainPackages, activeServiceTab]);
+
+  // Backend lưu vehicleType là car/suv/truck, UI chỉ có 2 lựa chọn 4_seats/7_seats
+  const mapVehicleTypeToUi = (backendType) => {
+    if (backendType === "suv" || backendType === "truck") return "7_seats";
+    return "4_seats";
+  };
+
+  // Format ngày theo giờ ĐỊA PHƯƠNG (yyyy-MM-dd), KHÔNG dùng toISOString().
+  const formatDateLocal = (date) => {
+    const year = date.getFullYear();
+    const month = (date.getMonth() + 1).toString().padStart(2, "0");
+    const day = date.getDate().toString().padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
+  const applyVehicle = (vehicle) => {
+    if (!vehicle) return;
+    setSelectedVehicleId(vehicle.vehicleId);
+    setLicensePlate(vehicle.licensePlate || "");
+    setBrand(vehicle.brand || "");
+    setVehicleType(mapVehicleTypeToUi(vehicle.vehicleType));
+    setShowVehicleSuggest(false);
+  };
+
   useEffect(() => {
     const loadServices = async () => {
       try {
         const res = await getActiveServices();
-        const apiData = res.data?.data || res.data;
-        if (apiData && apiData.length > 0) {
-          const merged = apiData.map((item, idx) => ({
-            ...item,
-            imageUrl: DEFAULT_SERVICES[idx]?.imageUrl || DEFAULT_SERVICES[0].imageUrl,
-            features: DEFAULT_SERVICES[idx]?.features || DEFAULT_SERVICES[0].features,
-            isPopular: idx === 1
-          }));
-          setServices(merged);
-          setSelectedService(merged[0].serviceId);
-        } else {
-          setServices(DEFAULT_SERVICES);
-          setSelectedService(DEFAULT_SERVICES[0].serviceId);
+        const servicesList = res.data?.data || res.data;
+        const merged = servicesList?.length > 0
+          ? servicesList.map(item => ({
+              ...item,
+              imageUrl: DEFAULT_SERVICES[0].imageUrl,
+              isPopular: false
+            }))
+          : DEFAULT_SERVICES;
+        setServices(merged);
+        const preId = searchParams.get("serviceId");
+        if (preId) {
+          const targetSvc = merged.find(s => s.serviceId === Number(preId));
+          if (targetSvc) {
+            if (getCategory(targetSvc) === "addon") {
+              setSelectedAddonIds([targetSvc.serviceId]);
+            } else {
+              setSelectedPackageId(targetSvc.serviceId);
+              setActiveServiceTab(getCategory(targetSvc));
+            }
+          }
         }
       } catch (err) {
         setServices(DEFAULT_SERVICES);
-        setSelectedService(DEFAULT_SERVICES[0].serviceId);
       }
     };
     loadServices();
@@ -112,10 +201,10 @@ export default function BookingPage() {
     const loadBranches = async () => {
       try {
         const res = await getBranches();
-        const apiData = res.data?.data || res.data;
-        if (apiData && apiData.length > 0) {
-          setBranches(apiData);
-          setSelectedBranch(apiData[0].branchId);
+        const branchesList = res.data?.data || res.data;
+        if (branchesList && branchesList.length > 0) {
+          setBranches(branchesList);
+          setSelectedBranch(branchesList[0].branchId);
         }
       } catch (err) {
         console.log(err);
@@ -123,67 +212,189 @@ export default function BookingPage() {
     };
     loadBranches();
 
-    const loadSavedVehicles = async () => {
+    const loadProfile = async () => {
       try {
-        const res = await vehicleApi.listMyVehicles();
-        const apiData = res.data?.data || res.data;
-        if (apiData && apiData.length > 0) {
-          setSavedVehicles(apiData);
-          // Preselect first vehicle
-          const firstVeh = apiData[0];
-          setSelectedVehicleId(firstVeh.vehicleId);
-          setLicensePlate(firstVeh.licensePlate);
-          setBrand(firstVeh.brand);
-          setVehicleType(firstVeh.vehicleType === "suv" || firstVeh.vehicleType === "7_seats" ? "7_seats" : "4_seats");
+        const res = await customerApi.profile();
+        if (res.data) {
+          setProfileData(res.data);
+          setFullName(res.data.fullName || "");
+          setPhone(res.data.phone || "");
+          if (res.data.phone) {
+            setPhoneSuggestions((prev) => Array.from(new Set([...prev, res.data.phone])));
+          }
         }
       } catch (err) {
-        console.error("Lỗi khi tải danh sách xe của bạn:", err);
+        console.error("[Booking] Lỗi khi tải hồ sơ khách hàng:", err);
       }
     };
-    loadSavedVehicles();
+    loadProfile();
+
+    // Gợi ý xe cũ: lấy danh sách xe đã lưu của khách hàng để autofill
+    // biển số / hãng xe / loại xe, tránh phải nhập lại mỗi lần đặt lịch.
+    const loadVehicles = async () => {
+      try {
+        const res = await vehicleApi.listMyVehicles();
+        const list = res.data || [];
+        if (list.length > 0) {
+          setSavedVehicles(list);
+          // Tự động điền theo xe gần nhất (phần tử đầu tiên trả về từ API)
+          applyVehicle(list[0]);
+        }
+      } catch (err) {
+        console.log(err);
+      }
+    };
+    loadVehicles();
+
+    const customerIdRaw = localStorage.getItem("customerId");
+    if (customerIdRaw) {
+      const cid = parseInt(customerIdRaw, 10);
+      getMyRewards(cid).then(res => {
+        const list = Array.isArray(res) ? res : res?.data || [];
+        setAvailableVouchers(list.filter(v => v.status === "UNUSED"));
+      }).catch(() => {});
+      promotionApi.active().then(res => {
+        const list = Array.isArray(res) ? res : res?.data || [];
+        setAvailablePromotions(list);
+      }).catch(() => {});
+    }
   }, []);
 
   useEffect(() => {
     const loadSlots = async () => {
+      // Chưa xác định được chi nhánh (đang load chi nhánh) → chưa có gì để chọn.
       if (!selectedBranch) {
-        setSlots(MOCK_SLOTS_DATA);
-        setSelectedTime(MOCK_SLOTS_DATA[2].slotId);
+        setSlots([]);
+        setSelectedTime(null);
+        setSlotsError(null);
         return;
       }
       try {
-        const date = selectedDate.toISOString().split("T")[0];
-        const res = await getAvailableSlots(selectedBranch, date);
-        if (res.data && res.data.length > 0) {
-          const formattedSlots = res.data.map(slot => ({
-            ...slot,
-            statusType: slot.statusType || (slot.capacity <= 1 ? "PEAK" : "NORMAL"),
-            statusLabel: slot.statusLabel || `Còn ${slot.capacity || 3} chỗ`,
-            available: slot.available !== undefined ? slot.available : true
-          }));
+        const date = formatDateLocal(selectedDate);
+        // FIX: trước đây gọi getAvailableSlots (BE chỉ trả status=open) → slot đã
+        // FULL bị loại bỏ hoàn toàn khỏi response, khiến nó "biến mất" khỏi danh
+        // sách thay vì hiển thị dạng xám/disable như UX thông thường (Grab, Booking.com...).
+        // Giờ gọi getSlotsByBranchAndDate (lấy TẤT CẢ status) làm nguồn chính,
+        // rồi tự lọc/đánh dấu available ở FE — vừa hiện được slot full (để khách
+        // biết khung giờ đó tồn tại nhưng hết chỗ), vừa vẫn ẩn slot "closed"
+        // (admin chủ động đóng, không nên cho khách thấy).
+        const res = await getSlotsByBranchAndDate(selectedBranch, date);
+        const rawSlots = res.data || [];
+        const visibleSlots = rawSlots.filter(slot => slot.status !== "closed");
+
+        if (visibleSlots.length > 0) {
+          // ── GOM NHÓM SLOT THEO KHUNG GIỜ ──────────────────────────
+          // Backend trả mỗi bay (Bay 1, 2, 3, 4) một slot riêng cho cùng startTime.
+          // Khách không cần chọn bay — chỉ cần biết "08:00 còn bao nhiêu chỗ".
+          // Ta gom tất cả slot cùng startTime → 1 nút duy nhất, cộng dồn remaining.
+          const groupMap = new Map();
+          visibleSlots.forEach(slot => {
+            const key = slot.startTime;
+            const max = slot.maxCapacity ?? 1;
+            const current = slot.currentBookings ?? 0;
+            const remaining = Math.max(max - current, 0);
+            const isOpen = slot.status === "open" && remaining > 0;
+
+            if (!groupMap.has(key)) {
+              groupMap.set(key, {
+                startTime: key,
+                endTime: slot.endTime,
+                totalRemaining: 0,
+                totalMax: 0,
+                bestSlotId: null,
+                childSlots: [],
+              });
+            }
+            const group = groupMap.get(key);
+            group.totalRemaining += remaining;
+            group.totalMax += max;
+            group.childSlots.push({ slotId: slot.slotId, remaining, isOpen });
+            if (isOpen && group.bestSlotId === null) {
+              group.bestSlotId = slot.slotId;
+            }
+          });
+
+          // Nếu ngày đang xem là hôm nay → lọc bỏ các khung giờ đã qua
+          const now = new Date();
+          const isToday = selectedDate.getFullYear() === now.getFullYear()
+            && selectedDate.getMonth() === now.getMonth()
+            && selectedDate.getDate() === now.getDate();
+          const currentHHMM = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+
+          const formattedSlots = Array.from(groupMap.values()).map(g => {
+            // Nếu hôm nay và startTime đã qua → đánh dấu hết chỗ
+            const isPast = isToday && g.startTime.substring(0, 5) <= currentHHMM;
+            const available = !isPast && g.totalRemaining > 0;
+            let statusType = "NORMAL";
+            if (!available) statusType = isPast ? "FULL" : (g.totalRemaining <= 0 ? "FULL" : (g.totalRemaining <= 2 ? "PEAK" : "NORMAL"));
+            else if (g.totalRemaining <= 2) statusType = "PEAK";
+            else if (g.totalRemaining >= g.totalMax * 0.7) statusType = "ECO";
+
+            return {
+              slotId: g.bestSlotId ?? g.childSlots[0]?.slotId,
+              startTime: g.startTime,
+              endTime: g.endTime,
+              statusType,
+              statusLabel: isPast ? "Đã qua" : (available ? `Còn ${g.totalRemaining} chỗ` : "Hết chỗ"),
+              available,
+            };
+          }).sort((a, b) => a.startTime.localeCompare(b.startTime));
+
           setSlots(formattedSlots);
-          setSelectedTime(formattedSlots[0].slotId);
+          const firstAvailable = formattedSlots.find(s => s.available);
+          setSelectedTime(firstAvailable ? firstAvailable.slotId : null);
+          setSlotsError(
+              firstAvailable
+                  ? null
+                  : "Tất cả khung giờ trong ngày này đã kín chỗ. Vui lòng chọn ngày khác hoặc chi nhánh khác."
+          );
         } else {
-          setSlots(MOCK_SLOTS_DATA);
-          setSelectedTime(MOCK_SLOTS_DATA[2].slotId);
+          // KHÔNG dùng MOCK_SLOTS_DATA nữa — slot giả có thể trùng ID với slot thật
+          // đã hết hạn ngày trong DB, gây lỗi 500 khi đặt lịch (validate slotDate).
+          setSlots([]);
+          setSelectedTime(null);
+          setSlotsError(
+              rawSlots.length > 0
+                  // Có slot nhưng toàn bộ đang "closed" (admin đóng thủ công)
+                  ? "Chi nhánh tạm đóng lịch đặt cho ngày này. Vui lòng chọn ngày khác hoặc chi nhánh khác."
+                  // Hoàn toàn chưa có slot nào — chưa generate lịch cho ngày này
+                  : "Chi nhánh này chưa mở lịch đặt cho ngày đã chọn. Vui lòng chọn chi nhánh hoặc ngày khác."
+          );
         }
       } catch (err) {
-        setSlots(MOCK_SLOTS_DATA);
-        setSelectedTime(MOCK_SLOTS_DATA[2].slotId);
+        setSlots([]);
+        setSelectedTime(null);
+        setSlotsError("Không tải được khung giờ trống. Vui lòng thử lại hoặc chọn ngày/chi nhánh khác.");
       }
     };
     loadSlots();
   }, [selectedBranch, selectedDate]);
 
-  const selectedServiceData = services.find(s => s.serviceId === selectedService);
   const selectedSlotData = slots.find(s => s.slotId === selectedTime);
 
-  const price = selectedServiceData ? selectedServiceData.basePrice : 0;
+  const selectedPackage = services.find(s => s.serviceId === selectedPackageId);
+  const selectedAddons = services.filter(s => selectedAddonIds.includes(s.serviceId));
+  const packagePrice = selectedPackage?.basePrice || 0;
+  const addonsPrice = selectedAddons.reduce((sum, s) => sum + (s.basePrice || 0), 0);
   const surcharge = vehicleType === "7_seats" ? 50000 : 0;
-  const subtotal = price + surcharge;
+  const subtotal = packagePrice + addonsPrice + surcharge;
   const tax = Math.round(subtotal * 0.08);
   const discount = paymentMethod === "online" ? Math.round(subtotal * 0.05) : 0;
   const total = subtotal + tax - discount;
-  const rewardPoints = Math.floor(price / 10000);
+  const totalDuration = (selectedPackage?.durationMinutes || 0) + selectedAddons.reduce((sum, s) => sum + (s.durationMinutes || 0), 0);
+  const rewardPoints = Math.floor(packagePrice / 10000);
+  const DEPOSIT_THRESHOLD = 500000;
+  const depositRequired = subtotal > DEPOSIT_THRESHOLD;
+
+
+
+
+
+  const toggleAddon = (serviceId) => {
+    setSelectedAddonIds(prev =>
+      prev.includes(serviceId) ? prev.filter(id => id !== serviceId) : [...prev, serviceId]
+    );
+  };
 
   const previousMonth = () => {
     setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
@@ -199,18 +410,43 @@ export default function BookingPage() {
   for (let i = 0; i < firstDay; i++) calendarDays.push(null);
   for (let i = 1; i <= daysInMonth; i++) calendarDays.push(i);
 
+  const syncProfileIfChanged = async () => {
+    const phoneChanged = phone.trim() !== (profileData?.phone || "");
+    const nameChanged = fullName.trim() !== (profileData?.fullName || "");
+    if (!phoneChanged && !nameChanged) return;
+
+    try {
+      await customerApi.updateProfile({
+        fullName: fullName.trim(),
+        phone: phone.trim(),
+        email: profileData?.email || "",
+        dateOfBirth: profileData?.dateOfBirth || null,
+        gender: profileData?.gender || null
+      });
+      setProfileData((prev) => ({ ...(prev || {}), fullName: fullName.trim(), phone: phone.trim() }));
+    } catch (err) {
+      console.error("[Booking] Lỗi khi lưu số điện thoại/họ tên vào hồ sơ:", err);
+    }
+  };
+
   const handleBooking = async () => {
-    if (!selectedService) { alert("Vui lòng chọn gói dịch vụ!"); return; }
+    if (!selectedPackageId) { alert("Vui lòng chọn gói dịch vụ!"); return; }
     if (!agreeTerms) { alert("Vui lòng xác nhận thông tin dịch vụ và điều khoản dịch vụ để tiếp tục!"); return; }
 
     const customerIdRaw = localStorage.getItem("customerId");
     if (!customerIdRaw) { alert("Không tìm thấy thông tin khách hàng. Vui lòng đăng nhập lại!"); return; }
+    if (!fullName.trim()) { alert("Vui lòng nhập họ và tên!"); return; }
+    if (!phone.trim()) { alert("Vui lòng nhập số điện thoại!"); return; }
     if (!licensePlate.trim()) { alert("Vui lòng nhập biển số xe!"); return; }
     if (!brand.trim()) { alert("Vui lòng nhập hãng xe!"); return; }
     if (!selectedTime) { alert("Vui lòng chọn khung giờ!"); return; }
     if (!selectedBranch) { alert("Vui lòng chọn chi nhánh!"); return; }
 
+    if (depositRequired) setPaymentMethod("online");
+
     try {
+      await syncProfileIfChanged();
+
       const bookingData = {
         customerId: parseInt(customerIdRaw, 10),
         licensePlate: licensePlate.trim(),
@@ -219,26 +455,29 @@ export default function BookingPage() {
         slotId: selectedTime,
         branchId: selectedBranch,
         note,
-        details: [{ serviceId: selectedService, quantity: 1 }]
+        paymentMethod: paymentMethod,
+        details: [
+          { serviceId: selectedPackageId, quantity: 1 },
+          ...selectedAddonIds.map(id => ({ serviceId: id, quantity: 1 }))
+        ]
       };
-      await bookingApi.create(bookingData);
-
-      // Save bookingDraft to localStorage
-      const selectedBranchData = branches.find(b => b.branchId === selectedBranch);
-      const selectedServiceData = services.find(s => s.serviceId === selectedService);
-      const dateStr = selectedDate.toLocaleDateString("vi-VN");
-      const timeStr = selectedSlotData ? `${selectedSlotData.startTime}` : "Khung giờ đã chọn";
-
-      const draft = {
-        branch: { name: selectedBranchData ? selectedBranchData.name : "WashFlow Pro" },
-        service: { name: selectedServiceData ? selectedServiceData.serviceName : "Rửa xe" },
-        date: dateStr,
-        time: timeStr
-      };
-      localStorage.setItem("bookingDraft", JSON.stringify(draft));
-
-      alert("Đặt lịch thành công!");
-      navigate("/customer/booking/success");
+      const response = await bookingApi.create(bookingData);
+      const result = response.data;
+      const bookingId = result?.bookingId || result?.id || result?.data?.bookingId;
+      if (paymentMethod === "offline" && !depositRequired) {
+        navigate("/customer/booking/success", {
+          state: { bookingId, bookingDetail: result }
+        });
+        return;
+      }
+      navigate("/customer/payment", {
+        state: {
+          bookingId,
+          selectedPromoId: selectedPromoId ? Number(selectedPromoId) : null,
+          selectedVouchCode: selectedVouchCode || null,
+          selectedRewardId: selectedRewardId || null,
+        },
+      });
     } catch (error) {
       alert(error.response?.data?.message || "Đặt lịch thất bại. Vui lòng thử lại!");
     }
@@ -257,66 +496,81 @@ export default function BookingPage() {
             <section className="form-section-card">
               <div className="section-title-wrapper">
                 <FaDroplet className="section-icon" />
-                <h3>1. Chọn dịch vụ</h3>
+                <h3>1. Chọn dịch vụ chính</h3>
               </div>
-              <div className="services-card-grid">
-                {services.slice(0, 3).map(service => (
-                    <div
-                        key={service.serviceId}
-                        className={`service-item-card ${selectedService === service.serviceId ? "active-card" : ""} ${service.isPopular ? "popular-card" : ""}`}
-                        onClick={() => setSelectedService(service.serviceId)}
-                    >
-                      {service.isPopular && <span className="popular-badge">PHỔ BIẾN</span>}
-                      <div className="service-img-holder">
-                        <img src={service.imageUrl || DEFAULT_SERVICES[0].imageUrl} alt={service.serviceName} />
-                      </div>
-                      <div className="service-details-box">
-                        <div className="service-meta-header">
-                          <h4>{service.serviceName}</h4>
-                          <span className="service-price-label">{service.basePrice?.toLocaleString()}đ</span>
-                        </div>
-                        <p className="service-brief">{service.description}</p>
-                        <ul className="service-feature-checklist">
-                          {(service.features || []).map((feature, idx) => (
-                              <li key={idx}><span>✓</span> {feature}</li>
-                          ))}
-                        </ul>
-                        <div className="service-duration-info">
-                          <span>⏱ {service.durationMinutes} phút</span>
-                        </div>
-                      </div>
-                    </div>
-                ))}
-              </div>
-            </section>
 
-            {/* 1.5. CHỌN CHI NHÁNH */}
-            <section className="form-section-card">
-              <div className="section-title-wrapper">
-                <FaStore className="section-icon" />
-                <h3>1.5. Chọn chi nhánh</h3>
-              </div>
-              <div className="branches-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '16px', marginTop: '16px' }}>
-                {branches.map(b => (
-                  <div
-                    key={b.branchId}
-                    className={`branch-item-card ${selectedBranch === b.branchId ? "active-card" : ""}`}
-                    onClick={() => setSelectedBranch(b.branchId)}
-                    style={{
-                      padding: '16px',
-                      borderRadius: '12px',
-                      border: selectedBranch === b.branchId ? '2px solid #0046c7' : '1px solid #e2e8f0',
-                      backgroundColor: selectedBranch === b.branchId ? '#f8fafc' : '#ffffff',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s',
-                    }}
+              {/* Category Tabs for Main Packages */}
+              <div className="booking-service-tabs">
+                {SERVICE_TABS.map(tab => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    className={`booking-service-tab-btn ${activeServiceTab === tab.id ? "active" : ""}`}
+                    onClick={() => setActiveServiceTab(tab.id)}
                   >
-                    <h4 style={{ margin: '0 0 8px 0', color: '#0f172a', fontWeight: '700' }}>{b.name}</h4>
-                    <p style={{ margin: 0, fontSize: '13px', color: '#64748b' }}>{b.address}</p>
-                    {b.phone && <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#94a3b8' }}>📞 {b.phone}</p>}
-                  </div>
+                    {tab.label}
+                  </button>
                 ))}
               </div>
+
+              <div className="services-packages-row">
+                {filteredMainPackages.length === 0 ? (
+                  <div className="no-services-placeholder" style={{ gridColumn: 'span 3', textAlign: 'center', padding: '32px', color: 'var(--text-muted)' }}>
+                    Không có dịch vụ chính nào thuộc danh mục này.
+                  </div>
+                ) : (
+                  filteredMainPackages.map(pkg => {
+                    const selected = selectedPackageId === pkg.serviceId;
+                    return (
+                      <div
+                        key={pkg.serviceId}
+                        className={`package-card ${selected ? "package-selected" : ""} ${pkg.isPopular ? "package-popular" : ""}`}
+                        onClick={() => setSelectedPackageId(pkg.serviceId)}
+                        role="radio"
+                        aria-checked={selected}
+                        tabIndex={0}
+                        onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSelectedPackageId(pkg.serviceId); } }}
+                      >
+                        {pkg.isPopular && <span className="popular-badge">PHỔ BIẾN</span>}
+                        <div className="package-body">
+                          <div className="package-header">
+                            <h4>{pkg.serviceName}</h4>
+                            <span className="package-price">{pkg.basePrice?.toLocaleString()}đ</span>
+                          </div>
+                          <p className="package-duration">⏱ {pkg.durationMinutes} phút</p>
+                          <p className="package-detail">{pkg.description || "Chi tiết gói dịch vụ"}</p>
+                        </div>
+                        <div className={`package-radio-indicator ${selected ? "radio-checked" : ""}`}>
+                          {selected && <span className="radio-dot" />}
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              {addonServices.length > 0 && (
+                <div className="addons-section">
+                  <h4 className="addons-title">Dịch vụ bổ sung (Tùy chọn thêm)</h4>
+                  <div className="addons-list">
+                    {addonServices.map(addon => {
+                      const checked = selectedAddonIds.includes(addon.serviceId);
+                      return (
+                        <label key={addon.serviceId} className={`addon-item ${checked ? "addon-checked" : ""}`}>
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => toggleAddon(addon.serviceId)}
+                          />
+                          <span className="addon-name">{addon.serviceName}</span>
+                          <span className="addon-price">+{addon.basePrice?.toLocaleString()}đ</span>
+                          <span className="addon-duration">{addon.durationMinutes}ph</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </section>
 
             {/* 2. CHỌN THỜI GIAN */}
@@ -345,11 +599,16 @@ export default function BookingPage() {
                           selectedDate.getDate() === day &&
                           selectedDate.getMonth() === currentDate.getMonth() &&
                           selectedDate.getFullYear() === currentDate.getFullYear();
+                      // Chặn chọn ngày quá khứ
+                      const todayMidnight = new Date();
+                      todayMidnight.setHours(0, 0, 0, 0);
+                      const cellDate = day ? new Date(currentDate.getFullYear(), currentDate.getMonth(), day) : null;
+                      const isPastDay = cellDate && cellDate < todayMidnight;
                       return (
                           <div
-                              key={index}
-                              className={`calendar-day-number-cell p-2 rounded cursor-pointer transition-colors ${day ? "clickable-day hover:bg-primary-container hover:text-on-primary-container" : "blank-day text-on-surface-variant opacity-50"} ${isSelected ? "day-selected-active bg-primary text-on-primary font-bold shadow-sm" : ""}`}
-                              onClick={() => { if (day) setSelectedDate(new Date(currentDate.getFullYear(), currentDate.getMonth(), day)); }}
+                              key={day !== null ? `day-${day}` : `blank-${index}`}
+                              className={`calendar-day-number-cell p-2 rounded transition-colors ${!day ? "blank-day text-on-surface-variant opacity-50" : isPastDay ? "past-day text-on-surface-variant opacity-30 cursor-not-allowed" : "clickable-day hover:bg-primary-container hover:text-on-primary-container cursor-pointer"} ${isSelected ? "day-selected-active bg-primary text-on-primary font-bold shadow-sm" : ""}`}
+                              onClick={() => { if (day && !isPastDay) setSelectedDate(new Date(currentDate.getFullYear(), currentDate.getMonth(), day)); }}
                           >
                             {day}
                           </div>
@@ -366,25 +625,36 @@ export default function BookingPage() {
                       </h4>
                       <div className="bay-live-status">
                         <span className="status-indicator-dot">●</span>
-                        Bay 1 & 2 đang sẵn sàng
+                        {(() => {
+                          const readyBays = [...new Set(slots.filter(s => s.available).map(s => s.bayName).filter(Boolean))];
+                          return readyBays.length > 0
+                              ? `${readyBays.join(" & ")} đang sẵn sàng`
+                              : "Chưa có bay nào sẵn sàng cho ngày này";
+                        })()}
                       </div>
                     </div>
                   </div>
                   <div className="slots-grid-container">
-                    {slots.map((slot) => {
-                      const isSelected = selectedTime === slot.slotId;
-                      const isDisabled = slot.available === false;
-                      let className = "time-slot-pill-btn";
-                      if (slot.statusType === "ECO") className += " status-eco";
-                      if (slot.statusType === "PEAK") className += " status-peak";
-                      if (isSelected) className += " pill-selected";
-                      return (
-                          <button key={slot.slotId} type="button" disabled={isDisabled} className={className} onClick={() => setSelectedTime(slot.slotId)}>
-                            <span className="slot-clock-text">{slot.startTime}</span>
-                            <span className="slot-status-subtext">{isSelected ? "Đã chọn" : slot.statusLabel}</span>
-                          </button>
-                      );
-                    })}
+                    {slots.length === 0 ? (
+                        <div className="slots-empty-state">
+                          {slotsError || "Đang tải khung giờ..."}
+                        </div>
+                    ) : (
+                        slots.map((slot) => {
+                          const isSelected = selectedTime === slot.slotId;
+                          const isDisabled = slot.available === false;
+                          let className = "time-slot-pill-btn";
+                          if (slot.statusType === "ECO") className += " status-eco";
+                          if (slot.statusType === "PEAK") className += " status-peak";
+                          if (isSelected) className += " pill-selected";
+                          return (
+                              <button key={slot.slotId} type="button" disabled={isDisabled} className={className} onClick={() => setSelectedTime(slot.slotId)}>
+                                <span className="slot-clock-text">{(slot.startTime || "").replace(/:00$/, "")}</span>
+                                <span className="slot-status-subtext">{isSelected ? "Đã chọn" : slot.statusLabel}</span>
+                              </button>
+                          );
+                        })
+                    )}
                   </div>
                 </div>
               </div>
@@ -396,67 +666,111 @@ export default function BookingPage() {
                 <FaCarSide className="section-icon" />
                 <h3>3. Thông tin xe</h3>
               </div>
-
-              {savedVehicles.length > 0 && (
-                <div className="form-field-group" style={{ marginBottom: '20px', width: '100%' }}>
-                  <label style={{ fontWeight: '600', marginBottom: '8px', display: 'block' }}>Chọn từ xe đã lưu trong hồ sơ của bạn</label>
-                  <select
-                    value={selectedVehicleId}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setSelectedVehicleId(val);
-                      if (val === "new") {
-                        setLicensePlate("");
-                        setBrand("");
-                      } else {
-                        const veh = savedVehicles.find(v => v.vehicleId === parseInt(val, 10));
-                        if (veh) {
-                          setLicensePlate(veh.licensePlate);
-                          setBrand(veh.brand);
-                          setVehicleType(veh.vehicleType === "suv" || veh.vehicleType === "7_seats" ? "7_seats" : "4_seats");
-                        }
-                      }
-                    }}
-                    style={{
-                      width: '100%',
-                      padding: '12px 16px',
-                      borderRadius: '8px',
-                      border: '1px solid #e2e8f0',
-                      backgroundColor: '#ffffff',
-                      fontSize: '14px',
-                      color: '#0f172a',
-                      fontWeight: '500',
-                      outline: 'none'
-                    }}
-                  >
-                    {savedVehicles.map(v => (
-                      <option key={v.vehicleId} value={v.vehicleId}>
-                        {v.licensePlate} - {v.brand} ({v.vehicleType === "suv" || v.vehicleType === "7_seats" ? "Xe 7 chỗ" : "Xe 4 chỗ"})
-                      </option>
-                    ))}
-                    <option value="new">+ Nhập xe mới...</option>
-                  </select>
+              <div className="vehicle-inputs-row">
+                <div className="form-field-group">
+                  <label>Họ và tên *</label>
+                  <input
+                      type="text"
+                      placeholder="Nguyễn Văn A"
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                  />
                 </div>
-              )}
-
+                <div className="form-field-group">
+                  <label>Số điện thoại *</label>
+                  <div className="input-suggest-wrapper">
+                    <input
+                        type="text"
+                        placeholder="090 123 4567"
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
+                        onFocus={() => setShowPhoneSuggest(true)}
+                        onBlur={() => setTimeout(() => setShowPhoneSuggest(false), 150)}
+                    />
+                    {showPhoneSuggest && (
+                        <div className="input-suggest-dropdown">
+                          {phoneSuggestions.length > 0 ? (
+                              <>
+                                <div className="input-suggest-heading">Số điện thoại đã dùng</div>
+                                {phoneSuggestions.map((p) => (
+                                    <button
+                                        key={p}
+                                        type="button"
+                                        className={`input-suggest-item ${phone === p ? "input-suggest-item-active" : ""}`}
+                                        onMouseDown={() => { setPhone(p); setShowPhoneSuggest(false); }}
+                                    >
+                                      <FaPhoneAlt className="suggest-item-icon" />
+                                      <span>{p}</span>
+                                    </button>
+                                ))}
+                              </>
+                          ) : (
+                              <div className="input-suggest-empty">Chưa có số điện thoại nào được lưu trong hồ sơ</div>
+                          )}
+                        </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <div className="form-field-group full-width-field">
+                <label>Chi nhánh *</label>
+                <select
+                    value={selectedBranch || ""}
+                    onChange={(e) => setSelectedBranch(Number(e.target.value))}
+                >
+                  {branches.length === 0 && <option value="">Đang tải chi nhánh...</option>}
+                  {branches.map((b) => (
+                      <option key={b.branchId} value={b.branchId}>
+                        {b.branchName}{b.address ? ` - ${b.address}` : ""}
+                      </option>
+                  ))}
+                </select>
+              </div>
               <div className="vehicle-inputs-row">
                 <div className="form-field-group">
                   <label>Biển số xe *</label>
-                  <input
-                      type="text"
-                      placeholder="Ví dụ: 30A-123.45"
-                      value={licensePlate}
-                      onChange={(e) => setLicensePlate(e.target.value)}
-                  />
-                </div>
-                <div className="form-field-group">
-                  <label>Hãng xe *</label>
-                  <input
-                      type="text"
-                      placeholder="Ví dụ: Toyota, Honda, Mazda..."
-                      value={brand}
-                      onChange={(e) => setBrand(e.target.value)}
-                  />
+                  {savedVehicles.length > 0 && (
+                      <div className="saved-vehicle-chip-row">
+                        {savedVehicles.map((v) => (
+                            <button
+                                key={v.vehicleId}
+                                type="button"
+                                className={`saved-vehicle-chip ${selectedVehicleId === v.vehicleId ? "saved-vehicle-chip-active" : ""}`}
+                                onClick={() => applyVehicle(v)}
+                            >
+                              <MdDirectionsCar className="suggest-item-icon" />
+                              {v.licensePlate}{v.nickname ? ` · ${v.nickname}` : v.brand ? ` · ${v.brand}` : ""}
+                            </button>
+                        ))}
+                      </div>
+                  )}
+                  <div className="input-suggest-wrapper">
+                    <input
+                        type="text"
+                        placeholder="Ví dụ: 30A-123.45"
+                        value={licensePlate}
+                        onChange={(e) => { setLicensePlate(e.target.value); setSelectedVehicleId(null); }}
+                        onFocus={() => setShowVehicleSuggest(true)}
+                        onBlur={() => setTimeout(() => setShowVehicleSuggest(false), 150)}
+                    />
+                    {showVehicleSuggest && savedVehicles.length > 0 && (
+                        <div className="input-suggest-dropdown">
+                          <div className="input-suggest-heading">Xe đã lưu (chọn để điền nhanh)</div>
+                          {savedVehicles.map((v) => (
+                              <button
+                                  key={v.vehicleId}
+                                  type="button"
+                                  className={`input-suggest-item ${selectedVehicleId === v.vehicleId ? "input-suggest-item-active" : ""}`}
+                                  onMouseDown={() => applyVehicle(v)}
+                              >
+                                <MdDirectionsCar className="suggest-item-icon" />
+                                <span>{v.nickname || v.brand}</span>
+                                <span className="suggest-item-tag">{v.licensePlate}</span>
+                              </button>
+                          ))}
+                        </div>
+                    )}
+                  </div>
                 </div>
                 <div className="form-field-group">
                   <label>Loại xe *</label>
@@ -479,6 +793,15 @@ export default function BookingPage() {
                 </div>
               </div>
               <div className="form-field-group full-width-field">
+                <label>Hãng xe *</label>
+                <input
+                    type="text"
+                    placeholder="Ví dụ: Toyota, Honda, Mazda..."
+                    value={brand}
+                    onChange={(e) => setBrand(e.target.value)}
+                />
+              </div>
+              <div className="form-field-group full-width-field">
                 <label>Yêu cầu đặc biệt (Không bắt buộc)</label>
                 <textarea
                     placeholder="Có khu vực nào cần lưu ý kỹ không?"
@@ -494,15 +817,35 @@ export default function BookingPage() {
             <div className="secure-checkout-badge">🛡 THANH TOÁN BẢO MẬT</div>
             <h3>Tóm tắt đơn hàng</h3>
             <div className="summary-billing-breakdown">
-              <div className="billing-row prime-service">
-                <span className="service-title">{selectedServiceData ? selectedServiceData.serviceName : "Chưa chọn gói"}</span>
-                <span className="service-cost">{price.toLocaleString()}đ</span>
-              </div>
+              {selectedPackageId ? (
+                <>
+                  <div className="billing-row prime-service">
+                    <span className="service-title">{selectedPackage?.serviceName}</span>
+                    <span className="service-cost">{packagePrice.toLocaleString()}đ</span>
+                  </div>
+                  {selectedAddons.length > 0 && (
+                    <div className="addons-summary">
+                      <span className="addons-summary-title">Dịch vụ thêm:</span>
+                      {selectedAddons.map(a => (
+                        <div key={a.serviceId} className="billing-row addon-row">
+                          <span className="service-title">+ {a.serviceName}</span>
+                          <span className="service-cost">{(a.basePrice || 0).toLocaleString()}đ</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="billing-row prime-service">
+                  <span className="service-title">Chưa chọn dịch vụ</span>
+                </div>
+              )}
               <div className="selected-datetime-preview">
                 <p>{selectedDate.getDate()} {monthNames[selectedDate.getMonth()]}, {selectedDate.getFullYear()}{selectedSlotData && ` • ${selectedSlotData.startTime}`}</p>
+                {totalDuration > 0 && <p style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>⏱ Tổng thời gian: ~{totalDuration} phút</p>}
               </div>
               <div className="billing-fees-list">
-                <div className="fee-line"><span>Giá cơ bản</span><span>{price.toLocaleString()}đ</span></div>
+                <div className="fee-line"><span>Giá dịch vụ</span><span>{subtotal.toLocaleString()}đ</span></div>
                 <div className="fee-line">
                   <span>Phụ phí xe ({vehicleType === "4_seats" ? "4 chỗ" : "7 chỗ"})</span>
                   <span>{surcharge > 0 ? `+${surcharge.toLocaleString()}đ` : "Miễn phí"}</span>
@@ -518,8 +861,115 @@ export default function BookingPage() {
                   <span>Điểm tích lũy nhận được</span>
                   <span className="points-highlight">+{rewardPoints} điểm</span>
                 </div>
+                {(selectedPromoCode || selectedVouchCode) && (
+                  <div className="fee-line discount-line">
+                    <span>Ưu đãi đã chọn</span>
+                    <span style={{ fontWeight: 750, color: "#004aad", fontSize: 13 }}>
+                      {selectedPromoCode && selectedVouchCode
+                        ? `KM: ${selectedPromoCode} + Voucher`
+                        : selectedPromoCode
+                        ? `KM: ${selectedPromoCode} (${selectedPromoDiscount})`
+                        : `Voucher: ${selectedVouchCode}`}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
+
+            <div className="sidebar-promo-section">
+              <button className="sidebar-promo-toggle" onClick={() => setSidebarPromoOpen(!sidebarPromoOpen)}>
+                <span>🎫 Ưu đãi của bạn</span>
+                <span>{sidebarPromoOpen ? "▲" : "▼"}</span>
+                {(selectedPromoCode || selectedVouchCode) && (
+                  <span className="sidebar-promo-count">{((selectedPromoCode ? 1 : 0) + (selectedVouchCode ? 1 : 0))}</span>
+                )}
+              </button>
+
+              {sidebarPromoOpen && (
+                <div className="sidebar-promo-body">
+                  {(selectedPromoCode || selectedVouchCode) && (
+                    <button className="sidebar-promo-clear" onClick={() => {
+                      setSelectedPromoId("");
+                      setSelectedPromoCode("");
+                      setSelectedPromoDiscount("");
+                      setSelectedVouchCode("");
+                      setSelectedRewardId("");
+                    }}>
+                      ✕ Bỏ chọn ưu đãi
+                    </button>
+                  )}
+
+                  {availablePromotions.length > 0 && (
+                    <div className="sidebar-promo-group">
+                      <span className="sidebar-promo-group-label">🎁 Khuyến mãi hệ thống</span>
+                      {availablePromotions.map(p => {
+                        const id = String(p.promotionId || p.id);
+                        const val = p.value || p.discountValue || 0;
+                        const discountLabel = p.discountType === "PERCENT" ? `-${val}%` : `-${Number(val).toLocaleString()}đ`;
+                        return (
+                          <label key={id} className={`sidebar-promo-item ${selectedPromoId === id ? "selected" : ""}`}>
+                            <input
+                              type="radio" name="promo-select"
+                              checked={selectedPromoId === id}
+                              onChange={() => {
+                                setSelectedPromoId(id);
+                                setSelectedPromoCode(p.code || p.promotionCode || "");
+                                setSelectedPromoDiscount(discountLabel);
+                              }}
+                            />
+                            <div className="sidebar-promo-item-content">
+                              <div className="sidebar-promo-item-top">
+                                <span className="sidebar-promo-item-title">{p.title || p.promotionName}</span>
+                                <span className="sidebar-promo-item-badge">{discountLabel}</span>
+                              </div>
+                              <span className="sidebar-promo-item-desc">{p.description || ""}</span>
+                            </div>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {availablePromotions.length > 0 && availableVouchers.length > 0 && (
+                    <div className="sidebar-promo-divider" />
+                  )}
+
+                  {availableVouchers.length > 0 && (
+                    <div className="sidebar-promo-group">
+                      <span className="sidebar-promo-group-label">🏷️ Voucher của tôi</span>
+                      {availableVouchers.map(v => (
+                        <label key={v.customerRewardId} className={`sidebar-promo-item ${selectedVouchCode === v.voucherCode ? "selected" : ""}`}>
+                          <input
+                            type="radio" name="vouch-select"
+                            checked={selectedVouchCode === v.voucherCode}
+                            onChange={() => {
+                              setSelectedVouchCode(v.voucherCode);
+                              setSelectedRewardId(v.rewardId);
+                            }}
+                          />
+                          <div className="sidebar-promo-item-content">
+                            <div className="sidebar-promo-item-top">
+                              <span className="sidebar-promo-item-title">{v.rewardName || "Voucher"}</span>
+                              <span className="sidebar-promo-item-badge sidebar-promo-item-badge--green">
+                                -{Number(v.discountValue || 0).toLocaleString()}đ
+                              </span>
+                            </div>
+                            <span className="sidebar-promo-item-desc">{v.voucherCode}</span>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+
+                  {availablePromotions.length === 0 && availableVouchers.length === 0 && (
+                    <p className="sidebar-promo-empty">Bạn chưa có ưu đãi nào.</p>
+                  )}
+
+                  <p className="sidebar-promo-hint">Hệ thống sẽ tự động áp dụng 1 ưu đãi có giá trị cao nhất</p>
+                </div>
+              )}
+            </div>
+
             <hr className="divider" />
             <div className="grand-total-section">
               <span>Tổng cộng</span>
@@ -530,6 +980,11 @@ export default function BookingPage() {
             </div>
             <div className="payment-methods-selector">
               <h5>Phương thức thanh toán</h5>
+              {depositRequired && (
+                <div className="deposit-notice">
+                  Đơn hàng trên {DEPOSIT_THRESHOLD.toLocaleString()}đ yêu cầu đặt cọc trước — vui lòng chọn thanh toán online.
+                </div>
+              )}
               <label className={`method-option-card ${paymentMethod === "online" ? "method-active" : ""}`}>
                 <input type="radio" name="payment" value="online" checked={paymentMethod === "online"} onChange={() => setPaymentMethod("online")} />
                 <div className="method-label-content">
@@ -542,8 +997,8 @@ export default function BookingPage() {
                   </div>
                 </div>
               </label>
-              <label className={`method-option-card ${paymentMethod === "offline" ? "method-active" : ""}`}>
-                <input type="radio" name="payment" value="offline" checked={paymentMethod === "offline"} onChange={() => setPaymentMethod("offline")} />
+              <label className={`method-option-card ${paymentMethod === "offline" ? "method-active" : ""} ${depositRequired ? "method-disabled" : ""}`}>
+                <input type="radio" name="payment" value="offline" checked={paymentMethod === "offline"} onChange={() => { if (!depositRequired) setPaymentMethod("offline"); }} disabled={depositRequired} />
                 <div className="method-label-content">
                   <div className="method-text-main">Thanh toán sau (Tại trạm)</div>
                   <small>Thanh toán khi hoàn tất dịch vụ</small>

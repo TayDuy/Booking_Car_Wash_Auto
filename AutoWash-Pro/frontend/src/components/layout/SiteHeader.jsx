@@ -110,6 +110,13 @@ export default function SiteHeader() {
         </button>
 
         <button
+          className={isActive("/customer/services") ? "active-link" : ""}
+          onClick={() => navigate("/customer/services")}
+        >
+          Dịch vụ
+        </button>
+
+        <button
           className={isActive("/customer/booking") ? "active-link" : ""}
           onClick={() => navigate("/customer/booking")}
         >
@@ -298,7 +305,9 @@ export default function SiteHeader() {
                   <div className="profile-dropdown-name">
                     {user?.fullName || user?.username || "Khách Hàng"}
                   </div>
-                  <div className="profile-dropdown-role">Thành viên</div>
+                  <div className="profile-dropdown-role">
+                    {user?.role === "ADMIN" ? "Quản trị viên" : user?.role === "STAFF" ? "Nhân viên" : user?.role === "MANAGER" ? "Quản lý" : "Thành viên"}
+                  </div>
                 </div>
               </div>
 
@@ -321,10 +330,17 @@ export default function SiteHeader() {
                   className="profile-menu-item"
                   onClick={() => {
                     setIsOpenProfile(false);
-                    navigate("/customer/profile#personal-info");
-                    // Scroll to section helper
-                    const el = document.getElementById("personal-info");
-                    if (el) el.scrollIntoView({ behavior: "smooth" });
+                    const role = String(user?.role || "").toUpperCase();
+                    if (role === "ADMIN") {
+                      navigate("/admin");
+                    } else if (role === "MANAGER" || role === "STAFF") {
+                      navigate("/manager");
+                    } else {
+                      navigate("/customer/profile#personal-info");
+                      // Scroll to section helper
+                      const el = document.getElementById("personal-info");
+                      if (el) el.scrollIntoView({ behavior: "smooth" });
+                    }
                   }}
                 >
                   <LayoutDashboard size={16} />
