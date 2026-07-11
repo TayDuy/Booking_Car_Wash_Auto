@@ -1,0 +1,428 @@
+.cbp-page {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.cbp-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.cbp-header h1 {
+    margin: 0;
+    font-size: 26px;
+    color: #111827;
+}
+
+.cbp-header p {
+    margin: 6px 0 0;
+    color: #64748b;
+    max-width: 560px;
+}
+
+.cbp-header-actions {
+    display: flex;
+    gap: 12px;
+    flex-shrink: 0;
+}
+
+.cbp-btn-ghost,
+.cbp-btn-primary {
+    height: 44px;
+    padding: 0 18px;
+    border: none;
+    border-radius: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+}
+
+.cbp-btn-ghost {
+    background: #e7ecfb;
+    color: #003d9b;
+}
+
+.cbp-btn-ghost:hover {
+    background: #dbe3f9;
+}
+
+.cbp-btn-primary {
+    background: #003d9b;
+    color: white;
+}
+
+.cbp-btn-primary:hover {
+    background: #0052cc;
+}
+
+.cbp-btn-primary:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.cbp-spin {
+    animation: cbp-spin 0.8s linear infinite;
+}
+
+@keyframes cbp-spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.cbp-alert {
+    margin-bottom: 16px;
+    padding: 12px 16px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.cbp-alert-success {
+    background: #dcfce7;
+    color: #15803d;
+}
+
+.cbp-alert-error {
+    background: #fee2e2;
+    color: #b91c1c;
+}
+
+.cbp-card {
+    padding: 8px 28px 28px;
+    border: 1px solid #e5e7eb;
+    border-radius: 18px;
+    background: white;
+    box-shadow: 0 14px 40px rgba(16, 24, 40, 0.05);
+}
+
+.cbp-section {
+    padding: 22px 0 6px;
+}
+
+.cbp-divider {
+    border: none;
+    border-top: 1px solid #eef2f7;
+    margin: 0;
+}
+
+.cbp-section-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 18px;
+}
+
+.cbp-section-title-row {
+    justify-content: space-between;
+    flex-wrap: wrap;
+}
+
+.cbp-section-title-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.cbp-section-title h2 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 700;
+    color: #191c1e;
+}
+
+.cbp-icon-badge {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: #eaf2ff;
+    color: #0052cc;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.cbp-required {
+    color: #ba1a1a;
+}
+
+.cbp-section-title-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.cbp-link-btn {
+    border: none;
+    background: transparent;
+    color: #0052cc;
+    font-weight: 700;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    padding: 6px 4px;
+}
+
+.cbp-link-btn:hover {
+    text-decoration: underline;
+}
+
+.cbp-chip-btn {
+    height: 36px;
+    padding: 0 14px;
+    border: none;
+    border-radius: 10px;
+    background: #eaf0ff;
+    color: #0052cc;
+    font-weight: 700;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+}
+
+.cbp-chip-btn:hover {
+    background: #dbe6ff;
+}
+
+/* ---------- Chi nhánh & ghi chú ---------- */
+
+.cbp-field-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.cbp-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.cbp-field label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #334155;
+}
+
+.cbp-field select,
+.cbp-field input {
+    height: 46px;
+    padding: 0 14px;
+    border: 1px solid #d7dce4;
+    border-radius: 12px;
+    background: white;
+    font-size: 14px;
+    color: #191c1e;
+    outline: none;
+}
+
+.cbp-field select:focus,
+.cbp-field input:focus {
+    border-color: #0c56d0;
+    box-shadow: 0 0 0 3px rgba(12, 86, 208, 0.15);
+}
+
+/* ---------- Thiết lập ngày ---------- */
+
+.cbp-date-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 14px;
+}
+
+.cbp-date-card {
+    height: 112px;
+    border: 1px solid #d7dce4;
+    border-radius: 14px;
+    background: white;
+    color: #191c1e;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.cbp-date-card:hover {
+    border-color: #0c56d0;
+    background: #f8f9fb;
+}
+
+.cbp-date-card.selected {
+    background: #003d9b;
+    border-color: #003d9b;
+    color: white;
+}
+
+.cbp-date-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    opacity: 0.75;
+}
+
+.cbp-date-day {
+    font-size: 26px;
+    font-weight: 800;
+    line-height: 1.1;
+}
+
+.cbp-date-month {
+    font-size: 12px;
+    opacity: 0.8;
+}
+
+.cbp-date-custom {
+    border-style: dashed;
+    color: #64748b;
+}
+
+.cbp-date-custom.selected {
+    border-style: solid;
+}
+
+.cbp-date-custom-label {
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.cbp-date-input {
+    border: none;
+    outline: none;
+    background: transparent;
+    font-size: 14px;
+    font-weight: 700;
+    color: #191c1e;
+    width: 100%;
+    text-align: center;
+}
+
+/* ---------- Khung giờ làm việc ---------- */
+
+.cbp-slots-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 12px;
+}
+
+.cbp-slots-empty {
+    grid-column: 1 / -1;
+    min-height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #64748b;
+    font-size: 14px;
+    border: 1px dashed #d7dce4;
+    border-radius: 12px;
+}
+
+.cbp-slot-chip {
+    padding: 14px 10px;
+    border: 1px solid #d7dce4;
+    border-radius: 14px;
+    background: white;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.cbp-slot-chip:hover {
+    border-color: #0c56d0;
+    background: #f8f9fb;
+}
+
+.cbp-slot-time {
+    font-size: 16px;
+    font-weight: 800;
+    color: #191c1e;
+}
+
+.cbp-slot-remaining {
+    font-size: 11px;
+    font-weight: 600;
+    color: #15803d;
+}
+
+.cbp-slot-chip.full {
+    background: #f3f4f6;
+    border-style: dashed;
+}
+
+.cbp-slot-chip.full .cbp-slot-remaining {
+    color: #94a3b8;
+}
+
+.cbp-hint {
+    margin: 10px 2px 0;
+    font-size: 12px;
+    color: #64748b;
+}
+
+.cbp-new-slot-form {
+    margin-top: 22px;
+    padding: 18px;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    background: #f8fafc;
+}
+
+.cbp-new-slot-title {
+    margin: 0 0 12px;
+    font-size: 13px;
+    font-weight: 700;
+    color: #334155;
+}
+
+.cbp-new-slot-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+}
+
+@media (max-width: 900px) {
+    .cbp-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .cbp-field-grid,
+    .cbp-new-slot-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .cbp-date-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+
+    .cbp-slots-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+@media (max-width: 560px) {
+    .cbp-field-grid,
+    .cbp-new-slot-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .cbp-date-grid,
+    .cbp-slots-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}

@@ -31,6 +31,8 @@ import RewardsPage from "../features/loyalty/pages/RewardsPage";
 
 import AdminDashboardPage from "../features/admin/pages/AdminDashboardPage";
 import ManageBookingsPage from "../features/admin/pages/ManageBookingsPage";
+import CreateBookingPage from "../features/admin/pages/CreateBookingPage";
+import ManagerTimeSlotsPage from "../features/admin/pages/ManagerTimeSlotsPage";
 import ManageCustomersPage from "../features/admin/pages/ManageCustomersPage";
 import ManagePromotionsPage from "../features/admin/pages/ManagePromotionsPage";
 import ManageVehiclesPage from "../features/admin/pages/ManageVehiclesPage";
@@ -107,6 +109,8 @@ function AppRoutes() {
                 <Route index element={<Navigate to="dashboard" replace />} />
                 <Route path="dashboard" element={<AdminDashboardPage />} />
                 <Route path="bookings" element={<ManageBookingsPage />} />
+                <Route path="bookings/create" element={<CreateBookingPage />} />
+                <Route path="time-slots" element={<ManagerTimeSlotsPage />} />
                 <Route path="customers" element={<ManageCustomersPage />} />
                 <Route path="promotions" element={<ManagePromotionsPage />} />
                 <Route path="vehicles" element={<ManageVehiclesPage />} />

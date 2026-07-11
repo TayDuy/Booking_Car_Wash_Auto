@@ -1,34 +1,18 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { 
-    Bell, 
-    CheckCheck, 
-    Search, 
-    LayoutGrid, 
-    BarChart2, 
-    Calendar, 
-    Archive, 
-    Megaphone, 
-    Settings, 
-    ThumbsUp, 
-    Star, 
-    AlertTriangle, 
-    Clock, 
-    HelpCircle 
+import {
+    Bell,
+    CheckCheck,
+    Megaphone,
+    ThumbsUp,
+    Star,
+    AlertTriangle,
+    Clock,
+    Settings
 } from "lucide-react";
 import "./AdminNotificationPage.css";
 import { getAll, createNotification, createBulk, markAllRead, markAsRead, subscribeSSE, getUnread, countUnread } from '../../../api/notificationService';
-import { isLoggedIn, logout as clearAuth, getRole } from '../../../api/authService';
-
-const SIDEBAR_NAV = [
-    { id: "dashboard", label: "Bảng điều khiển", icon: LayoutGrid },
-    { id: "analytics", label: "Phân tích", icon: BarChart2 },
-    { id: "booking", label: "Đặt lịch", icon: Calendar },
-    { id: "inventory", label: "Kho hàng", icon: Archive },
-    { id: "marketing", label: "Tiếp thị", icon: Megaphone },
-    { id: "notifications", label: "Thông báo", icon: Bell, active: true },
-    { id: "catalog", label: "Chi nhánh & Dịch vụ", icon: Settings },
-];
+import { isLoggedIn, getRole } from '../../../api/authService';
 
 // Khớp với enum Notification.NotificationType ở backend — không tự đặt nhãn tùy ý
 const NOTIFICATION_TYPES = {
@@ -108,7 +92,6 @@ export default function AdminNotificationPage() {
     const [sendMode, setSendMode] = useState("single"); // 'single' | 'broadcast'
     const [targetUserId, setTargetUserId] = useState("");
     const [formError, setFormError] = useState("");
-    const [formSuccess, setFormSuccess] = useState("");
     const [submitting, setSubmitting] = useState(false);
     const [totalCount, setTotalCount] = useState(0);
     const [categoryCounts, setCategoryCounts] = useState({ booking: 0, tier: 0, payment: 0 });
@@ -123,6 +106,7 @@ export default function AdminNotificationPage() {
         if(!isLoggedIn()){
             navigate('/login');
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     },[]);
 
     // helper to map backend DTO -> card item
@@ -179,7 +163,7 @@ export default function AdminNotificationPage() {
         }finally{ setLoading(false); }
     }
 
-    const [role, setRole] = useState(getRole());
+    const role = getRole();
     const [unreadCount, setUnreadCount] = useState(0);
     const [showList, setShowList] = useState(false);
     const [unreadItems, setUnreadItems] = useState([]);
@@ -196,7 +180,7 @@ export default function AdminNotificationPage() {
     useEffect(()=>{
         // ensure role and redirect
         if(!isLoggedIn()){ navigate('/login'); return; }
-        setRole(getRole());
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         load();
         loadUnread();
         const es = subscribeSSE((payload)=>{
@@ -215,6 +199,7 @@ export default function AdminNotificationPage() {
             }
         });
         return ()=>{ if(es && es.close) es.close(); };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     },[]);
 
     async function handleMarkAll(){
@@ -241,7 +226,6 @@ export default function AdminNotificationPage() {
     async function handleCreate(e){
         e.preventDefault();
         setFormError('');
-        setFormSuccess('');
 
         if(!type){
             setFormError('Vui lòng chọn loại thông báo.');
@@ -267,7 +251,6 @@ export default function AdminNotificationPage() {
                 });
                 showToast('Đã gửi thông báo');
             }
-            setFormSuccess('Gửi thông báo thành công.');
             resetComposeForm();
             setShowCompose(false);
         }catch(err){
@@ -279,16 +262,6 @@ export default function AdminNotificationPage() {
         }
     }
 
-    const handleSidebarClick = (id) => {
-        if (id === "catalog") {
-            navigate("/admin/catalog");
-        } else if (id === "notifications") {
-            navigate("/admin/notifications");
-        } else {
-            alert("Chức năng đang phát triển!");
-        }
-    };
-
     const filteredGroups = groups
         .map(g => ({
             ...g,
@@ -297,157 +270,20 @@ export default function AdminNotificationPage() {
         .filter(g => g.items.length > 0);
 
     return (
-        <div className="an-app">
-            <aside className="an-sidebar">
-                <div className="an-brand">
-                    <img src="/logo.png" alt="WashFlow Pro" style={{ height: "36px", width: "auto", alignSelf: "center" }} />
-                    <div>
-                        <h1>WashFlow Pro</h1>
-                        <p>Bảng điều khiển Admin</p>
-                    </div>
-                </div>
-
-                <nav className="an-sidebar__nav">
-                    {SIDEBAR_NAV.map(({ id, label, icon: Icon, active }) => (
-                        <button
-                            key={id}
-                            className={`an-sidebar__item ${active ? "is-active" : ""}`}
-                            onClick={() => handleSidebarClick(id)}
-                        >
-                            <Icon size={18} />
-                            <span>{label}</span>
-                        </button>
-                    ))}
-                </nav>
-
-                <div className="an-sidebar__footer">
-                    <button className="an-sidebar__item an-sidebar__item--muted">
-                        <HelpCircle size={18} /><span>Trung tâm hỗ trợ</span>
-                    </button>
-                    <button className="an-sidebar__item an-sidebar__item--muted">
-                        <Settings size={18} /><span>Cài đặt</span>
-                    </button>
-                    <button className="an-sidebar__item an-sidebar__item--muted" onClick={() => { clearAuth(); navigate('/login'); }}>
-                        <Megaphone size={18} /><span>Đăng xuất</span>
-                    </button>
-                    <div className="an-status">
-                        <span className="an-status__dot" />
-                        TRẠNG THÁI: ĐANG HOẠT ĐỘNG
-                    </div>
-                </div>
-            </aside>
-
-            <div className="an-main">
-                <header className="an-topbar">
+        <div className="manage-page">
+            <div className="manage-header">
+                <div>
                     <h1>Trung tâm thông báo</h1>
-                    <div className="an-search">
-                        <Search size={16} />
-                        <input placeholder="Tìm kiếm thông báo..." />
-                    </div>
-                    <div className="an-topbar__actions">
+                    <p>Theo dõi, tạo và gửi thông báo tới khách hàng và nhân sự.</p>
+                </div>
+
+                <div className="manage-header__actions">
+                    <div className="an-bell-wrap">
                         <button className="an-icon-btn" onClick={async ()=>{ await loadUnread(); setShowList(s=>!s); }}>
                             <Bell size={18} />
                             {unreadCount > 0 && <span className="an-bell-badge">{unreadCount}</span>}
                         </button>
-                        <button className="an-icon-btn"><Settings size={18} /></button>
-                        <div className="an-profile">
-                            <div className="an-avatar" />
-                            <span>Quản lý cấp cao</span>
-                        </div>
-                    </div>
-                </header>
 
-                <div className="an-toolbar">
-                    <div className="an-filters">
-                        {FILTERS.map((f) => (
-                            <button
-                                key={f.id}
-                                className={`an-filter ${activeFilter === f.id ? "is-active" : ""}`}
-                                onClick={() => setActiveFilter(f.id)}
-                            >
-                                {f.label}
-                            </button>
-                        ))}
-                    </div>
-                    <button className="an-mark-read" onClick={handleMarkAll}>
-                        <CheckCheck size={16} /> Đánh dấu tất cả là đã đọc
-                    </button>
-                    {role === 'ADMIN' && (
-                        <button className="an-filter-advanced" onClick={()=>setShowCompose(s=>!s)}>
-                            <Megaphone size={16} /> {showCompose ? 'Đóng' : 'Tạo thông báo'}
-                        </button>
-                    )}
-                </div>
-
-                <div className="an-content">
-                    <div className="an-list">
-                        {showCompose && (
-                            <form className="an-compose" onSubmit={handleCreate}>
-                                <h3>Tạo thông báo mới</h3>
-
-                                {formError && <div className="an-form-error">{formError}</div>}
-
-                                <label className="an-field-label">Loại thông báo</label>
-                                <select value={type} onChange={e=>setType(e.target.value)} required>
-                                    <option value="" disabled>Chọn loại thông báo…</option>
-                                    {Object.entries(NOTIFICATION_TYPES).map(([key, val]) => (
-                                        <option key={key} value={key}>{val.label}</option>
-                                    ))}
-                                </select>
-
-                                <input placeholder="Tiêu đề (tối đa 100 ký tự)" value={title} maxLength={100} onChange={e=>setTitle(e.target.value)} required />
-                                <textarea placeholder="Nội dung (tối đa 500 ký tự)" value={body} maxLength={500} onChange={e=>setBody(e.target.value)} />
-
-                                <label className="an-field-label">Kênh gửi</label>
-                                <select value={channel} onChange={e=>setChannel(e.target.value)}>
-                                    {CHANNELS.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
-                                </select>
-
-                                <label className="an-field-label">Đối tượng nhận</label>
-                                <div className="an-send-mode">
-                                    <button type="button"
-                                            className={`an-filter ${sendMode === 'single' ? 'is-active' : ''}`}
-                                            onClick={()=>setSendMode('single')}>
-                                        Một người dùng
-                                    </button>
-                                    <button type="button"
-                                            className={`an-filter ${sendMode === 'broadcast' ? 'is-active' : ''}`}
-                                            onClick={()=>setSendMode('broadcast')}>
-                                        Tất cả khách hàng đang hoạt động
-                                    </button>
-                                </div>
-
-                                {sendMode === 'single' && (
-                                    <input placeholder="ID người dùng nhận thông báo" value={targetUserId} onChange={e=>setTargetUserId(e.target.value)} required />
-                                )}
-                                {sendMode === 'broadcast' && (
-                                    <p className="an-hint">Thông báo sẽ được gửi đến tất cả người dùng có trạng thái hoạt động (active).</p>
-                                )}
-
-                                <div className="an-compose__actions">
-                                    <button className="an-btn" type="submit" disabled={submitting}>
-                                        {submitting ? 'Đang gửi…' : 'Gửi'}
-                                    </button>
-                                    <button type="button" className="an-btn an-btn--muted" onClick={()=>{ setShowCompose(false); setFormError(''); }}>Hủy</button>
-                                </div>
-                            </form>
-                        )}
-
-                        {filteredGroups.length === 0 && !loading && (
-                            <div className="an-empty">Không có thông báo phù hợp.</div>
-                        )}
-                        {filteredGroups.map((group) => (
-                            <section key={group.id} className="an-group">
-                                <h2 className="an-group__label">{group.label}</h2>
-                                <div className="an-group__items">
-                                    {group.items.map((item) => (
-                                        <NotifCard key={item.id} item={item} onMark={handleMark} />
-                                    ))}
-                                </div>
-                            </section>
-                        ))}
-
-                        {/* unread dropdown for quick access (opened by bell) */}
                         {showList && (
                             <div className="an-unread-dropdown">
                                 <h4>Thông báo chưa đọc ({unreadCount})</h4>
@@ -470,40 +306,135 @@ export default function AdminNotificationPage() {
                         )}
                     </div>
 
-                    <aside className="an-side">
-                        <div className="an-overview">
-                            <h3>Tổng quan thông báo</h3>
-                            <div className="an-overview__stats">
-                                <div>
-                                    <strong>{totalCount}</strong>
-                                    <span>Tổng số thông báo</span>
-                                </div>
-                                <div>
-                                    <strong>{unreadCount}</strong>
-                                    <span>Chưa đọc</span>
-                                </div>
+                    <button className="an-icon-btn"><Settings size={18} /></button>
+
+                    {role === 'ADMIN' && (
+                        <button className="refresh-btn" onClick={()=>setShowCompose(s=>!s)}>
+                            <Megaphone size={16} /> {showCompose ? 'Đóng' : 'Tạo thông báo'}
+                        </button>
+                    )}
+                </div>
+            </div>
+
+            <div className="manage-toolbar">
+                <div className="an-filters">
+                    {FILTERS.map((f) => (
+                        <button
+                            key={f.id}
+                            className={`an-filter ${activeFilter === f.id ? "is-active" : ""}`}
+                            onClick={() => setActiveFilter(f.id)}
+                        >
+                            {f.label}
+                        </button>
+                    ))}
+                </div>
+                <button className="an-mark-read" onClick={handleMarkAll}>
+                    <CheckCheck size={16} /> Đánh dấu tất cả là đã đọc
+                </button>
+            </div>
+
+            <div className="an-content">
+                <div className="an-list">
+                    {showCompose && (
+                        <form className="an-compose" onSubmit={handleCreate}>
+                            <h3>Tạo thông báo mới</h3>
+
+                            {formError && <div className="an-form-error">{formError}</div>}
+
+                            <label className="an-field-label">Loại thông báo</label>
+                            <select value={type} onChange={e=>setType(e.target.value)} required>
+                                <option value="" disabled>Chọn loại thông báo…</option>
+                                {Object.entries(NOTIFICATION_TYPES).map(([key, val]) => (
+                                    <option key={key} value={key}>{val.label}</option>
+                                ))}
+                            </select>
+
+                            <input placeholder="Tiêu đề (tối đa 100 ký tự)" value={title} maxLength={100} onChange={e=>setTitle(e.target.value)} required />
+                            <textarea placeholder="Nội dung (tối đa 500 ký tự)" value={body} maxLength={500} onChange={e=>setBody(e.target.value)} />
+
+                            <label className="an-field-label">Kênh gửi</label>
+                            <select value={channel} onChange={e=>setChannel(e.target.value)}>
+                                {CHANNELS.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
+                            </select>
+
+                            <label className="an-field-label">Đối tượng nhận</label>
+                            <div className="an-send-mode">
+                                <button type="button"
+                                        className={`an-filter ${sendMode === 'single' ? 'is-active' : ''}`}
+                                        onClick={()=>setSendMode('single')}>
+                                    Một người dùng
+                                </button>
+                                <button type="button"
+                                        className={`an-filter ${sendMode === 'broadcast' ? 'is-active' : ''}`}
+                                        onClick={()=>setSendMode('broadcast')}>
+                                    Tất cả khách hàng đang hoạt động
+                                </button>
+                            </div>
+
+                            {sendMode === 'single' && (
+                                <input placeholder="ID người dùng nhận thông báo" value={targetUserId} onChange={e=>setTargetUserId(e.target.value)} required />
+                            )}
+                            {sendMode === 'broadcast' && (
+                                <p className="an-hint">Thông báo sẽ được gửi đến tất cả người dùng có trạng thái hoạt động (active).</p>
+                            )}
+
+                            <div className="an-compose__actions">
+                                <button className="an-btn" type="submit" disabled={submitting}>
+                                    {submitting ? 'Đang gửi…' : 'Gửi'}
+                                </button>
+                                <button type="button" className="an-btn an-btn--muted" onClick={()=>{ setShowCompose(false); setFormError(''); }}>Hủy</button>
+                            </div>
+                        </form>
+                    )}
+
+                    {filteredGroups.length === 0 && !loading && (
+                        <div className="an-empty">Không có thông báo phù hợp.</div>
+                    )}
+                    {filteredGroups.map((group) => (
+                        <section key={group.id} className="an-group">
+                            <h2 className="an-group__label">{group.label}</h2>
+                            <div className="an-group__items">
+                                {group.items.map((item) => (
+                                    <NotifCard key={item.id} item={item} onMark={handleMark} />
+                                ))}
+                            </div>
+                        </section>
+                    ))}
+                </div>
+
+                <aside className="an-side">
+                    <div className="an-overview">
+                        <h3>Tổng quan thông báo</h3>
+                        <div className="an-overview__stats">
+                            <div>
+                                <strong>{totalCount}</strong>
+                                <span>Tổng số thông báo</span>
+                            </div>
+                            <div>
+                                <strong>{unreadCount}</strong>
+                                <span>Chưa đọc</span>
                             </div>
                         </div>
+                    </div>
 
-                        <div className="an-legend">
-                            <h3>Theo loại</h3>
-                            <ul>
-                                <li>
-                                    <span className="an-legend__dot an-legend__dot--blue" />
-                                    Đặt lịch ({categoryCounts.booking || 0})
-                                </li>
-                                <li>
-                                    <span className="an-legend__dot an-legend__dot--red" />
-                                    Hạng thành viên ({categoryCounts.tier || 0})
-                                </li>
-                                <li>
-                                    <span className="an-legend__dot an-legend__dot--green" />
-                                    Thanh toán ({categoryCounts.payment || 0})
-                                </li>
-                            </ul>
-                        </div>
-                    </aside>
-                </div>
+                    <div className="an-legend">
+                        <h3>Theo loại</h3>
+                        <ul>
+                            <li>
+                                <span className="an-legend__dot an-legend__dot--blue" />
+                                Đặt lịch ({categoryCounts.booking || 0})
+                            </li>
+                            <li>
+                                <span className="an-legend__dot an-legend__dot--red" />
+                                Hạng thành viên ({categoryCounts.tier || 0})
+                            </li>
+                            <li>
+                                <span className="an-legend__dot an-legend__dot--green" />
+                                Thanh toán ({categoryCounts.payment || 0})
+                            </li>
+                        </ul>
+                    </div>
+                </aside>
             </div>
 
             {toast && (
