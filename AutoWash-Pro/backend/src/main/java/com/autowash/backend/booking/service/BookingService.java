@@ -12,7 +12,7 @@ public interface BookingService {
 
     List<BookingSummaryResponseDTO> getAllBookings();
 
-    List<BookingSummaryResponseDTO> getBookingsByCustomer(Integer customerId, Integer userId);
+    List<BookingSummaryResponseDTO> getBookingsByCustomer(Integer customerId, Integer userId, Integer limit);
 
     BookingResponseDTO updateBooking(
             Integer bookingId,
@@ -27,5 +27,11 @@ public interface BookingService {
      */
     BookingResponseDTO cancelOwnBooking(Integer bookingId, Integer userId);
 
+    BookingResponseDTO confirmBooking(Integer bookingId);
+
+    BookingResponseDTO checkInBooking(Integer bookingId);
+
     BookingResponseDTO completeBooking(Integer bookingId);
+
+    BookingResponseDTO rescheduleBooking(Integer bookingId, Integer userId, BookingRescheduleRequestDTO request);
 }

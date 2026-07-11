@@ -197,32 +197,12 @@ public class BookingServiceImpl implements BookingService {
         details.forEach(d -> d.setBooking(savedBooking));
         bookingDetailRepository.saveAll(details);
 
-        // Gửi email xác nhận đặt lịch bất đồng bộ
-        try {
-            String toEmail = customer.getUser() != null ? customer.getUser().getEmail() : null;
-            if (toEmail != null) {
-                String serviceNames = details.stream()
-                        .map(d -> d.getService().getServiceName())
-                        .collect(Collectors.joining(", "));
-                BigDecimal totalPrice = details.stream()
-                        .map(BookingDetail::getSubTotal)
-                        .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-                mailService.sendBookingConfirmationEmail(
-                        toEmail,
-                        customer.getFullName(),
-                        savedBooking.getBookingCode(),
-                        branch.getBranchName(),
-                        branch.getAddress(),
-                        serviceNames,
-                        slot.getSlotDate(),
-                        slot.getStartTime(),
-                        slot.getEndTime(),
-                        totalPrice
-                );
-            }
-        } catch (Exception e) {
-            log.error("Lỗi khi kích hoạt gửi email xác nhận đặt lịch: {}", e.getMessage(), e);
+        // Gửi email xác nhận đặt lịch — chỉ gửi khi thanh toán offline (tại trạm)
+        // Online payment → email sẽ được gửi sau khi thanh toán thành công ở PaymentServiceImpl
+        boolean isOffline = request.getPaymentMethod() == null
+                || "offline".equalsIgnoreCase(request.getPaymentMethod());
+        if (isOffline) {
+            sendConfirmationEmail(customer, savedBooking, branch, slot, details);
         }
 
         return bookingMapper.toCreateResponse(savedBooking, details);
@@ -256,7 +236,7 @@ public class BookingServiceImpl implements BookingService {
     /** Lấy danh sách booking theo customer, sắp xếp mới nhất trước. */
     @Override
     @Transactional(readOnly = true)
-    public List<BookingSummaryResponseDTO> getBookingsByCustomer(Integer customerId, Integer userId) {
+    public List<BookingSummaryResponseDTO> getBookingsByCustomer(Integer customerId, Integer userId, Integer limit) {
         if (userId != null) {
             Customer customer = customerRepository.findByUser_Id(userId)
                     .orElseThrow(() -> new BusinessException("Không tìm thấy khách hàng", HttpStatus.FORBIDDEN));
@@ -265,6 +245,9 @@ public class BookingServiceImpl implements BookingService {
             }
         }
         List<Booking> bookings = bookingRepository.findByCustomerWithAssociations(customerId);
+        if (limit != null && limit > 0 && bookings.size() > limit) {
+            bookings = bookings.subList(0, limit);
+        }
         return mapToSummaryResponses(bookings);
     }
 
@@ -512,5 +495,35 @@ public class BookingServiceImpl implements BookingService {
             case "7_seats" -> Vehicle.VehicleType.suv;
             default -> Vehicle.VehicleType.car;
         };
+    }
+
+    private void sendConfirmationEmail(Customer customer, Booking booking, Branch branch,
+                                        TimeSlot slot, List<BookingDetail> details) {
+        try {
+            String toEmail = customer.getUser() != null ? customer.getUser().getEmail() : null;
+            if (toEmail == null) return;
+
+            String serviceNames = details.stream()
+                    .map(d -> d.getService().getServiceName())
+                    .collect(Collectors.joining(", "));
+            BigDecimal totalPrice = details.stream()
+                    .map(BookingDetail::getSubTotal)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+            mailService.sendBookingConfirmationEmail(
+                    toEmail,
+                    customer.getFullName(),
+                    booking.getBookingCode(),
+                    branch.getBranchName(),
+                    branch.getAddress(),
+                    serviceNames,
+                    slot.getSlotDate(),
+                    slot.getStartTime(),
+                    slot.getEndTime(),
+                    totalPrice
+            );
+        } catch (Exception e) {
+            log.error("Lỗi khi gửi email xác nhận đặt lịch: {}", e.getMessage(), e);
+        }
     }
 }

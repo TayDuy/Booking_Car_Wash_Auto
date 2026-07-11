@@ -93,9 +93,9 @@ const ProfilePage = () => {
           console.error('Lỗi tải danh sách xe:', vehErr);
         }
 
-        // Load bookings
+        // Load bookings (limit to 5 for profile dashboard)
         try {
-          const bookRes = await bookingApi.myBookings(userData.customerId);
+          const bookRes = await bookingApi.myBookings(userData.customerId, 5);
           if (bookRes.data) {
             setBookings(bookRes.data);
           }

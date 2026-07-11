@@ -2,6 +2,7 @@ package com.autowash.backend.booking.controller;
 
 import com.autowash.backend.booking.dto.BookingCreateRequestDTO;
 import com.autowash.backend.booking.dto.BookingCreateResponseDTO;
+import com.autowash.backend.booking.dto.BookingRescheduleRequestDTO;
 import com.autowash.backend.booking.dto.BookingResponseDTO;
 import com.autowash.backend.booking.dto.BookingSummaryResponseDTO;
 import com.autowash.backend.booking.dto.BookingUpdateRequestDTO;
@@ -85,11 +86,12 @@ public class BookingController {
     @PreAuthorize("hasRole('CUSTOMER')")
     public ResponseEntity<List<BookingSummaryResponseDTO>> getMyBookings(
             @PathVariable Integer customerId,
+            @RequestParam(required = false) Integer limit,
             @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
 
         return ResponseEntity.ok(
-                bookingService.getBookingsByCustomer(customerId, userDetails.getId())
+                bookingService.getBookingsByCustomer(customerId, userDetails.getId(), limit)
         );
     }
 
@@ -129,6 +131,24 @@ public class BookingController {
 
         return ResponseEntity.ok(
                 bookingService.cancelOwnBooking(bookingId, userDetails.getId())
+        );
+    }
+
+    /**
+     * CUSTOMER thay đổi lịch (reschedule slot + note) — chỉ áp dụng cho booking pending.
+     *
+     * PUT:
+     * /api/v1/bookings/{bookingId}/reschedule
+     */
+    @PutMapping("/bookings/{bookingId}/reschedule")
+    @PreAuthorize("hasRole('CUSTOMER')")
+    public ResponseEntity<BookingResponseDTO> rescheduleBooking(
+            @PathVariable Integer bookingId,
+            @Valid @RequestBody BookingRescheduleRequestDTO request,
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        return ResponseEntity.ok(
+                bookingService.rescheduleBooking(bookingId, userDetails.getId(), request)
         );
     }
 
@@ -176,6 +196,22 @@ public class BookingController {
     }
 
     /**
+     * STAFF / ADMIN xem chi tiết booking
+     *
+     * GET:
+     * /api/v1/staff/bookings/{bookingId}
+     */
+    @GetMapping("/staff/bookings/{bookingId}")
+    @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
+    public ResponseEntity<BookingResponseDTO> getBookingByIdForStaff(
+            @PathVariable Integer bookingId
+    ) {
+        return ResponseEntity.ok(
+                bookingService.getBookingById(bookingId, null)
+        );
+    }
+
+    /**
      * STAFF / ADMIN cập nhật booking
      *
      * PUT:
@@ -193,6 +229,38 @@ public class BookingController {
                         bookingId,
                         request
                 )
+        );
+    }
+
+    /**
+     * STAFF / ADMIN xác nhận booking.
+     *
+     * PATCH:
+     * /api/v1/staff/bookings/{bookingId}/confirm
+     */
+    @PatchMapping("/staff/bookings/{bookingId}/confirm")
+    @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
+    public ResponseEntity<BookingResponseDTO> confirmBooking(
+            @PathVariable Integer bookingId
+    ) {
+        return ResponseEntity.ok(
+                bookingService.confirmBooking(bookingId)
+        );
+    }
+
+    /**
+     * STAFF / ADMIN check-in xe khi khách tới chi nhánh.
+     *
+     * PATCH:
+     * /api/v1/staff/bookings/{bookingId}/check-in
+     */
+    @PatchMapping("/staff/bookings/{bookingId}/check-in")
+    @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
+    public ResponseEntity<BookingResponseDTO> checkInBooking(
+            @PathVariable Integer bookingId
+    ) {
+        return ResponseEntity.ok(
+                bookingService.checkInBooking(bookingId)
         );
     }
 
