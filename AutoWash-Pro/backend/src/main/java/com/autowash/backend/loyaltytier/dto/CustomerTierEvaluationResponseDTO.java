@@ -17,6 +17,7 @@ public record CustomerTierEvaluationResponseDTO (
     Integer newTierId,
     String newTierName,
     Integer currentPoints,
+    Integer currentBalance,
     Integer totalVisits,
     BigDecimal totalSpending,
     String message

@@ -39,6 +39,8 @@ public class BookingCreateRequestDTO {
 
     private String model;
 
+    private String paymentMethod; // "online" | "offline" | null
+
     @Getter
     @Setter
     @NoArgsConstructor

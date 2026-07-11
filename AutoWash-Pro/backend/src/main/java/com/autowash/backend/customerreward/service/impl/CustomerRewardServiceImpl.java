@@ -11,6 +11,8 @@ import com.autowash.backend.customerreward.entity.CustomerReward;
 import com.autowash.backend.customerreward.mapper.CustomerRewardMapper;
 import com.autowash.backend.customerreward.repository.CustomerRewardRepository;
 import com.autowash.backend.customerreward.service.CustomerRewardService;
+import com.autowash.backend.loyaltytier.entity.LoyaltyTier;
+import com.autowash.backend.loyaltytier.repository.LoyaltyTierRepository;
 import com.autowash.backend.loyaltytransaction.dto.LoyaltyBalanceResponseDTO;
 import com.autowash.backend.loyaltytransaction.entity.LoyaltyTransaction;
 import com.autowash.backend.loyaltytransaction.repository.LoyaltyTransactionRepository;
@@ -38,6 +40,7 @@ public class CustomerRewardServiceImpl implements CustomerRewardService {
     private final LoyaltyTransactionService loyaltyTransactionService;
     private final CustomerRewardMapper customerRewardMapper;
     private final com.autowash.backend.user.repository.UserRepository userRepository;
+    private final LoyaltyTierRepository loyaltyTierRepository;
 
     @Override
     @Transactional
@@ -57,6 +60,17 @@ public class CustomerRewardServiceImpl implements CustomerRewardService {
             );
         }
 
+        // Kiểm tra hạng thành viên tối thiểu
+        if (reward.getRequiredTierLevel() != null) {
+            Integer customerTierLevel = getCustomerTierLevel(customerId);
+            if (customerTierLevel == null || customerTierLevel < reward.getRequiredTierLevel()) {
+                throw new BusinessException(
+                        "Bạn cần đạt hạng thành viên cao hơn để đổi phần thưởng này",
+                        HttpStatus.FORBIDDEN
+                );
+            }
+        }
+
         LoyaltyBalanceResponseDTO balance =
                 loyaltyTransactionService.getCustomerBalance(customerId);
 
@@ -69,23 +83,18 @@ public class CustomerRewardServiceImpl implements CustomerRewardService {
             );
         }
 
-        Integer remainingPoints = currentPoints - reward.getRequiredPoints();
-
         LoyaltyTransaction transaction = LoyaltyTransaction.builder()
                 .customerId(customerId)
                 .paymentId(null)
                 .transactionType("redeem")
                 .points(-reward.getRequiredPoints())
                 .balanceBefore(currentPoints)
-                .balanceAfter(remainingPoints)
+                .balanceAfter(currentPoints - reward.getRequiredPoints())
                 .createdAt(LocalDateTime.now())
                 .note("Đổi điểm lấy voucher: " + reward.getRewardName())
                 .build();
 
         loyaltyTransactionRepository.save(transaction);
-
-        customer.setTotalPoints(remainingPoints);
-        customerRepository.save(customer);
 
         CustomerReward customerReward = CustomerReward.builder()
                 .customer(customer)
@@ -101,7 +110,7 @@ public class CustomerRewardServiceImpl implements CustomerRewardService {
 
         CustomerReward saved = customerRewardRepository.save(customerReward);
 
-        return customerRewardMapper.toResponse(saved, remainingPoints);
+        return customerRewardMapper.toResponse(saved, currentPoints - reward.getRequiredPoints());
     }
 
     @Override
@@ -202,5 +211,13 @@ public class CustomerRewardServiceImpl implements CustomerRewardService {
                 .toUpperCase();
 
         return "VW-" + random;
+    }
+
+    private Integer getCustomerTierLevel(Integer customerId) {
+        return customerRepository.findById(customerId)
+                .map(Customer::getTierId)
+                .flatMap(tierId -> loyaltyTierRepository.findById(tierId))
+                .map(LoyaltyTier::getPriorityLevel)
+                .orElse(null);
     }
 }

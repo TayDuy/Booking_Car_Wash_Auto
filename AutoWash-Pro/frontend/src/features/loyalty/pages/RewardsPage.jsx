@@ -11,6 +11,7 @@ function RewardsPage() {
   const [vouchers, setVouchers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+  const [tierLevel, setTierLevel] = useState(null);
 
   const customerId = localStorage.getItem("customerId");
 
@@ -28,6 +29,10 @@ function RewardsPage() {
 
       setRewards(Array.isArray(rewardData) ? rewardData : rewardData?.data || []);
       setVouchers(Array.isArray(voucherData) ? voucherData : voucherData?.data || []);
+
+      // Lấy hạng thành viên từ localStorage (set bởi LoyaltyEvaluationService)
+      const stored = localStorage.getItem("tierLevel");
+      if (stored) setTierLevel(Number(stored));
     } catch (error) {
       console.error("Load rewards error:", error);
       setMessage("Không thể tải dữ liệu phần thưởng.");
@@ -72,6 +77,25 @@ function RewardsPage() {
   function formatPoint(value) {
     if (value === null || value === undefined) return "0";
     return Number(value).toLocaleString("vi-VN");
+  }
+
+  function getTierName(level) {
+    if (!level) return null;
+    if (level >= 4) return "Platinum";
+    if (level === 3) return "Gold";
+    if (level === 2) return "Silver";
+    return "Member";
+  }
+
+  function tierBadgeText(requiredLevel) {
+    if (!requiredLevel) return null;
+    return getTierName(requiredLevel);
+  }
+
+  function canRedeem(reward) {
+    if (reward.status !== "active") return false;
+    if (!reward.requiredTierLevel) return true;
+    return tierLevel !== null && tierLevel >= reward.requiredTierLevel;
   }
 
   return (
@@ -132,14 +156,21 @@ function RewardsPage() {
               <div className="reward-meta">
                 <span>Loại: {reward.rewardType}</span>
                 <span>Xe: {reward.vehicleType}</span>
+                {reward.requiredTierLevel && (
+                  <span className="reward-tier-badge">
+                    {tierBadgeText(reward.requiredTierLevel)}+
+                  </span>
+                )}
               </div>
 
               <button
                 className="reward-btn"
-                disabled={loading || reward.status !== "active"}
+                disabled={loading || !canRedeem(reward)}
                 onClick={() => handleRedeem(reward.rewardId)}
               >
-                Đổi voucher
+                {!canRedeem(reward) && reward.requiredTierLevel
+                  ? `Cần hạng ${tierBadgeText(reward.requiredTierLevel)}+`
+                  : "Đổi voucher"}
               </button>
             </article>
           ))}

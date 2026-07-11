@@ -39,6 +39,8 @@ public class RewardResponseDTO {
     /** Trạng thái hiện tại: {@code active} hoặc {@code inactive}. */
     private Reward.RewardStatus status;
 
+    private Integer requiredTierLevel;
+
     /** Thời điểm reward được tạo, set tự động bởi JPA Auditing khi INSERT. */
     private LocalDateTime createdAt;
 }

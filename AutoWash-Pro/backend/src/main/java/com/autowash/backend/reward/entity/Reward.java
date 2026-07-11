@@ -82,6 +82,14 @@ public class Reward {
     @Builder.Default
     private RewardStatus status = RewardStatus.active;
 
+    /**
+     * Cấp hạng tối thiểu để thấy và đổi reward này.
+     * null = mọi hạng đều thấy được.
+     * priorityLevel: Member=1, Silver=2, Gold=3, Platinum=4.
+     */
+    @Column(name = "required_tier_level")
+    private Integer requiredTierLevel;
+
     /** Audit — set tự động khi INSERT. */
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
