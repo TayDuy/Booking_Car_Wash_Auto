@@ -549,6 +549,8 @@ a { text-decoration: none; }
 
 .table-wrapper {
   overflow-x: auto;
+  max-height: 420px;
+  overflow-y: auto;
 }
 
 .history-table {
