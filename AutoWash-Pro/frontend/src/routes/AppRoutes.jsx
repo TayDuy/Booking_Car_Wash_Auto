@@ -21,6 +21,7 @@ import SupportPage from "../features/customer/pages/Helpcenter";
 import ServicesPage from "../features/services/pages/ServicesPage";
 
 import BookingPage from "../features/booking/pages/BookingPage";
+import BookingSuccessPage from "../features/booking/pages/BookingSuccessPage";
 import BookingDetailPage from "../features/booking/pages/BookingDetailPage";
 
 import PaymentPage from "../features/payment/pages/PaymentPage";
@@ -81,6 +82,7 @@ function AppRoutes() {
         <Route path="home" element={<HomePage />} />
         <Route path="services" element={<ServicesPage />} />
         <Route path="booking" element={<BookingPage />} />
+        <Route path="booking/success" element={<BookingSuccessPage />} />
         <Route path="booking/:bookingId" element={<BookingDetailPage />} />
         <Route path="history" element={<BookingHistory />} />
         <Route path="promotions" element={<PromotionListPage />} />

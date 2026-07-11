@@ -19,7 +19,7 @@ export default function ManageBookingsPage() {
     setLoading(true);
 
     try {
-      const response = await bookingApi.adminList();
+      const response = await bookingApi.list();
 
       const result = response.data?.data || response.data || [];
 
@@ -73,7 +73,7 @@ export default function ManageBookingsPage() {
     if (!confirmCancel) return;
 
     try {
-      await bookingApi.adminCancel(bookingId);
+      await bookingApi.cancelByStaff(bookingId);
       alert("Hủy booking thành công.");
       loadBookings();
     } catch (error) {

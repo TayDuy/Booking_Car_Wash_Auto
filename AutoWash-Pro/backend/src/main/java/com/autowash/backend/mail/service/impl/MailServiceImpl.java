@@ -104,7 +104,7 @@ public class MailServiceImpl implements MailService {
             NumberFormat currencyFormatter = NumberFormat.getCurrencyInstance(new Locale("vi", "VN"));
             String formattedPrice = currencyFormatter.format(totalPrice);
 
-            String ctaUrl = "http://localhost:5173/bookings";
+            String ctaUrl = "http://localhost:5173/customer/history";
 
             String safeCustomerName = HtmlUtils.htmlEscape(customerName);
             String safeBranchName = HtmlUtils.htmlEscape(branchName);

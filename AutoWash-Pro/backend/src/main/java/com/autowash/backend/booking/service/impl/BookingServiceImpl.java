@@ -23,6 +23,8 @@ import com.autowash.backend.timeslot.entity.TimeSlot;
 import com.autowash.backend.timeslot.repository.TimeSlotRepository;
 import com.autowash.backend.vehicle.entity.Vehicle;
 import com.autowash.backend.vehicle.repository.VehicleRepository;
+import com.autowash.backend.customerreward.entity.CustomerReward;
+import com.autowash.backend.customerreward.repository.CustomerRewardRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -53,6 +55,7 @@ public class BookingServiceImpl implements BookingService {
     private final ServicePackageRepository servicePackageRepository;
     private final BookingMapper bookingMapper;
     private final com.autowash.backend.mail.service.MailService mailService;
+    private final CustomerRewardRepository customerRewardRepository;
 
     // ── CREATE ──────────────────────────────────────────────────────────────
 
@@ -419,6 +422,15 @@ public class BookingServiceImpl implements BookingService {
                     HttpStatus.CONFLICT);
         }
         booking.setStatus(BookingStatus.cancelled);
+
+        // Hoàn trả voucher đổi thưởng nếu có về trạng thái UNUSED
+        customerRewardRepository.findByUsedBookingId(booking.getBookingId()).ifPresent(voucher -> {
+            voucher.setStatus("UNUSED");
+            voucher.setUsedBookingId(null);
+            voucher.setUsedAt(null);
+            customerRewardRepository.save(voucher);
+            log.info("[Booking] Hoàn trả voucher {} về trạng thái UNUSED do hủy lịch #{}", voucher.getVoucherCode(), booking.getBookingId());
+        });
 
         // Giảm số lượng đặt trên slot để mở lại capacity
         // decrementBookings() trong entity tự chuyển status → open nếu còn chỗ

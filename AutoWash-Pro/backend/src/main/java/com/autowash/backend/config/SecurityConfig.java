@@ -99,6 +99,8 @@ public class SecurityConfig {
                                 "/api/v1/auth/forgot-password/reset",
                                 "/api/v1/payments/vnpay-return",
                                 "/api/v1/payments/vnpay-ipn",
+                                "/api/v1/payments/paypal-return",
+                                "/api/v1/payments/paypal-cancel",
                                 "/api/v1/notifications/stream",
                                 "/api/v1/branches",
                                 "/api/v1/service-packages/active",

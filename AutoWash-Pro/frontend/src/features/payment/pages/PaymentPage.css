@@ -472,6 +472,18 @@
     font-size: 13.5px;
 }
 
+.reward-input-grid input.auto-filled {
+    border-color: var(--wf-blue);
+    background: var(--wf-blue-light);
+    font-weight: 700;
+    color: var(--wf-blue-dark);
+}
+
+.reward-input-grid input.auto-filled::placeholder {
+    color: var(--wf-blue);
+    opacity: 0.8;
+}
+
 .reward-point-text {
     margin-top: 8px;
     font-size: 12px;
@@ -575,4 +587,153 @@
     color: var(--wf-red);
     font-weight: 600;
     font-size: 14px;
+}
+
+/* ====================================================================
+   ƯU ĐÃI & ĐIỂM THƯỞNG — CARD SELECTION
+   ==================================================================== */
+.reward-box-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--wf-text);
+}
+
+.reward-box-header-badge {
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--wf-muted);
+    padding: 2px 8px;
+    border-radius: 999px;
+    border: 1px solid var(--wf-border);
+}
+
+.reward-box-body {
+    margin-top: 12px;
+    border: 1px solid var(--wf-border);
+    border-radius: 12px;
+    background: #ffffff;
+    padding: 16px;
+}
+
+.promo-group {
+    margin-bottom: 4px;
+}
+
+.promo-group-label {
+    display: block;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--wf-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+}
+
+.promo-empty-text {
+    font-size: 12px;
+    color: var(--wf-muted);
+    padding: 4px 0;
+}
+
+.promo-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.promo-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    background: #f8f9fb;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.promo-item:hover {
+    border-color: var(--wf-blue);
+    background: var(--wf-blue-light);
+}
+
+.promo-item-selected {
+    border-color: var(--wf-blue) !important;
+    background: var(--wf-blue-light) !important;
+}
+
+.promo-item input[type="radio"] {
+    display: none;
+}
+
+.promo-item-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.promo-item-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--wf-text);
+}
+
+.promo-item-badge {
+    flex-shrink: 0;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--wf-blue);
+    color: #ffffff;
+}
+
+.promo-item-badge--green {
+    background: var(--wf-green);
+}
+
+.promo-item-desc {
+    font-size: 11px;
+    color: var(--wf-muted);
+}
+
+.promo-clear-btn {
+    display: block;
+    width: 100%;
+    padding: 6px 0 2px;
+    border: none;
+    background: transparent;
+    font-size: 12px;
+    color: var(--wf-muted);
+    cursor: pointer;
+    text-align: left;
+    transition: color 0.2s;
+}
+
+.promo-clear-btn:hover {
+    color: var(--wf-red);
+}
+
+.promo-divider {
+    height: 1px;
+    background: var(--wf-border);
+    margin: 12px 0;
+}
+
+.promo-applied-banner {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    background: var(--wf-blue-light);
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--wf-blue);
+    margin-top: 8px;
 }

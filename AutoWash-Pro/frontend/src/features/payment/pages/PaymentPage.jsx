@@ -1,7 +1,9 @@
 import "./PaymentPage.css";
 import { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import { BACKEND_ROOT_URL } from "../../../api/axiosClient";
+import axiosClient, { BACKEND_ROOT_URL } from "../../../api/axiosClient";
+import promotionApi from "../../../api/promotionApi";
+import { getMyRewards } from "../../../api/customerRewardApi";
 
 const API_BASE = BACKEND_ROOT_URL;
 const STORE_NAME = "AutoWash Pro";
@@ -22,6 +24,17 @@ function PaymentPage() {
     const bookingId = bookingIdFromBookingPage
         ? String(bookingIdFromBookingPage)
         : (bookingIdFromQuery || "");
+    // Đọc promotion/voucher từ localStorage (được set từ trang trung tâm ưu đãi)
+    // rồi xoá ngay để tránh ảnh hưởng lần thanh toán sau.
+    useEffect(() => {
+        const keys = [
+            "selectedPromotionId", "selectedPromotionDiscount",
+            "selectedPromotionCode", "selectedRewardId",
+            "selectedVoucherCode", "selectedVoucherValue"
+        ];
+        keys.forEach(k => localStorage.removeItem(k));
+    }, []);
+
     // Khách chọn giữa VNPAY (QR nội địa) và PayPal (thẻ/ví quốc tế).
     // "vnpay" -> gửi paymentMethod="bank_transfer" cho backend (enum không có "vnpay").
     // "paypal" -> gửi paymentMethod="paypal" thẳng, khớp enum PaymentMethod.paypal.
@@ -31,8 +44,35 @@ function PaymentPage() {
     // Promotion & Reward LUÔN LÀ TUỲ CHỌN — nếu khách không có mã/điểm thì cứ để
     // trống, hàm handleCreatePayment bên dưới đã tự gửi null khi rỗng nên việc
     // thanh toán không bao giờ bị chặn bởi 2 trường này.
-    const [promotionId, setPromotionId] = useState("");
-    const [rewardId, setRewardId] = useState("");
+    const promotionFromState = location.state?.promotionId || location.state?.selectedPromoId;
+    const rewardFromState = location.state?.rewardId || location.state?.selectedRewardId;
+    const voucherCodeFromState = location.state?.selectedVouchCode;
+
+    const [promotionId, setPromotionId] = useState(
+        String(promotionFromState || localStorage.getItem("selectedPromotionId") || "")
+    );
+    const [rewardId, setRewardId] = useState(
+        String(rewardFromState || localStorage.getItem("selectedRewardId") || "")
+    );
+    const [voucherCode, setVoucherCode] = useState(
+        voucherCodeFromState || ""
+    );
+    const [paymentVouchers, setPaymentVouchers] = useState([]);
+    const [paymentPromotions, setPaymentPromotions] = useState([]);
+
+    useEffect(() => {
+        const customerId = localStorage.getItem("customerId");
+        if (!customerId) return;
+        const cid = parseInt(customerId, 10);
+        getMyRewards(cid).then(res => {
+            const list = Array.isArray(res) ? res : res?.data || [];
+            setPaymentVouchers(list.filter(v => v.status === "UNUSED"));
+        }).catch(() => {});
+        promotionApi.active().then(res => {
+            const list = Array.isArray(res) ? res : res?.data || [];
+            setPaymentPromotions(list);
+        }).catch(() => {});
+    }, []);
 
     const [paymentResult, setPaymentResult] = useState(null);
     const [errorMessage, setErrorMessage] = useState("");
@@ -59,20 +99,11 @@ function PaymentPage() {
         setQrLoading(true);
         setErrorMessage("");
         try {
-            const response = await fetch(`${API_BASE}/api/v1/payments/${id}/vnpay-qr`, {
-                method: "GET",
-                headers: {
-                    Authorization: `Bearer ${localStorage.getItem("token")}`,
-                },
+            const response = await axiosClient.get(`/payments/${id}/vnpay-qr`, {
+                responseType: "blob",
             });
 
-            if (!response.ok) {
-                // Endpoint lỗi trả JSON message, còn thành công trả ảnh nên đọc text để báo lỗi.
-                const text = await response.text().catch(() => "");
-                throw new Error(text || `Không tạo được QR VNPAY (HTTP ${response.status})`);
-            }
-
-            const blob = await response.blob();
+            const blob = response.data;
 
             // Revoke URL cũ trước khi tạo URL mới để tránh leak bộ nhớ.
             if (qrObjectUrlRef.current) {
@@ -82,7 +113,13 @@ function PaymentPage() {
             qrObjectUrlRef.current = objectUrl;
             setQrImageUrl(objectUrl);
         } catch (error) {
-            setErrorMessage(error.message || "Không tạo được mã QR VNPAY");
+            if (error.response?.data instanceof Blob) {
+                error.response.data.text().then(t => {
+                    try { const j = JSON.parse(t); setErrorMessage(j.message || j.error || t); } catch { setErrorMessage(t); }
+                });
+            } else {
+                setErrorMessage(error.response?.data?.message || error.message || "Không tạo được mã QR VNPAY");
+            }
         } finally {
             setQrLoading(false);
         }
@@ -130,34 +167,20 @@ function PaymentPage() {
             paymentMethod: paymentMethod,
             promotionId: promotionId ? Number(promotionId) : null,
             rewardId: rewardId ? Number(rewardId) : null,
+            voucherCode: voucherCode || null,
         };
 
         try {
             setIsLoading(true);
-            const response = await fetch(`${API_BASE}/api/v1/payments`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${localStorage.getItem("token")}`,
-                },
-                body: JSON.stringify(data),
-            });
+            const response = await axiosClient.post("/payments", data);
+            const result = response.data?.data || response.data;
 
-            const result = await response.json();
-
-            if (response.ok) {
-                setPaymentResult(result);
-                setPaymentId(result.paymentId);
-                setErrorMessage("");
-                // Tạo payment xong -> gọi backend sinh QR VNPAY thật cho paymentId vừa tạo
-                await fetchVnpayQrImage(result.paymentId);
-            } else {
-                setPaymentResult(null);
-                setErrorMessage(result.message);
-            }
+            setPaymentResult(result);
+            setPaymentId(result.paymentId);
+            setErrorMessage("");
+            await fetchVnpayQrImage(result.paymentId);
         } catch (error) {
-            setErrorMessage("Network Error");
-            console.log("Cannot create payment", error);
+            setErrorMessage(error.response?.data?.message || error.message || "Network Error");
         } finally {
             setIsLoading(false);
         }
@@ -196,50 +219,23 @@ function PaymentPage() {
                     paymentMethod: "paypal",
                     promotionId: promotionId ? Number(promotionId) : null,
                     rewardId: rewardId ? Number(rewardId) : null,
+                    voucherCode: voucherCode || null,
                 };
 
-                const response = await fetch(`${API_BASE}/api/v1/payments`, {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${localStorage.getItem("token")}`,
-                    },
-                    body: JSON.stringify(data),
-                });
-                const result = await response.json();
-
-                if (!response.ok) {
-                    setErrorMessage(result.message || "Không tạo được payment");
-                    return;
-                }
+                const response = await axiosClient.post("/payments", data);
+                const result = response.data?.data || response.data;
 
                 setPaymentResult(result);
                 currentPaymentId = result.paymentId;
                 setPaymentId(currentPaymentId);
             }
 
-            // Tạo PayPal Order cho payment vừa có -> nhận approvalUrl để redirect.
-            const orderResponse = await fetch(
-                `${API_BASE}/api/v1/payments/${currentPaymentId}/paypal-order`,
-                {
-                    method: "POST",
-                    headers: {
-                        Authorization: `Bearer ${localStorage.getItem("token")}`,
-                    },
-                }
-            );
-            const orderResult = await orderResponse.json();
+            const orderResponse = await axiosClient.post(`/payments/${currentPaymentId}/paypal-order`);
+            const orderResult = orderResponse.data?.data || orderResponse.data;
 
-            if (!orderResponse.ok) {
-                setErrorMessage(orderResult.message || "Không tạo được đơn hàng PayPal");
-                return;
-            }
-
-            // Điều hướng cả trang sang PayPal (không phải điều hướng nội bộ React Router).
             window.location.href = orderResult.approvalUrl;
         } catch (error) {
-            setErrorMessage("Network Error");
-            console.log("Cannot create PayPal order", error);
+            setErrorMessage(error.response?.data?.message || error.message || "Network Error");
         } finally {
             setIsLoading(false);
         }
@@ -253,46 +249,23 @@ function PaymentPage() {
         if (!paymentId) return;
 
         try {
-            const response = await fetch(`${API_BASE}/api/v1/payments/${paymentId}`, {
-                method: "GET",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${localStorage.getItem("token")}`
-                },
-            });
+            const response = await axiosClient.get(`/payments/${paymentId}`);
+            const result = response.data?.data || response.data;
 
-            const result = await response.json();
-
-            if (response.ok) {
-                setPaymentResult(result);
-                if (!silent) setErrorMessage("");
-            } else if (!silent) {
-                setPaymentResult(null);
-                setErrorMessage(result.message);
-            }
+            setPaymentResult(result);
+            if (!silent) setErrorMessage("");
         } catch (error) {
-            if (!silent) setErrorMessage("Network Error");
+            if (!silent) setErrorMessage(error.response?.data?.message || error.message || "Network Error");
             console.log("Cannot get payment", error);
         }
     }
 
     async function handleGetBookingDetail(id) {
         try {
-            const response = await fetch(`http://localhost:8080/api/v1/bookings/${id}`, {
-                method: "GET",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${localStorage.getItem("token")}`
-                }
-            });
+            const response = await axiosClient.get(`/bookings/${id}`);
+            const result = response.data?.data || response.data;
 
-            const result = await response.json();
-
-            if (response.ok) {
-                setBookingDetail(result);
-            } else {
-                console.log(result.message);
-            }
+            setBookingDetail(result);
         } catch (error) {
             console.log("Cannot get booking detail", error);
         }
@@ -659,25 +632,88 @@ function PaymentPage() {
                             </div>
 
                             <div className="reward-box">
-                                <label>
-                                    Ưu đãi &amp; điểm thưởng <span className="optional-tag">(không bắt buộc)</span>
+                                <label className="reward-box-header">
+                                    🎫 Ưu đãi &amp; điểm thưởng
+                                    <span className="reward-box-header-badge">không bắt buộc</span>
                                 </label>
-                                <div className="reward-input-grid">
-                                    <input
-                                        type="text"
-                                        placeholder="Mã khuyến mãi"
-                                        value={promotionId}
-                                        onChange={(e) => setPromotionId(e.target.value)}
-                                    />
-                                    <input
-                                        type="text"
-                                        placeholder="Mã/điểm thưởng"
-                                        value={rewardId}
-                                        onChange={(e) => setRewardId(e.target.value)}
-                                    />
+
+                                <div className="reward-box-body">
+                                    <div className="promo-group">
+                                        <span className="promo-group-label">🎁 Khuyến mãi hệ thống</span>
+                                        {paymentPromotions.length === 0 ? (
+                                            <p className="promo-empty-text">Không có khuyến mãi nào</p>
+                                        ) : (
+                                            <div className="promo-list">
+                                                {paymentPromotions.map(p => {
+                                                    const id = String(p.promotionId || p.id);
+                                                    const pv = p.value || p.discountValue || 0;
+                                                    const label = p.discountType === "PERCENT" ? `-${pv}%` : `-${Number(pv).toLocaleString()}đ`;
+                                                    return (
+                                                        <label key={id} className={`promo-item ${promotionId === id ? "promo-item-selected" : ""}`}>
+                                                            <input
+                                                                type="radio" name="pay-promo"
+                                                                checked={promotionId === id}
+                                                                onChange={() => setPromotionId(id)}
+                                                            />
+                                                            <div className="promo-item-content">
+                                                                <span className="promo-item-title">{p.title || p.promotionName}</span>
+                                                                <span className="promo-item-badge">{label}</span>
+                                                            </div>
+                                                            <span className="promo-item-desc">{p.description || ""}</span>
+                                                        </label>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+                                        {promotionId && (
+                                            <button className="promo-clear-btn" onClick={() => setPromotionId("")}>
+                                                ✕ Bỏ chọn khuyến mãi
+                                            </button>
+                                        )}
+                                    </div>
+
+                                    <div className="promo-divider" />
+
+                                    <div className="promo-group">
+                                        <span className="promo-group-label">🏷️ Voucher của tôi</span>
+                                        {paymentVouchers.length === 0 ? (
+                                            <p className="promo-empty-text">Bạn chưa có voucher nào</p>
+                                        ) : (
+                                            <div className="promo-list">
+                                                {paymentVouchers.map(v => (
+                                                    <label key={v.customerRewardId} className={`promo-item ${voucherCode === v.voucherCode ? "promo-item-selected" : ""}`}>
+                                                        <input
+                                                            type="radio" name="pay-vouch"
+                                                            checked={voucherCode === v.voucherCode}
+                                                            onChange={() => { setVoucherCode(v.voucherCode); setRewardId(String(v.rewardId)); }}
+                                                        />
+                                                        <div className="promo-item-content">
+                                                            <span className="promo-item-title">{v.rewardName || "Voucher"}</span>
+                                                            <span className="promo-item-badge promo-item-badge--green">
+                                                                -{Number(v.discountValue || 0).toLocaleString()}đ
+                                                            </span>
+                                                        </div>
+                                                        <span className="promo-item-desc">{v.voucherCode}</span>
+                                                    </label>
+                                                ))}
+                                            </div>
+                                        )}
+                                        {voucherCode && (
+                                            <button className="promo-clear-btn" onClick={() => { setVoucherCode(""); setRewardId(""); }}>
+                                                ✕ Bỏ chọn voucher
+                                            </button>
+                                        )}
+                                    </div>
+
+                                    {(promotionId || voucherCode) && (
+                                        <div className="promo-applied-banner">
+                                            Đã chọn ưu đãi (Hệ thống tự động áp dụng 1 cái cao nhất)
+                                        </div>
+                                    )}
                                 </div>
+
                                 <p className="reward-point-text">
-                                    Bạn có <strong>{bookingDetail?.customerPoints || 0} điểm</strong> khả dụng — để trống nếu không sử dụng ưu đãi.
+                                    Bạn có <strong>{bookingDetail?.customerPoints || 0} điểm</strong> khả dụng
                                 </p>
                             </div>
 

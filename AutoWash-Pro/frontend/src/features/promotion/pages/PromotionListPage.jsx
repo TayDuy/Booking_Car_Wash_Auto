@@ -120,9 +120,22 @@ function PromotionListPage() {
         ? `${value}%`
         : formatMoney(value);
 
+    const vehicleLabel =
+      promotion.vehicleType === null
+        ? "Tất cả xe"
+        : promotion.vehicleType === "sedan"
+        ? "Xe 4 chỗ"
+        : promotion.vehicleType === "suv"
+        ? "Xe 7 chỗ"
+        : promotion.vehicleType === "truck"
+        ? "Xe bán tải"
+        : promotion.vehicleType === "minivan"
+        ? "Xe gia đình"
+        : promotion.vehicleType || "Tất cả xe";
+
     return {
       id: promotion.promotionId || promotion.id,
-      title: promotion.title || promotion.name || "Khuyến mãi đặc biệt",
+      title: promotion.title || promotion.promotionName || "Khuyến mãi đặc biệt",
       description:
         promotion.description ||
         "Ưu đãi hấp dẫn từ WashFlow Pro dành cho khách hàng.",
@@ -131,8 +144,12 @@ function PromotionListPage() {
       expiredDate: promotion.endDate
         ? new Date(promotion.endDate).toLocaleDateString("vi-VN")
         : "Vô thời hạn",
-      status: promotion.status === "ACTIVE" ? "available" : "expired",
-      tag: promotion.vehicleType || "Tất cả xe",
+      status: promotion.status === "active" ? "available" : "expired",
+      tag: vehicleLabel,
+      minOrderValue: promotion.minOrderValue || 0,
+      discountType: promotion.discountType || "PERCENT",
+      targetTierName: promotion.targetTierName || null,
+      usageLimit: promotion.usageLimit || null,
     };
   }
 
@@ -145,7 +162,12 @@ function PromotionListPage() {
     try {
       setMessage("");
 
-      await redeemReward(rewardId, customerId);
+      const res = await redeemReward(rewardId, customerId);
+      const data = res?.data || res || {};
+
+      if (data.remainingPoints !== undefined) {
+        setPointBalance(Number(data.remainingPoints));
+      }
 
       const voucherData = await getMyRewards(customerId);
       const nextVouchers = voucherData?.data || voucherData || [];
@@ -164,11 +186,24 @@ function PromotionListPage() {
     }
   }
 
+  function handleUsePromotion(promotion) {
+    if (promotion.status !== "available") {
+      return;
+    }
+
+    localStorage.setItem("selectedPromotionId", promotion.id);
+    localStorage.setItem("selectedPromotionDiscount", promotion.discount);
+    localStorage.setItem("selectedPromotionCode", promotion.code);
+
+    navigate("/customer/booking");
+  }
+
   function handleUseVoucher(voucher) {
     if (voucher.status !== "UNUSED") {
       return;
     }
 
+    localStorage.setItem("selectedRewardId", voucher.rewardId);
     localStorage.setItem("selectedVoucherCode", voucher.voucherCode);
     localStorage.setItem("selectedVoucherValue", voucher.discountValue || 0);
 
@@ -237,13 +272,14 @@ function PromotionListPage() {
   }, [loading]);
 
   function getCurrentPoints() {
-    return Number(
+    const balance =
       pointBalance ||
-        loyaltyInfo?.currentPoints ||
-        loyaltyInfo?.totalPoints ||
-        loyaltyInfo?.points ||
-        0
-    );
+      loyaltyInfo?.currentBalance ||
+      loyaltyInfo?.currentPoints ||
+      loyaltyInfo?.points ||
+      0;
+
+    return Number(balance);
   }
 
   function getCurrentVisits() {
@@ -256,10 +292,9 @@ function PromotionListPage() {
 
   function getCurrentTierName() {
     return (
-      loyaltyInfo?.currentTierName ||
-      loyaltyInfo?.newTierName ||
       loyaltyInfo?.tierName ||
-      getTierName()
+        loyaltyInfo?.newTierName ||
+        getTierName()
     );
   }
 
@@ -379,7 +414,12 @@ function PromotionListPage() {
               <button
                 type="button"
                 className="offer-secondary-btn"
-                onClick={() => setActiveTab("vouchers")}
+                onClick={() => {
+                  setActiveTab("vouchers");
+                  setTimeout(() => {
+                    document.querySelector(".offer-tabs-panel")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                  }, 100);
+                }}
               >
                 Xem voucher của tôi
               </button>
@@ -431,7 +471,7 @@ function PromotionListPage() {
                 <strong>WF-{customerId || "0000"}-2026</strong>
               </div>
 
-              <button type="button">Chi tiết quyền lợi</button>
+              <button type="button" onClick={() => navigate("/customer/rewards")}>Chi tiết quyền lợi</button>
             </div>
           </div>
 
@@ -561,23 +601,31 @@ function PromotionListPage() {
                     <strong>{promotion.expiredDate}</strong>
                   </div>
 
-                  <Link
-                    to="/customer/booking"
+                  <div className="promo-meta">
+                    <span>Điều kiện</span>
+                    <strong>
+                      {promotion.targetTierName
+                        ? `Hạng ${promotion.targetTierName}`
+                        : "Mọi hạng"}
+                      {promotion.minOrderValue > 0 &&
+                        ` · Đơn từ ${formatMoney(promotion.minOrderValue)}`}
+                    </strong>
+                  </div>
+
+                  <button
+                    type="button"
                     className={
                       promotion.status === "available"
                         ? "offer-card-btn"
                         : "offer-card-btn disabled"
                     }
-                    onClick={(event) => {
-                      if (promotion.status !== "available") {
-                        event.preventDefault();
-                      }
-                    }}
+                    disabled={promotion.status !== "available"}
+                    onClick={() => handleUsePromotion(promotion)}
                   >
                     {promotion.status === "available"
                       ? "Dùng ngay"
                       : "Đã hết hạn"}
-                  </Link>
+                  </button>
                 </article>
               ))}
             </div>
@@ -642,10 +690,15 @@ function PromotionListPage() {
                     <button
                       type="button"
                       className="offer-card-btn"
-                      disabled={reward.status !== "active"}
+                      disabled={reward.status !== "active" || pointBalance < reward.requiredPoints}
+                      title={
+                        pointBalance < reward.requiredPoints
+                          ? "Bạn không đủ điểm để đổi phần thưởng này"
+                          : ""
+                      }
                       onClick={() => handleRedeemReward(reward.rewardId)}
                     >
-                      Đổi ngay
+                      {pointBalance < reward.requiredPoints ? "Thiếu điểm" : "Đổi ngay"}
                     </button>
                   </div>
                 </article>

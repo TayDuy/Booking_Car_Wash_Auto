@@ -67,4 +67,6 @@ public class RewardRequestDTO {
      * Nếu client không gửi, mapper sẽ tự gán default là {@code active}.
      */
     private Reward.RewardStatus status;
+
+    private Integer requiredTierLevel;
 }

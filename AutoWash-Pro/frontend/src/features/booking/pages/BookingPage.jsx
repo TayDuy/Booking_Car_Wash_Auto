@@ -17,6 +17,8 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { getActiveServices } from "../../../api/servicePackageService";
 import { getBranches } from "../../../api/branchService";
 import { getSlotsByBranchAndDate } from "../../../api/timeSlotService";
+import promotionApi from "../../../api/promotionApi";
+import { getMyRewards } from "../../../api/customerRewardApi";
 
 const DEFAULT_SERVICES = [
   {
@@ -51,6 +53,25 @@ const DEFAULT_SERVICES = [
 export default function BookingPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+
+  const [selectedPromoId, setSelectedPromoId] = useState(
+    localStorage.getItem("selectedPromotionId") || ""
+  );
+  const [selectedPromoCode, setSelectedPromoCode] = useState(
+    localStorage.getItem("selectedPromotionCode") || ""
+  );
+  const [selectedPromoDiscount, setSelectedPromoDiscount] = useState(
+    localStorage.getItem("selectedPromotionDiscount") || ""
+  );
+  const [selectedVouchCode, setSelectedVouchCode] = useState(
+    localStorage.getItem("selectedVoucherCode") || ""
+  );
+  const [selectedRewardId, setSelectedRewardId] = useState(
+    localStorage.getItem("selectedRewardId") || ""
+  );
+  const [availableVouchers, setAvailableVouchers] = useState([]);
+  const [availablePromotions, setAvailablePromotions] = useState([]);
+  const [sidebarPromoOpen, setSidebarPromoOpen] = useState(false);
   const [services, setServices] = useState([]);
   const [branches, setBranches] = useState([]);
   const [slots, setSlots] = useState([]);
@@ -224,6 +245,19 @@ export default function BookingPage() {
       }
     };
     loadVehicles();
+
+    const customerIdRaw = localStorage.getItem("customerId");
+    if (customerIdRaw) {
+      const cid = parseInt(customerIdRaw, 10);
+      getMyRewards(cid).then(res => {
+        const list = Array.isArray(res) ? res : res?.data || [];
+        setAvailableVouchers(list.filter(v => v.status === "UNUSED"));
+      }).catch(() => {});
+      promotionApi.active().then(res => {
+        const list = Array.isArray(res) ? res : res?.data || [];
+        setAvailablePromotions(list);
+      }).catch(() => {});
+    }
   }, []);
 
   useEffect(() => {
@@ -421,6 +455,7 @@ export default function BookingPage() {
         slotId: selectedTime,
         branchId: selectedBranch,
         note,
+        paymentMethod: paymentMethod,
         details: [
           { serviceId: selectedPackageId, quantity: 1 },
           ...selectedAddonIds.map(id => ({ serviceId: id, quantity: 1 }))
@@ -435,7 +470,14 @@ export default function BookingPage() {
         });
         return;
       }
-      navigate("/customer/payment", { state: { bookingId } });
+      navigate("/customer/payment", {
+        state: {
+          bookingId,
+          selectedPromoId: selectedPromoId ? Number(selectedPromoId) : null,
+          selectedVouchCode: selectedVouchCode || null,
+          selectedRewardId: selectedRewardId || null,
+        },
+      });
     } catch (error) {
       alert(error.response?.data?.message || "Đặt lịch thất bại. Vui lòng thử lại!");
     }
@@ -819,8 +861,115 @@ export default function BookingPage() {
                   <span>Điểm tích lũy nhận được</span>
                   <span className="points-highlight">+{rewardPoints} điểm</span>
                 </div>
+                {(selectedPromoCode || selectedVouchCode) && (
+                  <div className="fee-line discount-line">
+                    <span>Ưu đãi đã chọn</span>
+                    <span style={{ fontWeight: 750, color: "#004aad", fontSize: 13 }}>
+                      {selectedPromoCode && selectedVouchCode
+                        ? `KM: ${selectedPromoCode} + Voucher`
+                        : selectedPromoCode
+                        ? `KM: ${selectedPromoCode} (${selectedPromoDiscount})`
+                        : `Voucher: ${selectedVouchCode}`}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
+
+            <div className="sidebar-promo-section">
+              <button className="sidebar-promo-toggle" onClick={() => setSidebarPromoOpen(!sidebarPromoOpen)}>
+                <span>🎫 Ưu đãi của bạn</span>
+                <span>{sidebarPromoOpen ? "▲" : "▼"}</span>
+                {(selectedPromoCode || selectedVouchCode) && (
+                  <span className="sidebar-promo-count">{((selectedPromoCode ? 1 : 0) + (selectedVouchCode ? 1 : 0))}</span>
+                )}
+              </button>
+
+              {sidebarPromoOpen && (
+                <div className="sidebar-promo-body">
+                  {(selectedPromoCode || selectedVouchCode) && (
+                    <button className="sidebar-promo-clear" onClick={() => {
+                      setSelectedPromoId("");
+                      setSelectedPromoCode("");
+                      setSelectedPromoDiscount("");
+                      setSelectedVouchCode("");
+                      setSelectedRewardId("");
+                    }}>
+                      ✕ Bỏ chọn ưu đãi
+                    </button>
+                  )}
+
+                  {availablePromotions.length > 0 && (
+                    <div className="sidebar-promo-group">
+                      <span className="sidebar-promo-group-label">🎁 Khuyến mãi hệ thống</span>
+                      {availablePromotions.map(p => {
+                        const id = String(p.promotionId || p.id);
+                        const val = p.value || p.discountValue || 0;
+                        const discountLabel = p.discountType === "PERCENT" ? `-${val}%` : `-${Number(val).toLocaleString()}đ`;
+                        return (
+                          <label key={id} className={`sidebar-promo-item ${selectedPromoId === id ? "selected" : ""}`}>
+                            <input
+                              type="radio" name="promo-select"
+                              checked={selectedPromoId === id}
+                              onChange={() => {
+                                setSelectedPromoId(id);
+                                setSelectedPromoCode(p.code || p.promotionCode || "");
+                                setSelectedPromoDiscount(discountLabel);
+                              }}
+                            />
+                            <div className="sidebar-promo-item-content">
+                              <div className="sidebar-promo-item-top">
+                                <span className="sidebar-promo-item-title">{p.title || p.promotionName}</span>
+                                <span className="sidebar-promo-item-badge">{discountLabel}</span>
+                              </div>
+                              <span className="sidebar-promo-item-desc">{p.description || ""}</span>
+                            </div>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {availablePromotions.length > 0 && availableVouchers.length > 0 && (
+                    <div className="sidebar-promo-divider" />
+                  )}
+
+                  {availableVouchers.length > 0 && (
+                    <div className="sidebar-promo-group">
+                      <span className="sidebar-promo-group-label">🏷️ Voucher của tôi</span>
+                      {availableVouchers.map(v => (
+                        <label key={v.customerRewardId} className={`sidebar-promo-item ${selectedVouchCode === v.voucherCode ? "selected" : ""}`}>
+                          <input
+                            type="radio" name="vouch-select"
+                            checked={selectedVouchCode === v.voucherCode}
+                            onChange={() => {
+                              setSelectedVouchCode(v.voucherCode);
+                              setSelectedRewardId(v.rewardId);
+                            }}
+                          />
+                          <div className="sidebar-promo-item-content">
+                            <div className="sidebar-promo-item-top">
+                              <span className="sidebar-promo-item-title">{v.rewardName || "Voucher"}</span>
+                              <span className="sidebar-promo-item-badge sidebar-promo-item-badge--green">
+                                -{Number(v.discountValue || 0).toLocaleString()}đ
+                              </span>
+                            </div>
+                            <span className="sidebar-promo-item-desc">{v.voucherCode}</span>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+
+                  {availablePromotions.length === 0 && availableVouchers.length === 0 && (
+                    <p className="sidebar-promo-empty">Bạn chưa có ưu đãi nào.</p>
+                  )}
+
+                  <p className="sidebar-promo-hint">Hệ thống sẽ tự động áp dụng 1 ưu đãi có giá trị cao nhất</p>
+                </div>
+              )}
+            </div>
+
             <hr className="divider" />
             <div className="grand-total-section">
               <span>Tổng cộng</span>

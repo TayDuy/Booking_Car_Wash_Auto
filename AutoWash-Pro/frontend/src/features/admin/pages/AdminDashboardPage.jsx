@@ -71,7 +71,7 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     async function loadBookings() {
       try {
-        const response = await bookingApi.adminList();
+        const response = await bookingApi.list();
         const result = response.data?.data || response.data || [];
         if (Array.isArray(result)) {
           setBookings(result);
