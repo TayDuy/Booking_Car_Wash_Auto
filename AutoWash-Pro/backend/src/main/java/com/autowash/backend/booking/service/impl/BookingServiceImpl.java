@@ -143,6 +143,17 @@ public class BookingServiceImpl implements BookingService {
         TimeSlot slot = timeSlotRepository.findByIdForUpdate(request.getSlotId())
                 .orElseThrow(() -> new ResourceNotFoundException("TimeSlot", "id", request.getSlotId()));
 
+        // ── CHẶN ĐẶT LỊCH QUÁ KHỨ ──────────────────────────────────────
+        // Ngăn khách đặt lịch cho ngày đã qua hoặc khung giờ đã trôi qua
+        // trong ngày hôm nay. Frontend đã chặn ở UI nhưng backend phải là
+        // lớp bảo vệ cuối cùng (defense-in-depth).
+        LocalDateTime slotStart = LocalDateTime.of(slot.getSlotDate(), slot.getStartTime());
+        if (slotStart.isBefore(LocalDateTime.now())) {
+            throw new BusinessException(
+                    "Không thể đặt lịch cho khung giờ đã qua. Vui lòng chọn thời gian trong tương lai.",
+                    HttpStatus.BAD_REQUEST);
+        }
+
         if (!slot.hasCapacity()) {
             throw new BusinessException("Slot đã đầy, vui lòng chọn khung giờ khác", HttpStatus.CONFLICT);
         }
@@ -293,6 +304,83 @@ public class BookingServiceImpl implements BookingService {
 
         Booking saved = bookingRepository.save(booking);
         return bookingMapper.toResponse(saved, bookingDetailRepository.findByBooking(saved));
+    }
+
+    @Override
+    @Transactional
+    public BookingResponseDTO confirmBooking(Integer bookingId) {
+        Booking booking = findBookingOrThrow(bookingId);
+
+        if (!BookingStatus.pending.equals(booking.getStatus())) {
+            throw new BusinessException("Chỉ booking pending mới được xác nhận", HttpStatus.BAD_REQUEST);
+        }
+
+        booking.setStatus(BookingStatus.confirmed);
+
+        Booking saved = bookingRepository.save(booking);
+        List<BookingDetail> details = bookingDetailRepository.findByBooking(saved);
+        return bookingMapper.toResponse(saved, details);
+    }
+
+    @Override
+    @Transactional
+    public BookingResponseDTO checkInBooking(Integer bookingId) {
+        Booking booking = findBookingOrThrow(bookingId);
+
+        if (!BookingStatus.confirmed.equals(booking.getStatus())) {
+            throw new BusinessException(
+                    "Chỉ booking confirmed mới được check-in",
+                    HttpStatus.BAD_REQUEST
+            );
+        }
+
+        booking.setStatus(BookingStatus.in_progress);
+
+        Booking saved = bookingRepository.save(booking);
+        List<BookingDetail> details = bookingDetailRepository.findByBooking(saved);
+        return bookingMapper.toResponse(saved, details);
+    }
+
+    @Override
+    @Transactional
+    public BookingResponseDTO rescheduleBooking(Integer bookingId, Integer userId, BookingRescheduleRequestDTO request) {
+        Booking booking = findBookingOrThrow(bookingId);
+
+        Customer owner = customerRepository.findByUser_Id(userId)
+                .orElseThrow(() -> new BusinessException("Không tìm thấy hồ sơ khách hàng", HttpStatus.NOT_FOUND));
+
+        if (!booking.getCustomer().getCustomerId().equals(owner.getCustomerId())) {
+            throw new BusinessException("Bạn không có quyền sửa lịch đặt này", HttpStatus.FORBIDDEN);
+        }
+
+        if (!BookingStatus.pending.equals(booking.getStatus())) {
+            throw new BusinessException(
+                    "Chỉ có thể thay đổi lịch đặt ở trạng thái pending. Hiện tại: " + booking.getStatus(),
+                    HttpStatus.CONFLICT);
+        }
+
+        TimeSlot newSlot = timeSlotRepository.findById(request.getNewSlotId())
+                .orElseThrow(() -> new ResourceNotFoundException("TimeSlot", "id", request.getNewSlotId()));
+
+        if (!newSlot.hasCapacity()) {
+            throw new BusinessException("Khung giờ mới đã đầy, vui lòng chọn khung giờ khác", HttpStatus.CONFLICT);
+        }
+
+        TimeSlot oldSlot = booking.getSlot();
+        oldSlot.decrementBookings();
+        timeSlotRepository.save(oldSlot);
+
+        newSlot.incrementBookings();
+        timeSlotRepository.save(newSlot);
+
+        booking.setSlot(newSlot);
+        if (request.getNote() != null) {
+            booking.setNote(request.getNote());
+        }
+
+        Booking saved = bookingRepository.save(booking);
+        List<BookingDetail> details = bookingDetailRepository.findByBooking(saved);
+        return bookingMapper.toResponse(saved, details);
     }
 
     // ── STATUS TRANSITIONS ───────────────────────────────────────────────────
