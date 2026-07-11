@@ -24,6 +24,7 @@ public class LoyaltyTierMapper {
             String previousTierName,
             LoyaltyTier matchedTier,
             Integer currentPoints,
+            Integer currentBalance,
             Integer totalVisits,
             BigDecimal totalSpending,
             String message
@@ -35,6 +36,7 @@ public class LoyaltyTierMapper {
                 .newTierId(matchedTier.getTierId())
                 .newTierName(matchedTier.getTierName())
                 .currentPoints(currentPoints != null ? currentPoints : 0)
+                .currentBalance(currentBalance != null ? currentBalance : 0)
                 .totalVisits(totalVisits != null ? totalVisits : 0)
                 .totalSpending(totalSpending != null ? totalSpending : BigDecimal.ZERO)
                 .message(message)

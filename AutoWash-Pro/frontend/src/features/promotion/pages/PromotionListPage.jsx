@@ -7,7 +7,11 @@ import {
   getMyRewards,
   redeemReward,
 } from "../../../api/customerRewardApi";
-import { evaluateCustomerTier } from "../../../api/loyaltyApi";
+import { getMyTier } from "../../../api/loyaltyApi";
+import {
+  getMyTransactionHistory,
+  getMyPointBalance,
+} from "../../../api/loyaltyTransactionApi";
 
 function PromotionListPage() {
   const navigate = useNavigate();
@@ -19,6 +23,9 @@ function PromotionListPage() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
   const [loyaltyInfo, setLoyaltyInfo] = useState(null);
+  const [pointBalance, setPointBalance] = useState(0);
+  const [pointHistory, setPointHistory] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
   const [animatedPoints, setAnimatedPoints] = useState(0);
 
   const customerId = localStorage.getItem("customerId");
@@ -62,17 +69,19 @@ function PromotionListPage() {
       setLoading(true);
       setMessage("");
 
-      const [promotionRes, rewardRes, voucherRes, loyaltyRes] =
+      const [promotionRes, rewardRes, voucherRes, loyaltyRes, balanceRes] =
         await Promise.allSettled([
           promotionApi.list(),
           getAllRewards(),
           customerId ? getMyRewards(customerId) : Promise.resolve([]),
-          customerId ? evaluateCustomerTier(customerId) : Promise.resolve(null),
+          getMyTier(),
+          getMyPointBalance(),
         ]);
 
       if (promotionRes.status === "fulfilled") {
         const rawPromotions = promotionRes.value?.data || promotionRes.value || [];
-        setLoyaltyInfo(rawLoyalty);
+        const rawTier = loyaltyRes.status === "fulfilled" ? (loyaltyRes.value?.data || loyaltyRes.value || null) : null;
+        setLoyaltyInfo(rawTier);
 
         const mappedPromotions = Array.isArray(rawPromotions)
           ? rawPromotions.map(mapPromotion)
@@ -90,6 +99,11 @@ function PromotionListPage() {
         const rawVouchers = voucherRes.value?.data || voucherRes.value || [];
         setMyVouchers(Array.isArray(rawVouchers) ? rawVouchers : []);
       }
+
+      if (balanceRes.status === "fulfilled") {
+        const data = balanceRes.value?.data || balanceRes.value || {};
+        setPointBalance(Number(data.currentPoints || data.points || 0));
+      }
     } catch (error) {
       console.error("Load offer center error:", error);
       setMessage("Không thể tải dữ liệu ưu đãi. Vui lòng thử lại.");
@@ -106,9 +120,22 @@ function PromotionListPage() {
         ? `${value}%`
         : formatMoney(value);
 
+    const vehicleLabel =
+      promotion.vehicleType === null
+        ? "Tất cả xe"
+        : promotion.vehicleType === "sedan"
+        ? "Xe 4 chỗ"
+        : promotion.vehicleType === "suv"
+        ? "Xe 7 chỗ"
+        : promotion.vehicleType === "truck"
+        ? "Xe bán tải"
+        : promotion.vehicleType === "minivan"
+        ? "Xe gia đình"
+        : promotion.vehicleType || "Tất cả xe";
+
     return {
       id: promotion.promotionId || promotion.id,
-      title: promotion.title || promotion.name || "Khuyến mãi đặc biệt",
+      title: promotion.title || promotion.promotionName || "Khuyến mãi đặc biệt",
       description:
         promotion.description ||
         "Ưu đãi hấp dẫn từ WashFlow Pro dành cho khách hàng.",
@@ -117,8 +144,12 @@ function PromotionListPage() {
       expiredDate: promotion.endDate
         ? new Date(promotion.endDate).toLocaleDateString("vi-VN")
         : "Vô thời hạn",
-      status: promotion.status === "ACTIVE" ? "available" : "expired",
-      tag: promotion.vehicleType || "Tất cả xe",
+      status: promotion.status === "active" ? "available" : "expired",
+      tag: vehicleLabel,
+      minOrderValue: promotion.minOrderValue || 0,
+      discountType: promotion.discountType || "PERCENT",
+      targetTierName: promotion.targetTierName || null,
+      usageLimit: promotion.usageLimit || null,
     };
   }
 
@@ -131,7 +162,12 @@ function PromotionListPage() {
     try {
       setMessage("");
 
-      await redeemReward(rewardId, customerId);
+      const res = await redeemReward(rewardId, customerId);
+      const data = res?.data || res || {};
+
+      if (data.remainingPoints !== undefined) {
+        setPointBalance(Number(data.remainingPoints));
+      }
 
       const voucherData = await getMyRewards(customerId);
       const nextVouchers = voucherData?.data || voucherData || [];
@@ -150,11 +186,24 @@ function PromotionListPage() {
     }
   }
 
+  function handleUsePromotion(promotion) {
+    if (promotion.status !== "available") {
+      return;
+    }
+
+    localStorage.setItem("selectedPromotionId", promotion.id);
+    localStorage.setItem("selectedPromotionDiscount", promotion.discount);
+    localStorage.setItem("selectedPromotionCode", promotion.code);
+
+    navigate("/customer/booking");
+  }
+
   function handleUseVoucher(voucher) {
     if (voucher.status !== "UNUSED") {
       return;
     }
 
+    localStorage.setItem("selectedRewardId", voucher.rewardId);
     localStorage.setItem("selectedVoucherCode", voucher.voucherCode);
     localStorage.setItem("selectedVoucherValue", voucher.discountValue || 0);
 
@@ -201,13 +250,36 @@ function PromotionListPage() {
     }
   }
 
+  async function loadPointHistory() {
+    if (historyLoading) return;
+    setHistoryLoading(true);
+    try {
+      const res = await getMyTransactionHistory();
+      const list = res?.data || res || [];
+      setPointHistory(Array.isArray(list) ? list : []);
+    } catch (err) {
+      console.error("Load point history error:", err);
+      setPointHistory([]);
+    } finally {
+      setHistoryLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (!loading && customerId) {
+      loadPointHistory();
+    }
+  }, [loading]);
+
   function getCurrentPoints() {
-    return Number(
+    const balance =
+      pointBalance ||
+      loyaltyInfo?.currentBalance ||
       loyaltyInfo?.currentPoints ||
-        loyaltyInfo?.totalPoints ||
-        loyaltyInfo?.points ||
-        0
-    );
+      loyaltyInfo?.points ||
+      0;
+
+    return Number(balance);
   }
 
   function getCurrentVisits() {
@@ -220,10 +292,9 @@ function PromotionListPage() {
 
   function getCurrentTierName() {
     return (
-      loyaltyInfo?.currentTierName ||
-      loyaltyInfo?.newTierName ||
       loyaltyInfo?.tierName ||
-      getTierName()
+        loyaltyInfo?.newTierName ||
+        getTierName()
     );
   }
 
@@ -343,7 +414,12 @@ function PromotionListPage() {
               <button
                 type="button"
                 className="offer-secondary-btn"
-                onClick={() => setActiveTab("vouchers")}
+                onClick={() => {
+                  setActiveTab("vouchers");
+                  setTimeout(() => {
+                    document.querySelector(".offer-tabs-panel")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                  }, 100);
+                }}
               >
                 Xem voucher của tôi
               </button>
@@ -374,7 +450,7 @@ function PromotionListPage() {
 
             <div className="member-point-row">
               <strong>
-                {formatPoint(localStorage.getItem("totalPoints") || 0)}
+                {formatPoint(pointBalance)}
               </strong>
               <span>điểm</span>
             </div>
@@ -395,7 +471,7 @@ function PromotionListPage() {
                 <strong>WF-{customerId || "0000"}-2026</strong>
               </div>
 
-              <button type="button">Chi tiết quyền lợi</button>
+              <button type="button" onClick={() => navigate("/customer/rewards")}>Chi tiết quyền lợi</button>
             </div>
           </div>
 
@@ -525,23 +601,31 @@ function PromotionListPage() {
                     <strong>{promotion.expiredDate}</strong>
                   </div>
 
-                  <Link
-                    to="/customer/booking"
+                  <div className="promo-meta">
+                    <span>Điều kiện</span>
+                    <strong>
+                      {promotion.targetTierName
+                        ? `Hạng ${promotion.targetTierName}`
+                        : "Mọi hạng"}
+                      {promotion.minOrderValue > 0 &&
+                        ` · Đơn từ ${formatMoney(promotion.minOrderValue)}`}
+                    </strong>
+                  </div>
+
+                  <button
+                    type="button"
                     className={
                       promotion.status === "available"
                         ? "offer-card-btn"
                         : "offer-card-btn disabled"
                     }
-                    onClick={(event) => {
-                      if (promotion.status !== "available") {
-                        event.preventDefault();
-                      }
-                    }}
+                    disabled={promotion.status !== "available"}
+                    onClick={() => handleUsePromotion(promotion)}
                   >
                     {promotion.status === "available"
                       ? "Dùng ngay"
                       : "Đã hết hạn"}
-                  </Link>
+                  </button>
                 </article>
               ))}
             </div>
@@ -606,10 +690,15 @@ function PromotionListPage() {
                     <button
                       type="button"
                       className="offer-card-btn"
-                      disabled={reward.status !== "active"}
+                      disabled={reward.status !== "active" || pointBalance < reward.requiredPoints}
+                      title={
+                        pointBalance < reward.requiredPoints
+                          ? "Bạn không đủ điểm để đổi phần thưởng này"
+                          : ""
+                      }
                       onClick={() => handleRedeemReward(reward.rewardId)}
                     >
-                      Đổi ngay
+                      {pointBalance < reward.requiredPoints ? "Thiếu điểm" : "Đổi ngay"}
                     </button>
                   </div>
                 </article>
@@ -715,55 +804,65 @@ function PromotionListPage() {
           </div>
 
           <div className="point-history-card">
-            <table>
-              <thead>
-                <tr>
-                  <th>Ngày</th>
-                  <th>Hoạt động</th>
-                  <th>Loại</th>
-                  <th>Điểm</th>
-                  <th>Số dư sau</th>
-                </tr>
-              </thead>
+            {historyLoading ? (
+              <div className="history-loading-state">
+                <div className="offer-loading-spinner"></div>
+                <p>Đang tải lịch sử tích điểm...</p>
+              </div>
+            ) : pointHistory.length === 0 ? (
+              <div className="history-empty-state">
+                <p>Chưa có giao dịch tích điểm nào.</p>
+              </div>
+            ) : (
+              <>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Ngày</th>
+                      <th>Hoạt động</th>
+                      <th>Loại</th>
+                      <th>Điểm</th>
+                      <th>Số dư sau</th>
+                    </tr>
+                  </thead>
 
-              <tbody>
-                <tr>
-                  <td>03/07/2026</td>
-                  <td>Đổi thưởng: Voucher giảm 50k</td>
-                  <td>redeem</td>
-                  <td className="point-minus">-300</td>
-                  <td>1.300</td>
-                </tr>
+                  <tbody>
+                    {pointHistory.map((tx) => {
+                      const isEarn = tx.transactionType === "earn";
+                      return (
+                        <tr key={tx.loyaltyTransactionId}>
+                          <td>
+                            {tx.createdAt
+                              ? new Date(tx.createdAt).toLocaleDateString("vi-VN")
+                              : "---"}
+                          </td>
+                          <td>{tx.note || "Giao dịch điểm thưởng"}</td>
+                          <td>
+                            <span className={`tx-type-badge ${isEarn ? "earn" : "redeem"}`}>
+                              {isEarn ? "Cộng" : "Trừ"}
+                            </span>
+                          </td>
+                          <td className={isEarn ? "point-plus" : "point-minus"}>
+                            {isEarn ? "+" : ""}
+                            {formatPoint(Math.abs(tx.points))}
+                          </td>
+                          <td>{formatPoint(tx.balanceAfter)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
 
-                <tr>
-                  <td>02/07/2026</td>
-                  <td>Cộng điểm từ booking BK-20260702-86D31B</td>
-                  <td>earn</td>
-                  <td className="point-plus">+1.600</td>
-                  <td>1.900</td>
-                </tr>
-
-                <tr>
-                  <td>02/07/2026</td>
-                  <td>Cộng điểm từ booking BK-20260702-A2A20F</td>
-                  <td>earn</td>
-                  <td className="point-plus">+100</td>
-                  <td>300</td>
-                </tr>
-
-                <tr>
-                  <td>02/07/2026</td>
-                  <td>Cộng điểm từ booking BK-20260702-E6ABE9</td>
-                  <td>earn</td>
-                  <td className="point-plus">+100</td>
-                  <td>200</td>
-                </tr>
-              </tbody>
-            </table>
-
-            <button type="button" className="history-load-more">
-              Tải thêm lịch sử
-            </button>
+                <button
+                  type="button"
+                  className="history-load-more"
+                  onClick={loadPointHistory}
+                  disabled={historyLoading}
+                >
+                  {historyLoading ? "Đang tải..." : "Tải lại"}
+                </button>
+              </>
+            )}
           </div>
         </section>
       </main>

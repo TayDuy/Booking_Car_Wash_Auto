@@ -1,0 +1,118 @@
+.create-btn {
+  height: 42px;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: none;
+  border-radius: 12px;
+  background: #0052cc;
+  color: white;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.action-btn.edit {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.promotion-modal {
+  width: 760px;
+  max-width: calc(100vw - 32px);
+  background: white;
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 30px 80px rgba(15, 23, 42, 0.3);
+}
+
+.promotion-form {
+  padding: 24px;
+}
+
+.promotion-form .form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.promotion-form .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.promotion-form .form-group.full {
+  grid-column: span 2;
+}
+
+.promotion-form label {
+  color: #344054;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.promotion-form input,
+.promotion-form select,
+.promotion-form textarea {
+  padding: 0 12px;
+  border: 1px solid #d7dce4;
+  border-radius: 10px;
+  outline: none;
+  background: white;
+  font-size: 14px;
+}
+
+.promotion-form input,
+.promotion-form select {
+  height: 44px;
+}
+
+.promotion-form textarea {
+  padding-top: 12px;
+  resize: vertical;
+}
+
+.promotion-form input:focus,
+.promotion-form select:focus,
+.promotion-form textarea:focus {
+  border-color: #0052cc;
+  box-shadow: 0 0 0 4px rgba(0, 82, 204, 0.14);
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.cancel-modal-btn,
+.save-btn {
+  height: 42px;
+  padding: 0 18px;
+  border: none;
+  border-radius: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.cancel-modal-btn {
+  background: #f1f5f9;
+  color: #334155;
+}
+
+.save-btn {
+  background: #0052cc;
+  color: white;
+}
+
+@media (max-width: 720px) {
+  .promotion-form .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .promotion-form .form-group.full {
+    grid-column: span 1;
+  }
+}

@@ -1,11 +1,13 @@
 package com.autowash.backend.servicepackage.service.impl;
 
+import com.autowash.backend.servicepackage.dto.ServicePackageDetailResponseDTO;
 import com.autowash.backend.servicepackage.dto.ServicePackageRequestDTO;
 import com.autowash.backend.servicepackage.dto.ServicePackageResponseDTO;
 import com.autowash.backend.servicepackage.entity.ServicePackage;
 import com.autowash.backend.servicepackage.mapper.ServicePackageMapper;
 import com.autowash.backend.servicepackage.repository.ServicePackageRepository;
 import com.autowash.backend.servicepackage.service.ServicePackageService;
+import com.autowash.backend.serviceprice.service.ServicePriceService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,6 +27,7 @@ public class ServicePackageServiceImpl implements ServicePackageService {
 
     private final ServicePackageRepository repository;
     private final ServicePackageMapper mapper;
+    private final ServicePriceService priceService;
 
     @Override
     public List<ServicePackageResponseDTO> getAllActive() {
@@ -46,6 +49,23 @@ public class ServicePackageServiceImpl implements ServicePackageService {
     public ServicePackageResponseDTO getById(Integer id) {
         ServicePackage entity = findOrThrow(id);
         return mapper.toResponse(entity);
+    }
+
+    @Override
+    public ServicePackageDetailResponseDTO getDetailById(Integer id) {
+        ServicePackage entity = findOrThrow(id);
+        ServicePackageResponseDTO base = mapper.toResponse(entity);
+        return ServicePackageDetailResponseDTO.builder()
+                .serviceId(base.getServiceId())
+                .serviceName(base.getServiceName())
+                .description(base.getDescription())
+                .basePrice(base.getBasePrice())
+                .durationMinutes(base.getDurationMinutes())
+                .isActive(base.getIsActive())
+                .createdAt(base.getCreatedAt())
+                .updatedAt(base.getUpdatedAt())
+                .prices(priceService.getPricesByService(id))
+                .build();
     }
 
     @Override

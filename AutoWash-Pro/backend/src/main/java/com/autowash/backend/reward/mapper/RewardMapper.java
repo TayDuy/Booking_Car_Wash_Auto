@@ -30,6 +30,7 @@ public class RewardMapper {
                 .requiredPoints(dto.getRequiredPoints())
                 .rewardType(dto.getRewardType())
                 .rewardValue(dto.getRewardValue())
+                .requiredTierLevel(dto.getRequiredTierLevel())
                 // Fallback về default nếu client không gửi vehicleType
                 .vehicleType(dto.getVehicleType() != null
                         ? dto.getVehicleType()
@@ -54,6 +55,7 @@ public class RewardMapper {
                 .requiredPoints(reward.getRequiredPoints())
                 .rewardType(reward.getRewardType())
                 .rewardValue(reward.getRewardValue())
+                .requiredTierLevel(reward.getRequiredTierLevel())
                 .vehicleType(reward.getVehicleType())
                 .status(reward.getStatus())
                 .createdAt(reward.getCreatedAt())
@@ -77,5 +79,6 @@ public class RewardMapper {
         if (dto.getRewardValue() != null)    reward.setRewardValue(dto.getRewardValue());
         if (dto.getVehicleType() != null)    reward.setVehicleType(dto.getVehicleType());
         if (dto.getStatus() != null)         reward.setStatus(dto.getStatus());
+        if (dto.getRequiredTierLevel() != null) reward.setRequiredTierLevel(dto.getRequiredTierLevel());
     }
 }

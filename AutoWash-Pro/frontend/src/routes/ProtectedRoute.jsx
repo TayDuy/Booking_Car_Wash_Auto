@@ -1,16 +1,18 @@
-import { Navigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 import useAuth from "../hooks/useAuth";
 
 function ProtectedRoute({ children, allowedRoles }) {
   const auth = useAuth();
   const token = auth?.token;
   const user = auth?.user;
+  const location = useLocation();
 
   if (!token) {
-    return <Navigate to="/auth/login" replace />;
+    const redirectParam = encodeURIComponent(location.pathname + location.search);
+    return <Navigate to={`/auth/login?redirect=${redirectParam}`} replace />;
   }
 
-  if (allowedRoles && allowedRoles.length) {
+  if (allowedRoles?.length) {
     const userRoleUpper = user?.role?.toUpperCase();
     const hasRole = allowedRoles.some(r => r.toUpperCase() === userRoleUpper);
     if (!hasRole) {

@@ -29,6 +29,13 @@ function LoginPage() {
   };
 
   const redirectByRole = (role) => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const redirectUrl = searchParams.get("redirect");
+    if (redirectUrl) {
+      navigate(redirectUrl, { replace: true });
+      return;
+    }
+
     const normalizedRole = String(role || "").toUpperCase();
 
     if (normalizedRole === "ADMIN") {
@@ -36,7 +43,7 @@ function LoginPage() {
       return;
     }
 
-    if (normalizedRole === "MANAGER") {
+    if (normalizedRole === "MANAGER" || normalizedRole === "STAFF") {
       navigate("/manager/dashboard", { replace: true });
       return;
     }
@@ -45,8 +52,6 @@ function LoginPage() {
   };
 
   const handleLoginSuccess = (result) => {
-    console.log("Login success result:", result);
-
     saveAuth(result);
     if (auth) {
       auth.setToken(result.accessToken);
@@ -61,9 +66,6 @@ function LoginPage() {
 
     const savedToken = localStorage.getItem("token");
     const savedRole = localStorage.getItem("role");
-
-    console.log("Saved token:", savedToken);
-    console.log("Saved role:", savedRole);
 
     if (!savedToken) {
       setErrorMessage("Đăng nhập thành công nhưng chưa lưu được token.");

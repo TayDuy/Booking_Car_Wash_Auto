@@ -1,6 +1,7 @@
 package com.autowash.backend.common.exception;
 
 import com.autowash.backend.common.dto.ApiResponse;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -11,6 +12,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -42,6 +44,22 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(ex.getHttpStatus())                                        // HTTP status lấy từ exception
                 .body(ApiResponse.error(ex.getHttpStatus().value(), ex.getMessage()));
+    }
+
+    /**
+     * Xử lý lỗi không tìm thấy entity trong DB.
+     *
+     * <p>{@link EntityNotFoundException} được dùng ở nhiều service (BranchServiceImpl,
+     * PromotionServiceImpl, LoyaltyTierEvaluationServiceImpl, ...) để thông báo
+     * không tìm thấy entity cần xử lý. Nếu không có handler riêng, exception này
+     * sẽ rơi vào catch-all → trả HTTP 500 thay vì 404 hợp lý.</p>
+     */
+    @ExceptionHandler(EntityNotFoundException.class)
+    public ResponseEntity<ApiResponse<Void>> handleEntityNotFoundException(EntityNotFoundException ex) {
+        log.warn("EntityNotFoundException: {}", ex.getMessage());
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(ApiResponse.error(404, ex.getMessage()));
     }
 
     /**
@@ -142,6 +160,14 @@ public class GlobalExceptionHandler {
         );
     }
 
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiResponse<Void>> handleHttpMessageNotReadable(
+            HttpMessageNotReadableException ex) {
+        log.warn("HttpMessageNotReadable: {}", ex.getMessage());
+        return ResponseEntity.badRequest()
+                .body(ApiResponse.error(400, "Dữ liệu đầu vào không hợp lệ hoặc thiếu body"));
+    }
+
     /**
      * Fallback — xử lý mọi exception chưa được catch ở các handler trên.
      *
@@ -155,6 +181,28 @@ public class GlobalExceptionHandler {
      * <p>Không trả {@code ex.getMessage()} ra client để tránh lộ
      * thông tin nội bộ (tên class, SQL, đường dẫn file, ...).</p>
      */
+
+    @ExceptionHandler(org.springframework.orm.ObjectOptimisticLockingFailureException.class)
+    public ResponseEntity<ApiResponse<Void>> handleOptimisticLock(
+            org.springframework.orm.ObjectOptimisticLockingFailureException ex) {
+        log.warn("OptimisticLock: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ApiResponse.error(409, "Dữ liệu đã thay đổi, vui lòng thử lại"));
+    }
+
+    /**
+     * Xử lý lỗi vi phạm ràng buộc dữ liệu (ví dụ: unique constraint, duplicate payment race).
+     * Trả HTTP 409 Conflict.
+     */
+    @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
+    public ResponseEntity<ApiResponse<Void>> handleDataIntegrityViolationException(
+            org.springframework.dao.DataIntegrityViolationException ex) {
+        log.warn("DataIntegrityViolationException: {}", ex.getMessage());
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(ApiResponse.error(409, "Dữ liệu bị trùng lặp hoặc vi phạm ràng buộc cơ sở dữ liệu"));
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleGenericException(Exception ex) {
         // log.error với stacktrace đầy đủ để debug

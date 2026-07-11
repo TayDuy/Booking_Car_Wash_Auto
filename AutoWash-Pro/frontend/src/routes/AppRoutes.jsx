@@ -18,10 +18,14 @@ import BookingHistory from "../features/booking/pages/BookingHistory";
 import ProfilePage from "../features/customer/pages/ProfilePage";
 import CustomerNotificationPage from "../features/customer/pages/CustomerNotificationPage";
 import SupportPage from "../features/customer/pages/Helpcenter";
+import ServicesPage from "../features/services/pages/ServicesPage";
 
 import BookingPage from "../features/booking/pages/BookingPage";
-import BookingDetailPage from "../features/booking/pages/BookingDetailPage";
 import BookingSuccessPage from "../features/booking/pages/BookingSuccessPage";
+import BookingDetailPage from "../features/booking/pages/BookingDetailPage";
+
+import PaymentPage from "../features/payment/pages/PaymentPage";
+import PaymentSuccessPage from "../features/payment/pages/PaymentSuccessPage";
 
 import PromotionListPage from "../features/promotion/pages/PromotionListPage";
 import RewardsPage from "../features/loyalty/pages/RewardsPage";
@@ -33,6 +37,9 @@ import ManagePromotionsPage from "../features/admin/pages/ManagePromotionsPage";
 import ManageVehiclesPage from "../features/admin/pages/ManageVehiclesPage";
 import AdminNotificationPage from "../features/admin/pages/AdminNotificationPage";
 import ReportsPage from "../features/admin/pages/ReportsPage";
+import AuditLogsPage from "../features/admin/pages/AuditLogsPage";
+import ManageBranchesPage from "../features/admin/pages/ManageBranchesPage";
+import ManageServicesPage from "../features/admin/pages/ManageServicesPage";
 
 import ManagerDashboardPage from "../features/manager/pages/ManagerDashboardPage";
 import ManagerBookingsPage from "../features/manager/pages/ManagerBookingsPage";
@@ -47,6 +54,9 @@ function AppRoutes() {
     <Routes>
       {/* Landing page */}
       <Route path="/" element={<LandingPage />} />
+
+      {/* Public Services Showcase */}
+      <Route path="/services" element={<ServicesPage />} />
 
       {/* Unauthorized page */}
       <Route path="/unauthorized" element={<UnauthorizedPage />} />
@@ -70,6 +80,7 @@ function AppRoutes() {
       >
         <Route index element={<Navigate to="home" replace />} />
         <Route path="home" element={<HomePage />} />
+        <Route path="services" element={<ServicesPage />} />
         <Route path="booking" element={<BookingPage />} />
         <Route path="booking/success" element={<BookingSuccessPage />} />
         <Route path="booking/:bookingId" element={<BookingDetailPage />} />
@@ -79,6 +90,8 @@ function AppRoutes() {
         <Route path="profile" element={<ProfilePage />} />
         <Route path="notifications" element={<CustomerNotificationPage />} />
         <Route path="support" element={<SupportPage />} />
+        <Route path="payment" element={<PaymentPage />} />
+        <Route path="payment/success" element={<PaymentSuccessPage />} />
       </Route>
 
       {/* Admin routes */}
@@ -96,15 +109,18 @@ function AppRoutes() {
         <Route path="customers" element={<ManageCustomersPage />} />
         <Route path="promotions" element={<ManagePromotionsPage />} />
         <Route path="vehicles" element={<ManageVehiclesPage />} />
+        <Route path="branches" element={<ManageBranchesPage />} />
+        <Route path="services" element={<ManageServicesPage />} />
         <Route path="notifications" element={<AdminNotificationPage />} />
         <Route path="reports" element={<ReportsPage />} />
+        <Route path="audit-logs" element={<AuditLogsPage />} />
       </Route>
 
       {/* Manager routes */}
       <Route
         path="/manager"
         element={
-          <ProtectedRoute allowedRoles={["MANAGER"]}>
+          <ProtectedRoute allowedRoles={["MANAGER", "STAFF"]}>
             <ManagerLayout />
           </ProtectedRoute>
         }

@@ -8,6 +8,8 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
+import static java.math.BigDecimal.ZERO;
+
 @Entity
 @Table(name = "customer")
 @NoArgsConstructor
@@ -41,14 +43,30 @@ public class Customer {
     private Integer tierId;
 
     @Column(name = "total_points", nullable = false)
-    private Integer totalPoints;
+    @Builder.Default
+    private Integer totalPoints = 0;
 
     @Column(name = "total_visits", nullable = false)
-    private Integer totalVisits;
+    @Builder.Default
+    private Integer totalVisits = 0;
 
     @Column(name = "total_spending", nullable = false)
-    private BigDecimal totalSpending;
+    @Builder.Default
+    private BigDecimal totalSpending = ZERO;
 
     @Column(name = "joined_at", nullable = false, insertable = false, updatable = false)
     private LocalDateTime joinedAt;
+
+    @PrePersist
+    protected void onCreate() {
+        if (this.totalPoints == null) {
+            this.totalPoints = 0;
+        }
+        if (this.totalVisits == null) {
+            this.totalVisits = 0;
+        }
+        if (this.totalSpending == null) {
+            this.totalSpending = ZERO;
+        }
+    }
 }

@@ -65,7 +65,7 @@ public class MailServiceImpl implements MailService {
     }
 
     @Override
-    @Async
+    @Async("mailTaskExecutor")
     public void sendBookingConfirmationEmail(
             String toEmail,
             String customerName,
@@ -104,7 +104,7 @@ public class MailServiceImpl implements MailService {
             NumberFormat currencyFormatter = NumberFormat.getCurrencyInstance(new Locale("vi", "VN"));
             String formattedPrice = currencyFormatter.format(totalPrice);
 
-            String ctaUrl = "http://localhost:5173/bookings";
+            String ctaUrl = "http://localhost:5173/customer/history";
 
             String safeCustomerName = HtmlUtils.htmlEscape(customerName);
             String safeBranchName = HtmlUtils.htmlEscape(branchName);
@@ -276,6 +276,29 @@ public class MailServiceImpl implements MailService {
             log.info("Đã gửi thành công email xác nhận đặt lịch đến {}", toEmail);
         } catch (Exception e) {
             log.error("Lỗi khi gửi email xác nhận đặt lịch đến {}: {}", toEmail, e.getMessage(), e);
+        }
+    }
+
+    @Override
+    @Async("mailTaskExecutor")
+    public void sendPasswordChangedEmail(String toEmail, String username) {
+        log.info("Bắt đầu gửi email thông báo đổi mật khẩu đến {}", toEmail);
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setTo(toEmail);
+            message.setSubject("Mật khẩu tài khoản của bạn đã được thay đổi - WashFlow Pro");
+            String content = String.format(
+                    "Xin chào %s,\n\nMật khẩu tài khoản WashFlow Pro của bạn vừa được thay đổi thành công.\n" +
+                    "Nếu không phải bạn thực hiện thay đổi này, vui lòng liên hệ ngay với bộ phận hỗ trợ của chúng tôi qua hotline 1900 8888 hoặc phản hồi email này để khóa tài khoản khẩn cấp.\n\n" +
+                    "Trân trọng,\nWashFlow Pro Team",
+                    username
+            );
+            message.setText(content);
+            message.setFrom(mailFrom);
+            mailSender.send(message);
+            log.info("Đã gửi thành công email thông báo đổi mật khẩu đến {}", toEmail);
+        } catch (Exception e) {
+            log.error("Lỗi khi gửi email thông báo đổi mật khẩu đến {}: {}", toEmail, e.getMessage(), e);
         }
     }
 }

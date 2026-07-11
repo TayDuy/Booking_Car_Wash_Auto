@@ -33,4 +33,6 @@ public interface UserRepository extends JpaRepository<User, Integer> {
     List<User> findByStatus(String status);
 
     Optional<User> findByPhone(String phone);
+
+    long countByRole(String role);
 }

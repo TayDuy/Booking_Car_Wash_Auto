@@ -23,8 +23,8 @@ public class CustomerRewardMapper {
                 .discountType(customerReward.getDiscountType())
                 .discountValue(customerReward.getDiscountValue())
                 .redeemedAt(customerReward.getRedeemedAt())
-                .expriedAt(customerReward.getExpiredAt())
-                .useAt(customerReward.getUsedAt())
+                .expiredAt(customerReward.getExpiredAt())
+                .usedAt(customerReward.getUsedAt())
                 .usedBookingId(customerReward.getUsedBookingId())
                 .build();
     }

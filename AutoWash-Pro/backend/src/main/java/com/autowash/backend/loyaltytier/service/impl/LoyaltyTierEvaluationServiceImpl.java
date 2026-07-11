@@ -3,6 +3,7 @@ package com.autowash.backend.loyaltytier.service.impl;
 import com.autowash.backend.customer.entity.Customer;
 import com.autowash.backend.customer.repository.CustomerRepository;
 import com.autowash.backend.loyaltytier.dto.CustomerTierEvaluationResponseDTO;
+import com.autowash.backend.loyaltytier.dto.CustomerTierResponseDTO;
 import com.autowash.backend.loyaltytier.entity.LoyaltyTier;
 import com.autowash.backend.loyaltytier.mapper.LoyaltyTierMapper;
 import com.autowash.backend.loyaltytier.repository.LoyaltyTierRepository;
@@ -36,6 +37,36 @@ public class LoyaltyTierEvaluationServiceImpl implements LoyaltyTierEvaluationSe
     private final LoyaltyTierRepository loyaltyTierRepository;
     private final LoyaltyTransactionRepository loyaltyTransactionRepository;
     private final LoyaltyTierMapper loyaltyTierMapper;
+
+    @Override
+    @Transactional(readOnly = true)
+    public CustomerTierResponseDTO getCustomerTierByUserId(Integer userId) {
+        Customer customer = customerRepository.findByUser_Id(userId)
+                .orElseThrow(() -> new EntityNotFoundException(
+                        "Customer khong ton tai voi userId = " + userId
+                ));
+
+        String tierName = null;
+        if (customer.getTierId() != null) {
+            LoyaltyTier tier = loyaltyTierRepository.findById(customer.getTierId()).orElse(null);
+            tierName = tier != null ? tier.getTierName() : null;
+        }
+
+        Integer currentBalance = loyaltyTransactionRepository
+                .findTopByCustomerIdOrderByCreatedAtDesc(customer.getCustomerId())
+                .map(LoyaltyTransaction::getBalanceAfter)
+                .orElse(0);
+
+        return CustomerTierResponseDTO.builder()
+                .customerId(customer.getCustomerId())
+                .tierId(customer.getTierId())
+                .tierName(tierName)
+                .currentPoints(customer.getTotalPoints())
+                .currentBalance(currentBalance)
+                .totalVisits(customer.getTotalVisits())
+                .totalSpending(customer.getTotalSpending())
+                .build();
+    }
 
     /**
      * CUSTOMER tự đánh giá hạng của chính mình.
@@ -105,11 +136,15 @@ public class LoyaltyTierEvaluationServiceImpl implements LoyaltyTierEvaluationSe
      *
      * Dù gọi bằng userId hay customerId thì cuối cùng cũng phải lấy ra Customer trước,
      * sau đó dùng customer.getCustomerId() để tính điểm, lượt, chi tiêu.
+     *
+     * - currentPoints dùng totalPoints (lifetime) để xét hạng — không bị ảnh hưởng khi redeem.
+     * - currentBalance riêng (từ transaction ledger) hiển thị số điểm khả dụng trên UI.
      */
     private CustomerTierEvaluationResponseDTO evaluateCustomer(Customer customer) {
         Integer customerId = customer.getCustomerId();
 
-        Integer currentPoints = getCurrentPoints(customerId);
+        Integer lifetimePoints = getLifetimePoints(customer);
+        Integer currentBalance = getCurrentBalance(customerId);
         Integer totalVisits = getTotalVisits(customer);
         BigDecimal totalSpending = getTotalSpending(customer);
 
@@ -122,7 +157,7 @@ public class LoyaltyTierEvaluationServiceImpl implements LoyaltyTierEvaluationSe
 
         LoyaltyTier matchedTier = findMatchedTier(
                 activeTiers,
-                currentPoints,
+                lifetimePoints,
                 totalVisits,
                 totalSpending
         );
@@ -144,11 +179,23 @@ public class LoyaltyTierEvaluationServiceImpl implements LoyaltyTierEvaluationSe
                 previousTierId,
                 previousTierName,
                 matchedTier,
-                currentPoints,
+                lifetimePoints,
+                currentBalance,
                 totalVisits,
                 totalSpending,
                 message
         );
+    }
+
+    private Integer getLifetimePoints(Customer customer) {
+        return customer.getTotalPoints() != null ? customer.getTotalPoints() : 0;
+    }
+
+    private Integer getCurrentBalance(Integer customerId) {
+        return loyaltyTransactionRepository
+                .findTopByCustomerIdOrderByCreatedAtDesc(customerId)
+                .map(LoyaltyTransaction::getBalanceAfter)
+                .orElse(0);
     }
 
     /**

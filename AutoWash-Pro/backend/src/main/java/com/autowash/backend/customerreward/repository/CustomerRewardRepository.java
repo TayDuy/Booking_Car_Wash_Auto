@@ -16,4 +16,6 @@ public interface CustomerRewardRepository extends JpaRepository<CustomerReward, 
             Integer customerId,
             String status
     );
+
+    Optional<CustomerReward> findByUsedBookingId(Integer usedBookingId);
 }

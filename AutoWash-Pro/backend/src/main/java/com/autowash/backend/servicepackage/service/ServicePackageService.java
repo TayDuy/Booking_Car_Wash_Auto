@@ -1,5 +1,6 @@
 package com.autowash.backend.servicepackage.service;
 
+import com.autowash.backend.servicepackage.dto.ServicePackageDetailResponseDTO;
 import com.autowash.backend.servicepackage.dto.ServicePackageRequestDTO;
 import com.autowash.backend.servicepackage.dto.ServicePackageResponseDTO;
 import java.util.List;
@@ -20,6 +21,11 @@ public interface ServicePackageService {
      * Lấy chi tiết 1 dịch vụ theo ID.
      */
     ServicePackageResponseDTO getById(Integer id);
+
+    /**
+     * Lấy chi tiết dịch vụ kèm bảng giá theo loại xe.
+     */
+    ServicePackageDetailResponseDTO getDetailById(Integer id);
 
     /**
      * Tạo mới dịch vụ. Throw nếu tên đã tồn tại.

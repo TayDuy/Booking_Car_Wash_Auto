@@ -49,6 +49,15 @@ public class PaymentResponseDTO {
     /** Thời điểm thanh toán thành công — null nếu chưa paid. */
     private LocalDateTime paidAt;
 
+    private String vnpayTransactionNo;
+    private String vnpayBankCode;
+    private String vnpayCardType;
+    private String vnpayResponseCode;
+
+    private String paypalOrderId;
+    private String paypalCaptureId;
+    private String paypalPayerEmail;
+
     /** Audit timestamps. */
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

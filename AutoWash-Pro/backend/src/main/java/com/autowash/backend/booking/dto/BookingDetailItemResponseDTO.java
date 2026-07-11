@@ -15,6 +15,8 @@ public class BookingDetailItemResponseDTO {
     private Integer bookingId;
     private Integer serviceId;
     private String serviceName;
+    private String description;
+    private Integer durationMinutes;
     private Integer quantity;
     private BigDecimal unitPrice;
     private BigDecimal subTotal;
@@ -25,6 +27,8 @@ public class BookingDetailItemResponseDTO {
                 .bookingId(detail.getBooking().getBookingId())
                 .serviceId(detail.getService().getServiceId())
                 .serviceName(detail.getService().getServiceName())
+                .description(detail.getService().getDescription())
+                .durationMinutes(detail.getService().getDurationMinutes())
                 .quantity(detail.getQuantity())
                 .unitPrice(detail.getUnitPrice())
                 .subTotal(detail.getSubTotal())

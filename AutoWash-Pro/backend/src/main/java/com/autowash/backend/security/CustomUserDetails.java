@@ -22,7 +22,7 @@ public class CustomUserDetails implements UserDetails {
         this.password = user.getPassword();
         this.enabled = "active".equalsIgnoreCase(user.getStatus());
         this.authorities = Collections.singletonList(
-                new SimpleGrantedAuthority("ROLE_" + user.getRole().toUpperCase())
+                new SimpleGrantedAuthority("ROLE_" + (user.getRole() != null ? user.getRole().toUpperCase() : "CUSTOMER"))
         );
     }
 

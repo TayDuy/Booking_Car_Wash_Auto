@@ -1,6 +1,6 @@
-import axiosClient from './axiosClient';
+import axiosClient, { API_BASE_URL } from './axiosClient';
 
-const BASE_URL = 'http://localhost:8080/api/v1/notifications';
+const BASE_URL = `${API_BASE_URL}/notifications`;
 
 export async function getAll(){
   const resp = await axiosClient.get('/notifications');
@@ -37,13 +37,64 @@ export async function markAllRead(){
   return resp.data;
 }
 
-export function subscribeSSE(onMessage){
-  const token = localStorage.getItem('token');
-  const headers = token ? `?token=${token}` : '';
-  const es = new EventSource(`${BASE_URL}/stream${headers}`);
-  es.onmessage = (e) => {
-    try{ const d = JSON.parse(e.data); onMessage(d); }catch(err){ console.warn('SSE parse', err); }
+export function subscribeSSE(onMessage) {
+  let es = null;
+  let active = true;
+  let retryCount = 0;
+  const MAX_RETRIES = 5;
+
+  const connect = async () => {
+    if (!active) return;
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      const resp = await axiosClient.post('/auth/sse-ticket');
+      const ticket = resp.data?.data || resp.data;
+
+      es = new EventSource(`${BASE_URL}/stream?ticket=${ticket}`);
+
+      es.onopen = () => {
+        retryCount = 0; // Reset on successful connection
+      };
+
+      es.onmessage = (e) => {
+        try {
+          const d = JSON.parse(e.data);
+          onMessage(d);
+        } catch (err) {
+          console.warn('SSE parse', err);
+        }
+      };
+
+      es.onerror = (err) => {
+        console.warn('SSE connection error. Closing and retrying...', err);
+        es.close();
+        handleRetry();
+      };
+    } catch (err) {
+      console.error('SSE ticket request failed.', err);
+      handleRetry();
+    }
   };
-  es.onerror = (err) => { console.warn('SSE error', err); };
-  return es;
+
+  const handleRetry = () => {
+    if (retryCount >= MAX_RETRIES) {
+      console.warn(`SSE subscription: reached max retry limit (${MAX_RETRIES}). Stopping auto-reconnect.`);
+      return;
+    }
+    retryCount++;
+    const delay = Math.min(30000, 1000 * Math.pow(2, retryCount)); // Exponential backoff: 2s, 4s, 8s, 16s, 30s
+    console.log(`SSE reconnecting in ${delay / 1000}s (attempt ${retryCount}/${MAX_RETRIES})...`);
+    setTimeout(connect, delay);
+  };
+
+  connect();
+
+  return {
+    close: () => {
+      active = false;
+      if (es) es.close();
+    }
+  };
 }

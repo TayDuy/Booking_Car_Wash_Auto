@@ -33,9 +33,9 @@ public class CustomerRewardResponseDTO {
 
     private LocalDateTime redeemedAt;
 
-    private LocalDateTime expriedAt;
+    private LocalDateTime expiredAt;
 
-    private LocalDateTime useAt;
+    private LocalDateTime usedAt;
 
     private Integer usedBookingId;
 }
