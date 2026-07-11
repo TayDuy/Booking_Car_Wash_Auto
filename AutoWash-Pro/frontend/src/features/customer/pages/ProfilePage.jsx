@@ -13,6 +13,7 @@ const ProfilePage = () => {
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [showAddVehicleModal, setShowAddVehicleModal] = useState(false);
+  const [editingVehicle, setEditingVehicle] = useState(null); // vehicle object đang chỉnh sửa
   
   const [user, setUser] = useState({
     customerId: null,
@@ -94,7 +95,7 @@ const ProfilePage = () => {
 
         // Load bookings
         try {
-          const bookRes = await bookingApi.myBookings();
+          const bookRes = await bookingApi.myBookings(userData.customerId);
           if (bookRes.data) {
             setBookings(bookRes.data);
           }
@@ -253,6 +254,40 @@ const ProfilePage = () => {
     } catch (err) {
       console.error('Lỗi khi thay đổi trạng thái xe:', err);
       alert(err.response?.data?.message || `Không thể ${actionText} phương tiện. Vui lòng thử lại.`);
+    }
+  };
+
+  // Edit Vehicle Handler
+  const handleEditVehicle = async (e) => {
+    e.preventDefault();
+    if (!editingVehicle) return;
+
+    const trimmedPlate = (editingVehicle.licensePlate || '').trim().toUpperCase();
+    const platePattern = /^[0-9]{2}[A-Z]-[0-9]{3,5}(\.[0-9]{1,2})?$/;
+    if (!platePattern.test(trimmedPlate)) {
+      alert('Biển số xe phải đúng định dạng (VD: 51A-12345)');
+      return;
+    }
+    if (!editingVehicle.brand?.trim() || !editingVehicle.model?.trim()) {
+      alert('Hãng xe và dòng xe không được để trống.');
+      return;
+    }
+    try {
+      const res = await vehicleApi.update(editingVehicle.vehicleId, {
+        licensePlate: trimmedPlate,
+        brand: editingVehicle.brand,
+        model: editingVehicle.model,
+        vehicleType: editingVehicle.vehicleType,
+        color: editingVehicle.color,
+        nickname: editingVehicle.nickname,
+      });
+      if (res.data) {
+        setVehicles(prev => prev.map(v => v.vehicleId === editingVehicle.vehicleId ? res.data : v));
+        setEditingVehicle(null);
+        alert('Cập nhật xe thành công!');
+      }
+    } catch (err) {
+      alert(err.response?.data?.message || 'Cập nhật xe thất bại.');
     }
   };
 
@@ -481,6 +516,10 @@ const ProfilePage = () => {
                         <div className="vehicle-footer">
                           <span className="vehicle-date">{vehicle.color ? `Màu: ${vehicle.color}` : 'Chưa nhập màu'}</span>
                           <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <button className="btn-edit" style={{ padding: '4px 10px', fontSize: '12px' }} onClick={() => setEditingVehicle({ ...vehicle })}>
+                              <span className="material-symbols-outlined icon-small">edit</span>
+                              <span>Sửa</span>
+                            </button>
                             <button 
                               className={`vehicle-status-toggle ${vehicle.isActive ? 'active' : 'inactive'}`} 
                               onClick={() => handleToggleActive(vehicle.vehicleId, vehicle.isActive)}
@@ -750,6 +789,83 @@ const ProfilePage = () => {
             <div className="modal-footer">
               <button type="button" className="btn-secondary" onClick={() => setShowAddVehicleModal(false)}>Hủy</button>
               <button type="submit" className="btn-primary">Đăng ký xe</button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Edit Vehicle Modal */}
+      {editingVehicle && (
+        <div className="modal-overlay">
+          <form className="modal-content" onSubmit={handleEditVehicle}>
+            <div className="modal-header">
+              <h3 className="modal-title">
+                <span className="material-symbols-outlined">edit</span>
+                Chỉnh sửa xe
+              </h3>
+              <button type="button" className="btn-close" onClick={() => setEditingVehicle(null)}>
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            <div className="modal-body">
+              <div className="form-group">
+                <label>Biển số xe*</label>
+                <input 
+                  type="text" className="form-input"
+                  value={editingVehicle.licensePlate} 
+                  onChange={e => setEditingVehicle({...editingVehicle, licensePlate: e.target.value})} 
+                  required 
+                />
+              </div>
+              <div className="form-group">
+                <label>Hãng xe*</label>
+                <input 
+                  type="text" className="form-input"
+                  value={editingVehicle.brand} 
+                  onChange={e => setEditingVehicle({...editingVehicle, brand: e.target.value})} 
+                  required 
+                />
+              </div>
+              <div className="form-group">
+                <label>Dòng xe*</label>
+                <input 
+                  type="text" className="form-input"
+                  value={editingVehicle.model} 
+                  onChange={e => setEditingVehicle({...editingVehicle, model: e.target.value})} 
+                  required 
+                />
+              </div>
+              <div className="form-group">
+                <label>Loại xe*</label>
+                <select 
+                  className="form-select"
+                  value={editingVehicle.vehicleType} 
+                  onChange={e => setEditingVehicle({...editingVehicle, vehicleType: e.target.value})}
+                >
+                  <option value="car">Xe 4 chỗ</option>
+                  <option value="suv">Xe 7 chỗ</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Màu sắc</label>
+                <input 
+                  type="text" className="form-input"
+                  value={editingVehicle.color || ''} 
+                  onChange={e => setEditingVehicle({...editingVehicle, color: e.target.value})} 
+                />
+              </div>
+              <div className="form-group">
+                <label>Tên gọi / Nickname</label>
+                <input 
+                  type="text" className="form-input"
+                  value={editingVehicle.nickname || ''} 
+                  onChange={e => setEditingVehicle({...editingVehicle, nickname: e.target.value})} 
+                />
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="btn-secondary" onClick={() => setEditingVehicle(null)}>Hủy</button>
+              <button type="submit" className="btn-primary">Lưu thay đổi</button>
             </div>
           </form>
         </div>
