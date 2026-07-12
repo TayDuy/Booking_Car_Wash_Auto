@@ -862,6 +862,7 @@ export default function BookingPage() {
                         type="button"
                         className={`segment-btn ${vehicleType === "4_seats" ? "segment-active" : ""}`}
                         onClick={() => setVehicleType("4_seats")}
+                        disabled={!!selectedVehicleId}
                     >
                       <MdDirectionsCar className="car-icon" /> Xe 4 chỗ
                     </button>
@@ -869,10 +870,16 @@ export default function BookingPage() {
                         type="button"
                         className={`segment-btn ${vehicleType === "7_seats" ? "segment-active" : ""}`}
                         onClick={() => setVehicleType("7_seats")}
+                        disabled={!!selectedVehicleId}
                     >
                       <MdAirportShuttle className="car-icon" /> Xe 7 chỗ
                     </button>
                   </div>
+                  {selectedVehicleId && (
+                      <small className="vehicle-type-locked-hint" style={{ display: 'block', marginTop: '6px', fontSize: '11px', color: '#64748b' }}>
+                        Loại xe và hãng xe theo hồ sơ xe đã lưu. Để đổi, vui lòng nhập biển số xe khác.
+                      </small>
+                  )}
                 </div>
               </div>
               <div className="form-field-group full-width-field">
@@ -882,6 +889,7 @@ export default function BookingPage() {
                     placeholder="Ví dụ: Toyota, Honda, Mazda..."
                     value={brand}
                     onChange={(e) => setBrand(e.target.value)}
+                    disabled={!!selectedVehicleId}
                 />
               </div>
               <div className="form-field-group full-width-field">
