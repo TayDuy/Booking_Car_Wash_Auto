@@ -559,7 +559,7 @@ function PromotionListPage() {
               <span>★</span>
               <div>
                 <strong>Đổi điểm</strong>
-                <small>{rewards.length} phần thưởng</small>
+                <small>{rewardPreview.length} phần thưởng</small>
               </div>
             </button>
 
