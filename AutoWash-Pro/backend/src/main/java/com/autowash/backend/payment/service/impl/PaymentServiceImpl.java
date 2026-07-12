@@ -351,9 +351,11 @@ public class PaymentServiceImpl implements PaymentService {
         // FR-7: Tích điểm loyalty
         earnLoyaltyPoints(saved);
 
-        // Cập nhật total_spending của customer
+        // Cập nhật total_spending và total_visits của customer
         Customer customer = saved.getBooking().getCustomer();
         customer.setTotalSpending(customer.getTotalSpending().add(saved.getFinalAmount()));
+        int currentVisits = customer.getTotalVisits() != null ? customer.getTotalVisits() : 0;
+        customer.setTotalVisits(currentVisits + 1);
         customerRepository.save(customer);
 
         // Gửi email xác nhận sau khi thanh toán thành công
