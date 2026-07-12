@@ -148,6 +148,7 @@ function PromotionListPage() {
       tag: vehicleLabel,
       minOrderValue: promotion.minOrderValue || 0,
       discountType: promotion.discountType || "PERCENT",
+      targetTierId: promotion.targetTierId || null,
       targetTierName: promotion.targetTierName || null,
       usageLimit: promotion.usageLimit || null,
     };
@@ -370,6 +371,19 @@ function PromotionListPage() {
       missingVisits: Math.max(0, nextTier.minVisits - visits),
       missingSpending: Math.max(0, nextTier.minSpending - spending),
     };
+  }
+
+  function isPromotionApplicableForUser(promotion) {
+    if (!loyaltyInfo) return true;
+    if (!promotion.targetTierId) return true;
+
+    const userTierId = Number(
+      loyaltyInfo.tierId || 
+      loyaltyInfo.newTierId || 
+      1
+    );
+
+    return userTierId >= promotion.targetTierId;
   }
 
   const voucherStats = useMemo(() => {
@@ -623,16 +637,18 @@ function PromotionListPage() {
                   <button
                     type="button"
                     className={
-                      promotion.status === "available"
+                      promotion.status === "available" && isPromotionApplicableForUser(promotion)
                         ? "offer-card-btn"
                         : "offer-card-btn disabled"
                     }
-                    disabled={promotion.status !== "available"}
+                    disabled={promotion.status !== "available" || !isPromotionApplicableForUser(promotion)}
                     onClick={() => handleUsePromotion(promotion)}
                   >
-                    {promotion.status === "available"
-                      ? "Dùng ngay"
-                      : "Đã hết hạn"}
+                    {promotion.status !== "available"
+                      ? "Đã hết hạn"
+                      : !isPromotionApplicableForUser(promotion)
+                      ? `Yêu cầu Hạng ${promotion.targetTierName}`
+                      : "Dùng ngay"}
                   </button>
                 </article>
               ))}
