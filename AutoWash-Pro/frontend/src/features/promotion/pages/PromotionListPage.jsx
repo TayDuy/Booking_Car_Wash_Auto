@@ -139,7 +139,7 @@ function PromotionListPage() {
       description:
         promotion.description ||
         "Ưu đãi hấp dẫn từ WashFlow Pro dành cho khách hàng.",
-      code: promotion.code || promotion.promotionCode || "WFPVOUCHER",
+      code: promotion.code || promotion.promotionCode || `KM-AUTO-${promotion.promotionId || promotion.id || ""}`,
       discount,
       expiredDate: promotion.endDate
         ? new Date(promotion.endDate).toLocaleDateString("vi-VN")
