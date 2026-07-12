@@ -312,20 +312,20 @@ function PromotionListPage() {
       {
         name: "Silver",
         displayName: "Thành viên Bạc",
-        minVisits: 5,
-        minSpending: 1000000,
+        minVisits: 10,
+        minSpending: 2000000,
       },
       {
         name: "Gold",
         displayName: "Thành viên Vàng",
-        minVisits: 10,
-        minSpending: 3000000,
+        minVisits: 25,
+        minSpending: 5000000,
       },
       {
         name: "Platinum",
         displayName: "Thành viên Kim Cương",
-        minVisits: 20,
-        minSpending: 7000000,
+        minVisits: 60,
+        minSpending: 15000000,
       },
     ];
 
