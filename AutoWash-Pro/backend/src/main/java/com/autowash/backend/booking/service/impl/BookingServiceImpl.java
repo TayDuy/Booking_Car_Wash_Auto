@@ -126,6 +126,13 @@ public class BookingServiceImpl implements BookingService {
                         needsUpdate = true;
                     }
 
+                    // Đồng bộ hãng xe (brand) nếu có thay đổi từ người dùng
+                    if (request.getBrand() != null && !request.getBrand().trim().isEmpty() 
+                            && !request.getBrand().trim().equalsIgnoreCase(existing.getBrand())) {
+                        existing.setBrand(request.getBrand().trim());
+                        needsUpdate = true;
+                    }
+
                     return needsUpdate ? vehicleRepository.save(existing) : existing;
                 })
                 .orElseGet(() -> {
