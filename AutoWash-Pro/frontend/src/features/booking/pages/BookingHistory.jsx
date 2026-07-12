@@ -70,6 +70,13 @@ export default function BookingHistory() {
   };
 
   // ── Filter & search ────────────────────────────────────────
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeFilter, searchTerm]);
+
   const filtered = bookings.filter(b => {
     if (activeFilter !== 'all' && b.status !== activeFilter) return false;
     if (searchTerm) {
@@ -81,6 +88,9 @@ export default function BookingHistory() {
     }
     return true;
   });
+
+  const paginated = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  const totalPages = Math.ceil(filtered.length / itemsPerPage);
 
   const filterCount = (key) => key === 'all'
       ? bookings.length
@@ -226,7 +236,7 @@ export default function BookingHistory() {
               </div>
           ) : (
               <div className="bh-booking-list">
-                {filtered.map((booking, idx) => {
+                {paginated.map((booking, idx) => {
                   const statusCfg = STATUS_MAP[booking.status] || STATUS_MAP.pending;
                   const dateStr = booking.slotDate ? fmtDate(booking.slotDate) : fmtDate(booking.bookingDate);
                   const timeStr = fmtTime(booking.slotStartTime);
@@ -292,6 +302,38 @@ export default function BookingHistory() {
                       </div>
                   );
                 })}
+
+                {totalPages > 1 && (
+                  <div className="bh-pagination">
+                    <button
+                      className="bh-page-btn"
+                      disabled={currentPage === 1}
+                      onClick={() => setCurrentPage(prev => prev - 1)}
+                    >
+                      <span className="material-symbols-outlined">chevron_left</span>
+                      Trang trước
+                    </button>
+                    <div className="bh-page-numbers">
+                      {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                        <button
+                          key={page}
+                          className={`bh-page-num ${currentPage === page ? 'active' : ''}`}
+                          onClick={() => setCurrentPage(page)}
+                        >
+                          {page}
+                        </button>
+                      ))}
+                    </div>
+                    <button
+                      className="bh-page-btn"
+                      disabled={currentPage === totalPages}
+                      onClick={() => setCurrentPage(prev => prev + 1)}
+                    >
+                      Trang sau
+                      <span className="material-symbols-outlined">chevron_right</span>
+                    </button>
+                  </div>
+                )}
               </div>
           )}
         </div>
