@@ -299,46 +299,47 @@ function PromotionListPage() {
   }
 
   function getNextTierInfo() {
-    const points = getCurrentPoints();
     const visits = getCurrentVisits();
+    const spending = getTotalSpending();
 
     const tiers = [
       {
         name: "Member",
         displayName: "Thành viên",
-        minPoints: 0,
         minVisits: 0,
+        minSpending: 0,
       },
       {
         name: "Silver",
         displayName: "Thành viên Bạc",
-        minPoints: 1000,
         minVisits: 5,
+        minSpending: 1000000,
       },
       {
         name: "Gold",
         displayName: "Thành viên Vàng",
-        minPoints: 3000,
         minVisits: 10,
+        minSpending: 3000000,
       },
       {
         name: "Platinum",
         displayName: "Thành viên Kim Cương",
-        minPoints: 7000,
         minVisits: 20,
+        minSpending: 7000000,
       },
     ];
 
+    // Hạng tiếp theo là hạng đầu tiên mà cả số lượt rửa và số tiền chi tiêu đều chưa đạt ngưỡng
     const nextTier = tiers.find(
-      (tier) => points < tier.minPoints || visits < tier.minVisits
+      (tier) => visits < tier.minVisits && spending < tier.minSpending
     );
 
     if (!nextTier) {
       return {
         nextName: "Hạng cao nhất",
         progressPercent: 100,
-        missingPoints: 0,
         missingVisits: 0,
+        missingSpending: 0,
       };
     }
 
@@ -349,24 +350,25 @@ function PromotionListPage() {
 
     const previousTier = tiers[previousTierIndex];
 
-    const pointRange = nextTier.minPoints - previousTier.minPoints || 1;
-    const pointProgress =
-      ((points - previousTier.minPoints) / pointRange) * 100;
-
     const visitRange = nextTier.minVisits - previousTier.minVisits || 1;
     const visitProgress =
       ((visits - previousTier.minVisits) / visitRange) * 100;
 
+    const spendingRange = nextTier.minSpending - previousTier.minSpending || 1;
+    const spendingProgress =
+      ((spending - previousTier.minSpending) / spendingRange) * 100;
+
+    // Do áp dụng điều kiện thăng hạng OR nên tiến trình lấy giá trị max
     const progressPercent = Math.max(
       0,
-      Math.min(100, Math.floor(Math.min(pointProgress, visitProgress)))
+      Math.min(100, Math.floor(Math.max(visitProgress, spendingProgress)))
     );
 
     return {
       nextName: nextTier.displayName,
       progressPercent,
-      missingPoints: Math.max(0, nextTier.minPoints - points),
       missingVisits: Math.max(0, nextTier.minVisits - visits),
+      missingSpending: Math.max(0, nextTier.minSpending - spending),
     };
   }
 
@@ -460,9 +462,15 @@ function PromotionListPage() {
             </div>
 
             <p className="member-progress-text">
-              Còn {formatPoint(getNextTierInfo().missingPoints)} điểm và{" "}
-              {getNextTierInfo().missingVisits} lượt rửa để đạt{" "}
-              {getNextTierInfo().nextName}.
+              {getNextTierInfo().nextName === "Hạng cao nhất" ? (
+                "Bạn đã đạt hạng thành viên cao nhất!"
+              ) : (
+                <>
+                  Còn <strong>{getNextTierInfo().missingVisits} lượt rửa</strong> hoặc{" "}
+                  <strong>{formatMoney(getNextTierInfo().missingSpending)}</strong> chi tiêu để đạt{" "}
+                  <strong>{getNextTierInfo().nextName}</strong>.
+                </>
+              )}
             </p>
 
             <div className="member-card-footer">

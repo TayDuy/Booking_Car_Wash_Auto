@@ -1,5 +1,6 @@
 package com.autowash.backend.common.migration;
 
+import com.autowash.backend.loyaltytier.service.LoyaltyTierEvaluationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
@@ -12,6 +13,7 @@ import org.springframework.stereotype.Component;
 public class DatabaseMigrationRunner implements CommandLineRunner {
 
     private final JdbcTemplate jdbcTemplate;
+    private final LoyaltyTierEvaluationService loyaltyTierEvaluationService;
 
     @Override
     public void run(String... args) {
@@ -28,8 +30,13 @@ public class DatabaseMigrationRunner implements CommandLineRunner {
                          "WHERE c.total_visits IS NULL OR c.total_visits = 0";
             int rows = jdbcTemplate.update(sql);
             log.info("[Migration] Đồng bộ hoàn thành. Đã cập nhật total_visits cho {} khách hàng.", rows);
+
+            // Chạy re-evaluation cho tất cả các khách hàng sau khi cập nhật dữ liệu lịch sử
+            log.info("[Migration] Bắt đầu đánh giá lại hạng thành viên cho tất cả khách hàng...");
+            loyaltyTierEvaluationService.evaluateAllCustomers();
+            log.info("[Migration] Đánh giá lại hạng thành viên thành công.");
         } catch (Exception e) {
-            log.error("[Migration] Đồng bộ thất bại: {}", e.getMessage(), e);
+            log.error("[Migration] Đồng bộ/Đánh giá thất bại: {}", e.getMessage(), e);
         }
     }
 }
