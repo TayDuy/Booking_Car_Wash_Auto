@@ -638,41 +638,7 @@ function PaymentPage() {
                                 </label>
 
                                 <div className="reward-box-body">
-                                    <div className="promo-group">
-                                        <span className="promo-group-label">🎁 Khuyến mãi hệ thống</span>
-                                        {paymentPromotions.length === 0 ? (
-                                            <p className="promo-empty-text">Không có khuyến mãi nào</p>
-                                        ) : (
-                                            <div className="promo-list">
-                                                {paymentPromotions.map(p => {
-                                                    const id = String(p.promotionId || p.id);
-                                                    const pv = p.value || p.discountValue || 0;
-                                                    const label = p.discountType?.toUpperCase() === "PERCENT" ? `-${pv}%` : `-${Number(pv).toLocaleString()}đ`;
-                                                    return (
-                                                        <label key={id} className={`promo-item ${promotionId === id ? "promo-item-selected" : ""}`}>
-                                                            <input
-                                                                type="radio" name="pay-promo"
-                                                                checked={promotionId === id}
-                                                                onChange={() => setPromotionId(id)}
-                                                            />
-                                                            <div className="promo-item-content">
-                                                                <span className="promo-item-title">{p.title || p.promotionName}</span>
-                                                                <span className="promo-item-badge">{label}</span>
-                                                            </div>
-                                                            <span className="promo-item-desc">{p.description || ""}</span>
-                                                        </label>
-                                                    );
-                                                })}
-                                            </div>
-                                        )}
-                                        {promotionId && (
-                                            <button className="promo-clear-btn" onClick={() => setPromotionId("")}>
-                                                ✕ Bỏ chọn khuyến mãi
-                                            </button>
-                                        )}
-                                    </div>
 
-                                    <div className="promo-divider" />
 
                                     <div className="promo-group">
                                         <span className="promo-group-label">🏷️ Voucher của tôi</span>

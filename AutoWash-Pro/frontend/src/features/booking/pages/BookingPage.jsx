@@ -380,7 +380,90 @@ export default function BookingPage() {
   const subtotal = packagePrice + addonsPrice + surcharge;
   const tax = Math.round(subtotal * 0.08);
   const discount = paymentMethod === "online" ? Math.round(subtotal * 0.05) : 0;
-  const total = subtotal + tax - discount;
+
+  // 1. Tự động quét và tìm Promotion active áp dụng tốt nhất cho khách hàng
+  const customerTierLevel = profileData?.tierId || 1;
+  let autoSelectedPromo = null;
+  let promoDiscountVal = 0;
+
+  for (const p of availablePromotions) {
+    if (p.status?.toLowerCase() !== "active") continue;
+
+    // Check hạn dùng
+    const today = new Date();
+    if (p.startDate && new Date(p.startDate) > today) continue;
+    if (p.endDate && new Date(p.endDate) < today) continue;
+
+    // Check hạng
+    if (p.targetTier?.tierId && p.targetTier.tierId !== customerTierLevel) {
+      continue;
+    }
+
+    // Check loại xe
+    if (p.vehicleType && p.vehicleType !== "both") {
+      const mappedType = vehicleType === "4_seats" ? "sedan" : "suv";
+      if (p.vehicleType?.toLowerCase() !== mappedType) {
+        continue;
+      }
+    }
+
+    // Check giá trị đơn hàng tối thiểu
+    const minVal = p.minOrderValue || 0;
+    if (subtotal < minVal) {
+      continue;
+    }
+
+    // Tính discount
+    const val = p.value || p.discountValue || 0;
+    let calculated = 0;
+    if (p.discountType?.toUpperCase() === "PERCENT") {
+      calculated = Math.round(subtotal * (val / 100));
+    } else if (p.discountType?.toLowerCase() === "free_service") {
+      calculated = subtotal;
+    } else {
+      calculated = Number(val);
+    }
+
+    if (calculated > promoDiscountVal) {
+      promoDiscountVal = calculated;
+      autoSelectedPromo = p;
+    }
+  }
+
+  // 2. Tính discount cho voucher được chọn
+  const selectedVoucher = availableVouchers.find(v => v.voucherCode === selectedVouchCode);
+  let voucherDiscountVal = 0;
+  if (selectedVoucher) {
+    const val = selectedVoucher.discountValue || 0;
+    if (selectedVoucher.discountType?.toUpperCase() === "PERCENT") {
+      voucherDiscountVal = Math.round(subtotal * (val / 100));
+    } else if (selectedVoucher.discountType?.toLowerCase() === "free_service") {
+      voucherDiscountVal = subtotal;
+    } else {
+      voucherDiscountVal = Number(val);
+    }
+  }
+
+  const total = Math.max(0, subtotal + tax - discount - promoDiscountVal - voucherDiscountVal);
+
+  // Ghi nhận promotion id tự động chọn vào state để khi submit booking
+  // chuyển tiếp sang trang payment thì nó truyền đúng id này.
+  // Dùng useEffect để đồng bộ state tránh infinite render loop.
+  const bestPromoId = autoSelectedPromo ? String(autoSelectedPromo.promotionId || autoSelectedPromo.id) : "";
+  const bestPromoCode = autoSelectedPromo ? (autoSelectedPromo.code || autoSelectedPromo.promotionCode || "") : "";
+  const bestPromoDiscount = autoSelectedPromo
+    ? (autoSelectedPromo.discountType?.toUpperCase() === "PERCENT"
+        ? `-${autoSelectedPromo.value || autoSelectedPromo.discountValue}%`
+        : `-${Number(autoSelectedPromo.value || autoSelectedPromo.discountValue).toLocaleString()}đ`)
+    : "";
+
+  useEffect(() => {
+    if (selectedPromoId !== bestPromoId) {
+      setSelectedPromoId(bestPromoId);
+      setSelectedPromoCode(bestPromoCode);
+      setSelectedPromoDiscount(bestPromoDiscount);
+    }
+  }, [bestPromoId, bestPromoCode, bestPromoDiscount]);
   const totalDuration = (selectedPackage?.durationMinutes || 0) + selectedAddons.reduce((sum, s) => sum + (s.durationMinutes || 0), 0);
   const rewardPoints = Math.floor(packagePrice / 10000);
   const DEPOSIT_THRESHOLD = 500000;
@@ -845,7 +928,7 @@ export default function BookingPage() {
                 {totalDuration > 0 && <p style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>⏱ Tổng thời gian: ~{totalDuration} phút</p>}
               </div>
               <div className="billing-fees-list">
-                <div className="fee-line"><span>Giá dịch vụ</span><span>{subtotal.toLocaleString()}đ</span></div>
+                <div className="fee-line"><span>Giá dịch vụ</span><span>{(packagePrice + addonsPrice).toLocaleString()}đ</span></div>
                 <div className="fee-line">
                   <span>Phụ phí xe ({vehicleType === "4_seats" ? "4 chỗ" : "7 chỗ"})</span>
                   <span>{surcharge > 0 ? `+${surcharge.toLocaleString()}đ` : "Miễn phí"}</span>
@@ -862,16 +945,30 @@ export default function BookingPage() {
                   <span className="points-highlight">+{rewardPoints} điểm</span>
                 </div>
                 {(selectedPromoCode || selectedVouchCode) && (
-                  <div className="fee-line discount-line">
-                    <span>Ưu đãi đã chọn</span>
-                    <span style={{ fontWeight: 750, color: "#004aad", fontSize: 13 }}>
-                      {selectedPromoCode && selectedVouchCode
-                        ? `KM: ${selectedPromoCode} + Voucher`
-                        : selectedPromoCode
-                        ? `KM: ${selectedPromoCode} (${selectedPromoDiscount})`
-                        : `Voucher: ${selectedVouchCode}`}
-                    </span>
-                  </div>
+                  <>
+                    <div className="fee-line discount-line">
+                      <span>Ưu đãi đã chọn</span>
+                      <span style={{ fontWeight: 750, color: "#004aad", fontSize: 13 }}>
+                        {selectedPromoCode && selectedVouchCode
+                          ? `KM: ${selectedPromoCode} + Voucher`
+                          : selectedPromoCode
+                          ? `KM: ${selectedPromoCode} (${selectedPromoDiscount})`
+                          : `Voucher: ${selectedVouchCode}`}
+                      </span>
+                    </div>
+                    {promoDiscountVal > 0 && (
+                      <div className="fee-line discount-line">
+                        <span>Khuyến mãi hệ thống</span>
+                        <span>-{promoDiscountVal.toLocaleString()}đ</span>
+                      </div>
+                    )}
+                    {voucherDiscountVal > 0 && (
+                      <div className="fee-line discount-line">
+                        <span>Giảm giá voucher</span>
+                        <span>-{voucherDiscountVal.toLocaleString()}đ</span>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             </div>
@@ -897,41 +994,6 @@ export default function BookingPage() {
                     }}>
                       ✕ Bỏ chọn ưu đãi
                     </button>
-                  )}
-
-                  {availablePromotions.length > 0 && (
-                    <div className="sidebar-promo-group">
-                      <span className="sidebar-promo-group-label">🎁 Khuyến mãi hệ thống</span>
-                      {availablePromotions.map(p => {
-                        const id = String(p.promotionId || p.id);
-                        const val = p.value || p.discountValue || 0;
-                        const discountLabel = p.discountType?.toUpperCase() === "PERCENT" ? `-${val}%` : `-${Number(val).toLocaleString()}đ`;
-                        return (
-                          <label key={id} className={`sidebar-promo-item ${selectedPromoId === id ? "selected" : ""}`}>
-                            <input
-                              type="radio" name="promo-select"
-                              checked={selectedPromoId === id}
-                              onChange={() => {
-                                setSelectedPromoId(id);
-                                setSelectedPromoCode(p.code || p.promotionCode || "");
-                                setSelectedPromoDiscount(discountLabel);
-                              }}
-                            />
-                            <div className="sidebar-promo-item-content">
-                              <div className="sidebar-promo-item-top">
-                                <span className="sidebar-promo-item-title">{p.title || p.promotionName}</span>
-                                <span className="sidebar-promo-item-badge">{discountLabel}</span>
-                              </div>
-                              <span className="sidebar-promo-item-desc">{p.description || ""}</span>
-                            </div>
-                          </label>
-                        );
-                      })}
-                    </div>
-                  )}
-
-                  {availablePromotions.length > 0 && availableVouchers.length > 0 && (
-                    <div className="sidebar-promo-divider" />
                   )}
 
                   {availableVouchers.length > 0 && (
@@ -961,7 +1023,7 @@ export default function BookingPage() {
                     </div>
                   )}
 
-                  {availablePromotions.length === 0 && availableVouchers.length === 0 && (
+                  {availableVouchers.length === 0 && (
                     <p className="sidebar-promo-empty">Bạn chưa có ưu đãi nào.</p>
                   )}
 

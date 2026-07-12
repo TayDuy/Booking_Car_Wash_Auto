@@ -103,6 +103,13 @@ public class Reward {
 
     // ── Helpers ──────────────────────────────────────────────────────────────
 
+    /** Kiểm tra xem đây có phải là phần thưởng chào mừng thăng hạng hay không. */
+    public boolean isWelcomeReward() {
+        return this.requiredTierLevel != null 
+                && this.requiredPoints != null 
+                && this.requiredPoints <= 1;
+    }
+
     /** Khách có đủ điểm để đổi reward này không. */
     public boolean isRedeemableBy(Integer customerPoints) {
         return RewardStatus.active.equals(this.status)

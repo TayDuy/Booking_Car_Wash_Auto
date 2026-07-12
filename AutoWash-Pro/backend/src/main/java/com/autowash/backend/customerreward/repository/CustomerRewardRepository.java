@@ -25,4 +25,9 @@ public interface CustomerRewardRepository extends JpaRepository<CustomerReward, 
             Integer redeemedPoints,
             String status
     );
+
+    boolean existsByCustomer_CustomerIdAndReward_RewardId(
+            Integer customerId,
+            Integer rewardId
+    );
 }

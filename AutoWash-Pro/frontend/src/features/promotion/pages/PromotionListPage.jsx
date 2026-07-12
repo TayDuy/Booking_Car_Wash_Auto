@@ -397,7 +397,20 @@ function PromotionListPage() {
     };
   }, [myVouchers]);
 
-  const rewardPreview = rewards.slice(0, 4);
+  const rewardPreview = rewards.filter((r) => {
+    // 1. Kiểm tra hạng thành viên tối thiểu
+    const customerTierLevel = Number(loyaltyInfo?.tierId || loyaltyInfo?.newTierId || 1);
+    if (r.requiredTierLevel !== null && r.requiredTierLevel !== undefined && r.requiredTierLevel > customerTierLevel) {
+      return false;
+    }
+    // 2. Loại trừ quà chào mừng welcome rewards đã được nhận/đổi
+    const isWelcome = r.requiredTierLevel !== null && r.requiredTierLevel !== undefined && r.requiredPoints <= 1;
+    if (isWelcome) {
+      const alreadyHas = myVouchers.some((v) => v.rewardId === r.rewardId);
+      return !alreadyHas;
+    }
+    return true;
+  });
 
   if (loading) {
     return (
