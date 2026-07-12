@@ -116,7 +116,7 @@ function PromotionListPage() {
     const value = promotion.value || promotion.discountValue || 0;
 
     const discount =
-      promotion.discountType === "PERCENT"
+      promotion.discountType?.toUpperCase() === "PERCENT"
         ? `${value}%`
         : formatMoney(value);
 

@@ -905,7 +905,7 @@ export default function BookingPage() {
                       {availablePromotions.map(p => {
                         const id = String(p.promotionId || p.id);
                         const val = p.value || p.discountValue || 0;
-                        const discountLabel = p.discountType === "PERCENT" ? `-${val}%` : `-${Number(val).toLocaleString()}đ`;
+                        const discountLabel = p.discountType?.toUpperCase() === "PERCENT" ? `-${val}%` : `-${Number(val).toLocaleString()}đ`;
                         return (
                           <label key={id} className={`sidebar-promo-item ${selectedPromoId === id ? "selected" : ""}`}>
                             <input

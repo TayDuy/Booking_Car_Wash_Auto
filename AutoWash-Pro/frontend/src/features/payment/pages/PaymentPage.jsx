@@ -647,7 +647,7 @@ function PaymentPage() {
                                                 {paymentPromotions.map(p => {
                                                     const id = String(p.promotionId || p.id);
                                                     const pv = p.value || p.discountValue || 0;
-                                                    const label = p.discountType === "PERCENT" ? `-${pv}%` : `-${Number(pv).toLocaleString()}đ`;
+                                                    const label = p.discountType?.toUpperCase() === "PERCENT" ? `-${pv}%` : `-${Number(pv).toLocaleString()}đ`;
                                                     return (
                                                         <label key={id} className={`promo-item ${promotionId === id ? "promo-item-selected" : ""}`}>
                                                             <input

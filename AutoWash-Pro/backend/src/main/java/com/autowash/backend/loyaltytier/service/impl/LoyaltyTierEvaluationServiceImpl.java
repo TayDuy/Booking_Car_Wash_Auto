@@ -37,6 +37,8 @@ public class LoyaltyTierEvaluationServiceImpl implements LoyaltyTierEvaluationSe
     private final LoyaltyTierRepository loyaltyTierRepository;
     private final LoyaltyTransactionRepository loyaltyTransactionRepository;
     private final LoyaltyTierMapper loyaltyTierMapper;
+    private final com.autowash.backend.reward.repository.RewardRepository rewardRepository;
+    private final com.autowash.backend.customerreward.repository.CustomerRewardRepository customerRewardRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -157,7 +159,6 @@ public class LoyaltyTierEvaluationServiceImpl implements LoyaltyTierEvaluationSe
 
         LoyaltyTier matchedTier = findMatchedTier(
                 activeTiers,
-                lifetimePoints,
                 totalVisits,
                 totalSpending
         );
@@ -165,10 +166,52 @@ public class LoyaltyTierEvaluationServiceImpl implements LoyaltyTierEvaluationSe
         Integer previousTierId = customer.getTierId();
         String previousTierName = findTierNameById(activeTiers, previousTierId);
 
+        // Lấy priorityLevel của hạng cũ (nếu chưa có hạng thì mặc định là -1)
+        Integer previousPriorityLevel = -1;
+        if (previousTierId != null) {
+            previousPriorityLevel = activeTiers.stream()
+                    .filter(t -> Objects.equals(t.getTierId(), previousTierId))
+                    .map(LoyaltyTier::getPriorityLevel)
+                    .findFirst()
+                    .orElse(-1);
+        }
+
         customer.setTierId(matchedTier.getTierId());
         customerRepository.save(customer);
 
         boolean tierChanged = !Objects.equals(previousTierId, matchedTier.getTierId());
+
+        // Nếu nâng cấp hạng thành công (thăng hạng)
+        if (tierChanged && matchedTier.getPriorityLevel() > previousPriorityLevel) {
+            List<com.autowash.backend.reward.entity.Reward> unlockedRewards = rewardRepository
+                    .findByRequiredTierLevelAndStatus(matchedTier.getTierId(), com.autowash.backend.reward.entity.Reward.RewardStatus.active);
+
+            for (com.autowash.backend.reward.entity.Reward reward : unlockedRewards) {
+                // Kiểm tra xem đã nhận voucher thăng hạng UNUSED cho phần thưởng này chưa
+                boolean alreadyHasUnused = customerRewardRepository
+                        .existsByCustomer_CustomerIdAndReward_RewardIdAndRedeemedPointsAndStatus(
+                                customerId,
+                                reward.getRewardId(),
+                                0,
+                                "UNUSED"
+                        );
+
+                if (!alreadyHasUnused) {
+                    com.autowash.backend.customerreward.entity.CustomerReward voucher = com.autowash.backend.customerreward.entity.CustomerReward.builder()
+                            .customer(customer)
+                            .reward(reward)
+                            .voucherCode("VOU-TIER-" + java.util.UUID.randomUUID().toString().substring(0, 8).toUpperCase())
+                            .status("UNUSED")
+                            .redeemedPoints(0) // Quà tặng miễn phí khi thăng hạng
+                            .discountType(reward.getRewardType().name())
+                            .discountValue(reward.getRewardValue())
+                            .redeemedAt(java.time.LocalDateTime.now())
+                            .expiredAt(java.time.LocalDateTime.now().plusDays(30)) // Hiệu lực 30 ngày
+                            .build();
+                    customerRewardRepository.save(voucher);
+                }
+            }
+        }
 
         String message = tierChanged
                 ? "Customer tier updated successfully"
@@ -206,14 +249,12 @@ public class LoyaltyTierEvaluationServiceImpl implements LoyaltyTierEvaluationSe
      */
     private LoyaltyTier findMatchedTier(
             List<LoyaltyTier> activeTiers,
-            Integer currentPoints,
             Integer totalVisits,
             BigDecimal totalSpending
     ) {
         return activeTiers.stream()
                 .filter(tier -> isMatchedShopeeStyle(
                         tier,
-                        currentPoints,
                         totalVisits,
                         totalSpending
                 ))
@@ -224,21 +265,16 @@ public class LoyaltyTierEvaluationServiceImpl implements LoyaltyTierEvaluationSe
     /**
      * Logic match tier:
      * totalVisits >= minVisits
-     * AND
-     * (currentPoints >= minPoints OR totalSpending >= minSpending)
+     * OR
+     * totalSpending >= minSpending
      */
     private boolean isMatchedShopeeStyle(
             LoyaltyTier tier,
-            Integer currentPoints,
             Integer totalVisits,
             BigDecimal totalSpending
     ) {
         Integer requiredVisits = tier.getMinVisits() != null
                 ? tier.getMinVisits()
-                : 0;
-
-        Integer requiredPoints = tier.getMinPoints() != null
-                ? tier.getMinPoints()
                 : 0;
 
         BigDecimal requiredSpending = tier.getMinSpending() != null
@@ -249,16 +285,11 @@ public class LoyaltyTierEvaluationServiceImpl implements LoyaltyTierEvaluationSe
                 ? totalVisits
                 : 0;
 
-        Integer safePoints = currentPoints != null
-                ? currentPoints
-                : 0;
-
         BigDecimal safeSpending = totalSpending != null
                 ? totalSpending
                 : BigDecimal.ZERO;
 
         boolean isDefaultTier = requiredVisits <= 0
-                && requiredPoints <= 0
                 && requiredSpending.compareTo(BigDecimal.ZERO) <= 0;
 
         if (isDefaultTier) {
@@ -266,14 +297,10 @@ public class LoyaltyTierEvaluationServiceImpl implements LoyaltyTierEvaluationSe
         }
 
         boolean enoughVisits = safeVisits >= requiredVisits;
+        boolean enoughSpending = safeSpending.compareTo(requiredSpending) >= 0;
 
-        boolean enoughPoints = requiredPoints <= 0
-                || safePoints >= requiredPoints;
-
-        boolean enoughSpending = requiredSpending.compareTo(BigDecimal.ZERO) <= 0
-                || safeSpending.compareTo(requiredSpending) >= 0;
-
-        return enoughVisits && (enoughPoints || enoughSpending);
+        // Giai đoạn đầu: dùng OR để tránh làm sụt hạng sốc khách hàng cũ
+        return enoughVisits || enoughSpending;
     }
 
     /**
