@@ -60,6 +60,17 @@ public class CustomerRewardServiceImpl implements CustomerRewardService {
             );
         }
 
+        // Chặn không cho phép đổi quà chào mừng thăng hạng nhiều lần (chỉ được đổi tối đa 1 lần)
+        if (reward.isWelcomeReward()) {
+            boolean alreadyRedeemed = customerRewardRepository.existsByCustomer_CustomerIdAndReward_RewardId(customerId, rewardId);
+            if (alreadyRedeemed) {
+                throw new BusinessException(
+                        "Bạn đã đổi quà chào mừng của hạng thành viên này rồi",
+                        HttpStatus.BAD_REQUEST
+                );
+            }
+        }
+
         // Kiểm tra hạng thành viên tối thiểu
         if (reward.getRequiredTierLevel() != null) {
             Integer customerTierLevel = getCustomerTierLevel(customerId);
@@ -134,6 +145,9 @@ public class CustomerRewardServiceImpl implements CustomerRewardService {
         CustomerReward customerReward = customerRewardRepository.findByVoucherCode(voucherCode)
                 .orElseThrow(() -> new ResourceNotFoundException("CustomerReward", "voucherCode", voucherCode));
 
+        Integer voucherCustomerId = customerReward.getCustomer().getCustomerId();
+        validateCustomerOwner(voucherCustomerId, userId);
+
         if (!"UNUSED".equals(customerReward.getStatus())) {
             throw new BusinessException("Voucher này đã được sử dụng hoặc không còn khả dụng", HttpStatus.BAD_REQUEST);
         }
@@ -149,14 +163,11 @@ public class CustomerRewardServiceImpl implements CustomerRewardService {
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new ResourceNotFoundException("Booking", "id", bookingId));
 
-        Integer voucherCustomerId = customerReward.getCustomer().getCustomerId();
         Integer bookingCustomerId = booking.getCustomer().getCustomerId();
 
         if (!voucherCustomerId.equals(bookingCustomerId)) {
             throw new BusinessException("Voucher không thuộc về khách hàng của booking này", HttpStatus.BAD_REQUEST);
         }
-
-        validateCustomerOwner(voucherCustomerId, userId);
 
         customerReward.setStatus("USED");
         customerReward.setUsedBookingId(bookingId);

@@ -14,6 +14,8 @@ import com.autowash.backend.reward.entity.Reward;
 import com.autowash.backend.reward.mapper.RewardMapper;
 import com.autowash.backend.reward.repository.RewardRepository;
 import com.autowash.backend.reward.service.RewardService;
+import com.autowash.backend.customerreward.service.CustomerRewardService;
+import com.autowash.backend.customerreward.dto.CustomerRewardResponseDTO;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -43,6 +45,8 @@ public class RewardServiceImpl implements RewardService {
     private final com.autowash.backend.customer.repository.CustomerRepository customerRepository;
     private final com.autowash.backend.user.repository.UserRepository userRepository;
     private final LoyaltyTierRepository loyaltyTierRepository;
+    private final CustomerRewardService customerRewardService;
+    private final com.autowash.backend.customerreward.repository.CustomerRewardRepository customerRewardRepository;
 
     /**
      * {@inheritDoc}
@@ -130,6 +134,9 @@ public class RewardServiceImpl implements RewardService {
                 .filter(reward -> reward.getRequiredTierLevel() == null
                         || (customerTierLevel != null
                         && customerTierLevel >= reward.getRequiredTierLevel()))
+                // Quà thăng hạng (welcome reward) chỉ được nhận/đổi tối đa 1 lần
+                .filter(reward -> !reward.isWelcomeReward()
+                        || !customerRewardRepository.existsByCustomer_CustomerIdAndReward_RewardId(customerId, reward.getRewardId()))
                 .map(rewardMapper::toResponse)
                 .toList();
     }
@@ -153,59 +160,21 @@ public class RewardServiceImpl implements RewardService {
 
         Reward reward = findOrThrow(rewardId);
 
-        Reward.RewardStatus activeStatus = parseEnumIgnoreCase(Reward.RewardStatus.class, "active");
-
-        if (!reward.getStatus().equals(activeStatus)) {
-            throw new IllegalArgumentException("Reward hiện không còn hoạt động");
-        }
-
-        // Kiểm tra hạng thành viên tối thiểu
-        Integer customerTierLevel = getCustomerTierLevel(dto.customerId());
-        if (reward.getRequiredTierLevel() != null
-                && (customerTierLevel == null || customerTierLevel < reward.getRequiredTierLevel())) {
-            throw new BusinessException(
-                    "Bạn cần đạt hạng thành viên cao hơn để đổi phần thưởng này",
-                    org.springframework.http.HttpStatus.FORBIDDEN
-            );
-        }
-
-        Reward.RewardVehicleType requestedVehicleType =
-                parseEnumIgnoreCase(Reward.RewardVehicleType.class, dto.vehicleType());
-
-        if (!isVehicleMatched(reward.getVehicleType(), requestedVehicleType)) {
-            throw new IllegalArgumentException("Reward không áp dụng cho loại xe này");
-        }
-
-        Integer balanceBefore = getCurrentPoints(dto.customerId());
-        Integer requiredPoints = reward.getRequiredPoints();
-
-        if (balanceBefore < requiredPoints) {
-            throw new IllegalArgumentException("Không đủ điểm để đổi reward này");
-        }
-
-        Integer balanceAfter = balanceBefore - requiredPoints;
-
-        LoyaltyTransaction transaction = new LoyaltyTransaction();
-        transaction.setCustomerId(dto.customerId());
-        transaction.setPaymentId(null);
-        transaction.setTransactionType("redeem");
-        transaction.setPoints(-requiredPoints);
-        transaction.setBalanceBefore(balanceBefore);
-        transaction.setBalanceAfter(balanceAfter);
-        transaction.setExpiredAt(null);
-        transaction.setCreatedAt(LocalDateTime.now());
-        transaction.setNote("Redeemed reward: " + reward.getRewardName());
-
-        loyaltyTransactionRepository.save(transaction);
+        // Ủy quyền gọi sang CustomerRewardService để trừ điểm và phát voucher
+        CustomerRewardResponseDTO crResponse = customerRewardService.redeemReward(
+                dto.customerId(),
+                rewardId,
+                userId
+        );
 
         return new RedeemRewardResponseDTO(
                 "Redeem reward successfully",
                 dto.customerId(),
-                reward.getRewardId(),
+                rewardId,
                 reward.getRewardName(),
-                requiredPoints,
-                balanceBefore,
-                balanceAfter
+                reward.getRequiredPoints(),
+                crResponse.getRemainingPoints() + reward.getRequiredPoints(), // balanceBefore
+                crResponse.getRemainingPoints() // balanceAfter
         );
     }
 

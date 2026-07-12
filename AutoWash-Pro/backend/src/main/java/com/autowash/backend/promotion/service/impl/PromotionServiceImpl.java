@@ -172,7 +172,7 @@ public class PromotionServiceImpl implements PromotionService {
     @Override
     @Transactional
     public PromotionApplyResponseDTO applyPromotion(PromotionApplyRequestDTO req) {
-        Promotion promotion = promotionRepository.findByIdWithLock(req.getPromotionId())
+        Promotion promotion = promotionRepository.findById(req.getPromotionId())
                 .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException(
                         "Promotion không tồn tại: " + req.getPromotionId()));
 
@@ -229,18 +229,6 @@ public class PromotionServiceImpl implements PromotionService {
         BigDecimal finalAmount = req.getOrderValue()
                 .subtract(discountAmount)
                 .max(BigDecimal.ZERO);
-
-        PromotionUse promotionUse = PromotionUse.builder()
-                .promotionId(promotion.getPromotionId())
-                .customerId(req.getCustomerId())
-                .orderValue(req.getOrderValue())
-                .discountAmount(discountAmount)
-                .finalAmount(finalAmount)
-                .status(PromotionUse.PromotionUseStatus.used)
-                .usedAt(java.time.LocalDateTime.now())
-                .build();
-
-        promotionUseRepository.save(promotionUse);
 
         return PromotionApplyResponseDTO.builder()
                 .applicable(true)

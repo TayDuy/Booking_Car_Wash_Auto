@@ -166,47 +166,65 @@ public class LoyaltyTierEvaluationServiceImpl implements LoyaltyTierEvaluationSe
         Integer previousTierId = customer.getTierId();
         String previousTierName = findTierNameById(activeTiers, previousTierId);
 
-        // Lấy priorityLevel của hạng cũ (nếu chưa có hạng thì mặc định là -1)
-        Integer previousPriorityLevel = -1;
-        if (previousTierId != null) {
-            previousPriorityLevel = activeTiers.stream()
-                    .filter(t -> Objects.equals(t.getTierId(), previousTierId))
-                    .map(LoyaltyTier::getPriorityLevel)
-                    .findFirst()
-                    .orElse(-1);
-        }
-
         customer.setTierId(matchedTier.getTierId());
         customerRepository.save(customer);
 
         boolean tierChanged = !Objects.equals(previousTierId, matchedTier.getTierId());
 
-        // Nếu nâng cấp hạng thành công (thăng hạng)
-        if (tierChanged && matchedTier.getPriorityLevel() > previousPriorityLevel) {
+        // Lấy priorityLevel của hạng cũ để so sánh chặng nâng cấp
+        int previousPriorityLevel = activeTiers.stream()
+                .filter(t -> Objects.equals(t.getTierId(), previousTierId))
+                .findFirst()
+                .map(LoyaltyTier::getPriorityLevel)
+                .orElse(1); // mặc định Member (priorityLevel = 1) nếu previousTierId null
+
+        for (LoyaltyTier tier : activeTiers) {
+            if (tier.getPriorityLevel() > matchedTier.getPriorityLevel()
+                    || tier.getPriorityLevel() <= 1) {
+                continue;
+            }
+
             List<com.autowash.backend.reward.entity.Reward> unlockedRewards = rewardRepository
-                    .findByRequiredTierLevelAndStatus(matchedTier.getTierId(), com.autowash.backend.reward.entity.Reward.RewardStatus.active);
+                    .findByRequiredTierLevelAndStatus(tier.getPriorityLevel(),
+                            com.autowash.backend.reward.entity.Reward.RewardStatus.active);
 
             for (com.autowash.backend.reward.entity.Reward reward : unlockedRewards) {
-                // Kiểm tra xem đã nhận voucher thăng hạng UNUSED cho phần thưởng này chưa
-                boolean alreadyHasUnused = customerRewardRepository
-                        .existsByCustomer_CustomerIdAndReward_RewardIdAndRedeemedPointsAndStatus(
-                                customerId,
-                                reward.getRewardId(),
-                                0,
-                                "UNUSED"
-                        );
+                boolean shouldAward = false;
 
-                if (!alreadyHasUnused) {
+                // Kiểm tra xem đây có phải là nâng cấp vượt qua mốc tier này trong lượt đánh giá hiện tại hay không
+                if (tier.getPriorityLevel() > previousPriorityLevel) {
+                    // TRƯỜNG HỢP A: THĂNG HẠNG mới hoặc THĂNG HẠNG LẠI (Upgrade/Re-upgrade)
+                    // Chỉ chặn phát voucher thăng hạng mới nếu đang sở hữu voucher thăng hạng UNUSED cho phần thưởng này
+                    boolean alreadyHasUnused = customerRewardRepository
+                            .existsByCustomer_CustomerIdAndReward_RewardIdAndRedeemedPointsAndStatus(
+                                    customerId,
+                                    reward.getRewardId(),
+                                    0,
+                                    "UNUSED"
+                            );
+                    shouldAward = !alreadyHasUnused;
+                } else {
+                    // TRƯỜNG HỢP B: GIỮ HẠNG (Non-upgrade) hoặc QUÉT BÙ ĐẮP TÀI KHOẢN CŨ
+                    // Chỉ phát nếu khách hàng CHƯA TỪNG nhận voucher thăng hạng cho phần thưởng này trong lịch sử
+                    boolean alreadyReceived = customerRewardRepository
+                            .existsByCustomer_CustomerIdAndReward_RewardId(
+                                    customerId,
+                                    reward.getRewardId()
+                            );
+                    shouldAward = !alreadyReceived;
+                }
+
+                if (shouldAward) {
                     com.autowash.backend.customerreward.entity.CustomerReward voucher = com.autowash.backend.customerreward.entity.CustomerReward.builder()
                             .customer(customer)
                             .reward(reward)
                             .voucherCode("VOU-TIER-" + java.util.UUID.randomUUID().toString().substring(0, 8).toUpperCase())
                             .status("UNUSED")
-                            .redeemedPoints(0) // Quà tặng miễn phí khi thăng hạng
+                            .redeemedPoints(0)
                             .discountType(reward.getRewardType().name())
                             .discountValue(reward.getRewardValue())
                             .redeemedAt(java.time.LocalDateTime.now())
-                            .expiredAt(java.time.LocalDateTime.now().plusDays(30)) // Hiệu lực 30 ngày
+                            .expiredAt(java.time.LocalDateTime.now().plusDays(30))
                             .build();
                     customerRewardRepository.save(voucher);
                 }

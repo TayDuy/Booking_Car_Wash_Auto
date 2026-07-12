@@ -120,14 +120,58 @@ public class PaymentServiceImpl implements PaymentService {
         BigDecimal voucherDiscount = BigDecimal.ZERO;
         CustomerReward appliedVoucher = null;
 
-        // 1. Tính toán giảm giá từ Promotion
+        // 1. Tính toán giảm giá từ Promotion (Nếu có truyền id thì dùng, không thì tự động chọn cái cao nhất)
+        Customer customer = booking.getCustomer();
         if (request.getPromotionId() != null) {
             Promotion tempPromo = promotionRepository.findById(request.getPromotionId())
                     .orElseThrow(() -> new ResourceNotFoundException(
                             "Promotion", "id", request.getPromotionId()));
-            Customer customer = booking.getCustomer();
             promoDiscount = validateAndApplyPromotion(tempPromo, booking, subtotal, customer);
             promotion = tempPromo;
+        } else {
+            // Tự động quét tìm Promotion active áp dụng tốt nhất cho khách hàng
+            List<Promotion> activePromotions = promotionRepository.findAll().stream()
+                    .filter(p -> Promotion.PromotionStatus.active.equals(p.getStatus()))
+                    .filter(p -> p.isValid())
+                    .toList();
+
+            Promotion bestPromo = null;
+            BigDecimal maxPromoDiscount = BigDecimal.ZERO;
+
+            for (Promotion p : activePromotions) {
+                boolean alreadyUsed = promotionUseRepository.existsByPromotionIdAndCustomerId(p.getPromotionId(), customer.getCustomerId());
+                if (alreadyUsed) {
+                    continue;
+                }
+
+                if (p.getUsageLimit() != null) {
+                    long usedCount = promotionUseRepository.countByPromotionId(p.getPromotionId());
+                    if (usedCount >= p.getUsageLimit()) {
+                        continue;
+                    }
+                }
+
+                Promotion.VehicleType pVehicleType = null;
+                if (booking.getVehicle() != null) {
+                    try {
+                        pVehicleType = Promotion.VehicleType.valueOf(booking.getVehicle().getVehicleType().name().toLowerCase());
+                    } catch (Exception ignored) {}
+                }
+
+                if (p.isApplicable(customer.getTierId(), pVehicleType, subtotal)) {
+                    BigDecimal calculated = calculateDiscount(p, subtotal);
+                    if (calculated.compareTo(maxPromoDiscount) > 0) {
+                        maxPromoDiscount = calculated;
+                        bestPromo = p;
+                    }
+                }
+            }
+
+            if (bestPromo != null) {
+                // Áp dụng promotion tự động chọn
+                promoDiscount = validateAndApplyPromotion(bestPromo, booking, subtotal, customer);
+                promotion = bestPromo;
+            }
         }
 
         // 2. Tính toán giảm giá từ Voucher (Ưu tiên voucherCode, fallback sang rewardId)
@@ -161,15 +205,12 @@ public class PaymentServiceImpl implements PaymentService {
             voucherDiscount = appliedVoucher.getDiscountValue() != null ? appliedVoucher.getDiscountValue() : BigDecimal.ZERO;
         }
 
-        // 3. Áp dụng chính sách "chọn 1 cái cao nhất" (Only apply the highest discount)
-        if (promotion != null && promoDiscount.compareTo(voucherDiscount) > 0) {
-            // Áp dụng Promotion, bỏ Voucher
+        // 3. Áp dụng cộng dồn cả Promotion và Voucher
+        if (promotion != null) {
             discountAmount = discountAmount.add(promoDiscount);
-            reward = null; // không dùng reward
-        } else if (appliedVoucher != null && voucherDiscount.compareTo(BigDecimal.ZERO) > 0) {
-            // Áp dụng Voucher, bỏ Promotion
+        }
+        if (appliedVoucher != null && voucherDiscount.compareTo(BigDecimal.ZERO) > 0) {
             discountAmount = discountAmount.add(voucherDiscount);
-            promotion = null; // không dùng promotion
 
             // Cập nhật trạng thái Voucher thành USED
             appliedVoucher.setStatus("USED");
@@ -186,11 +227,6 @@ public class PaymentServiceImpl implements PaymentService {
             validateAndDeductRewardPoints(booking.getCustomer(), legacyReward);
             discountAmount = discountAmount.add(legacyReward.getRewardValue());
             reward = legacyReward;
-            promotion = null;
-        } else {
-            // Không áp dụng cái nào
-            promotion = null;
-            reward = null;
         }
 
         BigDecimal finalAmount = originalAmount.subtract(discountAmount)
@@ -522,13 +558,7 @@ public class PaymentServiceImpl implements PaymentService {
             throw new BusinessException("Bạn đã sử dụng khuyến mãi này rồi");
         }
 
-        BigDecimal discountAmount = switch (promotion.getDiscountType()) {
-            case percent -> subtotal
-                    .multiply(promotion.getDiscountValue())
-                    .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
-            case fixed        -> promotion.getDiscountValue().min(subtotal);
-            case free_service -> promotion.getDiscountValue();
-        };
+        BigDecimal discountAmount = calculateDiscount(promotion, subtotal);
 
         promotionUseRepository.save(PromotionUse.builder()
                 .promotionId(promotion.getPromotionId())
@@ -563,7 +593,7 @@ public class PaymentServiceImpl implements PaymentService {
         customerRepository.save(customer);
 
         loyaltyTransactionRepository.save(LoyaltyTransaction.builder()
-                .customerId(Integer.valueOf(customer.getCustomerId()))
+                .customerId(customer.getCustomerId())
                 .paymentId(Long.valueOf(payment.getPaymentId()))
                 .transactionType("earn")
                 .points(pointsEarned)
@@ -663,5 +693,15 @@ public class PaymentServiceImpl implements PaymentService {
         return bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Booking", "id", bookingId));
+    }
+
+    private BigDecimal calculateDiscount(Promotion promotion, BigDecimal subtotal) {
+        return switch (promotion.getDiscountType()) {
+            case percent -> subtotal
+                    .multiply(promotion.getDiscountValue())
+                    .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+            case fixed        -> promotion.getDiscountValue().min(subtotal);
+            case free_service -> subtotal;
+        };
     }
 }
