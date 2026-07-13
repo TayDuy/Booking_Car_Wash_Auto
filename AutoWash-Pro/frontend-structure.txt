@@ -1,0 +1,185 @@
+Folder PATH listing for volume New Volume
+Volume serial number is 000001DB D89E:EFDC
+D:\BOOKING_CAR_WASH_AUTO\BOOKING_CAR_WASH_AUTO\AUTOWASH-PRO\FRONTEND\SRC
+|   App.css
+|   App.jsx
+|   index.css
+|   main.jsx
+|   
++---api
+|       auditLogApi.js
+|       authService.js
+|       axiosClient.js
+|       bookingApi.js
+|       branchService.js
+|       customerApi.js
+|       customerRewardApi.js
+|       loyaltyApi.js
+|       loyaltyTransactionApi.js
+|       notificationService.js
+|       promotionApi.js
+|       reportApi.js
+|       servicePackageApi.js
+|       servicePackageService.js
+|       supabaseClient.js
+|       timeSlotService.js
+|       vehicleApi.js
+|       washBayService.js
+|       
++---assets
+|       hero.png
+|       
++---components
+|   +---common
+|   |       Button.jsx
+|   |       Input.jsx
+|   |       Loading.jsx
+|   |       Modal.jsx
+|   |       OtpInput.jsx
+|   |       Pagination.jsx
+|   |       Table.jsx
+|   |       
+|   \---layout
+|           Footer.jsx
+|           Header.css
+|           Navbar.jsx
+|           PublicFooter.css
+|           PublicFooter.jsx
+|           PublicHeader.css
+|           PublicHeader.jsx
+|           Sidebar.css
+|           Sidebar.jsx
+|           SiteHeader.css
+|           SiteHeader.jsx
+|           
++---contexts
+|       AuthContext.jsx
+|       
++---features
+|   +---admin
+|   |   |   index.js
+|   |   |   
+|   |   \---pages
+|   |           AdminDashboardPage.css
+|   |           AdminDashboardPage.jsx
+|   |           AdminNotificationPage.css
+|   |           AdminNotificationPage.jsx
+|   |           AuditLogsPage.css
+|   |           AuditLogsPage.jsx
+|   |           ManageBookingsPage.css
+|   |           ManageBookingsPage.jsx
+|   |           ManageBranchesPage.css
+|   |           ManageBranchesPage.jsx
+|   |           ManageCustomersPage.css
+|   |           ManageCustomersPage.jsx
+|   |           ManagePromotionsPage.css
+|   |           ManagePromotionsPage.jsx
+|   |           ManageServicesPage.css
+|   |           ManageServicesPage.jsx
+|   |           ManageVehiclesPage.css
+|   |           ManageVehiclesPage.jsx
+|   |           ReportsPage.css
+|   |           ReportsPage.jsx
+|   |           
+|   +---auth
+|   |   |   index.js
+|   |   |   
+|   |   \---pages
+|   |           ForgotPasswordPage.css
+|   |           ForgotPasswordPage.jsx
+|   |           LoginPage.css
+|   |           LoginPage.jsx
+|   |           RegisterPage.css
+|   |           RegisterPage.jsx
+|   |           
+|   +---booking
+|   |   |   index.js
+|   |   |   
+|   |   \---pages
+|   |           BookingDetailPage.jsx
+|   |           BookingHistory.css
+|   |           BookingHistory.jsx
+|   |           BookingPage.css
+|   |           BookingPage.jsx
+|   |           BookingSuccessPage.jsx
+|   |           
+|   +---customer
+|   |   |   index.js
+|   |   |   
+|   |   \---pages
+|   |           CustomerNotificationPage.css
+|   |           CustomerNotificationPage.jsx
+|   |           Helpcenter.css
+|   |           Helpcenter.jsx
+|   |           HomePage.css
+|   |           HomePage.jsx
+|   |           ProfilePage.css
+|   |           ProfilePage.jsx
+|   |           
+|   +---landing
+|   |   |   index.js
+|   |   |   
+|   |   \---pages
+|   |           LandingPage.css
+|   |           LandingPage.jsx
+|   |           
+|   +---loyalty
+|   |   |   index.js
+|   |   |   
+|   |   \---pages
+|   |           LoyaltyDashboardPage.jsx
+|   |           RewardsPage.css
+|   |           RewardsPage.jsx
+|   |           
+|   +---manager
+|   |   |   index.js
+|   |   |   
+|   |   \---pages
+|   |           ManagerBookingsPage.jsx
+|   |           ManagerDashboardPage.jsx
+|   |           ManagerRevenuePage.jsx
+|   |           ManagerServiceStatusPage.jsx
+|   |           ManagerStaffPage.jsx
+|   |           
+|   +---payment
+|   |   \---pages
+|   |           PaymentPage.css
+|   |           PaymentPage.jsx
+|   |           PaymentSuccessPage.css
+|   |           PaymentSuccessPage.jsx
+|   |           
+|   +---promotion
+|   |   |   index.js
+|   |   |   
+|   |   \---pages
+|   |           PromotionListPage.css
+|   |           PromotionListPage.jsx
+|   |           
+|   +---services
+|   |   \---pages
+|   |           ServicesPage.css
+|   |           ServicesPage.jsx
+|   |           
+|   \---vehicle
+|           index.js
+|           
++---hooks
+|       useAuth.js
+|       
++---layouts
+|       AdminLayout.css
+|       AdminLayout.jsx
+|       AuthLayout.jsx
+|       CustomerLayout.css
+|       CustomerLayout.jsx
+|       DashboardLayout.css
+|       ManagerLayout.jsx
+|       
++---pages
+|       Unauthorized.css
+|       UnauthorizedPage.jsx
+|       
+\---routes
+        AppRoutes.jsx
+        ProtectedRoute.jsx
+        

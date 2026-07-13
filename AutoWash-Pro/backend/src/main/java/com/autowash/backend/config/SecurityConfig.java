@@ -2,6 +2,7 @@ package com.autowash.backend.config;
 
 import com.autowash.backend.security.CustomUserDetailsService;
 import com.autowash.backend.security.JwtAuthenticationFilter;
+import com.autowash.backend.security.LoginRateLimitFilter;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -19,10 +20,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
-import java.util.Map;
-
-import com.autowash.backend.security.LoginRateLimitFilter;
-
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
@@ -32,9 +29,11 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final LoginRateLimitFilter loginRateLimitFilter;
 
-    public SecurityConfig(CustomUserDetailsService userDetailsService,
+    public SecurityConfig(
+            CustomUserDetailsService userDetailsService,
             JwtAuthenticationFilter jwtAuthenticationFilter,
-            LoginRateLimitFilter loginRateLimitFilter) {
+            LoginRateLimitFilter loginRateLimitFilter
+    ) {
         this.userDetailsService = userDetailsService;
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
         this.loginRateLimitFilter = loginRateLimitFilter;
@@ -47,78 +46,150 @@ public class SecurityConfig {
 
     @Bean
     public DaoAuthenticationProvider authenticationProvider() {
-        DaoAuthenticationProvider provider = new DaoAuthenticationProvider(userDetailsService);
+        DaoAuthenticationProvider provider =
+                new DaoAuthenticationProvider(userDetailsService);
+
         provider.setPasswordEncoder(passwordEncoder());
         return provider;
     }
 
     @Bean
     public AuthenticationManager authenticationManager(
-            AuthenticationConfiguration authenticationConfiguration) throws Exception {
+            AuthenticationConfiguration authenticationConfiguration
+    ) throws Exception {
         return authenticationConfiguration.getAuthenticationManager();
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http)
+            throws Exception {
+
         http
-                // Bật CORS (Cấu hình chi tiết nằm ở CorsConfig.java)
+                // Cho phép request từ frontend theo CorsConfig.
                 .cors(org.springframework.security.config.Customizer.withDefaults())
-                // Tắt CSRF vì dùng JWT (stateless)
+
+                // Backend sử dụng JWT, không dùng session CSRF.
                 .csrf(AbstractHttpConfigurer::disable)
 
-                // Stateless session — không lưu session phía server
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                // Không lưu session ở server.
+                .sessionManagement(session ->
+                        session.sessionCreationPolicy(
+                                SessionCreationPolicy.STATELESS
+                        )
+                )
 
-                // Xử lý lỗi 401 / 403
-                .exceptionHandling(ex -> ex
-                        .authenticationEntryPoint((request, response, authException) -> {
-                            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-                            response.getWriter().write("{\"status\": 401, \"message\": \"Bạn chưa đăng nhập\"}");
-                        })
-                        .accessDeniedHandler((request, response, accessDeniedException) -> {
-                            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-                            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-                            response.getWriter()
-                                    .write("{\"status\": 403, \"message\": \"Bạn không có quyền truy cập\"}");
-                        }))
+                // Xử lý lỗi chưa đăng nhập và không đủ quyền.
+                .exceptionHandling(exception -> exception
 
-                // Phân quyền endpoint
+                        .authenticationEntryPoint(
+                                (request, response, authException) -> {
+                                    response.setStatus(
+                                            HttpServletResponse.SC_UNAUTHORIZED
+                                    );
+                                    response.setContentType(
+                                            MediaType.APPLICATION_JSON_VALUE
+                                    );
+                                    response.setCharacterEncoding("UTF-8");
+                                    response.getWriter().write(
+                                            """
+                                            {
+                                              "status": 401,
+                                              "message": "Bạn chưa đăng nhập"
+                                            }
+                                            """
+                                    );
+                                }
+                        )
+
+                        .accessDeniedHandler(
+                                (request, response, accessDeniedException) -> {
+                                    response.setStatus(
+                                            HttpServletResponse.SC_FORBIDDEN
+                                    );
+                                    response.setContentType(
+                                            MediaType.APPLICATION_JSON_VALUE
+                                    );
+                                    response.setCharacterEncoding("UTF-8");
+                                    response.getWriter().write(
+                                            """
+                                            {
+                                              "status": 403,
+                                              "message": "Bạn không có quyền truy cập"
+                                            }
+                                            """
+                                    );
+                                }
+                        )
+                )
+
                 .authorizeHttpRequests(auth -> auth
-                        // Public endpoints
+
+                        // =====================================================
+                        // PUBLIC
+                        // =====================================================
                         .requestMatchers(
                                 "/api/v1/auth/login",
                                 "/api/v1/auth/register",
-                                "/swagger-ui/**",
-                                "/v3/api-docs/**",
                                 "/api/v1/auth/send-otp",
                                 "/api/v1/auth/verify-otp",
                                 "/api/v1/auth/google",
                                 "/api/v1/auth/refresh",
                                 "/api/v1/auth/forgot-password/request",
                                 "/api/v1/auth/forgot-password/reset",
+
                                 "/api/v1/payments/vnpay-return",
                                 "/api/v1/payments/vnpay-ipn",
                                 "/api/v1/payments/paypal-return",
                                 "/api/v1/payments/paypal-cancel",
+
                                 "/api/v1/notifications/stream",
                                 "/api/v1/branches",
                                 "/api/v1/service-packages/active",
+
+                                "/swagger-ui/**",
+                                "/v3/api-docs/**",
                                 "/actuator/health"
                         ).permitAll()
 
-                        // Admin only
-                        .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
+                        // =====================================================
+                        // ADMIN
+                        // =====================================================
+                        .requestMatchers("/api/v1/admin/**")
+                        .hasRole("ADMIN")
 
-                        // Staff + Admin
-                        .requestMatchers("/api/v1/staff/**").hasAnyRole("STAFF", "ADMIN")
+                        // =====================================================
+                        // EMPLOYEE
+                        // =====================================================
+                        .requestMatchers("/api/v1/employee/**")
+                        .hasRole("EMPLOYEE")
 
-                        // Authenticated users
-                        .anyRequest().authenticated())
+                        /*
+                         * Khóa hoàn toàn endpoint STAFF cũ.
+                         * Tránh trường hợp còn controller cũ chưa được phát hiện.
+                         */
+                        .requestMatchers("/api/v1/staff/**")
+                        .denyAll()
+
+                        // =====================================================
+                        // OTHER AUTHENTICATED ENDPOINTS
+                        // =====================================================
+                        .anyRequest()
+                        .authenticated()
+                )
 
                 .authenticationProvider(authenticationProvider())
-                .addFilterBefore(loginRateLimitFilter, UsernamePasswordAuthenticationFilter.class)
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+
+                // Filter giới hạn số lần đăng nhập.
+                .addFilterBefore(
+                        loginRateLimitFilter,
+                        UsernamePasswordAuthenticationFilter.class
+                )
+
+                // Filter đọc và xác thực JWT.
+                .addFilterBefore(
+                        jwtAuthenticationFilter,
+                        UsernamePasswordAuthenticationFilter.class
+                );
 
         return http.build();
     }

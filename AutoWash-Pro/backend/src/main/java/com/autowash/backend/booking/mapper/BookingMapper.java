@@ -38,7 +38,7 @@ public class BookingMapper {
      * Gọi trong @Transactional hoặc sau JOIN FETCH để tránh N+1.
      *
      * Lưu ý flatten:
-     *  - customerPhone → lấy từ Customer.user.phone (Customer không có phone trực tiếp)
+     * - customerPhone → ưu tiên Customer.phone, fallback sang User.phone
      *  - slotDate/startTime/endTime → TimeSlot không có field slotTime, tách thành 3 field
      *  - assignedStaff → null-safe (chưa phân công khi mới tạo)
      */
@@ -62,11 +62,12 @@ public class BookingMapper {
                 .loyaltyPointGranted(booking.getLoyaltyPointGranted())
                 .updatedAt(booking.getUpdatedAt())
                 .totalAmount(sumTotal(details))
-                // Customer — phone qua User
+                // Customer
                 .customerId(booking.getCustomer().getCustomerId())
                 .customerName(booking.getCustomer().getFullName())
-                .customerPhone(booking.getCustomer().getUser() != null
-                        ? booking.getCustomer().getUser().getPhone() : null)
+                .customerPhone(
+                        booking.getCustomer().resolvePhone()
+                )
                 // Vehicle
                 .vehicleId(booking.getVehicle().getVehicleId())
                 .licensePlate(booking.getVehicle().getLicensePlate())

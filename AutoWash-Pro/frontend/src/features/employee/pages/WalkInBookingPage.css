@@ -1,0 +1,380 @@
+.walk-in-booking-page {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.walk-in-booking-page__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.walk-in-booking-page__eyebrow {
+  margin: 0 0 6px;
+  color: #2563eb;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.walk-in-booking-page__header h1 {
+  margin: 0;
+  color: #111827;
+  font-size: 30px;
+}
+
+.walk-in-booking-page__header > div > p:last-child {
+  margin: 8px 0 0;
+  color: #6b7280;
+}
+
+.walk-in-booking-page__branch {
+  min-width: 280px;
+  padding: 16px 18px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 14px;
+}
+
+.walk-in-booking-page__branch span,
+.walk-in-booking-page__branch small {
+  display: block;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.walk-in-booking-page__branch strong {
+  display: block;
+  margin: 5px 0;
+  color: #1e3a8a;
+}
+
+.walk-in-booking-page__error {
+  padding: 14px 16px;
+  color: #991b1b;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+}
+
+.walk-in-booking-page__success {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 14px;
+  padding: 16px;
+  color: #166534;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 12px;
+}
+
+.walk-in-booking-page__success strong,
+.walk-in-booking-page__success span {
+  display: block;
+}
+
+.walk-in-booking-page__success span {
+  margin-top: 3px;
+  font-size: 13px;
+}
+
+.walk-in-booking-page__success button {
+  height: 38px;
+  padding: 0 14px;
+  color: #ffffff;
+  background: #16a34a;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.walk-in-booking-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.walk-in-booking-form__section {
+  padding: 22px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  box-shadow: 0 5px 18px rgba(15, 23, 42, 0.05);
+}
+
+.walk-in-booking-form__section-title {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  margin-bottom: 20px;
+  color: #2563eb;
+}
+
+.walk-in-booking-form__section-title h2 {
+  margin: 0;
+  color: #111827;
+  font-size: 18px;
+}
+
+.walk-in-booking-form__section-title p {
+  margin: 5px 0 0;
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.walk-in-booking-form__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.walk-in-booking-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.walk-in-booking-form label > span {
+  color: #374151;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.walk-in-booking-form label > span b {
+  color: #dc2626;
+}
+
+.walk-in-booking-form input,
+.walk-in-booking-form select,
+.walk-in-booking-form textarea {
+  width: 100%;
+  padding: 0 12px;
+  color: #111827;
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  border-radius: 9px;
+  outline: none;
+  font: inherit;
+}
+
+.walk-in-booking-form input,
+.walk-in-booking-form select {
+  height: 44px;
+}
+
+.walk-in-booking-form textarea {
+  min-height: 100px;
+  padding-top: 11px;
+  resize: vertical;
+}
+
+.walk-in-booking-form input:focus,
+.walk-in-booking-form select:focus,
+.walk-in-booking-form textarea:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.walk-in-booking-form input:disabled,
+.walk-in-booking-form select:disabled {
+  cursor: not-allowed;
+  background: #f3f4f6;
+}
+
+.walk-in-booking-form__full {
+  grid-column: 1 / -1;
+}
+
+.walk-in-booking-form__empty {
+  margin: 12px 0 0;
+  padding: 14px;
+  color: #64748b;
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 9px;
+  text-align: center;
+  font-size: 13px;
+}
+
+.walk-in-service-grid {
+  display: grid;
+  grid-template-columns: repeat(
+    auto-fill,
+    minmax(230px, 1fr)
+  );
+  gap: 14px;
+}
+
+.walk-in-service-card {
+  display: grid !important;
+  grid-template-columns: auto 1fr;
+  align-items: flex-start;
+  gap: 11px !important;
+  padding: 16px;
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.walk-in-service-card:hover {
+  border-color: #93c5fd;
+}
+
+.walk-in-service-card.is-selected {
+  background: #eff6ff;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+}
+
+.walk-in-service-card input {
+  width: 17px;
+  height: 17px;
+  margin-top: 2px;
+}
+
+.walk-in-service-card strong,
+.walk-in-service-card span,
+.walk-in-service-card b {
+  display: block;
+}
+
+.walk-in-service-card strong {
+  color: #1f2937;
+  font-size: 14px;
+}
+
+.walk-in-service-card span {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 8px;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.walk-in-service-card b {
+  margin-top: 10px;
+  color: #2563eb;
+  font-size: 15px;
+}
+
+.walk-in-booking-form__footer {
+  position: sticky;
+  bottom: 16px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 18px 22px;
+  background: #ffffff;
+  border: 1px solid #dbeafe;
+  border-radius: 14px;
+  box-shadow: 0 10px 35px rgba(15, 23, 42, 0.14);
+}
+
+.walk-in-booking-form__footer span,
+.walk-in-booking-form__footer strong {
+  display: block;
+}
+
+.walk-in-booking-form__footer span {
+  color: #64748b;
+  font-size: 13px;
+}
+
+.walk-in-booking-form__footer strong {
+  margin-top: 3px;
+  color: #1d4ed8;
+  font-size: 23px;
+}
+
+.walk-in-booking-form__footer button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 180px;
+  height: 44px;
+  padding: 0 18px;
+  color: #ffffff;
+  background: #2563eb;
+  border: none;
+  border-radius: 9px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.walk-in-booking-form__footer button:hover:not(:disabled) {
+  background: #1d4ed8;
+}
+
+.walk-in-booking-form__footer button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.walk-in-booking-page__loading {
+  display: grid;
+  min-height: 350px;
+  place-items: center;
+  align-content: center;
+  gap: 12px;
+  color: #64748b;
+}
+
+.is-spinning {
+  animation: walk-in-booking-spin 0.8s linear infinite;
+}
+
+@keyframes walk-in-booking-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 760px) {
+  .walk-in-booking-page__header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .walk-in-booking-page__branch {
+    min-width: 0;
+  }
+
+  .walk-in-booking-form__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .walk-in-booking-form__full {
+    grid-column: auto;
+  }
+
+  .walk-in-booking-form__footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .walk-in-booking-form__footer button {
+    width: 100%;
+  }
+
+  .walk-in-booking-page__success {
+    grid-template-columns: auto 1fr;
+  }
+
+  .walk-in-booking-page__success button {
+    grid-column: 1 / -1;
+  }
+}

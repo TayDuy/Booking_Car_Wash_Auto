@@ -13,9 +13,13 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Xử lý tập trung tất cả exception trong toàn bộ ứng dụng.
@@ -201,6 +205,36 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(HttpStatus.CONFLICT)
                 .body(ApiResponse.error(409, "Dữ liệu bị trùng lặp hoặc vi phạm ràng buộc cơ sở dữ liệu"));
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<Map<String, Object>> handleMethodArgumentTypeMismatch(
+            MethodArgumentTypeMismatchException ex
+    ) {
+        String message;
+
+        Class<?> requiredType = ex.getRequiredType();
+
+        if (requiredType != null && requiredType.isEnum()) {
+            String allowedValues = Arrays.stream(requiredType.getEnumConstants())
+                    .map(Object::toString)
+                    .collect(Collectors.joining(", "));
+
+            message = "Giá trị '" + ex.getValue()
+                    + "' không hợp lệ cho tham số '" + ex.getName()
+                    + "'. Giá trị hợp lệ: " + allowedValues;
+        } else {
+            message = "Giá trị '" + ex.getValue()
+                    + "' không hợp lệ cho tham số '" + ex.getName() + "'";
+        }
+
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("message", message);
+        response.put("status", HttpStatus.BAD_REQUEST.value());
+
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(response);
     }
 
     @ExceptionHandler(Exception.class)
