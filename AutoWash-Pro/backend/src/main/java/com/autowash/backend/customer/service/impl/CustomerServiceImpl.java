@@ -6,11 +6,15 @@ import com.autowash.backend.common.exception.BusinessException;
 import com.autowash.backend.customer.entity.Customer;
 import com.autowash.backend.customer.repository.CustomerRepository;
 import com.autowash.backend.customer.service.CustomerService;
+import com.autowash.backend.loyaltytier.entity.LoyaltyTier;
+import com.autowash.backend.loyaltytier.repository.LoyaltyTierRepository;
 import org.springframework.http.HttpStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import com.autowash.backend.auditlog.service.AuditLogService;
 @Service
 @RequiredArgsConstructor
@@ -20,6 +24,7 @@ public class CustomerServiceImpl implements CustomerService {
     private static final String ADMIN_USER = "admin";
 
     private final CustomerRepository customerRepository;
+    private final LoyaltyTierRepository loyaltyTierRepository;
     private final AuditLogService auditLogService;
 
     @Override
@@ -63,20 +68,29 @@ public class CustomerServiceImpl implements CustomerService {
     }
 
     private CustomerProfileResponse mapToResponse(Customer customer) {
-    return CustomerProfileResponse.builder()
-            .customerId(customer.getCustomerId())
-            .username(customer.getUser() != null ? customer.getUser().getUsername() : null)
-            .email(customer.getUser() != null ? customer.getUser().getEmail() : null)
-            .phone(customer.getUser() != null ? customer.getUser().getPhone() : null)
-            .fullName(customer.getFullName())
-            .dateOfBirth(customer.getDateOfBirth())
-            .gender(translateGenderToVietnamese(customer.getGender()))
-            .totalPoints(customer.getTotalPoints())
-            .totalVisits(customer.getTotalVisits())
-            .totalSpending(customer.getTotalSpending())
-            .tierId(customer.getTierId())
-            .joinedAt(customer.getJoinedAt())
-            .build();
+        String tierName = resolveTierName(customer.getTierId());
+        return CustomerProfileResponse.builder()
+                .customerId(customer.getCustomerId())
+                .username(customer.getUser() != null ? customer.getUser().getUsername() : null)
+                .email(customer.getUser() != null ? customer.getUser().getEmail() : null)
+                .phone(customer.getUser() != null ? customer.getUser().getPhone() : null)
+                .fullName(customer.getFullName())
+                .dateOfBirth(customer.getDateOfBirth())
+                .gender(translateGenderToVietnamese(customer.getGender()))
+                .totalPoints(customer.getTotalPoints())
+                .totalVisits(customer.getTotalVisits())
+                .totalSpending(customer.getTotalSpending())
+                .tierId(customer.getTierId())
+                .tierName(tierName)
+                .joinedAt(customer.getJoinedAt())
+                .build();
+    }
+
+    private String resolveTierName(Integer tierId) {
+        if (tierId == null) return "Đồng";
+        return loyaltyTierRepository.findById(tierId)
+                .map(LoyaltyTier::getTierName)
+                .orElse("Đồng");
     }
     private String translateGenderToEnglish(String gender) {
         if (gender == null) return null;

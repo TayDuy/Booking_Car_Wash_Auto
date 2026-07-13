@@ -535,6 +535,39 @@
   background: #ef4444;
 }
 
+/* Payment Status Badges */
+.bh-status-badge.payment-badge-unpaid {
+  background: rgba(239, 68, 68, 0.1);
+  color: #dc2626;
+}
+.bh-status-badge.payment-badge-unpaid .bh-status-dot {
+  background: #dc2626;
+}
+
+.bh-status-badge.payment-badge-paid {
+  background: rgba(16, 185, 129, 0.1);
+  color: #047857;
+}
+.bh-status-badge.payment-badge-paid .bh-status-dot {
+  background: #10b981;
+}
+
+.bh-status-badge.payment-badge-failed {
+  background: rgba(239, 68, 68, 0.1);
+  color: #b91c1c;
+}
+.bh-status-badge.payment-badge-failed .bh-status-dot {
+  background: #ef4444;
+}
+
+.bh-status-badge.payment-badge-cancelled {
+  background: rgba(100, 116, 139, 0.1);
+  color: #475569;
+}
+.bh-status-badge.payment-badge-cancelled .bh-status-dot {
+  background: #64748b;
+}
+
 @keyframes bh-pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.4; }

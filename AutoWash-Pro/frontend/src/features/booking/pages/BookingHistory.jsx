@@ -14,6 +14,20 @@ const STATUS_MAP = {
   no_show:     { label: 'Vắng mặt',     badge: 'badge-no_show' },
 };
 
+const PAYMENT_STATUS_MAP = {
+  unpaid:    { label: 'Chưa thanh toán', badge: 'payment-badge-unpaid' },
+  paid:      { label: 'Đã thanh toán',   badge: 'payment-badge-paid' },
+  failed:    { label: 'Thanh toán lỗi',  badge: 'payment-badge-failed' },
+  cancelled: { label: 'Hủy thanh toán',  badge: 'payment-badge-cancelled' },
+};
+
+const PAYMENT_METHOD_MAP = {
+  cash: 'Tiền mặt',
+  bank_transfer: 'Chuyển khoản',
+  pos: 'Quẹt thẻ POS',
+  paypal: 'PayPal',
+};
+
 const FILTER_TABS = [
   { key: 'all',         label: 'Tất cả' },
   { key: 'pending',     label: 'Chờ xử lý' },
@@ -238,6 +252,10 @@ export default function BookingHistory() {
               <div className="bh-booking-list">
                 {paginated.map((booking, idx) => {
                   const statusCfg = STATUS_MAP[booking.status] || STATUS_MAP.pending;
+                  const paymentCfg = PAYMENT_STATUS_MAP[booking.paymentStatus?.toLowerCase()] || PAYMENT_STATUS_MAP.unpaid;
+                  const paymentLabel = booking.paymentStatus?.toLowerCase() === 'paid'
+                      ? `Đã thanh toán (${PAYMENT_METHOD_MAP[booking.paymentMethod?.toLowerCase()] || booking.paymentMethod || 'Tiền mặt'})`
+                      : paymentCfg.label;
                   const dateStr = booking.slotDate ? fmtDate(booking.slotDate) : fmtDate(booking.bookingDate);
                   const timeStr = fmtTime(booking.slotStartTime);
 
@@ -272,15 +290,23 @@ export default function BookingHistory() {
                             {booking.licensePlate && (
                                 <span className="bh-card-plate">
                           <span className="material-symbols-outlined" style={{ fontSize: 13 }}>directions_car</span>
-                                  {booking.licensePlate}
+                                  {booking.vehicleNickname
+                                    ? <>{booking.vehicleNickname} <span style={{ opacity: 0.6 }}>({booking.licensePlate})</span></>
+                                    : booking.licensePlate}
                         </span>
                             )}
                           </div>
 
                           <div className="bh-card-status-amount">
-                            <div className={`bh-status-badge ${statusCfg.badge}`}>
-                              <span className="bh-status-dot" />
-                              {statusCfg.label}
+                            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                              <div className={`bh-status-badge ${statusCfg.badge}`}>
+                                <span className="bh-status-dot" />
+                                {statusCfg.label}
+                              </div>
+                              <div className={`bh-status-badge ${paymentCfg.badge}`}>
+                                <span className="bh-status-dot" />
+                                {paymentLabel}
+                              </div>
                             </div>
                             <div className="bh-card-amount">{fmt.format(booking.totalAmount || 0)}</div>
                           </div>
@@ -370,10 +396,21 @@ export default function BookingHistory() {
                           <div className="bh-detail-item">
                             <div className="bh-detail-label">Trạng thái</div>
                             <div className="bh-detail-value">
-                        <span className={`bh-status-badge ${(STATUS_MAP[detailModal.status] || STATUS_MAP.pending).badge}`}>
-                          <span className="bh-status-dot" />
-                          {(STATUS_MAP[detailModal.status] || STATUS_MAP.pending).label}
-                        </span>
+                              <span className={`bh-status-badge ${(STATUS_MAP[detailModal.status] || STATUS_MAP.pending).badge}`}>
+                                <span className="bh-status-dot" />
+                                {(STATUS_MAP[detailModal.status] || STATUS_MAP.pending).label}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="bh-detail-item">
+                            <div className="bh-detail-label">Thanh toán</div>
+                            <div className="bh-detail-value">
+                              <span className={`bh-status-badge ${(PAYMENT_STATUS_MAP[detailModal.paymentStatus?.toLowerCase()] || PAYMENT_STATUS_MAP.unpaid).badge}`}>
+                                <span className="bh-status-dot" />
+                                {detailModal.paymentStatus?.toLowerCase() === 'paid'
+                                  ? `Đã thanh toán (${PAYMENT_METHOD_MAP[detailModal.paymentMethod?.toLowerCase()] || detailModal.paymentMethod || 'Tiền mặt'})`
+                                  : (PAYMENT_STATUS_MAP[detailModal.paymentStatus?.toLowerCase()] || PAYMENT_STATUS_MAP.unpaid).label}
+                              </span>
                             </div>
                           </div>
                           <div className="bh-detail-item">
@@ -389,8 +426,12 @@ export default function BookingHistory() {
                             <div className="bh-detail-value">{detailModal.branchName || '—'}</div>
                           </div>
                           <div className="bh-detail-item">
-                            <div className="bh-detail-label">Biển số xe</div>
-                            <div className="bh-detail-value">{detailModal.licensePlate || '—'}</div>
+                            <div className="bh-detail-label">Xe</div>
+                            <div className="bh-detail-value">
+                              {detailModal.vehicleNickname
+                                ? <>{detailModal.vehicleNickname} <span style={{ opacity: 0.6 }}>({detailModal.licensePlate})</span></>
+                                : detailModal.licensePlate || '—'}
+                            </div>
                           </div>
                           <div className="bh-detail-item">
                             <div className="bh-detail-label">Nhân viên phụ trách</div>

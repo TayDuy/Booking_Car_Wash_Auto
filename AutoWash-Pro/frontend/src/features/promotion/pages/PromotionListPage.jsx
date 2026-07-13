@@ -26,6 +26,7 @@ function PromotionListPage() {
   const [pointBalance, setPointBalance] = useState(0);
   const [pointHistory, setPointHistory] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyPage, setHistoryPage] = useState(1);
   const [animatedPoints, setAnimatedPoints] = useState(0);
 
   const customerId = localStorage.getItem("customerId");
@@ -258,6 +259,7 @@ function PromotionListPage() {
       const res = await getMyTransactionHistory();
       const list = res?.data || res || [];
       setPointHistory(Array.isArray(list) ? list : []);
+      setHistoryPage(1);
     } catch (err) {
       console.error("Load point history error:", err);
       setPointHistory([]);
@@ -420,6 +422,12 @@ function PromotionListPage() {
       </div>
     );
   }
+
+  const itemsPerPage = 5;
+  const totalPages = Math.ceil(pointHistory.length / itemsPerPage);
+  const indexOfLastItem = historyPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentHistory = pointHistory.slice(indexOfFirstItem, indexOfLastItem);
 
   return (
     <div className="offer-page">
@@ -864,7 +872,7 @@ function PromotionListPage() {
                   </thead>
 
                   <tbody>
-                    {pointHistory.map((tx) => {
+                    {currentHistory.map((tx) => {
                       const isEarn = tx.transactionType === "earn";
                       return (
                         <tr key={tx.loyaltyTransactionId}>
@@ -890,14 +898,50 @@ function PromotionListPage() {
                   </tbody>
                 </table>
 
-                <button
-                  type="button"
-                  className="history-load-more"
-                  onClick={loadPointHistory}
-                  disabled={historyLoading}
-                >
-                  {historyLoading ? "Đang tải..." : "Tải lại"}
-                </button>
+                <div className="history-pagination-wrapper">
+                  <div className="pagination-info">
+                    Hiển thị <strong>{indexOfFirstItem + 1} - {Math.min(indexOfLastItem, pointHistory.length)}</strong> trên tổng số <strong>{pointHistory.length}</strong> giao dịch
+                  </div>
+                  <div className="pagination-controls">
+                    <button
+                      type="button"
+                      className="btn-paginate"
+                      onClick={() => setHistoryPage((prev) => Math.max(prev - 1, 1))}
+                      disabled={historyPage === 1}
+                    >
+                      ❮ Trước
+                    </button>
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNumber) => (
+                      <button
+                        key={pageNumber}
+                        type="button"
+                        className={`btn-paginate number-btn ${
+                          historyPage === pageNumber ? "active" : ""
+                        }`}
+                        onClick={() => setHistoryPage(pageNumber)}
+                      >
+                        {pageNumber}
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      className="btn-paginate"
+                      onClick={() => setHistoryPage((prev) => Math.min(prev + 1, totalPages))}
+                      disabled={historyPage === totalPages}
+                    >
+                      Sau ❯
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-paginate refresh-btn"
+                      onClick={loadPointHistory}
+                      disabled={historyLoading}
+                      title="Tải lại dữ liệu"
+                    >
+                      {historyLoading ? "..." : "🔄"}
+                    </button>
+                  </div>
+                </div>
               </>
             )}
           </div>

@@ -45,6 +45,7 @@ public class BookingResponseDTO {
     private Integer vehicleId;
     private String licensePlate;
     private Vehicle.VehicleType vehicleType;
+    private String vehicleNickname;
 
     // ── TimeSlot ─────────────────────────────────────────────────────────────
     // Không có field slotTime trong entity → tách thành 3 field riêng
@@ -63,4 +64,7 @@ public class BookingResponseDTO {
 
     // ── Chi tiết dịch vụ ─────────────────────────────────────────────────────
     private List<BookingDetailItemResponseDTO> details;
+
+    private String paymentStatus;
+    private String paymentMethod;
 }

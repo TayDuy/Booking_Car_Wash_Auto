@@ -40,6 +40,11 @@ public class PaymentResponseDTO {
     /** Số tiền được giảm = discount từ promotion + reward. */
     private BigDecimal discountAmount;
 
+    private BigDecimal promoDiscount;
+    private BigDecimal voucherDiscount;
+    private BigDecimal onlineDiscount;
+    private BigDecimal tierDiscount;
+
     /** Số tiền thực thu = originalAmount - discountAmount. */
     private BigDecimal finalAmount;
 

@@ -27,8 +27,20 @@ public class Customer {
     @JoinColumn(name = "user_id", nullable = false, unique = true)
     private User user;
 
+    // TODO: rename to branchId and add @ManyToOne(Branch) — column name in DB is brand_id
+    // but it stores the branch (chi nhánh) the customer belongs to
     @Column(name = "brand_id")
     private Integer brandId;
+
+    @Transient
+    public Integer getBranchId() {
+        return brandId;
+    }
+
+    @Transient
+    public void setBranchId(Integer branchId) {
+        this.brandId = branchId;
+    }
 
     @Column(name = "full_name", nullable = false, length = 100)
     private String fullName;

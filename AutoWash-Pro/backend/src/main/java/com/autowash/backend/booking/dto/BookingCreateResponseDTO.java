@@ -1,10 +1,14 @@
 package com.autowash.backend.booking.dto;
 
 import com.autowash.backend.booking.enums.BookingStatus;
+import com.autowash.backend.vehicle.entity.Vehicle;
 import lombok.*;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.List;
 
 /**
  * DTO trả về ngay sau khi tạo booking thành công.
@@ -31,4 +35,26 @@ public class BookingCreateResponseDTO {
 
     /** Thông báo xác nhận cho client. */
     private String message;
+
+    /** Chi tiết dịch vụ */
+    private List<BookingDetailItemResponseDTO> details;
+
+    /** Thông tin thời gian */
+    private LocalDate slotDate;
+    private LocalTime slotStartTime;
+    private LocalTime slotEndTime;
+
+    /** Chi nhánh */
+    private String branchName;
+
+    /** Thông tin xe */
+    private String licensePlate;
+    private Vehicle.VehicleType vehicleType;
+    private String vehicleNickname;
+
+    /** Phương thức thanh toán */
+    private String paymentMethod;
+
+    /** Mã booking code gốc để redirect thanh toán */
+    private String bookingCodeRedirect;
 }

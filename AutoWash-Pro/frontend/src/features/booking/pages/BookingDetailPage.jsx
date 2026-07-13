@@ -44,11 +44,6 @@ function BookingDetailPage() {
       .finally(() => setLoading(false));
   }, [bookingId]);
 
-  const handleReBook = () => {
-    if (!booking) return;
-    navigate("/customer/booking");
-  };
-
   if (loading) {
     return (
       <div className="app-container" style={{ padding: "72px 0" }}>
@@ -166,46 +161,45 @@ function BookingDetailPage() {
             </>
           )}
 
-          {booking.status === "pending" && (
-            <div style={{ marginTop: "24px", paddingTop: "20px", borderTop: "1px solid var(--color-border, #eee)" }}>
-              <button
-                onClick={() => navigate(`/customer/payment?bookingId=${booking.bookingId}`)}
-                style={{
-                  padding: "10px 24px", borderRadius: "8px", border: "none",
-                  background: "var(--color-primary, #003d9b)", color: "#fff",
-                  fontWeight: 600, cursor: "pointer", fontSize: "14px",
-                  marginRight: "12px",
-                }}
-              >
-                Tiến hành thanh toán
-              </button>
-              <button
-                onClick={() => navigate(`/customer/booking`)}
-                style={{
-                  padding: "10px 24px", borderRadius: "8px", border: "1px solid var(--color-primary, #003d9b)",
-                  background: "transparent", color: "var(--color-primary, #003d9b)",
-                  fontWeight: 600, cursor: "pointer", fontSize: "14px",
-                }}
-              >
-                Đặt lại
-              </button>
-            </div>
-          )}
+          {(() => {
+            const isPaid = booking.paymentStatus?.toLowerCase() === "paid";
+            const isTerminal = booking.status === "cancelled" || booking.status === "no_show";
+            const canPay = !isPaid && !isTerminal;
 
-          {booking.status !== "pending" && (
-            <div style={{ marginTop: "24px", paddingTop: "20px", borderTop: "1px solid var(--color-border, #eee)" }}>
-              <button
-                onClick={handleReBook}
-                style={{
-                  padding: "10px 24px", borderRadius: "8px", border: "1px solid var(--color-primary, #003d9b)",
-                  background: "transparent", color: "var(--color-primary, #003d9b)",
-                  fontWeight: 600, cursor: "pointer", fontSize: "14px",
-                }}
-              >
-                Đặt lại dịch vụ này
-              </button>
-            </div>
-          )}
+            if (isPaid) {
+              return (
+                <div style={{ marginTop: "24px", paddingTop: "20px", borderTop: "1px solid var(--color-border, #eee)" }}>
+                  <span style={{
+                    display: "inline-flex", alignItems: "center", gap: "6px",
+                    padding: "8px 18px", borderRadius: "8px",
+                    background: "#e8f5e9", color: "#2e7d32",
+                    fontWeight: 600, fontSize: "14px",
+                  }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                    Đã thanh toán
+                  </span>
+                </div>
+              );
+            }
+
+            if (canPay) {
+              return (
+                <div style={{ marginTop: "24px", paddingTop: "20px", borderTop: "1px solid var(--color-border, #eee)" }}>
+                  <button onClick={() => navigate(`/customer/payment?bookingId=${booking.bookingId}`)} style={{
+                    padding: "10px 24px", borderRadius: "8px", border: "none",
+                    background: "var(--color-primary, #003d9b)", color: "#fff",
+                    fontWeight: 600, cursor: "pointer", fontSize: "14px",
+                  }}>
+                    Tiến hành thanh toán
+                  </button>
+                </div>
+              );
+            }
+
+            return null;
+          })()}
         </div>
       </div>
     </div>

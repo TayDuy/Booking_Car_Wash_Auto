@@ -202,9 +202,9 @@ const ProfilePage = () => {
     const trimmedPlate = (vehicleForm.licensePlate || '').trim().toUpperCase();
 
     // Validate license plate pattern e.g. 51A-12345 or 30A-1234 (optional dots allowed)
-    const platePattern = /^[0-9]{2}[A-Z]-[0-9]{3,5}(\.[0-9]{1,2})?$/;
+    const platePattern = /^[0-9]{2}[A-Z]{1,2}-[0-9]{3,5}(\.[0-9]{1,2})?$/;
     if (!platePattern.test(trimmedPlate)) {
-      setVehicleError('Biển số xe phải đúng định dạng (VD: 51A-12345 hoặc 30A-1234).');
+      setVehicleError('Biển số xe phải đúng định dạng (VD: 51A-12345, 29AB-12345).');
       return;
     }
 
@@ -263,9 +263,9 @@ const ProfilePage = () => {
     if (!editingVehicle) return;
 
     const trimmedPlate = (editingVehicle.licensePlate || '').trim().toUpperCase();
-    const platePattern = /^[0-9]{2}[A-Z]-[0-9]{3,5}(\.[0-9]{1,2})?$/;
+    const platePattern = /^[0-9]{2}[A-Z]{1,2}-[0-9]{3,5}(\.[0-9]{1,2})?$/;
     if (!platePattern.test(trimmedPlate)) {
-      alert('Biển số xe phải đúng định dạng (VD: 51A-12345)');
+      alert('Biển số xe phải đúng định dạng (VD: 51A-12345, 29AB-12345)');
       return;
     }
     if (!editingVehicle.brand?.trim() || !editingVehicle.model?.trim()) {
@@ -317,6 +317,7 @@ const ProfilePage = () => {
       loyaltyInfo?.currentTierName ||
       loyaltyInfo?.newTierName ||
       loyaltyInfo?.tierName ||
+      user.tierName ||
       getTierName(user.tierId)
     );
   }
@@ -506,11 +507,16 @@ const ProfilePage = () => {
                             </span>
                           </div>
                           <div>
-                            <h4 className="vehicle-name">{vehicle.brand} {vehicle.model}</h4>
+                            <h4 className="vehicle-name">{vehicle.nickname || `${vehicle.brand} ${vehicle.model}`}</h4>
                             <span className="vehicle-plate">{vehicle.licensePlate}</span>
-                            <span style={{ fontSize: '12px', color: 'var(--on-surface-variant)', marginLeft: '8px', fontWeight: 'bold' }}>
+                            <span style={{ fontSize: '12px', color: 'var(--on-surface-variant)', marginLeft: '8px' }}>
                               ({vehicle.vehicleType === 'suv' ? 'Xe 7 chỗ' : 'Xe 4 chỗ'})
                             </span>
+                            {vehicle.nickname && (
+                              <div style={{ fontSize: '12px', color: 'var(--on-surface-variant)', marginTop: '2px' }}>
+                                {vehicle.brand} {vehicle.model}
+                              </div>
+                            )}
                           </div>
                         </div>
                         <div className="vehicle-footer">
@@ -611,7 +617,7 @@ const ProfilePage = () => {
                               <td>
                                 <div className="service-cell">
                                   <span className="service-name">{booking.branchName || 'AutoWash-Pro Branch'}</span>
-                                  <span className="service-car">{booking.licensePlate || 'Mã: ' + booking.bookingCode}</span>
+                                  <span className="service-car">{booking.vehicleNickname || booking.licensePlate || 'Mã: ' + booking.bookingCode}</span>
                                 </div>
                               </td>
                               <td>

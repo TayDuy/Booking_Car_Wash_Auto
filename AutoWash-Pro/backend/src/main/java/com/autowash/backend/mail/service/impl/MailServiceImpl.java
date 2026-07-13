@@ -34,6 +34,7 @@ public class MailServiceImpl implements MailService {
     private boolean logOtpCode;
 
     @Override
+    @Async("mailTaskExecutor")
     public void sendOtpEmail(String toEmail, String otpCode, String purpose) {
         if (logOtpCode) {
             log.info("Bắt đầu gửi email OTP đến {} - MÃ OTP THẬT: {}", toEmail, otpCode);
@@ -41,18 +42,42 @@ public class MailServiceImpl implements MailService {
             log.info("Bắt đầu gửi email OTP đến {}", toEmail);
         }
         try {
-            SimpleMailMessage message = new SimpleMailMessage();
-            message.setTo(toEmail);
-            message.setSubject("Mã xác thực OTP - WashFlow Pro");
-            String content = String.format(
-                    "Xin chào,\n\nMã xác thực OTP của bạn là: %s\n" +
-                    "Mã này được sử dụng cho mục đích: %s.\n" +
-                    "Thời gian hiệu lực là 5 phút. Vui lòng không chia sẻ mã này với bất kỳ ai.\n\n" +
-                    "Trân trọng,\nWashFlow Pro Team",
-                    otpCode, purpose
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+            helper.setTo(toEmail);
+            helper.setSubject("Mã xác thực OTP - WashFlow Pro");
+            helper.setFrom(mailFrom);
+
+            String purposeLabel = switch (purpose.toUpperCase()) {
+                case "PASSWORD_RESET" -> "đặt lại mật khẩu";
+                default -> "xác thực tài khoản";
+            };
+
+            String htmlContent = String.format(
+                "<!DOCTYPE html><html><head><meta charset=\"utf-8\">" +
+                "<style>" +
+                "body{margin:0;padding:0;background-color:#f4f7fa;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}" +
+                ".container{max-width:480px;margin:40px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,0.08)}" +
+                ".header{background:#003d9b;padding:24px;text-align:center}" +
+                ".header h1{margin:0;color:#fff;font-size:20px;font-weight:700}" +
+                ".body{padding:32px 24px;text-align:center}" +
+                ".otp-code{font-size:36px;font-weight:800;letter-spacing:8px;color:#003d9b;background:#eef2ff;padding:16px 24px;border-radius:8px;display:inline-block;margin:16px 0}" +
+                ".footer{background:#f8fafc;padding:16px 24px;text-align:center;font-size:12px;color:#94a3b8}" +
+                "</style></head><body>" +
+                "<div class=\"container\">" +
+                "<div class=\"header\"><h1>Mã xác thực OTP</h1></div>" +
+                "<div class=\"body\">" +
+                "<p style=\"font-size:16px;color:#334155;margin-bottom:8px\">Xin chào,</p>" +
+                "<p style=\"font-size:14px;color:#64748b;margin-bottom:4px\">Mã OTP dùng để <strong>%s</strong> của bạn là:</p>" +
+                "<div class=\"otp-code\">%s</div>" +
+                "<p style=\"font-size:13px;color:#94a3b8;margin-top:16px\">Mã có hiệu lực trong <strong>5 phút</strong>. Không chia sẻ mã này với bất kỳ ai.</p>" +
+                "</div>" +
+                "<div class=\"footer\">WashFlow Pro &bull; Hệ thống chăm sóc xe tự động</div>" +
+                "</div></body></html>",
+                purposeLabel, otpCode
             );
-            message.setText(content);
-            message.setFrom(mailFrom);
+
+            helper.setText(htmlContent, true);
             mailSender.send(message);
             log.info("Đã gửi thành công email OTP đến {}", toEmail);
         } catch (Exception e) {

@@ -75,6 +75,14 @@ public interface BookingRepository extends JpaRepository<Booking, Integer> {
             @Param("customerId") Integer customerId,
             @Param("status") BookingStatus status);
 
+    @Query("""
+            SELECT b FROM Booking b
+            LEFT JOIN FETCH b.vehicle
+            LEFT JOIN FETCH b.customer
+            WHERE b.bookingId = :bookingId
+            """)
+    Optional<Booking> findByIdWithAssociations(@Param("bookingId") Integer bookingId);
+
     //Dùng cho FR2 :Kiểm tra xem xe có đang vướng lịch đặt nào chưa hoàn thành không
     boolean existsByVehicle_VehicleIdAndStatusIn(Integer vehicleId, java.util.List<BookingStatus> statuses);
 

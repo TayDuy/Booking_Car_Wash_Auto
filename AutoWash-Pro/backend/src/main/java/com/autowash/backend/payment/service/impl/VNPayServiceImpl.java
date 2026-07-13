@@ -1,7 +1,5 @@
 package com.autowash.backend.payment.service.impl;
 
-import org.springframework.stereotype.Service;
-
 import com.autowash.backend.payment.config.VNPayConfig;
 import com.autowash.backend.payment.service.VNPayService;
 import com.google.zxing.BarcodeFormat;
@@ -10,6 +8,7 @@ import com.google.zxing.client.j2se.MatrixToImageWriter;
 import com.google.zxing.common.BitMatrix;
 import com.google.zxing.qrcode.QRCodeWriter;
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.Mac;
@@ -27,7 +26,10 @@ import java.util.TimeZone;
 import java.util.TreeMap;
 
 @Service
+@RequiredArgsConstructor
 public class VNPayServiceImpl implements VNPayService {
+
+    private final VNPayConfig vnPayConfig;
 
     @Override
     public String createPaymentUrl(HttpServletRequest request, long amount, String orderInfo, String txnRef)
@@ -39,14 +41,14 @@ public class VNPayServiceImpl implements VNPayService {
         Map<String, String> vnp_Params = new TreeMap<>();
         vnp_Params.put("vnp_Version", VNPayConfig.vnp_Version);
         vnp_Params.put("vnp_Command", VNPayConfig.vnp_Command);
-        vnp_Params.put("vnp_TmnCode", VNPayConfig.vnp_TmnCode);
+        vnp_Params.put("vnp_TmnCode", vnPayConfig.getVnp_TmnCode());
         vnp_Params.put("vnp_Amount", String.valueOf(vnp_Amount));
         vnp_Params.put("vnp_CurrCode", "VND");
         vnp_Params.put("vnp_TxnRef", txnRef);
         vnp_Params.put("vnp_OrderInfo", orderInfo);
         vnp_Params.put("vnp_OrderType", "other");
         vnp_Params.put("vnp_Locale", "vn");
-        vnp_Params.put("vnp_ReturnUrl", VNPayConfig.vnp_ReturnUrl);
+        vnp_Params.put("vnp_ReturnUrl", vnPayConfig.getVnp_ReturnUrl());
         vnp_Params.put("vnp_IpAddr", vnp_IpAddr);
 
         TimeZone vietnamTz = TimeZone.getTimeZone("Asia/Ho_Chi_Minh");
@@ -75,10 +77,10 @@ public class VNPayServiceImpl implements VNPayService {
             }
         }
 
-        String vnp_SecureHash = hmacSHA512(VNPayConfig.vnp_HashSecret, hashData.toString());
+        String vnp_SecureHash = hmacSHA512(vnPayConfig.getVnp_HashSecret(), hashData.toString());
         query.append("&vnp_SecureHash=").append(vnp_SecureHash);
 
-        return VNPayConfig.vnp_PayUrl + "?" + query;
+        return vnPayConfig.getVnp_PayUrl() + "?" + query;
     }
 
     @Override
@@ -108,7 +110,7 @@ public class VNPayServiceImpl implements VNPayService {
                 }
             }
         }
-        String calculatedHash = hmacSHA512(VNPayConfig.vnp_HashSecret, hashData.toString());
+        String calculatedHash = hmacSHA512(vnPayConfig.getVnp_HashSecret(), hashData.toString());
         return calculatedHash.equalsIgnoreCase(receivedHash);
     }
 
