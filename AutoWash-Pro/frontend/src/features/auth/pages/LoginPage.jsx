@@ -29,26 +29,45 @@ function LoginPage() {
   };
 
   const redirectByRole = (role) => {
+    const normalizedRole = String(role || "").toUpperCase();
+
+    const homeByRole = {
+      ADMIN: "/admin/dashboard",
+      EMPLOYEE: "/employee/dashboard",
+      CUSTOMER: "/customer/home",
+      USER: "/customer/home",
+    };
+
+    const routePrefixByRole = {
+      ADMIN: "/admin",
+      EMPLOYEE: "/employee",
+      CUSTOMER: "/customer",
+      USER: "/customer",
+    };
+
+    const defaultPath = homeByRole[normalizedRole];
+
+    if (!defaultPath) {
+      navigate("/unauthorized", { replace: true });
+      return;
+    }
+
     const searchParams = new URLSearchParams(window.location.search);
     const redirectUrl = searchParams.get("redirect");
-    if (redirectUrl) {
+    const allowedPrefix = routePrefixByRole[normalizedRole];
+
+    // Chỉ dùng redirect cũ khi route đó đúng với quyền của tài khoản.
+    // Ví dụ Employee không bị đưa nhầm sang /manager hoặc /customer.
+    if (
+      redirectUrl &&
+      redirectUrl.startsWith("/") &&
+      redirectUrl.startsWith(allowedPrefix)
+    ) {
       navigate(redirectUrl, { replace: true });
       return;
     }
 
-    const normalizedRole = String(role || "").toUpperCase();
-
-    if (normalizedRole === "ADMIN") {
-      navigate("/admin/dashboard", { replace: true });
-      return;
-    }
-
-    if (normalizedRole === "MANAGER" || normalizedRole === "STAFF") {
-      navigate("/manager/dashboard", { replace: true });
-      return;
-    }
-
-    navigate("/customer/home", { replace: true });
+    navigate(defaultPath, { replace: true });
   };
 
   const handleLoginSuccess = (result) => {

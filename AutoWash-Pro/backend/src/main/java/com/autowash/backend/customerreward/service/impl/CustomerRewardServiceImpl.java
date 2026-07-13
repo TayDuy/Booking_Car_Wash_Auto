@@ -17,19 +17,24 @@ import com.autowash.backend.loyaltytransaction.dto.LoyaltyBalanceResponseDTO;
 import com.autowash.backend.loyaltytransaction.entity.LoyaltyTransaction;
 import com.autowash.backend.loyaltytransaction.repository.LoyaltyTransactionRepository;
 import com.autowash.backend.loyaltytransaction.service.LoyaltyTransactionService;
+import com.autowash.backend.reward.dto.RedeemRewardRequestDTO;
 import com.autowash.backend.reward.entity.Reward;
 import com.autowash.backend.reward.repository.RewardRepository;
+import com.autowash.backend.user.entity.User;
+import com.autowash.backend.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class CustomerRewardServiceImpl implements CustomerRewardService {
 
     private final CustomerRewardRepository customerRewardRepository;
@@ -42,6 +47,17 @@ public class CustomerRewardServiceImpl implements CustomerRewardService {
     private final com.autowash.backend.user.repository.UserRepository userRepository;
     private final LoyaltyTierRepository loyaltyTierRepository;
 
+    /**
+     * Luồng đổi reward:
+     * 1. Xác thực quyền sở hữu customer.
+     * 2. Khóa bản ghi customer để tránh hai request đồng thời cùng tiêu điểm.
+     * 3. Kiểm tra reward active, đúng loại xe và đủ điểm.
+     * 4. Trừ customer.total_points.
+     * 5. Ghi loyalty_transaction.
+     * 6. Tạo voucher customer_reward.
+     *
+     * Tất cả nằm trong cùng một transaction; lỗi ở bất kỳ bước nào sẽ rollback toàn bộ.
+     */
     @Override
     @Transactional
     public CustomerRewardResponseDTO redeemReward(Integer customerId, Integer rewardId, Integer userId) {
@@ -128,6 +144,11 @@ public class CustomerRewardServiceImpl implements CustomerRewardService {
                 .toList();
     }
 
+    /**
+     * Dùng voucher cho một booking.
+     * Repository nên khóa bản ghi theo voucherCode bằng PESSIMISTIC_WRITE
+     * để tránh hai request đồng thời cùng sử dụng một voucher.
+     */
     @Override
     @Transactional
     public CustomerRewardResponseDTO useReward(String voucherCode, Integer bookingId, Integer userId) {

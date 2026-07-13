@@ -294,41 +294,6 @@ public class BookingServiceImpl implements BookingService {
 
     @Override
     @Transactional
-    public BookingResponseDTO confirmBooking(Integer bookingId) {
-        Booking booking = findBookingOrThrow(bookingId);
-
-        if (!BookingStatus.pending.equals(booking.getStatus())) {
-            throw new BusinessException("Chỉ booking pending mới được xác nhận", HttpStatus.BAD_REQUEST);
-        }
-
-        booking.setStatus(BookingStatus.confirmed);
-
-        Booking saved = bookingRepository.save(booking);
-        List<BookingDetail> details = bookingDetailRepository.findByBooking(saved);
-        return bookingMapper.toResponse(saved, details);
-    }
-
-    @Override
-    @Transactional
-    public BookingResponseDTO checkInBooking(Integer bookingId) {
-        Booking booking = findBookingOrThrow(bookingId);
-
-        if (!BookingStatus.confirmed.equals(booking.getStatus())) {
-            throw new BusinessException(
-                    "Chỉ booking confirmed mới được check-in",
-                    HttpStatus.BAD_REQUEST
-            );
-        }
-
-        booking.setStatus(BookingStatus.in_progress);
-
-        Booking saved = bookingRepository.save(booking);
-        List<BookingDetail> details = bookingDetailRepository.findByBooking(saved);
-        return bookingMapper.toResponse(saved, details);
-    }
-
-    @Override
-    @Transactional
     public BookingResponseDTO rescheduleBooking(Integer bookingId, Integer userId, BookingRescheduleRequestDTO request) {
         Booking booking = findBookingOrThrow(bookingId);
 
@@ -441,33 +406,6 @@ public class BookingServiceImpl implements BookingService {
         Booking saved = bookingRepository.save(booking);
         return bookingMapper.toResponse(saved, bookingDetailRepository.findByBooking(saved));
     }
-
-    /**
-     * Hoàn thành booking — chuyển sang "completed".
-     * Chỉ được gọi khi booking đang ở trạng thái pending hoặc in_progress.
-     * Sau bước này client mới được tạo Payment cho booking.
-     */
-    @Override
-    @Transactional
-    public BookingResponseDTO completeBooking(Integer bookingId) {
-        Booking booking = findBookingOrThrow(bookingId);
-
-        // FIX: RuntimeException -> BusinessException(BAD_REQUEST, ...)
-        // → Đây là lỗi sai luồng nghiệp vụ (sai trạng thái), trả 400
-        //   kèm message rõ ràng, thay vì 500 generic.
-        if (!BookingStatus.in_progress.equals(booking.getStatus())
-                && !BookingStatus.pending.equals(booking.getStatus())) {
-            // FIX: BusinessException nhận (message, httpStatus) - đúng thứ tự tham số
-            throw new BusinessException("Chỉ có thể hoàn thành booking đang xử lý hoặc đang chờ",
-                    HttpStatus.BAD_REQUEST);
-        }
-
-        booking.setStatus(BookingStatus.completed);
-
-        Booking saved = bookingRepository.save(booking);
-        return bookingMapper.toResponse(saved, bookingDetailRepository.findByBooking(saved));
-    }
-
     // ── HELPERS ──────────────────────────────────────────────────────────────
 
     /**
@@ -510,7 +448,7 @@ public class BookingServiceImpl implements BookingService {
     }
 
     private void sendConfirmationEmail(Customer customer, Booking booking, Branch branch,
-                                        TimeSlot slot, List<BookingDetail> details) {
+                                       TimeSlot slot, List<BookingDetail> details) {
         try {
             String toEmail = customer.getUser() != null ? customer.getUser().getEmail() : null;
             if (toEmail == null) return;
