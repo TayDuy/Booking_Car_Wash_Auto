@@ -122,7 +122,7 @@ function PaymentSuccessPage() {
         bookingDetail?.vehicleType ||
         "-";
 
-    const finalAmountVnd = Number(paymentResult?.finalAmount || bookingDetail?.totalAmount || 0);
+    const finalAmountVnd = Number(paymentResult?.finalAmount || 0);
     const orderCode = paymentId ? `PAY${paymentId}` : "—";
 
     function handleCopyCode() {

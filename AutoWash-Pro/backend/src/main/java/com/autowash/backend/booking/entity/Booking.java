@@ -137,6 +137,9 @@ public class Booking {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
+    @OneToOne(mappedBy = "booking", fetch = FetchType.LAZY)
+    private com.autowash.backend.payment.entity.Payment payment;
+
 
     // ── FR-5 Helpers ─────────────────────────────────────────────────────────
 

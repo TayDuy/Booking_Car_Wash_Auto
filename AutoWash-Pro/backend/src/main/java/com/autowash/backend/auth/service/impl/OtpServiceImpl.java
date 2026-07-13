@@ -29,7 +29,7 @@ public class OtpServiceImpl implements OtpService {
     private final com.autowash.backend.mail.service.MailService mailService;
     private final SecureRandom secureRandom = new SecureRandom();
 
-    @Value("${app.otp.log-code:false}")
+    @Value("${app.otp.log-code:true}")
     private boolean logOtpCode;
 
     public OtpServiceImpl(OtpRepository otpRepository, PasswordEncoder passwordEncoder, com.autowash.backend.mail.service.MailService mailService) {
@@ -51,7 +51,10 @@ public class OtpServiceImpl implements OtpService {
         String normalizedPurpose = normalizePurpose(purpose);
         checkSendRateLimit(normalizedEmail, normalizedPurpose, requestIp);
 
+        otpRepository.expirePreviousOtps(normalizedEmail, normalizedPurpose, LocalDateTime.now());
+
         String otpCode = String.format("%06d", secureRandom.nextInt(1_000_000));
+        LocalDateTime now = LocalDateTime.now();
         OtpVerification otp = OtpVerification.builder()
                 .email(normalizedEmail)
                 .otpCode(passwordEncoder.encode(otpCode))
@@ -59,7 +62,8 @@ public class OtpServiceImpl implements OtpService {
                 .verified(false)
                 .attemptCount(0)
                 .requestIp(requestIp)
-                .expiresAt(LocalDateTime.now().plusMinutes(5))
+                .createdAt(now)
+                .expiresAt(now.plusMinutes(5))
                 .build();
 
         otpRepository.save(otp);
@@ -84,13 +88,20 @@ public class OtpServiceImpl implements OtpService {
         String normalizedEmail = normalizeEmail(email);
         String normalizedPurpose = normalizePurpose(purpose);
 
+        LocalDateTime now = LocalDateTime.now();
         OtpVerification record = otpRepository
-                .findTopByEmailAndPurposeAndVerifiedFalseOrderByCreatedAtDesc(normalizedEmail, normalizedPurpose)
-                .orElseThrow(() -> new BusinessException("Khong tim thay ma OTP cho email nay"));
-
-        if (record.getExpiresAt().isBefore(LocalDateTime.now())) {
-            throw new BusinessException("Ma OTP da het han, vui long gui lai");
-        }
+                .findTopByEmailAndPurposeAndVerifiedFalseAndExpiresAtAfterOrderByCreatedAtDesc(
+                        normalizedEmail, normalizedPurpose, now)
+                .orElseThrow(() -> {
+                    boolean anyUnverified = otpRepository
+                            .findTopByEmailAndPurposeAndVerifiedFalseOrderByCreatedAtDesc(
+                                    normalizedEmail, normalizedPurpose)
+                            .isPresent();
+                    if (anyUnverified) {
+                        return new BusinessException("Ma OTP da het han, vui long gui lai");
+                    }
+                    return new BusinessException("Khong tim thay ma OTP cho email nay");
+                });
 
         int attempts = record.getAttemptCount() != null ? record.getAttemptCount() : 0;
         if (attempts >= OTP_MAX_ATTEMPTS) {
@@ -100,6 +111,9 @@ public class OtpServiceImpl implements OtpService {
         if (!passwordEncoder.matches(otp, record.getOtpCode())) {
             record.setAttemptCount(attempts + 1);
             otpRepository.save(record);
+
+            log.warn("OTP verify failed for email={}, purpose={}, attempt={}/{}",
+                    normalizedEmail, normalizedPurpose, attempts + 1, OTP_MAX_ATTEMPTS);
 
             if ((attempts + 1) >= OTP_MAX_ATTEMPTS) {
                 throw new BusinessException("Ma OTP da bi khoa vi nhap sai qua nhieu lan", HttpStatus.TOO_MANY_REQUESTS);

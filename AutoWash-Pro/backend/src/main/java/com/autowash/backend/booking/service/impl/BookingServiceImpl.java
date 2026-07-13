@@ -25,6 +25,9 @@ import com.autowash.backend.vehicle.entity.Vehicle;
 import com.autowash.backend.vehicle.repository.VehicleRepository;
 import com.autowash.backend.customerreward.entity.CustomerReward;
 import com.autowash.backend.customerreward.repository.CustomerRewardRepository;
+import com.autowash.backend.payment.entity.Payment;
+import com.autowash.backend.payment.repository.PaymentRepository;
+import com.autowash.backend.promotion.repository.PromotionUseRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -56,6 +59,8 @@ public class BookingServiceImpl implements BookingService {
     private final BookingMapper bookingMapper;
     private final com.autowash.backend.mail.service.MailService mailService;
     private final CustomerRewardRepository customerRewardRepository;
+    private final PaymentRepository paymentRepository;
+    private final PromotionUseRepository promotionUseRepository;
 
     // ── CREATE ──────────────────────────────────────────────────────────────
 
@@ -215,7 +220,7 @@ public class BookingServiceImpl implements BookingService {
             sendConfirmationEmail(customer, savedBooking, branch, slot, details);
         }
 
-        return bookingMapper.toCreateResponse(savedBooking, details);
+        return bookingMapper.toCreateResponse(savedBooking, details, request.getPaymentMethod());
     }
     // ── READ ─────────────────────────────────────────────────────────────────
 
@@ -352,7 +357,7 @@ public class BookingServiceImpl implements BookingService {
                     HttpStatus.CONFLICT);
         }
 
-        TimeSlot newSlot = timeSlotRepository.findById(request.getNewSlotId())
+        TimeSlot newSlot = timeSlotRepository.findByIdForUpdate(request.getNewSlotId())
                 .orElseThrow(() -> new ResourceNotFoundException("TimeSlot", "id", request.getNewSlotId()));
 
         if (!newSlot.hasCapacity()) {
@@ -435,8 +440,31 @@ public class BookingServiceImpl implements BookingService {
             voucher.setStatus("UNUSED");
             voucher.setUsedBookingId(null);
             voucher.setUsedAt(null);
-            customerRewardRepository.save(voucher);
+            customerRewardRepository.saveAndFlush(voucher);
             log.info("[Booking] Hoàn trả voucher {} về trạng thái UNUSED do hủy lịch #{}", voucher.getVoucherCode(), booking.getBookingId());
+        });
+
+        // Hủy payment record unpaid nếu có và giải phóng promotion dùng kèm
+        paymentRepository.findByBooking_BookingId(booking.getBookingId()).ifPresent(payment -> {
+            if (payment.getPaymentStatus() == Payment.PaymentStatus.unpaid) {
+                payment.setPaymentStatus(Payment.PaymentStatus.cancelled);
+                paymentRepository.saveAndFlush(payment);
+                log.info("[Booking] Hủy payment unpaid #{} do hủy lịch #{}", payment.getPaymentId(), booking.getBookingId());
+
+                if (payment.getPromotion() != null) {
+                    try {
+                        promotionUseRepository.deleteByPromotionIdAndCustomerId(
+                                payment.getPromotion().getPromotionId(),
+                                booking.getCustomer().getCustomerId()
+                        );
+                        promotionUseRepository.flush();
+                        log.info("[Booking] Giải phóng promotion #{} cho khách hàng #{} do hủy lịch #{}", 
+                                payment.getPromotion().getPromotionId(), booking.getCustomer().getCustomerId(), booking.getBookingId());
+                    } catch (Exception e) {
+                        log.error("Lỗi khi giải phóng Promotion khi hủy lịch: ", e);
+                    }
+                }
+            }
         });
 
         // Giảm số lượng đặt trên slot để mở lại capacity
@@ -459,17 +487,37 @@ public class BookingServiceImpl implements BookingService {
     public BookingResponseDTO completeBooking(Integer bookingId) {
         Booking booking = findBookingOrThrow(bookingId);
 
-        // FIX: RuntimeException -> BusinessException(BAD_REQUEST, ...)
-        // → Đây là lỗi sai luồng nghiệp vụ (sai trạng thái), trả 400
-        //   kèm message rõ ràng, thay vì 500 generic.
-        if (!BookingStatus.in_progress.equals(booking.getStatus())
-                && !BookingStatus.pending.equals(booking.getStatus())) {
-            // FIX: BusinessException nhận (message, httpStatus) - đúng thứ tự tham số
-            throw new BusinessException("Chỉ có thể hoàn thành booking đang xử lý hoặc đang chờ",
+        // State machine check: pending -> confirmed -> in_progress -> completed.
+        // Chỉ được phép hoàn thành khi booking đang thực hiện (in_progress).
+        if (!BookingStatus.in_progress.equals(booking.getStatus())) {
+            throw new BusinessException("Chỉ có thể hoàn thành booking đang xử lý (in_progress)",
                     HttpStatus.BAD_REQUEST);
         }
 
         booking.setStatus(BookingStatus.completed);
+
+        // Tự động cập nhật payment → paid CHỈ khi phương thức thanh toán là tiền mặt (cash/pos).
+        // Bank_transfer / paypal phải chờ VNPay/PayPal callback xác nhận — không auto-pay.
+        paymentRepository.findByBooking_BookingId(booking.getBookingId()).ifPresent(payment -> {
+            if (payment.getPaymentStatus() == Payment.PaymentStatus.unpaid) {
+                Payment.PaymentMethod method = payment.getPaymentMethod();
+                if (method == Payment.PaymentMethod.cash || method == Payment.PaymentMethod.pos) {
+                    payment.setPaymentStatus(Payment.PaymentStatus.paid);
+                    payment.setPaidAt(LocalDateTime.now());
+                    paymentRepository.saveAndFlush(payment);
+                    log.info("[Booking] Cập nhật payment #{} → PAID (phương thức offline {}) do hoàn thành lịch đặt #{}",
+                            payment.getPaymentId(), method, booking.getBookingId());
+                } else {
+                    log.info("[Booking] Payment #{} giữ nguyên unpaid (phương thức online {}), chờ cổng thanh toán xác nhận.",
+                            payment.getPaymentId(), method);
+                }
+            }
+        });
+
+        // Giải phóng slot capacity — tránh đầy ảo
+        TimeSlot slot = booking.getSlot();
+        slot.decrementBookings();
+        timeSlotRepository.save(slot);
 
         Booking saved = bookingRepository.save(booking);
         return bookingMapper.toResponse(saved, bookingDetailRepository.findByBooking(saved));

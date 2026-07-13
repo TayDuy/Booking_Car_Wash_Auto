@@ -1,22 +1,38 @@
+import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { CheckCircle2, ListChecks, Home } from "lucide-react";
+import bookingApi from "../../../api/bookingApi";
+
+const fmtDate = (d) => d ? new Date(d).toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" }) : "-";
+const fmtTime = (t) => t ? new Date(`2000-01-01T${t}`).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }) : null;
 
 function BookingSuccessPage() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { bookingId, bookingDetail } = location.state || {};
+  const { bookingId, bookingDetail: initialDetail } = location.state || {};
 
-  const firstService = bookingDetail?.details?.[0] || bookingDetail?.bookingDetail?.[0] || null;
-  const timeRange =
-    bookingDetail?.startTime && bookingDetail?.endTime
-      ? `${new Date(bookingDetail.startTime).toLocaleTimeString("vi-VN", {
-          hour: "2-digit",
-          minute: "2-digit",
-        })} - ${new Date(bookingDetail.endTime).toLocaleTimeString("vi-VN", {
-          hour: "2-digit",
-          minute: "2-digit",
-        })}`
-      : "-";
+  const [bookingDetail, setBookingDetail] = useState(initialDetail || null);
+
+  // Nếu thiếu dữ liệu (refresh trang), fetch full detail từ API
+  useEffect(() => {
+    if (bookingId && !bookingDetail) {
+      bookingApi.get(bookingId).then(res => setBookingDetail(res.data)).catch(() => {});
+    }
+  }, [bookingId, bookingDetail]);
+
+  const details = bookingDetail?.details || [];
+  const firstService = details[0] || null;
+  const serviceNames = details.map(d => d.serviceName).join(", ");
+  const slotDate = bookingDetail?.slotDate;
+  const slotStartTime = bookingDetail?.slotStartTime;
+  const slotEndTime = bookingDetail?.slotEndTime;
+
+  const timeRange = slotStartTime && slotEndTime
+    ? `${fmtTime(slotStartTime)} - ${fmtTime(slotEndTime)}`
+    : "-";
+
+  const paymentMethod = bookingDetail?.paymentMethod;
+  const isOnline = paymentMethod?.toLowerCase() === "online";
 
   return (
     <div className="pay-success-page">
@@ -26,8 +42,9 @@ function BookingSuccessPage() {
         </div>
         <h1>Đặt Lịch Thành Công!</h1>
         <p className="pay-success-subtitle">
-          Cảm ơn bạn đã sử dụng dịch vụ của AutoWash Pro. Vui lòng đến trạm đúng giờ
-          và thanh toán khi hoàn tất dịch vụ.
+          {isOnline
+            ? "Cảm ơn bạn đã sử dụng dịch vụ của AutoWash Pro. Vui lòng tiến hành thanh toán để xác nhận lịch hẹn."
+            : "Cảm ơn bạn đã sử dụng dịch vụ của AutoWash Pro. Vui lòng đến trạm đúng giờ và thanh toán khi hoàn tất dịch vụ."}
         </p>
 
         <div className="pay-success-layout">
@@ -44,13 +61,13 @@ function BookingSuccessPage() {
               </div>
               <div>
                 <span>Dịch vụ</span>
-                <strong>{firstService?.serviceName || "-"}</strong>
+                <strong>{serviceNames || firstService?.serviceName || "-"}</strong>
               </div>
             </div>
             <div className="booking-summary-row">
               <div>
                 <span>Ngày</span>
-                <strong>{bookingDetail?.slotDate || bookingDetail?.bookingDate || "-"}</strong>
+                <strong>{slotDate ? fmtDate(slotDate) : "-"}</strong>
               </div>
               <div>
                 <span>Giờ</span>
@@ -64,9 +81,21 @@ function BookingSuccessPage() {
               </div>
               <div>
                 <span>Thanh toán</span>
-                <strong>Tại trạm</strong>
+                <strong>{isOnline ? "Trực tuyến" : "Tại trạm"}</strong>
               </div>
             </div>
+            {bookingDetail?.branchName && (
+              <div className="booking-summary-row">
+                <div>
+                  <span>Chi nhánh</span>
+                  <strong>{bookingDetail.branchName}</strong>
+                </div>
+                <div>
+                  <span>Tổng tiền</span>
+                  <strong>{(bookingDetail.totalAmount || 0).toLocaleString()}đ</strong>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="pay-success-side">
@@ -83,8 +112,10 @@ function BookingSuccessPage() {
               <div className="next-step">
                 <span className="next-step-num">2</span>
                 <div>
-                  <strong>Thanh toán tại trạm</strong>
-                  <p>Hoàn tất thanh toán sau khi dịch vụ kết thúc.</p>
+                  <strong>{bookingDetail?.paymentMethod?.toLowerCase() === "online" ? "Xác nhận thanh toán" : "Thanh toán tại trạm"}</strong>
+                  <p>{bookingDetail?.paymentMethod?.toLowerCase() === "online" 
+                      ? "Cổng thanh toán trực tuyến sẽ xác nhận giao dịch của bạn." 
+                      : "Hoàn tất thanh toán sau khi dịch vụ kết thúc."}</p>
                 </div>
               </div>
               <div className="next-step">

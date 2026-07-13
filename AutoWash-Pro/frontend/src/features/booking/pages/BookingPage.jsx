@@ -54,24 +54,7 @@ export default function BookingPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
-  const [selectedPromoId, setSelectedPromoId] = useState(
-    localStorage.getItem("selectedPromotionId") || ""
-  );
-  const [selectedPromoCode, setSelectedPromoCode] = useState(
-    localStorage.getItem("selectedPromotionCode") || ""
-  );
-  const [selectedPromoDiscount, setSelectedPromoDiscount] = useState(
-    localStorage.getItem("selectedPromotionDiscount") || ""
-  );
-  const [selectedVouchCode, setSelectedVouchCode] = useState(
-    localStorage.getItem("selectedVoucherCode") || ""
-  );
-  const [selectedRewardId, setSelectedRewardId] = useState(
-    localStorage.getItem("selectedRewardId") || ""
-  );
-  const [availableVouchers, setAvailableVouchers] = useState([]);
-  const [availablePromotions, setAvailablePromotions] = useState([]);
-  const [sidebarPromoOpen, setSidebarPromoOpen] = useState(false);
+
   const [services, setServices] = useState([]);
   const [branches, setBranches] = useState([]);
   const [slots, setSlots] = useState([]);
@@ -246,18 +229,7 @@ export default function BookingPage() {
     };
     loadVehicles();
 
-    const customerIdRaw = localStorage.getItem("customerId");
-    if (customerIdRaw) {
-      const cid = parseInt(customerIdRaw, 10);
-      getMyRewards(cid).then(res => {
-        const list = Array.isArray(res) ? res : res?.data || [];
-        setAvailableVouchers(list.filter(v => v.status === "UNUSED"));
-      }).catch(() => {});
-      promotionApi.active().then(res => {
-        const list = Array.isArray(res) ? res : res?.data || [];
-        setAvailablePromotions(list);
-      }).catch(() => {});
-    }
+
   }, []);
 
   useEffect(() => {
@@ -381,89 +353,7 @@ export default function BookingPage() {
   const tax = Math.round(subtotal * 0.08);
   const discount = paymentMethod === "online" ? Math.round(subtotal * 0.05) : 0;
 
-  // 1. Tự động quét và tìm Promotion active áp dụng tốt nhất cho khách hàng
-  const customerTierLevel = profileData?.tierId || 1;
-  let autoSelectedPromo = null;
-  let promoDiscountVal = 0;
-
-  for (const p of availablePromotions) {
-    if (p.status?.toLowerCase() !== "active") continue;
-
-    // Check hạn dùng
-    const today = new Date();
-    if (p.startDate && new Date(p.startDate) > today) continue;
-    if (p.endDate && new Date(p.endDate) < today) continue;
-
-    // Check hạng
-    if (p.targetTier?.tierId && p.targetTier.tierId !== customerTierLevel) {
-      continue;
-    }
-
-    // Check loại xe
-    if (p.vehicleType && p.vehicleType !== "both") {
-      const mappedType = vehicleType === "4_seats" ? "sedan" : "suv";
-      if (p.vehicleType?.toLowerCase() !== mappedType) {
-        continue;
-      }
-    }
-
-    // Check giá trị đơn hàng tối thiểu
-    const minVal = p.minOrderValue || 0;
-    if (subtotal < minVal) {
-      continue;
-    }
-
-    // Tính discount
-    const val = p.value || p.discountValue || 0;
-    let calculated = 0;
-    if (p.discountType?.toUpperCase() === "PERCENT") {
-      calculated = Math.round(subtotal * (val / 100));
-    } else if (p.discountType?.toLowerCase() === "free_service") {
-      calculated = subtotal;
-    } else {
-      calculated = Number(val);
-    }
-
-    if (calculated > promoDiscountVal) {
-      promoDiscountVal = calculated;
-      autoSelectedPromo = p;
-    }
-  }
-
-  // 2. Tính discount cho voucher được chọn
-  const selectedVoucher = availableVouchers.find(v => v.voucherCode === selectedVouchCode);
-  let voucherDiscountVal = 0;
-  if (selectedVoucher) {
-    const val = selectedVoucher.discountValue || 0;
-    if (selectedVoucher.discountType?.toUpperCase() === "PERCENT") {
-      voucherDiscountVal = Math.round(subtotal * (val / 100));
-    } else if (selectedVoucher.discountType?.toLowerCase() === "free_service") {
-      voucherDiscountVal = subtotal;
-    } else {
-      voucherDiscountVal = Number(val);
-    }
-  }
-
-  const total = Math.max(0, subtotal + tax - discount - promoDiscountVal - voucherDiscountVal);
-
-  // Ghi nhận promotion id tự động chọn vào state để khi submit booking
-  // chuyển tiếp sang trang payment thì nó truyền đúng id này.
-  // Dùng useEffect để đồng bộ state tránh infinite render loop.
-  const bestPromoId = autoSelectedPromo ? String(autoSelectedPromo.promotionId || autoSelectedPromo.id) : "";
-  const bestPromoCode = autoSelectedPromo ? (autoSelectedPromo.code || autoSelectedPromo.promotionCode || "") : "";
-  const bestPromoDiscount = autoSelectedPromo
-    ? (autoSelectedPromo.discountType?.toUpperCase() === "PERCENT"
-        ? `-${autoSelectedPromo.value || autoSelectedPromo.discountValue}%`
-        : `-${Number(autoSelectedPromo.value || autoSelectedPromo.discountValue).toLocaleString()}đ`)
-    : "";
-
-  useEffect(() => {
-    if (selectedPromoId !== bestPromoId) {
-      setSelectedPromoId(bestPromoId);
-      setSelectedPromoCode(bestPromoCode);
-      setSelectedPromoDiscount(bestPromoDiscount);
-    }
-  }, [bestPromoId, bestPromoCode, bestPromoDiscount]);
+  const total = Math.max(0, subtotal + tax - discount);
   const totalDuration = (selectedPackage?.durationMinutes || 0) + selectedAddons.reduce((sum, s) => sum + (s.durationMinutes || 0), 0);
   const rewardPoints = Math.floor(packagePrice / 10000);
   const DEPOSIT_THRESHOLD = 500000;
@@ -555,10 +445,7 @@ export default function BookingPage() {
       }
       navigate("/customer/payment", {
         state: {
-          bookingId,
-          selectedPromoId: selectedPromoId ? Number(selectedPromoId) : null,
-          selectedVouchCode: selectedVouchCode || null,
-          selectedRewardId: selectedRewardId || null,
+          bookingId
         },
       });
     } catch (error) {
@@ -952,92 +839,7 @@ export default function BookingPage() {
                   <span>Điểm tích lũy nhận được</span>
                   <span className="points-highlight">+{rewardPoints} điểm</span>
                 </div>
-                {(selectedPromoCode || selectedVouchCode) && (
-                  <>
-                    <div className="fee-line discount-line">
-                      <span>Ưu đãi đã chọn</span>
-                      <span style={{ fontWeight: 750, color: "#004aad", fontSize: 13 }}>
-                        {selectedPromoCode && selectedVouchCode
-                          ? `KM: ${selectedPromoCode} + Voucher`
-                          : selectedPromoCode
-                          ? `KM: ${selectedPromoCode} (${selectedPromoDiscount})`
-                          : `Voucher: ${selectedVouchCode}`}
-                      </span>
-                    </div>
-                    {promoDiscountVal > 0 && (
-                      <div className="fee-line discount-line">
-                        <span>Khuyến mãi hệ thống</span>
-                        <span>-{promoDiscountVal.toLocaleString()}đ</span>
-                      </div>
-                    )}
-                    {voucherDiscountVal > 0 && (
-                      <div className="fee-line discount-line">
-                        <span>Giảm giá voucher</span>
-                        <span>-{voucherDiscountVal.toLocaleString()}đ</span>
-                      </div>
-                    )}
-                  </>
-                )}
               </div>
-            </div>
-
-            <div className="sidebar-promo-section">
-              <button className="sidebar-promo-toggle" onClick={() => setSidebarPromoOpen(!sidebarPromoOpen)}>
-                <span>🎫 Ưu đãi của bạn</span>
-                <span>{sidebarPromoOpen ? "▲" : "▼"}</span>
-                {(selectedPromoCode || selectedVouchCode) && (
-                  <span className="sidebar-promo-count">{((selectedPromoCode ? 1 : 0) + (selectedVouchCode ? 1 : 0))}</span>
-                )}
-              </button>
-
-              {sidebarPromoOpen && (
-                <div className="sidebar-promo-body">
-                  {(selectedPromoCode || selectedVouchCode) && (
-                    <button className="sidebar-promo-clear" onClick={() => {
-                      setSelectedPromoId("");
-                      setSelectedPromoCode("");
-                      setSelectedPromoDiscount("");
-                      setSelectedVouchCode("");
-                      setSelectedRewardId("");
-                    }}>
-                      ✕ Bỏ chọn ưu đãi
-                    </button>
-                  )}
-
-                  {availableVouchers.length > 0 && (
-                    <div className="sidebar-promo-group">
-                      <span className="sidebar-promo-group-label">🏷️ Voucher của tôi</span>
-                      {availableVouchers.map(v => (
-                        <label key={v.customerRewardId} className={`sidebar-promo-item ${selectedVouchCode === v.voucherCode ? "selected" : ""}`}>
-                          <input
-                            type="radio" name="vouch-select"
-                            checked={selectedVouchCode === v.voucherCode}
-                            onChange={() => {
-                              setSelectedVouchCode(v.voucherCode);
-                              setSelectedRewardId(v.rewardId);
-                            }}
-                          />
-                          <div className="sidebar-promo-item-content">
-                            <div className="sidebar-promo-item-top">
-                              <span className="sidebar-promo-item-title">{v.rewardName || "Voucher"}</span>
-                              <span className="sidebar-promo-item-badge sidebar-promo-item-badge--green">
-                                -{Number(v.discountValue || 0).toLocaleString()}đ
-                              </span>
-                            </div>
-                            <span className="sidebar-promo-item-desc">{v.voucherCode}</span>
-                          </div>
-                        </label>
-                      ))}
-                    </div>
-                  )}
-
-                  {availableVouchers.length === 0 && (
-                    <p className="sidebar-promo-empty">Bạn chưa có ưu đãi nào.</p>
-                  )}
-
-                  <p className="sidebar-promo-hint">Hệ thống sẽ tự động áp dụng 1 ưu đãi có giá trị cao nhất</p>
-                </div>
-              )}
             </div>
 
             <hr className="divider" />
