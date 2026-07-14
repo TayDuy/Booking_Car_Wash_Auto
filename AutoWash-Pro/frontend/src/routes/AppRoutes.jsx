@@ -30,7 +30,7 @@ import PaymentSuccessPage from "../features/payment/pages/PaymentSuccessPage";
 
 import PromotionListPage from "../features/promotion/pages/PromotionListPage";
 import RewardsPage from "../features/loyalty/pages/RewardsPage";
-import SubscriptionPage from "../subscriptionpage/SubscriptionPage";
+
 
 import AdminDashboardPage from "../features/admin/pages/AdminDashboardPage";
 import ManageBookingsPage from "../features/admin/pages/ManageBookingsPage";
@@ -86,7 +86,7 @@ function AppRoutes() {
 
         <Route path="promotions" element={<PromotionListPage />} />
         <Route path="rewards" element={<RewardsPage />} />
-        <Route path="subscription" element={<SubscriptionPage />} />
+
         <Route path="profile" element={<ProfilePage />} />
         <Route
           path="notifications"
