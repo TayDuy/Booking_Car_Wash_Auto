@@ -98,6 +98,22 @@ public class TimeSlotServiceImpl implements TimeSlotService {
         entity.setBranch(branch);
         entity.setWashBay(washBay);
 
+        // FIX: mapper.toEntity() dùng constructor no-args + setter (MapStruct),
+        // nên Lombok @Builder.Default KHÔNG áp dụng — status/currentBookings
+        // bị null → ConstraintViolationException khi save() (status @NotNull).
+        // Set tường minh ở đây để business rule "slot mới luôn open, 0 booking"
+        // rõ ràng ngay tại service, không phải đoán ngầm từ entity.
+        // (Entity cũng có @PrePersist làm safety net cho các code path khác.)
+        if (entity.getStatus() == null) {
+            entity.setStatus(SlotStatus.open);
+        }
+        if (entity.getCurrentBookings() == null) {
+            entity.setCurrentBookings(0);
+        }
+        if (entity.getMaxCapacity() == null) {
+            entity.setMaxCapacity(1);
+        }
+
         return mapper.toResponse(slotRepository.save(entity));
     }
 
@@ -281,7 +297,6 @@ public class TimeSlotServiceImpl implements TimeSlotService {
             }
         }
     }
-
     private List<LocalTime[]> buildDailyTimeRanges(
             LocalTime openTime, LocalTime closeTime, int durationMinutes,
             LocalTime breakStart, LocalTime breakEnd) {
@@ -327,4 +342,6 @@ public class TimeSlotServiceImpl implements TimeSlotService {
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Không tìm thấy wash bay với id = " + id));
     }
+
+
 }
