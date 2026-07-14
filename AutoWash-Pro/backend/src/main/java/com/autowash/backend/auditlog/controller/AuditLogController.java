@@ -17,7 +17,7 @@ public class AuditLogController {
     private final AuditLogService auditLogService;
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
+    @PreAuthorize("hasAnyRole('EMPLOYEE','ADMIN')")
     public ResponseEntity<List<AuditLogResponseDTO>> getAllLogs() {
         return ResponseEntity.ok(auditLogService.getAllLogs());
     }

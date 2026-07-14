@@ -30,7 +30,7 @@ public class LoyaltyTransactionController {
      * GET /api/v1/loyalty-transactions/customers/1?transactionType=redeem
      */
     @GetMapping("/customers/{customerId}")
-    @PreAuthorize("hasAnyRole('STAFF', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('EMPLOYEE', 'ADMIN')")
     public ResponseEntity<List<LoyaltyTransactionResponseDTO>> getCustomerTransactions(
             @PathVariable Integer customerId,
             @RequestParam(required = false) String transactionType
@@ -80,7 +80,7 @@ public class LoyaltyTransactionController {
      * GET /api/v1/loyalty-transactions/customers/1/balance
      */
     @GetMapping("/customers/{customerId}/balance")
-    @PreAuthorize("hasAnyRole('STAFF', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('EMPLOYEE', 'ADMIN')")
     public ResponseEntity<LoyaltyBalanceResponseDTO> getCustomerBalance(
             @PathVariable Integer customerId
     ) {

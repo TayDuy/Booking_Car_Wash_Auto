@@ -7,6 +7,15 @@ function ProtectedRoute({ children, allowedRoles }) {
   const user = auth?.user;
   const location = useLocation();
 
+  console.log("[ProtectedRoute DEBUG]", {
+    pathname: location.pathname,
+    authUser: user,
+    authRole: user?.role,
+    storedRole: localStorage.getItem("role"),
+    hasToken: Boolean(token),
+    allowedRoles,
+  });
+
   if (!token) {
     const redirectParam = encodeURIComponent(location.pathname + location.search);
     return <Navigate to={`/auth/login?redirect=${redirectParam}`} replace />;

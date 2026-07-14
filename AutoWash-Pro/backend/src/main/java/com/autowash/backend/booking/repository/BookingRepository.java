@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -18,7 +19,8 @@ public interface BookingRepository extends JpaRepository<Booking, Integer> {
 
     Optional<Booking> findByBookingCode(String bookingCode);
 
-    // Lấy booking của customer, mới nhất trước
+    boolean existsByBookingCode(String bookingCode);
+
     List<Booking> findByCustomer_CustomerIdOrderByBookingDateDesc(Integer customerId);
 
     @Query("""
@@ -50,9 +52,6 @@ public interface BookingRepository extends JpaRepository<Booking, Integer> {
 
     List<Booking> findBySlot_SlotIdAndStatusIn(Integer slotId, List<BookingStatus> statuses);
 
-    boolean existsByBookingCode(String bookingCode);
-
-    // FR-6: lấy waitlist của slot, sort theo priority rồi FIFO
     @Query("""
             SELECT b FROM Booking b
             WHERE b.slot.slotId = :slotId
@@ -83,9 +82,55 @@ public interface BookingRepository extends JpaRepository<Booking, Integer> {
             """)
     Optional<Booking> findByIdWithAssociations(@Param("bookingId") Integer bookingId);
 
-    //Dùng cho FR2 :Kiểm tra xem xe có đang vướng lịch đặt nào chưa hoàn thành không
     boolean existsByVehicle_VehicleIdAndStatusIn(Integer vehicleId, java.util.List<BookingStatus> statuses);
 
-    // Auto complete những booking đã check-in quá thời gian quy định.
     List<Booking> findByStatusAndCheckInAtBefore(BookingStatus status, LocalDateTime checkInAt);
+
+    @Query("""
+            SELECT DISTINCT b FROM Booking b
+            LEFT JOIN FETCH b.customer
+            LEFT JOIN FETCH b.vehicle
+            LEFT JOIN FETCH b.branch
+            LEFT JOIN FETCH b.slot s
+            LEFT JOIN FETCH s.washBay
+            LEFT JOIN FETCH b.assignedStaff
+            WHERE b.branch.branchId = :branchId
+              AND s.slotDate = :slotDate
+              AND b.status IN :statuses
+            ORDER BY b.priorityScore DESC, b.bookingDate ASC
+            """)
+    List<Booking> findEmployeeQueue(
+            @Param("branchId") Integer branchId,
+            @Param("slotDate") LocalDate slotDate,
+            @Param("statuses") List<BookingStatus> statuses);
+
+    @Query("""
+            SELECT DISTINCT b FROM Booking b
+            LEFT JOIN FETCH b.customer
+            LEFT JOIN FETCH b.vehicle
+            LEFT JOIN FETCH b.branch
+            LEFT JOIN FETCH b.slot s
+            LEFT JOIN FETCH s.washBay
+            LEFT JOIN FETCH b.assignedStaff
+            WHERE UPPER(b.bookingCode) = UPPER(:bookingCode)
+              AND b.branch.branchId = :branchId
+            """)
+    Optional<Booking> findEmployeeBookingByCode(
+            @Param("bookingCode") String bookingCode,
+            @Param("branchId") Integer branchId);
+
+    @Query("""
+            SELECT DISTINCT b FROM Booking b
+            LEFT JOIN FETCH b.customer
+            LEFT JOIN FETCH b.vehicle
+            LEFT JOIN FETCH b.branch
+            LEFT JOIN FETCH b.slot s
+            LEFT JOIN FETCH s.washBay
+            LEFT JOIN FETCH b.assignedStaff
+            WHERE b.bookingId = :bookingId
+              AND b.branch.branchId = :branchId
+            """)
+    Optional<Booking> findEmployeeBookingById(
+            @Param("bookingId") Integer bookingId,
+            @Param("branchId") Integer branchId);
 }

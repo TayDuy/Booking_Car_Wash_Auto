@@ -8,6 +8,7 @@ import './BookingHistory.css';
 const STATUS_MAP = {
   pending:     { label: 'Chờ xử lý',    badge: 'badge-pending' },
   confirmed:   { label: 'Đã xác nhận',   badge: 'badge-confirmed' },
+  checked_in:  { label: 'Đã check-in',  badge: 'badge-checked_in' },
   in_progress: { label: 'Đang thực hiện', badge: 'badge-in_progress' },
   completed:   { label: 'Hoàn thành',    badge: 'badge-completed' },
   cancelled:   { label: 'Đã hủy',       badge: 'badge-cancelled' },
@@ -26,12 +27,14 @@ const PAYMENT_METHOD_MAP = {
   bank_transfer: 'Chuyển khoản',
   pos: 'Quẹt thẻ POS',
   paypal: 'PayPal',
+  at_shop: 'Tại tiệm',
 };
 
 const FILTER_TABS = [
   { key: 'all',         label: 'Tất cả' },
   { key: 'pending',     label: 'Chờ xử lý' },
   { key: 'confirmed',   label: 'Đã xác nhận' },
+  { key: 'checked_in',  label: 'Đã check-in' },
   { key: 'in_progress', label: 'Đang làm' },
   { key: 'completed',   label: 'Hoàn thành' },
   { key: 'cancelled',   label: 'Đã hủy' },
@@ -78,7 +81,8 @@ export default function BookingHistory() {
   // ── Stats ──────────────────────────────────────────────────
   const stats = {
     total: bookings.length,
-    pending: bookings.filter(b => b.status === 'pending' || b.status === 'confirmed').length,
+    pending: bookings.filter(b => b.status === 'pending').length,
+    active: bookings.filter(b => ['confirmed','checked_in','in_progress'].includes(b.status)).length,
     completed: bookings.filter(b => b.status === 'completed').length,
     cancelled: bookings.filter(b => b.status === 'cancelled').length,
   };
@@ -186,6 +190,13 @@ export default function BookingHistory() {
               <div className="bh-stat-number">{stats.pending}</div>
               <div className="bh-stat-label">Đang chờ xử lý</div>
             </div>
+            <div className="bh-stat-card stat-active">
+              <div className="bh-stat-icon">
+                <span className="material-symbols-outlined">sync</span>
+              </div>
+              <div className="bh-stat-number">{stats.active}</div>
+              <div className="bh-stat-label">Đang thực hiện</div>
+            </div>
             <div className="bh-stat-card stat-completed">
               <div className="bh-stat-icon">
                 <span className="material-symbols-outlined">check_circle</span>
@@ -252,9 +263,11 @@ export default function BookingHistory() {
               <div className="bh-booking-list">
                 {paginated.map((booking, idx) => {
                   const statusCfg = STATUS_MAP[booking.status] || STATUS_MAP.pending;
-                  const paymentCfg = PAYMENT_STATUS_MAP[booking.paymentStatus?.toLowerCase()] || PAYMENT_STATUS_MAP.unpaid;
-                  const paymentLabel = booking.paymentStatus?.toLowerCase() === 'paid'
-                      ? `Đã thanh toán (${PAYMENT_METHOD_MAP[booking.paymentMethod?.toLowerCase()] || booking.paymentMethod || 'Tiền mặt'})`
+                  const isPaid = booking.status === 'completed' || booking.paymentStatus?.toLowerCase() === 'paid';
+                  const paymentCfg = isPaid ? PAYMENT_STATUS_MAP.paid : (PAYMENT_STATUS_MAP[booking.paymentStatus?.toLowerCase()] || PAYMENT_STATUS_MAP.unpaid);
+                  const payMethod = booking.status === 'completed' ? 'at_shop' : (booking.paymentMethod?.toLowerCase() || 'cash');
+                  const paymentLabel = isPaid
+                      ? `Đã thanh toán (${PAYMENT_METHOD_MAP[payMethod] || payMethod})`
                       : paymentCfg.label;
                   const dateStr = booking.slotDate ? fmtDate(booking.slotDate) : fmtDate(booking.bookingDate);
                   const timeStr = fmtTime(booking.slotStartTime);
@@ -405,12 +418,20 @@ export default function BookingHistory() {
                           <div className="bh-detail-item">
                             <div className="bh-detail-label">Thanh toán</div>
                             <div className="bh-detail-value">
-                              <span className={`bh-status-badge ${(PAYMENT_STATUS_MAP[detailModal.paymentStatus?.toLowerCase()] || PAYMENT_STATUS_MAP.unpaid).badge}`}>
-                                <span className="bh-status-dot" />
-                                {detailModal.paymentStatus?.toLowerCase() === 'paid'
-                                  ? `Đã thanh toán (${PAYMENT_METHOD_MAP[detailModal.paymentMethod?.toLowerCase()] || detailModal.paymentMethod || 'Tiền mặt'})`
-                                  : (PAYMENT_STATUS_MAP[detailModal.paymentStatus?.toLowerCase()] || PAYMENT_STATUS_MAP.unpaid).label}
-                              </span>
+                              {(() => {
+                                const isPaid = detailModal.status === 'completed' || detailModal.paymentStatus?.toLowerCase() === 'paid';
+                                const pmCfg = isPaid ? PAYMENT_STATUS_MAP.paid : (PAYMENT_STATUS_MAP[detailModal.paymentStatus?.toLowerCase()] || PAYMENT_STATUS_MAP.unpaid);
+                                const payMethod = detailModal.status === 'completed' ? 'at_shop' : (detailModal.paymentMethod?.toLowerCase() || 'cash');
+                                const pmLabel = isPaid
+                                  ? `Đã thanh toán (${PAYMENT_METHOD_MAP[payMethod] || payMethod})`
+                                  : pmCfg.label;
+                                return (
+                                  <span className={`bh-status-badge ${pmCfg.badge}`}>
+                                    <span className="bh-status-dot" />
+                                    {pmLabel}
+                                  </span>
+                                );
+                              })()}
                             </div>
                           </div>
                           <div className="bh-detail-item">

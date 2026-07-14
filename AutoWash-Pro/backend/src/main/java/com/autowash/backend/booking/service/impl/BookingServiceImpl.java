@@ -332,7 +332,7 @@ public class BookingServiceImpl implements BookingService {
             );
         }
 
-        booking.setStatus(BookingStatus.in_progress);
+        booking.setStatus(BookingStatus.checked_in);
 
         Booking saved = bookingRepository.save(booking);
         List<BookingDetail> details = bookingDetailRepository.findByBooking(saved);

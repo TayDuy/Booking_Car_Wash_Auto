@@ -51,7 +51,7 @@ public class AdminUserController {
         }
         if (!isValidRole) {
             throw new BusinessException(
-                    "Role không hợp lệ. Cho phép: CUSTOMER, STAFF, ADMIN", HttpStatus.BAD_REQUEST);
+                    "Role không hợp lệ. Cho phép: CUSTOMER, EMPLOYEE, ADMIN", HttpStatus.BAD_REQUEST);
         }
 
         String oldRole = targetUser.getRole();
