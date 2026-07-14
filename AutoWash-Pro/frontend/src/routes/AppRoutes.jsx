@@ -30,6 +30,7 @@ import PaymentSuccessPage from "../features/payment/pages/PaymentSuccessPage";
 
 import PromotionListPage from "../features/promotion/pages/PromotionListPage";
 import RewardsPage from "../features/loyalty/pages/RewardsPage";
+import SubscriptionPage from "../subscriptionpage/SubscriptionPage";
 
 import AdminDashboardPage from "../features/admin/pages/AdminDashboardPage";
 import ManageBookingsPage from "../features/admin/pages/ManageBookingsPage";
@@ -37,6 +38,7 @@ import ManageCustomersPage from "../features/admin/pages/ManageCustomersPage";
 import ManagePromotionsPage from "../features/admin/pages/ManagePromotionsPage";
 import ManageVehiclesPage from "../features/admin/pages/ManageVehiclesPage";
 import AdminNotificationPage from "../features/admin/pages/AdminNotificationPage";
+import ManagerTimeSlotsPage from "../features/admin/pages/ManagerTimeSlotsPage";
 import ReportsPage from "../features/admin/pages/ReportsPage";
 import AuditLogsPage from "../features/admin/pages/AuditLogsPage";
 import ManageBranchesPage from "../features/admin/pages/ManageBranchesPage";
@@ -84,6 +86,7 @@ function AppRoutes() {
 
         <Route path="promotions" element={<PromotionListPage />} />
         <Route path="rewards" element={<RewardsPage />} />
+        <Route path="subscription" element={<SubscriptionPage />} />
         <Route path="profile" element={<ProfilePage />} />
         <Route
           path="notifications"
@@ -115,6 +118,7 @@ function AppRoutes() {
         <Route path="vehicles" element={<ManageVehiclesPage />} />
         <Route path="branches" element={<ManageBranchesPage />} />
         <Route path="services" element={<ManageServicesPage />} />
+        <Route path="time-slots" element={<ManagerTimeSlotsPage />} />
         <Route
           path="notifications"
           element={<AdminNotificationPage />}
