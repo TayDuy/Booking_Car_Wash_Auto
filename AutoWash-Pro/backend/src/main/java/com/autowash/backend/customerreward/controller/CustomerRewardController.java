@@ -14,7 +14,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/customer/rewards")
 @RequiredArgsConstructor
-@PreAuthorize("hasAnyRole('CUSTOMER', 'STAFF', 'ADMIN')")
+@PreAuthorize("hasAnyRole('CUSTOMER', 'EMPLOYEE', 'ADMIN')")
 public class CustomerRewardController {
 
     private final CustomerRewardService customerRewardService;

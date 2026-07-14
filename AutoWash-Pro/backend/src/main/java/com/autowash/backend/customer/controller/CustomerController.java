@@ -35,13 +35,13 @@ public class CustomerController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('STAFF', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('EMPLOYEE', 'ADMIN')")
     public ResponseEntity<List<CustomerProfileResponse>> getAllCustomers() {
         return ResponseEntity.ok(customerService.getAllCustomers());
     }
 
     @PutMapping("/{customerId}")
-    @PreAuthorize("hasAnyRole('STAFF', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('EMPLOYEE', 'ADMIN')")
     public ResponseEntity<CustomerProfileResponse> updateCustomer(
             @PathVariable Integer customerId,
             @Valid @RequestBody CustomerUpdateRequest request
@@ -52,7 +52,7 @@ public class CustomerController {
     }
 
     @DeleteMapping("/{customerId}")
-    @PreAuthorize("hasAnyRole('STAFF', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('EMPLOYEE', 'ADMIN')")
     public ResponseEntity<Void> deleteCustomer(
             @PathVariable Integer customerId
     ) {

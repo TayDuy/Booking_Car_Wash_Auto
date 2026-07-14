@@ -5,6 +5,7 @@ import bookingApi from "../../../api/bookingApi";
 const STATUS_MAP = {
   pending:     { label: "Chờ xử lý",    badge: "badge-pending" },
   confirmed:   { label: "Đã xác nhận",   badge: "badge-confirmed" },
+  checked_in:  { label: "Đã check-in",  badge: "badge-checked_in" },
   in_progress: { label: "Đang thực hiện", badge: "badge-in_progress" },
   completed:   { label: "Hoàn thành",    badge: "badge-completed" },
   cancelled:   { label: "Đã hủy",       badge: "badge-cancelled" },
@@ -162,11 +163,12 @@ function BookingDetailPage() {
           )}
 
           {(() => {
-            const isPaid = booking.paymentStatus?.toLowerCase() === "paid";
+            const isPaid = booking.status === "completed" || booking.paymentStatus?.toLowerCase() === "paid";
             const isTerminal = booking.status === "cancelled" || booking.status === "no_show";
             const canPay = !isPaid && !isTerminal;
 
             if (isPaid) {
+              const payMethod = booking.status === "completed" ? "Tại tiệm" : (booking.paymentMethod || "Tiền mặt");
               return (
                 <div style={{ marginTop: "24px", paddingTop: "20px", borderTop: "1px solid var(--color-border, #eee)" }}>
                   <span style={{
@@ -178,7 +180,7 @@ function BookingDetailPage() {
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                       <polyline points="20 6 9 17 4 12" />
                     </svg>
-                    Đã thanh toán
+                    Đã thanh toán ({payMethod})
                   </span>
                 </div>
               );

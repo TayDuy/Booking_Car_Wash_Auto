@@ -168,6 +168,9 @@
 .bh-stat-card.stat-cancelled::before {
   background: #ef4444;
 }
+.bh-stat-card.stat-active::before {
+  background: #06b6d4;
+}
 
 .bh-stat-icon {
   display: flex;
@@ -195,6 +198,10 @@
 .stat-cancelled .bh-stat-icon {
   background: rgba(239, 68, 68, 0.1);
   color: #b91c1c;
+}
+.stat-active .bh-stat-icon {
+  background: rgba(6, 182, 212, 0.1);
+  color: #0891b2;
 }
 
 .bh-stat-number {
@@ -367,6 +374,9 @@
 .bh-card-stripe.stripe-confirmed {
   background: #3b82f6;
 }
+.bh-card-stripe.stripe-checked_in {
+  background: #8b5cf6;
+}
 .bh-card-stripe.stripe-in_progress {
   background: #06b6d4;
 }
@@ -499,6 +509,14 @@
 }
 .bh-status-badge.badge-confirmed .bh-status-dot {
   background: #3b82f6;
+}
+
+.bh-status-badge.badge-checked_in {
+  background: rgba(139, 92, 246, 0.1);
+  color: #7c3aed;
+}
+.bh-status-badge.badge-checked_in .bh-status-dot {
+  background: #8b5cf6;
 }
 
 .bh-status-badge.badge-in_progress {

@@ -154,12 +154,12 @@ function RewardsPage() {
   const welcomeVouchers = vouchers.filter((v) => {
     if (v.redeemedPoints === 0 || v.voucherCode?.includes("TIER")) return true;
     const match = rewards.find((r) => r.rewardId === v.rewardId);
-    return !!(match && match.requiredTierLevel !== null && match.requiredPoints <= 1);
+    return !!(match && match.welcomeReward);
   });
   const redeemedVouchers = vouchers.filter((v) => {
     const isWelcome = v.redeemedPoints === 0 || v.voucherCode?.includes("TIER") || (() => {
       const match = rewards.find((r) => r.rewardId === v.rewardId);
-      return !!(match && match.requiredTierLevel !== null && match.requiredPoints <= 1);
+      return !!(match && match.welcomeReward);
     })();
     return !isWelcome;
   });
@@ -172,7 +172,7 @@ function RewardsPage() {
       return false;
     }
     // 2. Loại trừ quà chào mừng welcome rewards đã được nhận/đổi
-    const isWelcome = r.requiredTierLevel !== null && r.requiredTierLevel !== undefined && r.requiredPoints <= 1;
+    const isWelcome = r.welcomeReward;
     if (isWelcome) {
       const alreadyHas = vouchers.some((v) => v.rewardId === r.rewardId);
       return !alreadyHas;

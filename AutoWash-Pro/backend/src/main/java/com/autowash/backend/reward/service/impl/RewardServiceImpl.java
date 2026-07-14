@@ -229,7 +229,7 @@ public class RewardServiceImpl implements RewardService {
                 .orElseThrow(() -> new IllegalArgumentException(
                         "Giá trị không hợp lệ: " + value
                 ));
-        }
+    }
 
     private void validateCustomerOwner(Integer customerId, Integer userId) {
         if (userId == null) {

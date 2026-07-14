@@ -5,296 +5,154 @@ import com.autowash.backend.booking.dto.BookingCreateResponseDTO;
 import com.autowash.backend.booking.dto.BookingRescheduleRequestDTO;
 import com.autowash.backend.booking.dto.BookingResponseDTO;
 import com.autowash.backend.booking.dto.BookingSummaryResponseDTO;
-import com.autowash.backend.booking.dto.BookingUpdateRequestDTO;
 import com.autowash.backend.booking.service.BookingService;
 import com.autowash.backend.security.CustomUserDetails;
-
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 /**
- * ==========================================================
- * BOOKING CONTROLLER
- * ==========================================================
+ * API Booking dành cho Customer.
  *
- * CUSTOMER:
- * - Tạo booking
- * - Xem booking của mình
- * - Xem chi tiết booking
- * - Hủy booking
+ * Base URL:
+ * /api/v1/bookings
  *
- * STAFF / ADMIN:
- * - Xem tất cả booking
- * - Cập nhật booking
- * - Hủy booking bất kỳ
+ * Nghiệp vụ Employee được xử lý riêng tại:
+ * /api/v1/employee/**
  *
- * URL base:
- * /api/v1
+ * Nghiệp vụ Admin sẽ được xử lý riêng tại:
+ * /api/v1/admin/bookings/**
  */
 @RestController
-@RequestMapping("/api/v1")
+@RequestMapping("/api/v1/bookings")
 @RequiredArgsConstructor
+@PreAuthorize("hasRole('CUSTOMER')")
 public class BookingController {
 
-    /**
-     * Spring tự inject BookingServiceImpl
-     * vì BookingServiceImpl implements BookingService
-     */
     private final BookingService bookingService;
 
-    // ==========================================================
-    // CUSTOMER APIs
-    // ==========================================================
+    // =========================================================
+    // CREATE BOOKING
+    // =========================================================
 
     /**
-     * CUSTOMER tạo booking mới
+     * Customer tạo booking mới.
      *
-     * POST:
-     * /api/v1/bookings
+     * POST /api/v1/bookings
      */
-    @PostMapping("/bookings")
-    @PreAuthorize("hasRole('CUSTOMER')")
+    @PostMapping
     public ResponseEntity<BookingCreateResponseDTO> createBooking(
             @Valid @RequestBody BookingCreateRequestDTO request,
             @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
-
         BookingCreateResponseDTO response =
-                bookingService.createBooking(request, userDetails.getId());
+                bookingService.createBooking(
+                        request,
+                        userDetails.getId()
+                );
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(response);
     }
 
+    // =========================================================
+    // MY BOOKINGS
+    // =========================================================
+
     /**
-     * CUSTOMER xem danh sách booking của mình
+     * Customer xem danh sách booking của mình.
      *
-     * GET:
-     * /api/v1/bookings/my/{customerId}
+     * GET /api/v1/bookings/my/{customerId}
      */
-    @GetMapping("/bookings/my/{customerId}")
-    @PreAuthorize("hasRole('CUSTOMER')")
+    @GetMapping("/my/{customerId}")
     public ResponseEntity<List<BookingSummaryResponseDTO>> getMyBookings(
             @PathVariable Integer customerId,
             @RequestParam(required = false) Integer limit,
             @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
-
         return ResponseEntity.ok(
-                bookingService.getBookingsByCustomer(customerId, userDetails.getId(), limit)
+                bookingService.getBookingsByCustomer(
+                        customerId,
+                        userDetails.getId(),
+                        limit
+                )
         );
     }
 
+    // =========================================================
+    // BOOKING DETAIL
+    // =========================================================
+
     /**
-     * CUSTOMER xem chi tiết booking
+     * Customer xem chi tiết booking của mình.
      *
-     * GET:
-     * /api/v1/bookings/{bookingId}
+     * GET /api/v1/bookings/{bookingId}
      */
-    @GetMapping("/bookings/{bookingId}")
-    @PreAuthorize("hasRole('CUSTOMER')")
+    @GetMapping("/{bookingId}")
     public ResponseEntity<BookingResponseDTO> getBookingById(
             @PathVariable Integer bookingId,
             @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
-
         return ResponseEntity.ok(
-                bookingService.getBookingById(bookingId, userDetails.getId())
+                bookingService.getBookingById(
+                        bookingId,
+                        userDetails.getId()
+                )
         );
     }
 
+    // =========================================================
+    // CANCEL BOOKING
+    // =========================================================
+
     /**
-     * CUSTOMER hủy booking
+     * Customer hủy booking của chính mình.
      *
-     * FIX: trước đây không kiểm tra bookingId có thuộc khách đang đăng nhập
-     * hay không → giờ bắt buộc truyền userId lấy từ token để service verify.
-     *
-     * DELETE:
-     * /api/v1/bookings/{bookingId}/cancel
+     * DELETE /api/v1/bookings/{bookingId}/cancel
      */
-    @DeleteMapping("/bookings/{bookingId}/cancel")
-    @PreAuthorize("hasRole('CUSTOMER')")
+    @DeleteMapping("/{bookingId}/cancel")
     public ResponseEntity<BookingResponseDTO> cancelBooking(
             @PathVariable Integer bookingId,
             @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
-
         return ResponseEntity.ok(
-                bookingService.cancelOwnBooking(bookingId, userDetails.getId())
+                bookingService.cancelOwnBooking(
+                        bookingId,
+                        userDetails.getId()
+                )
         );
     }
 
+    // =========================================================
+    // RESCHEDULE BOOKING
+    // =========================================================
+
     /**
-     * CUSTOMER thay đổi lịch (reschedule slot + note) — chỉ áp dụng cho booking pending.
+     * Customer thay đổi khung giờ booking.
      *
-     * PUT:
-     * /api/v1/bookings/{bookingId}/reschedule
+     * Chỉ áp dụng khi booking đang ở trạng thái pending.
+     *
+     * PUT /api/v1/bookings/{bookingId}/reschedule
      */
-    @PutMapping("/bookings/{bookingId}/reschedule")
-    @PreAuthorize("hasRole('CUSTOMER')")
+    @PutMapping("/{bookingId}/reschedule")
     public ResponseEntity<BookingResponseDTO> rescheduleBooking(
             @PathVariable Integer bookingId,
             @Valid @RequestBody BookingRescheduleRequestDTO request,
             @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
         return ResponseEntity.ok(
-                bookingService.rescheduleBooking(bookingId, userDetails.getId(), request)
-        );
-    }
-
-    // ==========================================================
-    // STAFF / ADMIN APIs
-    // ==========================================================
-
-    /**
-     * STAFF / ADMIN tạo booking hộ khách hàng
-     * (khách walk-in tại quầy, đặt lịch qua điện thoại, v.v).
-     *
-     * Dùng chung DTO/logic với luồng khách tự đặt — request đã có sẵn
-     * customerId nên chỉ cần khác quyền truy cập (STAFF/ADMIN thay vì CUSTOMER).
-     *
-     * POST:
-     * /api/v1/staff/bookings
-     */
-    @PostMapping("/staff/bookings")
-    @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
-    public ResponseEntity<BookingCreateResponseDTO> createBookingByStaff(
-            @Valid @RequestBody BookingCreateRequestDTO request
-    ) {
-
-        BookingCreateResponseDTO response =
-                bookingService.createBooking(request, null);
-
-        return ResponseEntity
-                .status(HttpStatus.CREATED)
-                .body(response);
-    }
-
-    /**
-     * Xem toàn bộ booking
-     *
-     * GET:
-     * /api/v1/staff/bookings
-     */
-    @GetMapping("/staff/bookings")
-    @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
-    public ResponseEntity<List<BookingSummaryResponseDTO>> getAllBookings() {
-
-        return ResponseEntity.ok(
-                bookingService.getAllBookings()
-        );
-    }
-
-    /**
-     * STAFF / ADMIN xem chi tiết booking
-     *
-     * GET:
-     * /api/v1/staff/bookings/{bookingId}
-     */
-    @GetMapping("/staff/bookings/{bookingId}")
-    @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
-    public ResponseEntity<BookingResponseDTO> getBookingByIdForStaff(
-            @PathVariable Integer bookingId
-    ) {
-        return ResponseEntity.ok(
-                bookingService.getBookingById(bookingId, null)
-        );
-    }
-
-    /**
-     * STAFF / ADMIN cập nhật booking
-     *
-     * PUT:
-     * /api/v1/staff/bookings/{bookingId}
-     */
-    @PutMapping("/staff/bookings/{bookingId}")
-    @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
-    public ResponseEntity<BookingResponseDTO> updateBooking(
-            @PathVariable Integer bookingId,
-            @Valid @RequestBody BookingUpdateRequestDTO request
-    ) {
-
-        return ResponseEntity.ok(
-                bookingService.updateBooking(
+                bookingService.rescheduleBooking(
                         bookingId,
+                        userDetails.getId(),
                         request
                 )
-        );
-    }
-
-    /**
-     * STAFF / ADMIN xác nhận booking.
-     *
-     * PATCH:
-     * /api/v1/staff/bookings/{bookingId}/confirm
-     */
-    @PatchMapping("/staff/bookings/{bookingId}/confirm")
-    @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
-    public ResponseEntity<BookingResponseDTO> confirmBooking(
-            @PathVariable Integer bookingId
-    ) {
-        return ResponseEntity.ok(
-                bookingService.confirmBooking(bookingId)
-        );
-    }
-
-    /**
-     * STAFF / ADMIN check-in xe khi khách tới chi nhánh.
-     *
-     * PATCH:
-     * /api/v1/staff/bookings/{bookingId}/check-in
-     */
-    @PatchMapping("/staff/bookings/{bookingId}/check-in")
-    @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
-    public ResponseEntity<BookingResponseDTO> checkInBooking(
-            @PathVariable Integer bookingId
-    ) {
-        return ResponseEntity.ok(
-                bookingService.checkInBooking(bookingId)
-        );
-    }
-
-    /**
-     * STAFF / ADMIN hủy booking bất kỳ
-     *
-     * DELETE:
-     * /api/v1/staff/bookings/{bookingId}/cancel
-     */
-    @DeleteMapping("/staff/bookings/{bookingId}/cancel")
-    @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
-    public ResponseEntity<BookingResponseDTO> cancelBookingByStaff(
-            @PathVariable Integer bookingId
-    ) {
-
-        return ResponseEntity.ok(
-                bookingService.cancelBooking(bookingId, null)
-        );
-    }
-
-    /**
-     * STAFF / ADMIN hoàn thành booking
-     *
-     * PATCH:
-     * /api/v1/staff/bookings/{bookingId}/complete
-     */
-    @PatchMapping("/staff/bookings/{bookingId}/complete")
-    @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
-    public ResponseEntity<BookingResponseDTO> completeBooking(
-            @PathVariable Integer bookingId
-    ) {
-
-        return ResponseEntity.ok(
-                bookingService.completeBooking(bookingId)
         );
     }
 }

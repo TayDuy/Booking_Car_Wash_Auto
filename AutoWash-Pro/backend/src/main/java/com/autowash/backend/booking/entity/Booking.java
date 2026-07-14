@@ -46,14 +46,27 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @Builder
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
-@ToString(exclude = {"customer", "vehicle", "slot", "branch", "assignedStaff"})  // cái cuối thay tên đẻ tránh trùng tên db cho rõ nghĩa
+@ToString(exclude = {
+        "customer",
+        "vehicle",
+        "slot",
+        "branch",
+        "assignedStaff"})
+// cái cuối thay tên đẻ tránh trùng tên db cho rõ nghĩa
 
 
 public class Booking {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "booking_seq")
-    @SequenceGenerator(name = "booking_seq", sequenceName = "booking_booking_id_seq", allocationSize = 1)
+    @GeneratedValue(
+            strategy = GenerationType.SEQUENCE,
+            generator = "booking_seq"
+    )
+    @SequenceGenerator(
+            name = "booking_seq",
+            sequenceName = "booking_booking_id_seq",
+            allocationSize = 1
+    )
     @Column(name = "booking_id")
     @EqualsAndHashCode.Include
     private Integer bookingId;
@@ -143,16 +156,83 @@ public class Booking {
 
     // ── FR-5 Helpers ─────────────────────────────────────────────────────────
 
-    /** Cho phép huỷ ở pending hoặc confirmed. */
+    /**
+     * pending → confirmed
+     */
+    public boolean canConfirm() {
+        return BookingStatus.pending.equals(this.status);
+    }
+
+    /**
+     * confirmed → checked_in
+     */
+    public boolean canCheckIn() {
+        return BookingStatus.confirmed.equals(this.status);
+    }
+
+    /**
+     * checked_in → in_progress
+     */
+    public boolean canStartWash() {
+        return BookingStatus.checked_in.equals(this.status);
+    }
+
+    /**
+     * in_progress → completed
+     */
+    public boolean canComplete() {
+        return BookingStatus.in_progress.equals(this.status);
+    }
+
+    /**
+     * confirmed → no_show
+     */
+    public boolean canMarkNoShow() {
+        return BookingStatus.confirmed.equals(this.status);
+    }
+
+    /**
+     * Chỉ cho phép hủy khi booking chưa check-in.
+     */
     public boolean isCancellable() {
         return BookingStatus.pending.equals(this.status)
                 || BookingStatus.confirmed.equals(this.status);
     }
 
-    /** Booking đang chiếm chỗ trong slot — dùng để check overlap. */
+    /**
+     * Booking vẫn đang nằm trong luồng vận hành.
+     */
     public boolean isActive() {
-        return this.status == BookingStatus.pending
-                || this.status == BookingStatus.confirmed
-                || this.status == BookingStatus.in_progress;
+        return BookingStatus.pending.equals(this.status)
+                || BookingStatus.confirmed.equals(this.status)
+                || BookingStatus.checked_in.equals(this.status)
+                || BookingStatus.in_progress.equals(this.status);
+    }
+
+    /**
+     * Booking đã kết thúc, không được chuyển trạng thái tiếp.
+     */
+    public boolean isTerminal() {
+        return BookingStatus.completed.equals(this.status)
+                || BookingStatus.cancelled.equals(this.status)
+                || BookingStatus.no_show.equals(this.status);
+    }
+
+    /**
+     * Kiểm tra booking có thuộc chi nhánh được truyền vào hay không.
+     */
+    public boolean belongsToBranch(Integer branchId) {
+        return branchId != null
+                && this.branch != null
+                && branchId.equals(this.branch.getBranchId());
+    }
+
+    /**
+     * Kiểm tra Employee hiện tại có được phân công booking này không.
+     */
+    public boolean isAssignedTo(Integer employeeId) {
+        return employeeId != null
+                && this.assignedStaff != null
+                && employeeId.equals(this.assignedStaff.getEmployeeId());
     }
 }
