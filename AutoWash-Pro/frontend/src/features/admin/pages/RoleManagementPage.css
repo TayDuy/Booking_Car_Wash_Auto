@@ -1,0 +1,72 @@
+.role-select {
+  height: 38px;
+  min-width: 130px;
+  padding: 0 10px;
+  border: 1px solid #d7dce4;
+  border-radius: 10px;
+  background: white;
+  color: #334155;
+  font-weight: 600;
+  outline: none;
+}
+
+.role-select:focus {
+  border-color: #0052cc;
+  box-shadow: 0 0 0 4px rgba(0, 82, 204, 0.12);
+}
+
+.role-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: capitalize;
+}
+
+.role-badge.admin {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.role-badge.staff {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.role-badge.customer {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.role-action-btn {
+  height: 38px;
+  padding: 0 14px;
+  border: none;
+  border-radius: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.role-action-btn.lock {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.role-action-btn.unlock {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.role-action-btn:hover {
+  opacity: 0.85;
+}
+
+@media (max-width: 768px) {
+  .role-select,
+  .role-action-btn {
+    width: 100%;
+  }
+}

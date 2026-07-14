@@ -6,7 +6,7 @@ import LandingPage from "../features/landing/pages/LandingPage";
 
 import AuthLayout from "../layouts/AuthLayout";
 import CustomerLayout from "../layouts/CustomerLayout";
-import AdminLayout from "../layouts/AdminLayout";
+import DashboardLayout from "../layouts/DashboardLayout";
 import ManagerLayout from "../layouts/ManagerLayout";
 
 import LoginPage from "../features/auth/pages/LoginPage";
@@ -34,6 +34,12 @@ import ManagePromotionsPage from "../features/admin/pages/ManagePromotionsPage";
 import ManageVehiclesPage from "../features/admin/pages/ManageVehiclesPage";
 import AdminNotificationPage from "../features/admin/pages/AdminNotificationPage";
 import ReportsPage from "../features/admin/pages/ReportsPage";
+import ManageBranchesPage from "../features/admin/pages/ManageBranchesPage";
+import ManageServicesPage from "../features/admin/pages/ManageServicesPage";
+import AuditLogsPage from "../features/admin/pages/AuditLogsPage";
+import RoleManagementPage from "../features/admin/pages/RoleManagementPage";
+import SystemSettingsPage from "../features/admin/pages/SystemSettingsPage";
+
 
 import ManagerDashboardPage from "../features/manager/pages/ManagerDashboardPage";
 import ManagerBookingsPage from "../features/manager/pages/ManagerBookingsPage";
@@ -87,7 +93,7 @@ function AppRoutes() {
         path="/admin"
         element={
           <ProtectedRoute allowedRoles={["ADMIN"]}>
-            <AdminLayout />
+            <DashboardLayout />
           </ProtectedRoute>
         }
       >
@@ -99,6 +105,11 @@ function AppRoutes() {
         <Route path="vehicles" element={<ManageVehiclesPage />} />
         <Route path="notifications" element={<AdminNotificationPage />} />
         <Route path="reports" element={<ReportsPage />} />
+        <Route path="branches" element={<ManageBranchesPage />} />
+        <Route path="services" element={<ManageServicesPage />} />
+        <Route path="audit-logs" element={<AuditLogsPage />} />
+        <Route path="roles" element={<RoleManagementPage />} />
+        <Route path="settings" element={<SystemSettingsPage />} />
       </Route>
 
       {/* Manager routes */}

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Eye, Search, XCircle } from "lucide-react";
+import { Eye, Search, XCircle, CheckCircle } from "lucide-react";
 import bookingApi from "../../../api/bookingApi";
 import "./ManageBookingsPage.css";
 
@@ -8,12 +8,16 @@ export default function ManageBookingsPage() {
   const [loading, setLoading] = useState(true);
   const [keyword, setKeyword] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [selectedBooking, setSelectedBooking] = useState(null);
+  const [detailLoading, setDetailLoading] = useState(false);
 
   useEffect(() => {
     loadBookings();
   }, []);
 
   async function loadBookings() {
+    setLoading(true);
+
     try {
       const response = await bookingApi.list();
       console.log("ADMIN BOOKINGS:", response.data);
@@ -70,7 +74,7 @@ export default function ManageBookingsPage() {
     if (!confirmCancel) return;
 
     try {
-      await bookingApi.cancelByStaff(bookingId);
+      await bookingApi.cancel(bookingId);
       alert("Hủy booking thành công.");
       loadBookings();
     } catch (error) {
@@ -86,17 +90,68 @@ export default function ManageBookingsPage() {
     return "warning";
   }
 
-  function handleViewBooking(booking) {
-    alert(
-      `Mã đơn: ${booking.bookingCode || "N/A"}\n` +
-      `Khách hàng: ${booking.customerName || "N/A"}\n` +
-      `Chi nhánh: ${booking.branchName || "N/A"}\n` +
-      `Trạng thái: ${booking.status || "N/A"}\n` +
-      `Thời gian: ${booking.bookingDate
-        ? new Date(booking.bookingDate).toLocaleString("vi-VN")
-        : "N/A"
-      }`
-    );
+  async function handleViewBooking(booking) {
+    const bookingId = booking.bookingId || booking.id;
+
+    if (!bookingId) {
+      alert("Không tìm thấy bookingId.");
+      return;
+    }
+
+    setDetailLoading(true);
+
+    try {
+      const response = await bookingApi.get(bookingId);
+      setSelectedBooking(response.data?.data || response.data);
+    } catch (error) {
+      console.error("Load booking detail failed:", error);
+      alert("Không tải được chi tiết booking.");
+    } finally {
+      setDetailLoading(false);
+    }
+  }
+
+  async function handleConfirmBooking(booking) {
+    const bookingId = booking.bookingId || booking.id;
+
+    if (!bookingId) {
+      alert("Không tìm thấy bookingId.");
+      return;
+    }
+
+    const ok = window.confirm("Bạn có chắc muốn xác nhận booking này không?");
+    if (!ok) return;
+
+    try {
+      await bookingApi.confirm(bookingId);
+
+      alert("Xác nhận booking thành công.");
+      loadBookings();
+    } catch (error) {
+      console.error("Confirm booking failed:", error);
+      alert("Xác nhận booking thất bại.");
+    }
+  }
+
+  async function handleCompleteBooking(booking) {
+    const bookingId = booking.bookingId || booking.id;
+
+    if (!bookingId) {
+      alert("Không tìm thấy bookingId.");
+      return;
+    }
+
+    const ok = window.confirm("Bạn có chắc muốn hoàn thành booking này không?");
+    if (!ok) return;
+
+    try {
+      await bookingApi.complete(bookingId);
+      alert("Hoàn thành booking thành công.");
+      loadBookings();
+    } catch (error) {
+      console.error("Complete booking failed:", error);
+      alert("Hoàn thành booking thất bại.");
+    }
   }
 
   return (
@@ -206,6 +261,13 @@ export default function ManageBookingsPage() {
                           <Eye size={16} />
                         </button>
                         <button
+                          className="action-btn complete"
+                          title="Hoàn thành booking"
+                          onClick={() => handleConfirmBooking(booking)}
+                        >
+                          <CheckCircle size={16} />
+                        </button>
+                        <button
                           className="action-btn cancel"
                           title="Hủy booking"
                           onClick={() => handleCancelBooking(booking)}
@@ -221,6 +283,40 @@ export default function ManageBookingsPage() {
           </div>
         )}
       </div>
+      {selectedBooking && (
+        <div className="modal-backdrop">
+          <div className="booking-detail-modal">
+            <div className="modal-header">
+              <h2>Chi tiết đặt lịch</h2>
+              <button onClick={() => setSelectedBooking(null)}>×</button>
+            </div>
+
+            {detailLoading ? (
+              <div className="empty-state">Đang tải chi tiết...</div>
+            ) : (
+              <div className="detail-content">
+                <p><strong>Mã đơn:</strong> {selectedBooking.bookingCode || "N/A"}</p>
+                <p><strong>Khách hàng:</strong> {selectedBooking.customerName || "N/A"}</p>
+                <p><strong>SĐT:</strong> {selectedBooking.customerPhone || "N/A"}</p>
+                <p><strong>Biển số:</strong> {selectedBooking.licensePlate || "N/A"}</p>
+                <p><strong>Chi nhánh:</strong> {selectedBooking.branchName || "N/A"}</p>
+                <p><strong>Trạng thái:</strong> {selectedBooking.status || "N/A"}</p>
+                <p>
+                  <strong>Thời gian:</strong>{" "}
+                  {selectedBooking.bookingDate
+                    ? new Date(selectedBooking.bookingDate).toLocaleString("vi-VN")
+                    : "N/A"}
+                </p>
+                <p><strong>Ghi chú:</strong> {selectedBooking.note || "Không có"}</p>
+                <p>
+                  <strong>Tổng tiền:</strong>{" "}
+                  {Number(selectedBooking.totalAmount || 0).toLocaleString("vi-VN")} đ
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
