@@ -183,7 +183,7 @@ export default function BookingPage() {
 
     const loadBranches = async () => {
       try {
-        const res = await getBranches();
+        const res = await getBranches('active');
         const branchesList = res.data?.data || res.data;
         if (branchesList && branchesList.length > 0) {
           setBranches(branchesList);

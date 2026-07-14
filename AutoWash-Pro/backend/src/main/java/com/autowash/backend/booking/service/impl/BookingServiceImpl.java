@@ -176,6 +176,10 @@ public class BookingServiceImpl implements BookingService {
         Branch branch = branchRepository.findById(request.getBranchId())
                 .orElseThrow(() -> new ResourceNotFoundException("Branch", "id", request.getBranchId()));
 
+        if (!branch.isAcceptingBookings()) {
+            throw new BusinessException("Chi nhánh hiện không hoạt động. Vui lòng chọn chi nhánh khác.", HttpStatus.CONFLICT);
+        }
+
         List<BookingDetail> details = new ArrayList<>();
         for (BookingCreateRequestDTO.BookingDetailItem item : request.getDetails()) {
             ServicePackage servicePackage = servicePackageRepository.findById(item.getServiceId())
