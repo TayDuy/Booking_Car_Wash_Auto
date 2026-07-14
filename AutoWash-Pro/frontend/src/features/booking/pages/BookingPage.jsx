@@ -403,8 +403,6 @@ export default function BookingPage() {
     if (!selectedBranch) { alert("Vui lòng chọn chi nhánh!"); return; }
     if (!agreeTerms) { alert("Vui lòng xác nhận thông tin dịch vụ và điều khoản dịch vụ để tiếp tục!"); return; }
 
-    if (depositRequired) setPaymentMethod("online");
-
     try {
       await syncProfileIfChanged();
 
