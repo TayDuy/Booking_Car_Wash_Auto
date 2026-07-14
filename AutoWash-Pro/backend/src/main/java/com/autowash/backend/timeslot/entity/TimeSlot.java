@@ -10,6 +10,8 @@ import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+// Thêm vào import
+import jakarta.persistence.PrePersist;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -152,4 +154,31 @@ public class TimeSlot {
                         this.status = SlotStatus.open;
                 }
         }
+        /**
+         * FIX: Lombok @Builder.Default chỉ áp dụng default value khi khởi tạo
+         * qua TimeSlot.builder()...build(). Khi entity được tạo qua constructor
+         * không tham số (new TimeSlot()) + setters — ví dụ MapStruct mapper
+         * trong create() — các field có initializer (status, maxCapacity,
+         * currentBookings, version) sẽ là null vì Lombok "chuyển" initializer
+         * vào logic của builder, không giữ trong constructor no-args.
+         *
+         * @PrePersist chạy ngay trước INSERT, đảm bảo default luôn được áp
+         * dụng bất kể entity được tạo bằng cách nào (builder hay new+setter).
+         */
+        @PrePersist
+        private void applyDefaultsBeforeInsert() {
+                if (this.status == null) {
+                        this.status = SlotStatus.open;
+                }
+                if (this.currentBookings == null) {
+                        this.currentBookings = 0;
+                }
+                if (this.maxCapacity == null) {
+                        this.maxCapacity = 1;
+                }
+                if (this.version == null) {
+                        this.version = 0L;
+                }
+        }
+
 }
