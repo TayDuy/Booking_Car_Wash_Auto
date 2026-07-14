@@ -426,3 +426,234 @@
         grid-template-columns: repeat(2, 1fr);
     }
 }
+/* ============================================================
+ * BỔ SUNG cho CreateBookingPage.css
+ * Dán các class dưới đây vào cuối file CreateBookingPage.css
+ * hiện có (không thay class nào đã có sẵn).
+ * ============================================================ */
+
+/* Nút viền (outline) dùng cho "Lưu thành mẫu thiết lập" */
+.cbp-btn-outline {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    border-radius: 8px;
+    border: 1px solid #93c5fd;
+    background: #eff6ff;
+    color: #1d4ed8;
+    font-weight: 500;
+    font-size: 14px;
+    cursor: pointer;
+}
+.cbp-btn-outline:hover {
+    background: #dbeafe;
+}
+
+/* Nút icon nhỏ (ví dụ: tải lại mẫu) */
+.cbp-btn-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    background: #fff;
+    color: #475569;
+    cursor: pointer;
+}
+.cbp-btn-icon:hover {
+    background: #f8fafc;
+}
+
+/* Hàng chọn mẫu thiết lập */
+.cbp-template-row {
+    display: flex;
+    gap: 8px;
+}
+.cbp-template-select {
+    flex: 1;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    background: #f8fafc;
+    font-size: 14px;
+}
+
+/* Phím tắt chọn ngày nhanh */
+.cbp-quick-date-btns {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 6px;
+}
+.cbp-quick-date-btn {
+    padding: 6px 14px;
+    border-radius: 999px;
+    border: 1px solid #bfdbfe;
+    background: #eff6ff;
+    color: #1d4ed8;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+}
+.cbp-quick-date-btn:hover {
+    background: #dbeafe;
+}
+
+/* Hàng thêm ngày cụ thể */
+.cbp-date-add-row {
+    display: flex;
+    gap: 10px;
+    margin-top: 6px;
+}
+.cbp-date-input-inline {
+    flex: 1;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    background: #f8fafc;
+    font-size: 14px;
+}
+
+/* Danh sách chip ngày đã chọn */
+.cbp-date-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 12px;
+    padding: 14px;
+    border: 1px dashed #e2e8f0;
+    border-radius: 10px;
+    min-height: 52px;
+}
+.cbp-date-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px 6px 14px;
+    border-radius: 999px;
+    background: #dbeafe;
+    color: #1d4ed8;
+    font-weight: 600;
+    font-size: 14px;
+}
+.cbp-date-chip-remove {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: none;
+    background: #ef4444;
+    color: #fff;
+    cursor: pointer;
+}
+
+/* Tabs Nhập hàng loạt / Nhập lẻ */
+.cbp-tabs {
+    display: flex;
+    gap: 20px;
+    border-bottom: 1px solid #e2e8f0;
+    margin: 18px 0 16px;
+}
+.cbp-tab {
+    padding: 10px 2px;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: #64748b;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+}
+.cbp-tab-active {
+    color: #1d4ed8;
+    border-bottom-color: #1d4ed8;
+}
+
+/* Grid nhập hàng loạt */
+.cbp-bulk-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+}
+.cbp-bulk-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 14px;
+}
+
+.cbp-btn-danger {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 16px;
+    border-radius: 8px;
+    border: none;
+    background: #dc2626;
+    color: #fff;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+}
+.cbp-btn-danger:hover {
+    background: #b91c1c;
+}
+
+/* Chip khung giờ đang chờ tạo */
+.cbp-draft-slots-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 10px;
+}
+.cbp-draft-slot-chip {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    min-width: 100px;
+    padding: 12px 16px;
+    border-radius: 10px;
+    border: 1.5px solid #1d4ed8;
+    background: #fff;
+}
+.cbp-draft-slot-time {
+    font-size: 18px;
+    font-weight: 700;
+    color: #1d4ed8;
+}
+.cbp-draft-slot-capacity {
+    font-size: 12px;
+    color: #64748b;
+}
+.cbp-draft-slot-bay {
+    font-size: 11px;
+    color: #94a3b8;
+}
+.cbp-draft-slot-remove {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: 2px solid #fff;
+    background: #ef4444;
+    color: #fff;
+    cursor: pointer;
+}
+
+@media (max-width: 768px) {
+    .cbp-bulk-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+}
