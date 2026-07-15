@@ -1,4 +1,5 @@
 import axiosClient, { API_BASE_URL } from './axiosClient';
+import axios from 'axios';
 
 const BASE_URL = `${API_BASE_URL}/notifications`;
 
@@ -37,7 +38,22 @@ export async function markAllRead(){
   return resp.data;
 }
 
-export function subscribeSSE(onMessage) {
+export async function deleteNotification(id){
+  const resp = await axiosClient.delete(`/notifications/${id}`);
+  return resp.data;
+}
+
+export async function deleteAllNotifications(){
+  const resp = await axiosClient.delete('/notifications');
+  return resp.data;
+}
+
+export async function adminRevoke(id){
+  const resp = await axiosClient.delete(`/notifications/admin/${id}`);
+  return resp.data;
+}
+
+export function subscribeSSE(onMessage, onRevoke) {
   let es = null;
   let active = true;
   let retryCount = 0;
@@ -55,17 +71,26 @@ export function subscribeSSE(onMessage) {
       es = new EventSource(`${BASE_URL}/stream?ticket=${ticket}`);
 
       es.onopen = () => {
-        retryCount = 0; // Reset on successful connection
+        retryCount = 0;
       };
 
-      es.onmessage = (e) => {
+      es.addEventListener('notification', (e) => {
         try {
           const d = JSON.parse(e.data);
           onMessage(d);
         } catch (err) {
           console.warn('SSE parse', err);
         }
-      };
+      });
+
+      es.addEventListener('notification-revoked', (e) => {
+        try {
+          const d = JSON.parse(e.data);
+          onRevoke?.(d.notificationId);
+        } catch (err) {
+          console.warn('SSE parse (revoke)', err);
+        }
+      });
 
       es.onerror = (err) => {
         console.warn('SSE connection error. Closing and retrying...', err);
@@ -84,7 +109,7 @@ export function subscribeSSE(onMessage) {
       return;
     }
     retryCount++;
-    const delay = Math.min(30000, 1000 * Math.pow(2, retryCount)); // Exponential backoff: 2s, 4s, 8s, 16s, 30s
+    const delay = Math.min(30000, 1000 * Math.pow(2, retryCount));
     console.log(`SSE reconnecting in ${delay / 1000}s (attempt ${retryCount}/${MAX_RETRIES})...`);
     setTimeout(connect, delay);
   };

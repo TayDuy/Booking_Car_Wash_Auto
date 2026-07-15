@@ -27,8 +27,17 @@ public class BulkNotificationRequestDTO {
     /**
      * Danh sách userId nhận thông báo.
      * Nếu null hoặc rỗng → broadcast đến tất cả user có status = active.
+     * Bỏ qua nếu {@code minTierId} được truyền.
      */
     private List<Integer> userIds;
+
+    /**
+     * FR-4: gửi thông báo theo hạng thành viên tối thiểu, ví dụ "Silver trở lên".
+     * Là tierId của hạng làm mốc — hệ thống sẽ gửi tới mọi customer có
+     * tier với priorityLevel >= priorityLevel của tier này.
+     * Nếu truyền field này thì {@code userIds} sẽ bị bỏ qua.
+     */
+    private Integer minTierId;
 
     /** Loại sự kiện thông báo. */
     @NotNull(message = "Type không được null")
