@@ -11,10 +11,10 @@ import {
     Settings
 } from "lucide-react";
 import "./AdminNotificationPage.css";
-import { getAll, createNotification, createBulk, markAllRead, markAsRead, subscribeSSE, getUnread, countUnread } from '../../../api/notificationService';
+import { getAll, createNotification, createBulk, markAllRead, markAsRead, subscribeSSE, getUnread, countUnread, adminRevoke } from '../../../api/notificationService';
+import { getActiveTiers } from '../../../api/loyaltyTierService';
 import { isLoggedIn, getRole } from '../../../api/authService';
 
-// Khớp với enum Notification.NotificationType ở backend — không tự đặt nhãn tùy ý
 const NOTIFICATION_TYPES = {
     BOOKING_CONFIRMED:   { label: "Đặt lịch đã xác nhận",   category: "booking" },
     BOOKING_CANCELLED:   { label: "Đặt lịch đã hủy",        category: "booking" },
@@ -27,7 +27,6 @@ const NOTIFICATION_TYPES = {
 
 const CHANNELS = [
     { id: "in_app", label: "Trong ứng dụng" },
-    { id: "sms", label: "SMS" },
     { id: "email", label: "Email" },
 ];
 
@@ -42,14 +41,13 @@ function categoryOf(type) {
     return NOTIFICATION_TYPES[type]?.category || "booking";
 }
 
-// initially empty; will be loaded from backend
 const GROUPS = [];
 
 function Badge({ label, tone }) {
     return <span className={`an-badge an-badge--${tone}`}>{label}</span>;
 }
 
-function NotifCard({ item, onMark }) {
+function NotifCard({ item, onMark, onRevoke }) {
     const Icon = item.icon;
     return (
         <article className={`an-card an-card--${item.tone}`}>
@@ -69,11 +67,18 @@ function NotifCard({ item, onMark }) {
                     <span>{item.category}</span>
                     {item.seen && <span className="an-seen">Đã xem</span>}
                 </div>
-                {!item.seen && (
-                    <div className="an-card__actions">
+                <div className="an-card__actions">
+                    {!item.seen && (
                         <button className="an-btn" onClick={() => onMark && onMark(item.id)}>Đánh dấu đã đọc</button>
-                    </div>
-                )}
+                    )}
+                    <button
+                        className="an-btn an-btn--danger"
+                        title="Thu hồi thông báo này khỏi người dùng"
+                        onClick={() => onRevoke && onRevoke(item.id)}
+                    >
+                        Thu hồi
+                    </button>
+                </div>
             </div>
         </article>
     );
@@ -89,8 +94,10 @@ export default function AdminNotificationPage() {
     const [body, setBody] = useState("");
     const [type, setType] = useState("");
     const [channel, setChannel] = useState("in_app");
-    const [sendMode, setSendMode] = useState("single"); // 'single' | 'broadcast'
+    const [sendMode, setSendMode] = useState("single");
     const [targetUserId, setTargetUserId] = useState("");
+    const [tiers, setTiers] = useState([]);
+    const [minTierId, setMinTierId] = useState("");
     const [formError, setFormError] = useState("");
     const [submitting, setSubmitting] = useState(false);
     const [totalCount, setTotalCount] = useState(0);
@@ -109,7 +116,18 @@ export default function AdminNotificationPage() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     },[]);
 
-    // helper to map backend DTO -> card item
+    useEffect(()=>{
+        async function loadTiers(){
+            try{
+                const data = await getActiveTiers();
+                setTiers(data);
+            }catch(err){
+                console.error('load tiers', err);
+            }
+        }
+        loadTiers();
+    },[]);
+
     function mapDtoToItem(dto){
         const cat = categoryOf(dto.type);
         const tone = dto.isRead ? 'gray' : (cat === 'payment' ? 'green' : cat === 'tier' ? 'red' : 'blue');
@@ -134,7 +152,6 @@ export default function AdminNotificationPage() {
         setLoading(true);
         try{
             const data = await getAll();
-            // group by date
             const today = [];
             const yesterday = [];
             const older = [];
@@ -178,13 +195,11 @@ export default function AdminNotificationPage() {
     }
 
     useEffect(()=>{
-        // ensure role and redirect
         if(!isLoggedIn()){ navigate('/login'); return; }
         // eslint-disable-next-line react-hooks/set-state-in-effect
         load();
         loadUnread();
         const es = subscribeSSE((payload)=>{
-            // payload expected to be NotificationResponseDTO
             if(payload && payload.notificationId){
                 setGroups(prev => {
                     const item = mapDtoToItem(payload);
@@ -193,7 +208,6 @@ export default function AdminNotificationPage() {
                     else g.unshift({ id: 'today', label: 'HÔM NAY', items: [item] });
                     return g;
                 });
-                // update unread list & count
                 setUnreadItems(u => [mapDtoToItem(payload), ...u]);
                 setUnreadCount(c => c + 1);
             }
@@ -218,9 +232,26 @@ export default function AdminNotificationPage() {
         try{ await markAsRead(id); load(); loadUnread(); }catch(err){ console.error(err); }
     }
 
+    async function handleRevoke(id){
+        if(!window.confirm('Thu hồi thông báo này? Thông báo sẽ bị xoá vĩnh viễn khỏi tài khoản người dùng.')) return;
+        try{
+            await adminRevoke(id);
+            setGroups(prev => prev
+                .map(g => ({ ...g, items: g.items.filter(it => it.id !== id) }))
+                .filter(g => g.items.length > 0));
+            setUnreadItems(prev => prev.filter(it => it.id !== id));
+            setTotalCount(c => Math.max(0, c - 1));
+            showToast('Đã thu hồi thông báo');
+            loadUnread();
+        }catch(err){
+            console.error('revoke', err);
+            showToast('Không thể thu hồi thông báo, vui lòng thử lại');
+        }
+    }
+
     function resetComposeForm(){
         setTitle(''); setBody(''); setType(''); setChannel('in_app');
-        setSendMode('single'); setTargetUserId('');
+        setSendMode('single'); setTargetUserId(''); setMinTierId('');
     }
 
     async function handleCreate(e){
@@ -235,12 +266,19 @@ export default function AdminNotificationPage() {
             setFormError('Vui lòng nhập ID người dùng nhận thông báo, hoặc chuyển sang "Gửi cho tất cả".');
             return;
         }
+        if(sendMode === 'tier' && !minTierId){
+            setFormError('Vui lòng chọn hạng thành viên tối thiểu để gửi.');
+            return;
+        }
 
         setSubmitting(true);
         try{
             if(sendMode === 'broadcast'){
                 const res = await createBulk({ type, title, body, channel });
-                showToast(`Đã gửi thông báo đến ${res?.totalSent ?? 0} người dùng`);
+                showToast(`Đã gửi thông báo đến ${res?.totalSent ?? 0} người dùng (${res?.targetDescription ?? 'tất cả'})`);
+            } else if(sendMode === 'tier'){
+                const res = await createBulk({ type, title, body, channel, minTierId: Number(minTierId) });
+                showToast(`Đã gửi thông báo đến ${res?.totalSent ?? 0} người dùng (${res?.targetDescription ?? ''})`);
             } else {
                 const dto = { type, title, body, channel, userId: Number(targetUserId) };
                 const created = await createNotification(dto);
@@ -369,6 +407,11 @@ export default function AdminNotificationPage() {
                                         onClick={()=>setSendMode('broadcast')}>
                                     Tất cả khách hàng đang hoạt động
                                 </button>
+                                <button type="button"
+                                        className={`an-filter ${sendMode === 'tier' ? 'is-active' : ''}`}
+                                        onClick={()=>setSendMode('tier')}>
+                                    Theo hạng thành viên
+                                </button>
                             </div>
 
                             {sendMode === 'single' && (
@@ -376,6 +419,20 @@ export default function AdminNotificationPage() {
                             )}
                             {sendMode === 'broadcast' && (
                                 <p className="an-hint">Thông báo sẽ được gửi đến tất cả người dùng có trạng thái hoạt động (active).</p>
+                            )}
+                            {sendMode === 'tier' && (
+                                <>
+                                    <select value={minTierId} onChange={e=>setMinTierId(e.target.value)} required>
+                                        <option value="" disabled>Chọn hạng tối thiểu…</option>
+                                        {tiers.map(t => (
+                                            <option key={t.tierId} value={t.tierId}>{t.tierName} trở lên</option>
+                                        ))}
+                                    </select>
+                                    <p className="an-hint">
+                                        Thông báo sẽ gửi đến mọi khách hàng đang hoạt động có hạng
+                                        {minTierId ? ` ${tiers.find(t => String(t.tierId) === String(minTierId))?.tierName ?? ''}` : ''} trở lên.
+                                    </p>
+                                </>
                             )}
 
                             <div className="an-compose__actions">
@@ -395,7 +452,7 @@ export default function AdminNotificationPage() {
                             <h2 className="an-group__label">{group.label}</h2>
                             <div className="an-group__items">
                                 {group.items.map((item) => (
-                                    <NotifCard key={item.id} item={item} onMark={handleMark} />
+                                    <NotifCard key={item.id} item={item} onMark={handleMark} onRevoke={handleRevoke} />
                                 ))}
                             </div>
                         </section>
