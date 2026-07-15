@@ -26,14 +26,12 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
 import com.autowash.backend.mail.service.MailService;
 
 import java.util.Map;
-import java.util.Optional;
 
 @Service
 public class AuthServiceImpl implements AuthService {
@@ -47,6 +45,7 @@ public class AuthServiceImpl implements AuthService {
     private final LoyaltyTierRepository loyaltyTierRepository;
     private final RefreshTokenService refreshTokenService;
     private final MailService mailService;
+    private final GoogleUserCreatorService googleUserCreatorService;
 
     private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(AuthServiceImpl.class);
     private static final java.security.SecureRandom secureRandom = new java.security.SecureRandom();
@@ -66,7 +65,8 @@ public class AuthServiceImpl implements AuthService {
                            OtpService otpService,
                            LoyaltyTierRepository loyaltyTierRepository,
                            RefreshTokenService refreshTokenService,
-                           MailService mailService) {
+                           MailService mailService,
+                           GoogleUserCreatorService googleUserCreatorService) {
         this.authenticationManager = authenticationManager;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
@@ -76,6 +76,7 @@ public class AuthServiceImpl implements AuthService {
         this.loyaltyTierRepository = loyaltyTierRepository;
         this.refreshTokenService = refreshTokenService;
         this.mailService = mailService;
+        this.googleUserCreatorService = googleUserCreatorService;
     }
 
     @Override
@@ -208,10 +209,22 @@ public class AuthServiceImpl implements AuthService {
         SecurityContextHolder.clearContext();
     }
 
+    // QUAN TRỌNG: RestTemplate mặc định KHÔNG có timeout -> nếu Supabase
+    // chậm/nghẽn mạng, request sẽ chờ VÔ THỜI HẠN, kéo theo cả request phía
+    // frontend (/auth/google) treo mãi không bao giờ trả lời.
+    // Factory này set connectTimeout/readTimeout 5s để luôn có phản hồi.
+    private RestTemplate buildSupabaseRestTemplate() {
+        org.springframework.http.client.SimpleClientHttpRequestFactory factory =
+                new org.springframework.http.client.SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(5000);
+        factory.setReadTimeout(5000);
+        return new RestTemplate(factory);
+    }
+
     @Override
     @Transactional
     public LoginResponseDTO loginWithGoogle(String supabaseToken) {
-        RestTemplate restTemplate = new RestTemplate();
+        RestTemplate restTemplate = buildSupabaseRestTemplate();
         HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth(supabaseToken);
         headers.set("apikey", supabaseAnonKey);
@@ -227,6 +240,10 @@ public class AuthServiceImpl implements AuthService {
                     Map.class
             );
             body = supabaseResponse.getBody();
+        } catch (org.springframework.web.client.ResourceAccessException e) {
+            // Timeout hoặc không kết nối được tới Supabase (mạng chậm/nghẽn, DNS...)
+            log.error("Khong ket noi duoc Supabase de xac thuc Google: {}", e.getMessage());
+            throw new BusinessException("Khong the ket noi Supabase de dang nhap Google. Vui long thu lai.", HttpStatus.GATEWAY_TIMEOUT);
         } catch (Exception e) {
             throw new BusinessException("Token Google khong hop le hoac da bi chinh sua", HttpStatus.UNAUTHORIZED);
         }
@@ -243,7 +260,12 @@ public class AuthServiceImpl implements AuthService {
 
         User user = userRepository.findByEmail(email).orElse(null);
         if (user == null) {
-            user = findOrCreateGoogleUser(email, fullName);
+            // Gọi qua bean riêng (không phải this) để Spring AOP proxy hoạt động đúng.
+            // Nếu gọi this.findOrCreateGoogleUser(), @Transactional(REQUIRES_NEW) bị bypass
+            // → cả 2 method chạy chung 1 transaction → khi có DataIntegrityViolationException
+            // (2 request đồng thời tạo cùng 1 email), transaction chính bị abort
+            // → mọi query sau đó fail → server 500 → frontend treo.
+            user = googleUserCreatorService.findOrCreateGoogleUser(email, fullName);
         }
 
         String token = jwtTokenProvider.generateToken(email, user.getId(), user.getPassword());
@@ -324,53 +346,6 @@ public class AuthServiceImpl implements AuthService {
         }
     }
 
-    /**
-     * Tạo user + customer mới cho đăng nhập Google, chạy trong TRANSACTION RIÊNG
-     * (REQUIRES_NEW). Lý do: nếu 2 request Google-login bắn gần như đồng thời
-     * (VD: React StrictMode gọi useEffect 2 lần ở môi trường dev) cùng thấy user
-     * chưa tồn tại và cùng insert, 1 request sẽ bị lỗi trùng email
-     * (DataIntegrityViolationException). Với PostgreSQL, hễ 1 câu lệnh trong
-     * transaction lỗi thì CẢ transaction bị đánh dấu "aborted" — mọi câu lệnh
-     * sau đó trên transaction đó đều bị từ chối. Nếu dùng chung transaction với
-     * loginWithGoogle(), việc query lại findByEmail() trong khối catch sẽ chạy
-     * trên transaction đã aborted đó và ném ra 1 exception khác (không được
-     * catch), gây lỗi 500 thay vì xử lý êm.
-     *
-     * Chạy trong transaction riêng giúp: nếu insert lỗi, CHỈ transaction phụ
-     * này bị rollback; transaction chính (đang chạy loginWithGoogle) vẫn sạch,
-     * và câu findByEmail() ở dưới chạy bình thường trên transaction chính đó.
-     */
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    protected User findOrCreateGoogleUser(String email, String fullName) {
-        try {
-            String randomUsername = "gg_" + java.util.UUID.randomUUID().toString().substring(0, 8);
-
-            User user = User.builder()
-                    .username(randomUsername)
-                    .email(email)
-                    .password(passwordEncoder.encode(java.util.UUID.randomUUID().toString()))
-                    .role("customer")
-                    .status("active")
-                    .build();
-            user = userRepository.save(user);
-
-            Customer customer = Customer.builder()
-                    .user(user)
-                    .fullName(fullName)
-                    .tierId(1)
-                    .build();
-            customerRepository.save(customer);
-
-            return user;
-        } catch (org.springframework.dao.DataIntegrityViolationException e) {
-            // Transaction phụ này rollback ngay tại đây, không ảnh hưởng transaction chính.
-            // Trường hợp thường gặp: 2 request chạy song song cùng tạo user cho 1 email.
-            return userRepository.findByEmail(email)
-                    .orElseThrow(() -> new BusinessException(
-                            "Loi dong thoi khi dang nhap Google, vui long thu lai",
-                            HttpStatus.CONFLICT));
-        }
-    }
 
     private LoginResponseDTO buildLoginResponse(String token, User user) {
         String fullName = "Unknown";

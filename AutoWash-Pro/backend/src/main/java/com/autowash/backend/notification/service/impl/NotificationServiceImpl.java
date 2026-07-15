@@ -1,5 +1,9 @@
 package com.autowash.backend.notification.service.impl;
 
+import com.autowash.backend.customer.entity.Customer;
+import com.autowash.backend.customer.repository.CustomerRepository;
+import com.autowash.backend.loyaltytier.entity.LoyaltyTier;
+import com.autowash.backend.loyaltytier.repository.LoyaltyTierRepository;
 import com.autowash.backend.notification.dto.*;
 import com.autowash.backend.notification.entity.Notification;
 import com.autowash.backend.notification.repository.NotificationRepository;
@@ -14,15 +18,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
-/**
- * Implementation của {@link NotificationService} (FR-12).
- *
- * <p>Toàn bộ class {@code readOnly = true} —
- * chỉ method write mới override thành {@code @Transactional}.</p>
- *
- * <p>Sau khi lưu DB, gọi {@link SseService#pushToUser} để đẩy
- * real-time đến user nếu đang online.</p>
- */
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -30,16 +25,10 @@ public class NotificationServiceImpl implements NotificationService {
 
     private final NotificationRepository notificationRepository;
     private final UserRepository userRepository;
-    private final SseService sseService; // ← inject để push real-time
+    private final SseService sseService;
+    private final CustomerRepository customerRepository;
+    private final LoyaltyTierRepository loyaltyTierRepository;
 
-    // ── CREATE ────────────────────────────────────────────────────────────────
-
-    /**
-     * {@inheritDoc}
-     *
-     * <p>Flow: resolve userId → build Notification → lưu DB
-     * → push SSE real-time nếu user online.</p>
-     */
     @Override
     @Transactional
     public NotificationResponseDTO create(NotificationCreateDTO dto) {
@@ -55,30 +44,45 @@ public class NotificationServiceImpl implements NotificationService {
                 .channel(dto.getChannel())
                 .build();
 
-        // 1. Lưu vào DB trước — đảm bảo không mất dù user offline
         NotificationResponseDTO response = toResponse(notificationRepository.save(notification));
-
-        // 2. Push real-time qua SSE — nếu user offline thì bỏ qua
         sseService.pushToUser(dto.getUserId(), response);
 
         return response;
     }
 
-    /**
-     * {@inheritDoc}
-     *
-     * <p>Batch insert bằng saveAll() — tránh N+1 queries.
-     * Sau đó push SSE đến từng user đang online.</p>
-     */
     @Override
     @Transactional
     public BulkNotificationResponseDTO createBulk(BulkNotificationRequestDTO dto) {
         List<User> targets;
-        if (dto.getUserIds() == null || dto.getUserIds().isEmpty()) {
-            // Không chỉ định → broadcast tất cả user active
+        String targetDescription;
+
+        if (dto.getMinTierId() != null) {
+            LoyaltyTier minTier = loyaltyTierRepository.findById(dto.getMinTierId())
+                    .orElseThrow(() -> new EntityNotFoundException(
+                            "Tier không tồn tại: " + dto.getMinTierId()));
+
+            List<Integer> qualifyingTierIds = loyaltyTierRepository
+                    .findByIsActiveTrueOrderByPriorityLevelDesc()
+                    .stream()
+                    .filter(t -> t.getPriorityLevel() != null
+                            && minTier.getPriorityLevel() != null
+                            && t.getPriorityLevel() >= minTier.getPriorityLevel())
+                    .map(LoyaltyTier::getTierId)
+                    .toList();
+
+            targets = customerRepository
+                    .findByTierIdInAndUser_Status(qualifyingTierIds, "active")
+                    .stream()
+                    .map(Customer::getUser)
+                    .toList();
+
+            targetDescription = minTier.getTierName() + " trở lên";
+        } else if (dto.getUserIds() == null || dto.getUserIds().isEmpty()) {
             targets = userRepository.findByStatus("active");
+            targetDescription = "Tất cả khách hàng đang hoạt động";
         } else {
             targets = userRepository.findAllById(dto.getUserIds());
+            targetDescription = targets.size() + " người dùng được chọn";
         }
 
         List<Notification> notifications = targets.stream()
@@ -91,22 +95,18 @@ public class NotificationServiceImpl implements NotificationService {
                         .build())
                 .toList();
 
-        // Batch insert — 1 query thay vì N queries
         List<Notification> saved = notificationRepository.saveAll(notifications);
 
-        // Push SSE đến từng user đang online sau khi lưu DB xong
         saved.forEach(n ->
                 sseService.pushToUser(n.getUser().getId(), toResponse(n)));
 
         return BulkNotificationResponseDTO.builder()
                 .totalSent(saved.size())
                 .title(dto.getTitle())
+                .targetDescription(targetDescription)
                 .build();
     }
 
-    // ── READ ──────────────────────────────────────────────────────────────────
-
-    /** {@inheritDoc} */
     @Override
     public List<NotificationResponseDTO> getByUser(Integer userId) {
         return notificationRepository
@@ -116,7 +116,6 @@ public class NotificationServiceImpl implements NotificationService {
                 .toList();
     }
 
-    /** {@inheritDoc} */
     @Override
     public List<NotificationResponseDTO> getUnreadByUser(Integer userId) {
         return notificationRepository
@@ -126,16 +125,12 @@ public class NotificationServiceImpl implements NotificationService {
                 .toList();
     }
 
-    /** {@inheritDoc} */
     @Override
     public UnreadCountResponseDTO countUnread(Integer userId) {
         long count = notificationRepository.countByUserIdAndIsReadFalse(userId);
         return new UnreadCountResponseDTO(userId, count);
     }
 
-    // ── ACTION ────────────────────────────────────────────────────────────────
-
-    /** {@inheritDoc} */
     @Override
     @Transactional
     public void markAsRead(Integer notificationId, Integer userId) {
@@ -143,7 +138,6 @@ public class NotificationServiceImpl implements NotificationService {
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Notification không tồn tại: " + notificationId));
 
-        // Bảo vệ ownership: chỉ đúng chủ mới được đánh dấu
         if (!notification.getUser().getId().equals(userId)) {
             throw new SecurityException("Không có quyền truy cập notification này.");
         }
@@ -152,7 +146,6 @@ public class NotificationServiceImpl implements NotificationService {
         notificationRepository.save(notification);
     }
 
-    /** {@inheritDoc} */
     @Override
     @Transactional
     public void markAllAsRead(Integer userId) {
@@ -163,20 +156,12 @@ public class NotificationServiceImpl implements NotificationService {
         notificationRepository.saveAll(unread);
     }
 
-    // ── Private helpers ───────────────────────────────────────────────────────
-
-    /**
-     * Tìm User theo ID, ném exception nếu không tồn tại.
-     */
     private User findUserOrThrow(Integer userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException(
                         "User không tồn tại: " + userId));
     }
 
-    /**
-     * Map Notification entity → ResponseDTO.
-     */
     private NotificationResponseDTO toResponse(Notification n) {
         return NotificationResponseDTO.builder()
                 .notificationId(n.getNotificationId())
@@ -194,5 +179,39 @@ public class NotificationServiceImpl implements NotificationService {
                 .createdAt(n.getCreatedAt())
                 .updatedAt(n.getUpdatedAt())
                 .build();
+    }
+
+    @Override
+    @Transactional
+    public void delete(Integer notificationId, Integer userId) {
+        Notification notification = notificationRepository.findById(notificationId)
+                .orElseThrow(() -> new EntityNotFoundException(
+                        "Notification không tồn tại: " + notificationId));
+
+        if (!notification.getUser().getId().equals(userId)) {
+            throw new SecurityException("Không có quyền truy cập notification này.");
+        }
+
+        notificationRepository.delete(notification);
+    }
+
+    @Override
+    @Transactional
+    public void deleteAll(Integer userId) {
+        notificationRepository.deleteByUserId(userId);
+    }
+
+    @Override
+    @Transactional
+    public void adminRevoke(Integer notificationId) {
+        Notification notification = notificationRepository.findById(notificationId)
+                .orElseThrow(() -> new EntityNotFoundException(
+                        "Notification không tồn tại: " + notificationId));
+
+        Integer ownerId = notification.getUser().getId();
+
+        notificationRepository.delete(notification);
+
+        sseService.pushRevoke(ownerId, notificationId);
     }
 }
