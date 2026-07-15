@@ -15,6 +15,9 @@ import com.autowash.backend.loyaltytier.repository.LoyaltyTierRepository;
 import com.autowash.backend.loyaltytransaction.entity.LoyaltyTransaction;
 import com.autowash.backend.loyaltytransaction.repository.LoyaltyTransactionRepository;
 import com.autowash.backend.mail.service.MailService;
+import com.autowash.backend.notification.dto.NotificationCreateDTO;
+import com.autowash.backend.notification.entity.Notification;
+import com.autowash.backend.notification.service.NotificationService;
 import com.autowash.backend.payment.dto.PaymentCreateRequestDTO;
 import com.autowash.backend.payment.dto.PaymentResponseDTO;
 import com.autowash.backend.payment.dto.PaymentUpdateRequestDTO;
@@ -68,6 +71,7 @@ public class PaymentServiceImpl implements PaymentService {
     private final PaymentMapper paymentMapper;
     private final PayPalService                payPalService;
     private final MailService                  mailService;
+    private final NotificationService          notificationService;
 
     // Tỉ lệ tích điểm: cứ 10,000 VND = 1 điểm
     private static final BigDecimal POINTS_PER_VND = BigDecimal.valueOf(10_000);
@@ -494,6 +498,9 @@ public class PaymentServiceImpl implements PaymentService {
         // Gửi email xác nhận sau khi thanh toán thành công
         sendBookingConfirmationEmail(saved);
 
+        // Thông báo in-app khi thanh toán thành công
+        notifyPaymentSuccess(saved);
+
         return saved;
     }
 
@@ -534,6 +541,90 @@ public class PaymentServiceImpl implements PaymentService {
         }
     }
 
+    private void notifyPaymentSuccess(Payment payment) {
+        Booking booking = payment.getBooking();
+        Customer customer = booking.getCustomer();
+        String bookingCode = booking.getBookingCode();
+
+        try {
+            if (customer.getUser() != null) {
+                notificationService.create(NotificationCreateDTO.builder()
+                        .userId(customer.getUser().getId())
+                        .type(Notification.NotificationType.PAYMENT_COMPLETED)
+                        .title("Thanh toán thành công")
+                        .body(String.format(
+                                "Thanh toán %s VND cho lịch #%s đã hoàn tất.",
+                                payment.getFinalAmount().toPlainString(),
+                                bookingCode
+                        ))
+                        .referenceId(payment.getPaymentId())
+                        .referenceType("payment")
+                        .channel(Notification.NotificationChannel.in_app)
+                        .build());
+            }
+        } catch (Exception e) {
+            log.error("Lỗi khi tạo thông báo in-app cho payment {}: {}",
+                    payment.getPaymentId(), e.getMessage(), e);
+        }
+
+        try {
+            String toEmail = customer.getUser() != null ? customer.getUser().getEmail() : null;
+            if (toEmail != null) {
+                mailService.sendPaymentSuccessEmail(
+                        toEmail,
+                        customer.getFullName(),
+                        bookingCode,
+                        payment.getPaymentMethod() != null ? payment.getPaymentMethod().name() : "N/A",
+                        payment.getFinalAmount()
+                );
+            }
+        } catch (Exception e) {
+            log.error("Lỗi khi kích hoạt gửi email xác nhận thanh toán cho payment {}: {}",
+                    payment.getPaymentId(), e.getMessage(), e);
+        }
+    }
+
+    private void notifyPaymentFailed(Payment payment, String reason) {
+        Booking booking = payment.getBooking();
+        Customer customer = booking.getCustomer();
+        String bookingCode = booking.getBookingCode();
+
+        try {
+            if (customer.getUser() != null) {
+                notificationService.create(NotificationCreateDTO.builder()
+                        .userId(customer.getUser().getId())
+                        .type(Notification.NotificationType.PAYMENT_FAILED)
+                        .title("Thanh toán không thành công")
+                        .body(String.format(
+                                "Thanh toán cho lịch #%s không thành công. %s",
+                                bookingCode, reason == null ? "" : reason
+                        ))
+                        .referenceId(payment.getPaymentId())
+                        .referenceType("payment")
+                        .channel(Notification.NotificationChannel.in_app)
+                        .build());
+            }
+        } catch (Exception e) {
+            log.error("Lỗi khi tạo thông báo in-app cho payment thất bại {}: {}",
+                    payment.getPaymentId(), e.getMessage(), e);
+        }
+
+        try {
+            String toEmail = customer.getUser() != null ? customer.getUser().getEmail() : null;
+            if (toEmail != null) {
+                mailService.sendPaymentFailedEmail(
+                        toEmail,
+                        customer.getFullName(),
+                        bookingCode,
+                        reason
+                );
+            }
+        } catch (Exception e) {
+            log.error("Lỗi khi kích hoạt gửi email thanh toán thất bại cho payment {}: {}",
+                    payment.getPaymentId(), e.getMessage(), e);
+        }
+    }
+
     @Override
     @Transactional
     public PaymentResponseDTO cancelPayment(Integer paymentId) {
@@ -551,6 +642,8 @@ public class PaymentServiceImpl implements PaymentService {
 
         payment.setPaymentStatus(PaymentStatus.cancelled);
         Payment saved = paymentRepository.save(payment);
+
+        notifyPaymentFailed(saved, "Đã hủy");
 
         log.info("Payment {} cancelled", paymentId);
         return paymentMapper.toResponse(saved);
@@ -579,7 +672,11 @@ public class PaymentServiceImpl implements PaymentService {
         payment.setVnpayCardType(cardType);
         payment.setVnpayResponseCode(responseCode);
 
-        return paymentMapper.toResponse(paymentRepository.save(payment));
+        Payment saved = paymentRepository.save(payment);
+
+        notifyPaymentFailed(saved, responseCode);
+
+        return paymentMapper.toResponse(saved);
     }
 
     // ── READ ─────────────────────────────────────────────────────────────────

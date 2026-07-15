@@ -30,4 +30,35 @@ public interface MailService {
      * Gửi email cảnh báo khi mật khẩu tài khoản bị thay đổi
      */
     void sendPasswordChangedEmail(String toEmail, String username);
+
+    /**
+     * Gửi email xác nhận đặt lịch đã bị hủy
+     */
+    void sendBookingCancelledEmail(
+            String toEmail,
+            String customerName,
+            String bookingCode,
+            String reason
+    );
+
+    /**
+     * Gửi email xác nhận thanh toán thành công
+     */
+    void sendPaymentSuccessEmail(
+            String toEmail,
+            String customerName,
+            String bookingCode,
+            String paymentMethod,
+            BigDecimal finalAmount
+    );
+
+    /**
+     * Gửi email thông báo thanh toán thất bại
+     */
+    void sendPaymentFailedEmail(
+            String toEmail,
+            String customerName,
+            String bookingCode,
+            String reason
+    );
 }

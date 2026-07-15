@@ -28,6 +28,9 @@ import com.autowash.backend.customerreward.repository.CustomerRewardRepository;
 import com.autowash.backend.payment.entity.Payment;
 import com.autowash.backend.payment.repository.PaymentRepository;
 import com.autowash.backend.promotion.repository.PromotionUseRepository;
+import com.autowash.backend.notification.dto.NotificationCreateDTO;
+import com.autowash.backend.notification.entity.Notification;
+import com.autowash.backend.notification.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -58,6 +61,7 @@ public class BookingServiceImpl implements BookingService {
     private final ServicePackageRepository servicePackageRepository;
     private final BookingMapper bookingMapper;
     private final com.autowash.backend.mail.service.MailService mailService;
+    private final NotificationService notificationService;
     private final CustomerRewardRepository customerRewardRepository;
     private final PaymentRepository paymentRepository;
     private final PromotionUseRepository promotionUseRepository;
@@ -222,6 +226,35 @@ public class BookingServiceImpl implements BookingService {
                 || "offline".equalsIgnoreCase(request.getPaymentMethod());
         if (isOffline) {
             sendConfirmationEmail(customer, savedBooking, branch, slot, details);
+        }
+
+        // Tạo thông báo in-app khi đặt lịch thành công
+        try {
+            if (customer.getUser() != null) {
+                String serviceNames = details.stream()
+                        .map(d -> d.getService().getServiceName())
+                        .collect(Collectors.joining(", "));
+
+                notificationService.create(NotificationCreateDTO.builder()
+                        .userId(customer.getUser().getId())
+                        .type(Notification.NotificationType.BOOKING_CONFIRMED)
+                        .title("Đặt lịch thành công")
+                        .body(String.format(
+                                "Lịch rửa xe #%s (%s) tại %s vào %s %s đã được xác nhận.",
+                                savedBooking.getBookingCode(),
+                                serviceNames,
+                                branch.getBranchName(),
+                                slot.getSlotDate(),
+                                slot.getStartTime()
+                        ))
+                        .referenceId(savedBooking.getBookingId())
+                        .referenceType("booking")
+                        .channel(Notification.NotificationChannel.in_app)
+                        .build());
+            }
+        } catch (Exception e) {
+            log.error("Lỗi khi tạo thông báo in-app cho booking {}: {}",
+                    savedBooking.getBookingId(), e.getMessage(), e);
         }
 
         return bookingMapper.toCreateResponse(savedBooking, details, request.getPaymentMethod());
@@ -478,6 +511,9 @@ public class BookingServiceImpl implements BookingService {
         timeSlotRepository.save(slot);
 
         Booking saved = bookingRepository.save(booking);
+
+        notifyBookingCancelled(saved);
+
         return bookingMapper.toResponse(saved, bookingDetailRepository.findByBooking(saved));
     }
 
@@ -566,6 +602,42 @@ public class BookingServiceImpl implements BookingService {
             case "7_seats" -> Vehicle.VehicleType.suv;
             default -> Vehicle.VehicleType.car;
         };
+    }
+
+    private void notifyBookingCancelled(Booking booking) {
+        Customer customer = booking.getCustomer();
+
+        try {
+            if (customer.getUser() != null) {
+                notificationService.create(NotificationCreateDTO.builder()
+                        .userId(customer.getUser().getId())
+                        .type(Notification.NotificationType.BOOKING_CANCELLED)
+                        .title("Đặt lịch đã bị hủy")
+                        .body(String.format("Lịch rửa xe #%s đã bị hủy.", booking.getBookingCode()))
+                        .referenceId(booking.getBookingId())
+                        .referenceType("booking")
+                        .channel(Notification.NotificationChannel.in_app)
+                        .build());
+            }
+        } catch (Exception e) {
+            log.error("Lỗi khi tạo thông báo in-app cho việc hủy booking {}: {}",
+                    booking.getBookingId(), e.getMessage(), e);
+        }
+
+        try {
+            String toEmail = customer.getUser() != null ? customer.getUser().getEmail() : null;
+            if (toEmail != null) {
+                mailService.sendBookingCancelledEmail(
+                        toEmail,
+                        customer.getFullName(),
+                        booking.getBookingCode(),
+                        booking.getNote()
+                );
+            }
+        } catch (Exception e) {
+            log.error("Lỗi khi kích hoạt gửi email hủy booking {}: {}",
+                    booking.getBookingId(), e.getMessage(), e);
+        }
     }
 
     private void sendConfirmationEmail(Customer customer, Booking booking, Branch branch,
