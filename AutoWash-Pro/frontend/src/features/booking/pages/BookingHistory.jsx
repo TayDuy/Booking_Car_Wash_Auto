@@ -174,44 +174,7 @@ export default function BookingHistory() {
             </div>
           </div>
 
-          {/* ── Stats Grid ───────────────────────────────────── */}
-          <div className="bh-stats-grid">
-            <div className="bh-stat-card stat-total">
-              <div className="bh-stat-icon">
-                <span className="material-symbols-outlined">calendar_month</span>
-              </div>
-              <div className="bh-stat-number">{stats.total}</div>
-              <div className="bh-stat-label">Tổng lịch hẹn</div>
-            </div>
-            <div className="bh-stat-card stat-pending">
-              <div className="bh-stat-icon">
-                <span className="material-symbols-outlined">schedule</span>
-              </div>
-              <div className="bh-stat-number">{stats.pending}</div>
-              <div className="bh-stat-label">Đang chờ xử lý</div>
-            </div>
-            <div className="bh-stat-card stat-active">
-              <div className="bh-stat-icon">
-                <span className="material-symbols-outlined">sync</span>
-              </div>
-              <div className="bh-stat-number">{stats.active}</div>
-              <div className="bh-stat-label">Đang thực hiện</div>
-            </div>
-            <div className="bh-stat-card stat-completed">
-              <div className="bh-stat-icon">
-                <span className="material-symbols-outlined">check_circle</span>
-              </div>
-              <div className="bh-stat-number">{stats.completed}</div>
-              <div className="bh-stat-label">Đã hoàn thành</div>
-            </div>
-            <div className="bh-stat-card stat-cancelled">
-              <div className="bh-stat-icon">
-                <span className="material-symbols-outlined">cancel</span>
-              </div>
-              <div className="bh-stat-number">{stats.cancelled}</div>
-              <div className="bh-stat-label">Đã hủy</div>
-            </div>
-          </div>
+
 
           {/* ── Toolbar ──────────────────────────────────────── */}
           <div className="bh-toolbar">

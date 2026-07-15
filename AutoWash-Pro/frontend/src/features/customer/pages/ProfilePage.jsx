@@ -7,7 +7,6 @@ import bookingApi from '../../../api/bookingApi';
 import { logout, changePassword } from '../../../api/authService';
 import { getMyTier } from '../../../api/loyaltyApi';
 import { getMyPointBalance } from '../../../api/loyaltyTransactionApi';
-
 const ProfilePage = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -322,7 +321,7 @@ const ProfilePage = () => {
     );
   }
 
-  function getCurrentPoints() {
+  const getCurrentPoints = () => {
     return Number(
       pointBalance ||
         loyaltyInfo?.currentPoints ||
@@ -331,383 +330,416 @@ const ProfilePage = () => {
         user.totalPoints ||
         0
     );
-  }
-
-  // Dynamic Subscription details based on user tierId
-  const getSubscriptionDetails = (tierId) => {
-    if (tierId === 3) {
-      return {
-        title: 'Gói Vàng VVIP',
-        price: '399.000 ₫ / tháng',
-        features: [
-          'Rửa xe cao cấp không giới hạn',
-          'Miễn phí 2 lần phủ Nano & Wax / tháng',
-          'Lối đi VIP ưu tiên không cần chờ đợi'
-        ]
-      };
-    } else if (tierId === 2) {
-      return {
-        title: 'Gói Bạc Premium',
-        price: '199.000 ₫ / tháng',
-        features: [
-          'Rửa xe cơ bản không giới hạn',
-          'Miễn phí 1 lần phủ Wax / tháng',
-          'Hỗ trợ đặt lịch nhanh qua hotline'
-        ]
-      };
-    } else {
-      return {
-        title: 'Gói Đồng Tiết Kiệm',
-        price: '99.000 ₫ / tháng',
-        features: [
-          'Rửa xe cơ bản giảm 20% mọi hóa đơn',
-          'Nhân hệ số tích lũy điểm thưởng x1.2',
-          'Hỗ trợ đặt lịch rửa xe linh hoạt'
-        ]
-      };
-    }
   };
 
-  const subInfo = getSubscriptionDetails(user.tierId);
-
   if (loading) return <div className="p-8 text-center" style={{ padding: '40px', textAlign: 'center', fontSize: '18px' }}>Đang tải...</div>;
+
+  const memberId = `WF-2026-${(user.customerId || 0).toString().padStart(5, '0')}`;
 
   return (
     <div className="profile-page-wrapper">
       {/* Main Content Area */}
-      <main className="main-area">
-        {/* Top App Bar */}
-        <header className="topbar glass-header">
-          <div className="topbar-titles">
-            <h2 className="page-title">Hồ sơ</h2>
-            <p className="page-subtitle">Welcome, {user.fullName || user.username}</p>
-          </div>
-          <div className="topbar-actions">
-            <button className="icon-btn">
-              <span className="material-symbols-outlined">notifications</span>
-            </button>
-            <button className="icon-btn">
-              <span className="material-symbols-outlined">help</span>
-            </button>
-          </div>
-        </header>
-
+      <main className="main-area" style={{ paddingTop: '24px' }}>
         {/* Content Canvas */}
         <div className="content-canvas">
-          <div className="main-grid">
+          <div className="github-profile-grid">
             
-            {/* Left Column: Personal Info & Vehicles */}
-            <div className="col-left">
+            {/* Left Column: Profile Card */}
+            <aside className="github-profile-sidebar">
+              <div className={`github-avatar-wrapper tier-border-${user.tierId}`}>
+                <img src={user.avatarUrl || '/car_avatar.png'} alt="Avatar" className="github-profile-avatar" />
+              </div>
               
-              {/* Personal Info Card */}
-              <section id="personal-info" className="card card-shadow no-pad">
-                <div className="table-header">
-                  <h3 className="card-title">
-                    <span className="material-symbols-outlined text-primary">person</span>
-                    Thông tin cá nhân
-                  </h3>
-                  {!isEditing ? (
-                    <button className="btn-edit" onClick={() => setIsEditing(true)}>
-                      <span className="material-symbols-outlined icon-small">edit</span>
-                      Chỉnh sửa
+              <div className="github-user-names">
+                <h1 className="github-display-name">{user.fullName || user.username || 'Khách hàng'}</h1>
+                <p className="github-username">@{user.username || 'user'}</p>
+              </div>
+
+              {/* Edit Profile & Password Action Buttons */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%', marginTop: '8px' }}>
+                {!isEditing ? (
+                  <>
+                    <button className="github-btn-action" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }} onClick={() => setIsEditing(true)}>
+                      <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>edit</span>
+                      <span>Chỉnh sửa hồ sơ</span>
                     </button>
-                  ) : (
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                      <button className="btn-edit" style={{ color: '#ba1a1a' }} onClick={() => setIsEditing(false)}>Hủy</button>
-                      <button className="btn-add" onClick={handleSave}>Lưu</button>
+                    <button className="github-btn-action" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }} onClick={() => setShowChangePassword(true)}>
+                      <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>lock</span>
+                      <span>Đổi mật khẩu</span>
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button className="github-btn-action save" onClick={handleSave}>Lưu thay đổi</button>
+                    <button className="github-btn-action cancel" onClick={() => setIsEditing(false)}>Hủy</button>
+                  </>
+                )}
+              </div>
+
+              {/* User Bio / Details List */}
+              <div className="github-profile-details">
+                {isEditing ? (
+                  <div className="github-edit-form">
+                    <div className="edit-form-group">
+                      <label>Họ và tên</label>
+                      <input type="text" name="fullName" value={editForm.fullName} onChange={handleInputChange} />
                     </div>
-                  )}
-                </div>
-                
-                <div className="info-grid info-grid-inset">
-                  <div className="info-item">
-                    <label>Họ và tên</label>
-                    {!isEditing ? <p>{user.fullName || 'Chưa cập nhật'}</p> : 
-                      <input type="text" name="fullName" value={editForm.fullName} onChange={handleInputChange} className="info-edit-input" />}
-                  </div>
-                  <div className="info-item">
-                    <label>Địa chỉ Email</label>
-                    {!isEditing ? <p>{user.email || 'Chưa cập nhật'}</p> : 
-                      <input type="email" name="email" value={editForm.email} onChange={handleInputChange} className="info-edit-input" />}
-                  </div>
-                  <div className="info-item">
-                    <label>Số điện thoại</label>
-                    {!isEditing ? <p>{user.phone || 'Chưa cập nhật'}</p> : 
-                      <input type="text" name="phone" value={editForm.phone} onChange={handleInputChange} className="info-edit-input" />}
-                  </div>
-                  <div className="info-item">
-                    <label>Giới tính</label>
-                    {!isEditing ? <p>{user.gender || 'Chưa cập nhật'}</p> : 
-                      <select name="gender" value={editForm.gender} onChange={handleInputChange} className="info-edit-select">
+                    <div className="edit-form-group">
+                      <label>Số điện thoại</label>
+                      <input type="text" name="phone" value={editForm.phone} onChange={handleInputChange} />
+                    </div>
+                    <div className="edit-form-group">
+                      <label>Giới tính</label>
+                      <select name="gender" value={editForm.gender} onChange={handleInputChange}>
                         <option value="">Chọn giới tính</option>
                         <option value="Nam">Nam</option>
                         <option value="Nữ">Nữ</option>
                         <option value="Khác">Khác</option>
                       </select>
-                    }
-                  </div>
-                  <div className="info-item">
-                    <label>Ngày sinh</label>
-                    {!isEditing ? <p>{user.dateOfBirth || 'Chưa cập nhật'}</p> : 
-                      <input type="date" name="dateOfBirth" value={editForm.dateOfBirth} onChange={handleInputChange} className="info-edit-input" />}
-                  </div>
-                  <div className="info-item">
-                    <label>Địa điểm</label>
-                    <p>Hồ Chí Minh, Việt Nam</p>
-                  </div>
-                </div>
-              </section>
-
-              {/* Change Password Section */}
-              <section className="card card-shadow no-pad">
-                <div className="table-header">
-                  <h3 className="card-title">
-                    <span className="material-symbols-outlined text-primary">lock</span>
-                    <span>Mật khẩu</span>
-                  </h3>
-                  <button className="btn-edit" onClick={() => setShowChangePassword(true)}>
-                    <span className="material-symbols-outlined icon-small">edit</span>
-                    <span>Đổi mật khẩu</span>
-                  </button>
-                </div>
-                <div className="password-preview-wrap">
-                  <div className="password-preview">
-                    <span className="password-dots">••••••••</span>
-                    <span className="password-hint">Nên thay đổi mật khẩu định kỳ để đảm bảo an toàn cho tài khoản của bạn.</span>
-                  </div>
-                  {passwordSuccess && <div className="password-success">{passwordSuccess}</div>}
-                </div>
-              </section>
-
-              {/* My Vehicles Section */}
-              <section id="vehicles" className="card card-shadow no-pad">
-                <div className="table-header">
-                  <h3 className="card-title">
-                    <span className="material-symbols-outlined text-primary">directions_car</span>
-                    <span>Xe của tôi</span>
-                  </h3>
-                  <button className="btn-add" onClick={() => setShowAddVehicleModal(true)}>
-                    <span className="material-symbols-outlined icon-small">add_circle</span>
-                    <span>Thêm xe mới</span>
-                  </button>
-                </div>
-                
-                <div className="vehicles-grid vehicles-grid-inset">
-                  {vehicles.length === 0 ? (
-                    <div className="card card-shadow" style={{ gridColumn: 'span 2', textAlign: 'center', padding: '32px', color: 'var(--on-surface-variant)' }}>
-                      Bạn chưa thêm phương tiện nào. Hãy nhấn nút thêm xe để bắt đầu!
                     </div>
-                  ) : (
-                    vehicles.map(vehicle => (
-                      <div key={vehicle.vehicleId} className="vehicle-card card-shadow group">
-                        <div className="vehicle-info">
-                          <div className="vehicle-icon-box bg-cyan">
-                            <span className="material-symbols-outlined text-secondary" style={{ fontSize: '32px' }}>
-                              {vehicle.vehicleType === 'suv' ? 'airport_shuttle' : 'directions_car'}
-                            </span>
+                    <div className="edit-form-group">
+                      <label>Ngày sinh</label>
+                      <input type="date" name="dateOfBirth" value={editForm.dateOfBirth} onChange={handleInputChange} />
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="detail-item">
+                      <span className="material-symbols-outlined">mail</span>
+                      <span>{user.email || 'Chưa cập nhật email'}</span>
+                    </div>
+                    {user.phone && (
+                      <div className="detail-item">
+                        <span className="material-symbols-outlined">phone</span>
+                        <span>{user.phone}</span>
+                      </div>
+                    )}
+                    {user.gender && (
+                      <div className="detail-item">
+                        <span className="material-symbols-outlined">wc</span>
+                        <span>{user.gender}</span>
+                      </div>
+                    )}
+                    {user.dateOfBirth && (
+                      <div className="detail-item">
+                        <span className="material-symbols-outlined">cake</span>
+                        <span>{user.dateOfBirth}</span>
+                      </div>
+                    )}
+                    <div className="detail-item">
+                      <span className="material-symbols-outlined">location_on</span>
+                      <span>Hồ Chí Minh, Việt Nam</span>
+                    </div>
+                    <div className="detail-item font-semibold" style={{ color: 'var(--primary)', marginTop: '8px' }}>
+                      <span className="material-symbols-outlined">workspace_premium</span>
+                      <span>Hạng {getCurrentTierName()}</span>
+                    </div>
+                    <div className="detail-item" style={{ color: '#0052cc' }}>
+                      <span className="material-symbols-outlined">stars</span>
+                      <span>{getCurrentPoints().toLocaleString("vi-VN")} điểm tích lũy</span>
+                    </div>
+                  </>
+                )}
+              </div>
+            </aside>
+
+            {/* Right Column: Stacked Contents */}
+            <div className="github-profile-content" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+              
+              {/* Section 1: Loyalty Membership */}
+              <div className="shadcn-card">
+                <div className="shadcn-card-header">
+                  <div>
+                    <h3 className="shadcn-card-title">
+                      <span className="material-symbols-outlined" style={{ color: 'var(--primary)' }}>stars</span>
+                      <span>Thẻ thành viên & Điểm tích luỹ</span>
+                    </h3>
+                    <p className="shadcn-card-description">
+                      Thông tin phân hạng thành viên và các ưu đãi rửa xe đi kèm của bạn.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="shadcn-card-content">
+                  <div className="loyalty-columns-layout">
+                    {/* Left: Wallet Card */}
+                    <div className="loyalty-card-col">
+                      <div className={`loyalty-wallet-card tier-card-${user.tierId}`}>
+                        <div className="wallet-card-overlay"></div>
+                        <div className="wallet-card-header">
+                          <div className="wallet-brand">
+                            <span className="material-symbols-outlined">waves</span>
+                            <span>WASHFLOW PASS</span>
                           </div>
-                          <div>
-                            <h4 className="vehicle-name">{vehicle.nickname || `${vehicle.brand} ${vehicle.model}`}</h4>
-                            <span className="vehicle-plate">{vehicle.licensePlate}</span>
-                            <span style={{ fontSize: '12px', color: 'var(--on-surface-variant)', marginLeft: '8px' }}>
-                              ({vehicle.vehicleType === 'suv' ? 'Xe 7 chỗ' : 'Xe 4 chỗ'})
-                            </span>
-                            {vehicle.nickname && (
-                              <div style={{ fontSize: '12px', color: 'var(--on-surface-variant)', marginTop: '2px' }}>
-                                {vehicle.brand} {vehicle.model}
-                              </div>
+                          <span className="wallet-tier-label">{getCurrentTierName().toUpperCase()}</span>
+                        </div>
+                        
+                        <div className="wallet-card-body">
+                          <div className="wallet-user-info">
+                            <h4 className="wallet-user-name">{user.fullName || user.username || 'Khách hàng'}</h4>
+                            <p className="wallet-member-id">ID: {memberId}</p>
+                          </div>
+                          <span className="material-symbols-outlined" style={{ fontSize: '48px', opacity: '0.3', color: '#ffffff' }}>
+                            workspace_premium
+                          </span>
+                        </div>
+
+                        <div className="wallet-card-footer">
+                          <div className="wallet-points-status">
+                            <span className="points-label">Số dư điểm tích luỹ</span>
+                            <strong className="points-value">{getCurrentPoints().toLocaleString("vi-VN")} pts</strong>
+                          </div>
+                          <div className="wallet-progress-wrap">
+                            <div className="progress-track">
+                              <div className="progress-fill" style={{ width: `${Math.min((getCurrentPoints() || 0) / 5000 * 100, 100)}%` }}></div>
+                            </div>
+                            {getPointsNeeded(getCurrentPoints()) > 0 ? (
+                              <p className="points-hint">Cần thêm {getPointsNeeded(getCurrentPoints())} điểm để lên hạng {getNextTierName(getCurrentPoints())}</p>
+                            ) : (
+                              <p className="points-hint">Đã đạt hạng thành viên cao nhất 🎉</p>
                             )}
                           </div>
                         </div>
-                        <div className="vehicle-footer">
-                          <span className="vehicle-date">{vehicle.color ? `Màu: ${vehicle.color}` : 'Chưa nhập màu'}</span>
-                          <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <button className="btn-edit" style={{ padding: '4px 10px', fontSize: '12px' }} onClick={() => setEditingVehicle({ ...vehicle })}>
-                              <span className="material-symbols-outlined icon-small">edit</span>
-                              <span>Sửa</span>
-                            </button>
-                            <button 
-                              className={`vehicle-status-toggle ${vehicle.isActive ? 'active' : 'inactive'}`} 
-                              onClick={() => handleToggleActive(vehicle.vehicleId, vehicle.isActive)}
-                            >
-                              <span className="material-symbols-outlined icon-small">
-                                {vehicle.isActive ? 'check_circle' : 'do_not_disturb_on'}
-                              </span>
-                              <span>{vehicle.isActive ? 'Đang hoạt động' : 'Ngừng hoạt động'}</span>
-                            </button>
+                      </div>
+                    </div>
+
+                    {/* Right: Perks & Progress Details */}
+                    <div className="loyalty-perks-col">
+                      <div className="wallet-progress-wrap" style={{ maxWidth: '100%', marginBottom: '16px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: '#64748b', marginBottom: '6px' }}>
+                          <span style={{ fontWeight: '600' }}>Tiến trình thăng hạng:</span>
+                          <span style={{ fontWeight: '700', color: 'var(--primary)' }}>
+                            {getCurrentPoints().toLocaleString("vi-VN")} / {getCurrentPoints() >= 5000 ? '5.000' : (getCurrentPoints() >= 1500 ? '5.000' : (getCurrentPoints() >= 500 ? '1.500' : '500'))} pts
                           </span>
                         </div>
+                        <div className="progress-track" style={{ backgroundColor: 'rgba(0, 74, 173, 0.1)', height: '10px', borderRadius: '999px', overflow: 'hidden' }}>
+                          <div className="progress-fill" style={{ 
+                            background: 'linear-gradient(90deg, var(--color-primary) 0%, var(--color-secondary) 100%)', 
+                            height: '100%', 
+                            borderRadius: '999px',
+                            width: `${Math.min((getCurrentPoints() || 0) / (getCurrentPoints() >= 5000 ? 5000 : (getCurrentPoints() >= 1500 ? 5000 : (getCurrentPoints() >= 500 ? 1500 : 500))) * 100, 100)}%` 
+                          }}></div>
+                        </div>
+                        {getPointsNeeded(getCurrentPoints()) > 0 ? (
+                          <p className="points-hint" style={{ color: '#64748b', marginTop: '6px', fontSize: '12px', margin: '6px 0 0' }}>
+                            Bạn cần tích lũy thêm <strong>{getPointsNeeded(getCurrentPoints()).toLocaleString("vi-VN")}</strong> điểm để nâng cấp lên hạng <strong>{getNextTierName(getCurrentPoints())}</strong>.
+                          </p>
+                        ) : (
+                          <p className="points-hint" style={{ color: 'var(--color-success)', marginTop: '6px', fontSize: '12px', margin: '6px 0 0', fontWeight: '600' }}>
+                            Chúc mừng! Bạn đã đạt phân hạng thành viên cao nhất của hệ thống 🎉
+                          </p>
+                        )}
                       </div>
-                    ))
-                  )}
-                </div>
-              </section>
 
-              {/* Booking History Table */}
-              <section id="history" className="card card-shadow no-pad">
-                <div className="table-header">
-                  <h3 className="card-title">
-                    <span className="material-symbols-outlined text-primary">history</span>
-                    <span>Lịch sử đặt lịch</span>
-                  </h3>
-                  <button className="link-primary" onClick={() => navigate('/customer/history')}>Xem tất cả</button>
-                </div>
-                <div className="table-wrapper">
-                  <table className="history-table">
-                    <thead>
-                      <tr>
-                        <th>Ngày</th>
-                        <th>Chi nhánh & Phương tiện</th>
-                        <th>Trạng thái</th>
-                        <th className="text-right">Tổng thanh toán</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {bookings.length === 0 ? (
-                        <tr>
-                          <td colSpan="4" className="text-center text-dark" style={{ padding: '24px', textAlign: 'center' }}>
-                            Chưa có dữ liệu đặt lịch rửa xe.
-                          </td>
-                        </tr>
-                      ) : (
-                        bookings.map(booking => {
-                          const dateObj = booking.slotDate ? new Date(booking.slotDate) : new Date(booking.bookingDate);
-                          const dateString = dateObj.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
-                          const amountString = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(booking.totalAmount || 0);
-
-                          let badgeClass = 'bg-blue';
-                          let dotClass = 'dot-blue';
-                          let textViet = 'Chờ xử lý';
-
-                          switch(booking.status) {
-                            case 'completed':
-                              badgeClass = 'bg-green';
-                              dotClass = 'dot-green';
-                              textViet = 'Đã hoàn thành';
-                              break;
-                            case 'cancelled':
-                              badgeClass = 'inactive';
-                              dotClass = 'dot-gray';
-                              textViet = 'Đã hủy';
-                              break;
-                            case 'confirmed':
-                              badgeClass = 'bg-blue pulse-active';
-                              dotClass = 'dot-blue';
-                              textViet = 'Đã xác nhận';
-                              break;
-                            case 'in_progress':
-                              badgeClass = 'bg-blue pulse-active';
-                              dotClass = 'dot-blue';
-                              textViet = 'Đang làm';
-                              break;
-                            case 'no_show':
-                              badgeClass = 'inactive';
-                              dotClass = 'dot-gray';
-                              textViet = 'Vắng mặt';
-                              break;
-                            default:
-                              break;
-                          }
-
-                          return (
-                            <tr key={booking.bookingId}>
-                              <td className="font-medium text-dark">
-                                {dateString} {booking.slotStartTime ? ` - ${booking.slotStartTime.substring(0, 5)}` : ''}
-                              </td>
-                              <td>
-                                <div className="service-cell">
-                                  <span className="service-name">{booking.branchName || 'AutoWash-Pro Branch'}</span>
-                                  <span className="service-car">{booking.vehicleNickname || booking.licensePlate || 'Mã: ' + booking.bookingCode}</span>
-                                </div>
-                              </td>
-                              <td>
-                                <span className={`status-badge ${badgeClass}`}>
-                                  <span className={`dot ${dotClass}`}></span> {textViet}
-                                </span>
-                              </td>
-                              <td className="text-right font-bold text-dark">{amountString}</td>
-                            </tr>
-                          );
-                        })
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </section>
-
-            </div>
-
-            {/* Right Column: Loyalty & Stats */}
-            <div className="col-right">
-              
-              {/* Loyalty Summary Card */}
-              <section className="loyalty-card card-shadow">
-                <div className="loyalty-bg-glow"></div>
-                <div className="loyalty-header">
-                  <div>
-                    <p className="loyalty-label">Hạng thành viên</p>
-                    <h3 className="loyalty-tier">{getCurrentTierName()}</h3>
-                  </div>
-                  <span className="material-symbols-outlined icon-star">stars</span>
-                </div>
-                <div className="loyalty-body">
-                  <div className="loyalty-points-row">
-                    <span className="points-label">Số dư hiện tại</span>
-                    <span className="points-value">{getCurrentPoints().toLocaleString("vi-VN")} điểm</span>
-                  </div>
-                  <div className="progress-track">
-                    <div className="progress-fill" style={{ width: `${Math.min((getCurrentPoints() || 0) / 5000 * 100, 100)}%` }}></div>
-                  </div>
-                  {getPointsNeeded(getCurrentPoints()) > 0 ? (
-                    <p className="points-hint">Chỉ còn {getPointsNeeded(getCurrentPoints())} điểm nữa để đạt hạng {getNextTierName(getCurrentPoints())}!</p>
-                  ) : (
-                    <p className="points-hint">Chúc mừng! Bạn đã đạt hạng thành viên cao nhất.</p>
-                  )}
-                </div>
-                <button className="btn-loyalty" onClick={() => navigate('/customer/promotions')}>Đổi phần thưởng</button>
-              </section>
-
-              {/* Subscription Details */}
-              <section id="subscription" className="card card-shadow">
-                <h3 className="card-title text-dark mb-md">Gói đăng ký hiện tại</h3>
-                <div className="sub-header">
-                  <div className="sub-icon">
-                    <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>workspace_premium</span>
-                  </div>
-                  <div>
-                    <h4 className="sub-title">{subInfo.title}</h4>
-                    <p className="sub-price">{subInfo.price}</p>
-                  </div>
-                </div>
-                <div className="sub-features">
-                  {subInfo.features.map((feature) => (
-                    <div key={feature} className="sub-feature">
-                      <span className="material-symbols-outlined text-secondary">check_circle</span>
-                      {feature}
+                      <div className="perks-list-inset" style={{ padding: '16px', border: '1px solid rgba(226, 232, 240, 0.8)', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '12px', backgroundColor: '#f8fafc' }}>
+                        <div className="perk-item" style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                          <span className="material-symbols-outlined perk-icon" style={{ color: 'var(--primary)', fontSize: '18px', marginTop: '1px' }}>check_circle</span>
+                          <div className="perk-desc">
+                            <strong style={{ display: 'block', fontSize: '13.5px', color: '#0f172a', fontWeight: '600' }}>Tích lũy tự động</strong>
+                            <p style={{ margin: '1px 0 0', fontSize: '12px', color: '#64748b', lineHeight: '1.4' }}>Tích lũy 10 điểm thưởng với mỗi 10.000đ chi tiêu dịch vụ rửa xe.</p>
+                          </div>
+                        </div>
+                        <div className="perk-item" style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                          <span className="material-symbols-outlined perk-icon" style={{ color: 'var(--primary)', fontSize: '18px', marginTop: '1px' }}>check_circle</span>
+                          <div className="perk-desc">
+                            <strong style={{ display: 'block', fontSize: '13.5px', color: '#0f172a', fontWeight: '600' }}>Đổi Voucher giảm giá</strong>
+                            <p style={{ margin: '1px 0 0', fontSize: '12px', color: '#64748b', lineHeight: '1.4' }}>Quy đổi điểm thưởng trực tiếp thành các mã giảm giá dịch vụ từ 20k, 50k, 100k.</p>
+                          </div>
+                        </div>
+                        <div className="perk-item" style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                          <span className="material-symbols-outlined perk-icon" style={{ color: 'var(--primary)', fontSize: '18px', marginTop: '1px' }}>check_circle</span>
+                          <div className="perk-desc">
+                            <strong style={{ display: 'block', fontSize: '13.5px', color: '#0f172a', fontWeight: '600' }}>Ưu tiên đặt lịch</strong>
+                            <p style={{ margin: '1px 0 0', fontSize: '12px', color: '#64748b', lineHeight: '1.4' }}>Hạng Vàng trở lên được ưu tiên hỗ trợ giữ thời gian đặt lịch trong giờ cao điểm.</p>
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                  ))}
+                  </div>
                 </div>
-                <button className="btn-manage-sub">Quản lý gói đăng ký</button>
-              </section>
 
-              {/* Promo Card */}
-              <div className="promo-card group">
-                <div className="promo-content">
-                  <h4 className="promo-title">GIỚI THIỆU BẠN BÈ</h4>
-                  <p className="promo-desc">Nhận ngay 500 điểm cho mỗi người bạn tham gia WashFlow Pro!</p>
-                  <button className="btn-promo-link">
-                    Chia sẻ liên kết
-                    <span className="material-symbols-outlined icon-small group-hover-gap">arrow_forward</span>
+                <div className="shadcn-card-footer" style={{ gap: '12px' }}>
+                  <button className="github-btn-action save" style={{ width: 'auto' }} onClick={() => navigate('/customer/promotions')}>
+                    Đổi phần thưởng ngay
                   </button>
                 </div>
-                <span className="material-symbols-outlined promo-icon-bg">loyalty</span>
+              </div>
+
+              {/* Section 2: My Garage (Nhà xe của tôi) */}
+              <div className="shadcn-card" id="vehicles">
+                <div className="shadcn-card-header" style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <h3 className="shadcn-card-title">
+                      <span className="material-symbols-outlined" style={{ color: 'var(--primary)' }}>directions_car</span>
+                      <span>Danh sách xe của tôi</span>
+                    </h3>
+                    <p className="shadcn-card-description">
+                      Quản lý danh sách các phương tiện cá nhân đăng ký sử dụng dịch vụ tại trạm.
+                    </p>
+                  </div>
+                  <button className="github-btn-action save" style={{ width: 'auto', display: 'flex', alignItems: 'center', gap: '6px' }} onClick={() => setShowAddVehicleModal(true)}>
+                    <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>add_circle</span>
+                    <span>Đăng ký xe mới</span>
+                  </button>
+                </div>
+                
+                <div className="shadcn-card-content">
+                  <div className="vehicles-grid" style={{ gridTemplateColumns: vehicles.length === 0 ? '1fr' : 'repeat(2, 1fr)', gap: '16px' }}>
+                    {vehicles.length === 0 ? (
+                      <div style={{ textAlign: 'center', padding: '36px 12px', color: '#64748b', fontSize: '14px', border: '1px dashed #e2e8f0', borderRadius: '8px' }}>
+                        Bạn chưa đăng ký phương tiện nào. Hãy nhấn nút thêm xe để bắt đầu!
+                      </div>
+                    ) : (
+                      vehicles.map(vehicle => (
+                        <div key={vehicle.vehicleId} className="vehicle-card card-shadow group" style={{ margin: '0', border: '1px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden' }}>
+                          <div className="vehicle-info" style={{ padding: '16px' }}>
+                            <div className="vehicle-icon-box bg-cyan">
+                              <span className="material-symbols-outlined text-secondary" style={{ fontSize: '32px' }}>
+                                {vehicle.vehicleType === 'suv' ? 'airport_shuttle' : 'directions_car'}
+                              </span>
+                            </div>
+                            <div>
+                              <h4 className="vehicle-name" style={{ fontSize: '15px', fontWeight: '600' }}>{vehicle.nickname || `${vehicle.brand} ${vehicle.model}`}</h4>
+                              <div className="vietnam-license-plate">
+                                <span className="plate-rivet"></span>
+                                <span className="plate-text">{vehicle.licensePlate.toUpperCase()}</span>
+                              </div>
+                              <span style={{ fontSize: '12px', color: '#64748b', marginLeft: '8px' }}>
+                                ({vehicle.vehicleType === 'suv' ? 'Xe 7 chỗ' : 'Xe 4 chỗ'})
+                              </span>
+                              {vehicle.nickname && (
+                                <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>
+                                  {vehicle.brand} {vehicle.model}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          <div className="vehicle-footer" style={{ padding: '12px 16px', backgroundColor: '#f8fafc', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span className="vehicle-date" style={{ fontSize: '12px', color: '#64748b' }}>{vehicle.color ? `Màu: ${vehicle.color}` : 'Chưa nhập màu'}</span>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <button className="btn-edit" style={{ padding: '4px 10px', fontSize: '12px' }} onClick={() => setEditingVehicle({ ...vehicle })}>
+                                <span className="material-symbols-outlined icon-small">edit</span>
+                                <span>Sửa</span>
+                              </button>
+                              <button 
+                                className={`vehicle-status-toggle ${vehicle.isActive ? 'active' : 'inactive'}`} 
+                                onClick={() => handleToggleActive(vehicle.vehicleId, vehicle.isActive)}
+                              >
+                                <span className="material-symbols-outlined icon-small">
+                                  {vehicle.isActive ? 'check_circle' : 'do_not_disturb_on'}
+                                </span>
+                                <span>{vehicle.isActive ? 'Đang hoạt động' : 'Ngừng hoạt động'}</span>
+                              </button>
+                            </span>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Section 3: Booking History */}
+              <div className="shadcn-card" id="history">
+                <div className="shadcn-card-header">
+                  <div>
+                    <h3 className="shadcn-card-title">
+                      <span className="material-symbols-outlined" style={{ color: 'var(--primary)' }}>history</span>
+                      <span>Lịch sử đặt lịch rửa xe</span>
+                    </h3>
+                    <p className="shadcn-card-description">
+                      Danh sách lịch hẹn rửa xe gần đây và trạng thái xử lý chi tiết.
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="shadcn-card-content" style={{ padding: '0 0 12px 0' }}>
+                  <div className="table-wrapper" style={{ boxShadow: 'none', border: 'none', borderRadius: '0' }}>
+                    <table className="history-table" style={{ borderTop: '1px solid #e2e8f0' }}>
+                      <thead>
+                        <tr>
+                          <th>Ngày</th>
+                          <th>Chi nhánh & Phương tiện</th>
+                          <th>Trạng thái</th>
+                          <th className="text-right" style={{ paddingRight: '24px' }}>Tổng thanh toán</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {bookings.length === 0 ? (
+                          <tr>
+                            <td colSpan="4" className="text-center text-dark" style={{ padding: '36px', textAlign: 'center', color: '#64748b' }}>
+                              Chưa có dữ liệu đặt lịch rửa xe nào.
+                            </td>
+                          </tr>
+                        ) : (
+                          bookings.map(booking => {
+                            const dateObj = booking.slotDate ? new Date(booking.slotDate) : new Date(booking.bookingDate);
+                            const dateString = dateObj.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                            
+                            let badgeClass = 'status-pending';
+                            let dotClass = 'dot-orange';
+                            let textViet = 'Chờ xử lý';
+
+                            switch (booking.status?.toLowerCase()) {
+                              case 'completed':
+                              case 'done':
+                                badgeClass = 'status-success';
+                                dotClass = 'dot-green';
+                                textViet = 'Hoàn thành';
+                                break;
+                              case 'cancelled':
+                              case 'canceled':
+                                badgeClass = 'status-cancelled';
+                                dotClass = 'dot-red';
+                                textViet = 'Đã hủy';
+                                break;
+                              case 'in_progress':
+                                badgeClass = 'status-progress';
+                                dotClass = 'dot-blue';
+                                textViet = 'Đang làm';
+                                break;
+                              case 'noshow':
+                                badgeClass = 'status-noshow';
+                                dotClass = 'dot-gray';
+                                textViet = 'Vắng mặt';
+                                break;
+                              default:
+                                break;
+                            }
+
+                            const amountString = (booking.totalAmount || booking.price || 0).toLocaleString('vi-VN') + 'đ';
+
+                            return (
+                              <tr key={booking.bookingId}>
+                                <td className="font-medium text-dark" style={{ paddingLeft: '24px' }}>
+                                  {dateString} {booking.slotStartTime ? ` - ${booking.slotStartTime.substring(0, 5)}` : ''}
+                                </td>
+                                <td>
+                                  <div className="service-cell">
+                                    <span className="service-name" style={{ fontWeight: '500' }}>{booking.branchName || 'AutoWash-Pro Branch'}</span>
+                                    <span className="service-car">{booking.vehicleNickname || booking.licensePlate || 'Mã: ' + booking.bookingCode}</span>
+                                  </div>
+                                </td>
+                                <td>
+                                  <span className={`status-badge ${badgeClass}`}>
+                                    <span className={`dot ${dotClass}`}></span> {textViet}
+                                  </span>
+                                </td>
+                                <td className="text-right font-bold text-dark" style={{ paddingRight: '24px' }}>{amountString}</td>
+                              </tr>
+                            );
+                          })
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
               </div>
 
             </div>
           </div>
         </div>
       </main>
-
       {/* Add Vehicle Modal Overlay */}
       {showAddVehicleModal && (
         <div className="modal-overlay">
