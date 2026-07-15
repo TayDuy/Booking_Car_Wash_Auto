@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { getActiveServices } from "../../../api/servicePackageService";
 import PublicHeader from "../../../components/layout/PublicHeader";
 import PublicFooter from "../../../components/layout/PublicFooter";
@@ -19,8 +19,19 @@ function PricingSkeletonCard() {
 }
 
 function LandingPage() {
+  const navigate = useNavigate();
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      const role = (localStorage.getItem("role") || "").toUpperCase();
+      const home = { ADMIN: "/admin/dashboard", EMPLOYEE: "/employee/dashboard", MANAGER: "/manager/dashboard" }[role] || "/customer/home";
+      navigate(home, { replace: true });
+      return;
+    }
+  }, []);
 
   useEffect(() => {
     getActiveServices()
