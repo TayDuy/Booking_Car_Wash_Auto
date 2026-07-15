@@ -9,6 +9,14 @@ function LoginPage() {
   const navigate = useNavigate();
   const auth = useAuth();
 
+  useEffect(() => {
+    if (auth?.token) {
+      const role = (localStorage.getItem("role") || "").toUpperCase();
+      const home = { ADMIN: "/admin/dashboard", EMPLOYEE: "/employee/dashboard", MANAGER: "/manager/dashboard" }[role] || "/customer/home";
+      navigate(home, { replace: true });
+    }
+  }, []);
+
   const [formData, setFormData] = useState({
     username: "",
     password: "",
