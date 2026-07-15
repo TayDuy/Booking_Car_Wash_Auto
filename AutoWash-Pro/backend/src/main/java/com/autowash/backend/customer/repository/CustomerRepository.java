@@ -12,6 +12,9 @@ public interface CustomerRepository extends JpaRepository<Customer, Integer> {
     Optional<Customer> findByUser_Id(Integer userId);
     List<Customer> findByBrandId(Integer brandId);
 
+    Optional<Customer> findFirstByUserIsNullAndPhoneAndFullNameIgnoreCaseOrderByCustomerIdDesc(
+            String phone, String fullName);
+
     /**
      * Tìm các customer thuộc một trong các tier chỉ định, và tài khoản đang active.
      * Dùng cho tính năng gửi thông báo hàng loạt theo hạng thành viên
