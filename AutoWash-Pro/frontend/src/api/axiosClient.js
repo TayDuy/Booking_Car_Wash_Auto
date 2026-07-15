@@ -5,6 +5,10 @@ export const BACKEND_ROOT_URL = API_BASE_URL.replace("/api/v1", "");
 
 const axiosClient = axios.create({
   baseURL: API_BASE_URL,
+  // QUAN TRỌNG: nếu không có timeout, khi backend bị treo (ví dụ backend
+  // đang chờ vô thời hạn để gọi ra Supabase) thì request phía frontend
+  // (ví dụ /auth/google) cũng sẽ chờ MÃI MÃI, khiến màn hình bị treo.
+  timeout: 15000,
   headers: {
     "Content-Type": "application/json",
     Accept: "application/json",
@@ -12,18 +16,18 @@ const axiosClient = axios.create({
 });
 
 axiosClient.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem("token");
+    (config) => {
+      const token = localStorage.getItem("token");
 
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+
+      return config;
+    },
+    (error) => {
+      throw error;
     }
-
-    return config;
-  },
-  (error) => {
-    throw error;
-  }
 );
 
 let isRefreshing = false;
@@ -58,101 +62,101 @@ function redirectToLogin() {
 
 function isAuthPublicRequest(url = "") {
   return (
-    url.includes("/auth/login") ||
-    url.includes("/auth/register") ||
-    url.includes("/auth/send-otp") ||
-    url.includes("/auth/verify-otp") ||
-    url.includes("/auth/google") ||
-    url.includes("/auth/forgot-password")
+      url.includes("/auth/login") ||
+      url.includes("/auth/register") ||
+      url.includes("/auth/send-otp") ||
+      url.includes("/auth/verify-otp") ||
+      url.includes("/auth/google") ||
+      url.includes("/auth/forgot-password")
   );
 }
 
 axiosClient.interceptors.response.use(
-  (response) => response,
-  async (error) => {
-    const originalRequest = error.config;
+    (response) => response,
+    async (error) => {
+      const originalRequest = error.config;
 
-    if (!originalRequest) {
-      throw error;
-    }
-
-    const requestUrl = originalRequest.url || "";
-
-    // Login/Register/Forgot password sai cũng có thể trả 401/400.
-    // Không redirect ở đây, để page tự hiện lỗi.
-    if (isAuthPublicRequest(requestUrl)) {
-      throw error;
-    }
-
-    if (
-      error.response?.status === 401 &&
-      !originalRequest._retry
-    ) {
-      if (isRefreshing) {
-        return new Promise((resolve, reject) => {
-          failedQueue.push({ resolve, reject });
-        })
-          .then((token) => {
-            originalRequest.headers.Authorization = `Bearer ${token}`;
-            return axiosClient(originalRequest);
-          })
-          .catch((queueError) => { throw queueError; });
-      }
-
-      originalRequest._retry = true;
-      isRefreshing = true;
-
-      const refreshToken = localStorage.getItem("refreshToken");
-
-      if (!refreshToken) {
-        clearAuthStorage();
-        redirectToLogin();
+      if (!originalRequest) {
         throw error;
       }
 
-      try {
-        const response = await axios.post(`${API_BASE_URL}/auth/refresh`, {
-          refreshToken,
-        });
+      const requestUrl = originalRequest.url || "";
 
-        // Hỗ trợ cả 2 kiểu response:
-        // 1. { accessToken, refreshToken }
-        // 2. { data: { accessToken, refreshToken } }
-        const responseData = response.data?.data || response.data;
-
-        const newAccessToken = responseData?.accessToken;
-        const newRefreshToken = responseData?.refreshToken;
-
-        if (!newAccessToken) {
-          throw new Error("Refresh response không có accessToken");
-        }
-
-        localStorage.setItem("token", newAccessToken);
-
-        if (newRefreshToken) {
-          localStorage.setItem("refreshToken", newRefreshToken);
-        }
-
-        axiosClient.defaults.headers.common.Authorization = `Bearer ${newAccessToken}`;
-        originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
-
-        processQueue(null, newAccessToken);
-
-        return axiosClient(originalRequest);
-      } catch (refreshError) {
-        processQueue(refreshError, null);
-
-        clearAuthStorage();
-        redirectToLogin();
-
-        throw refreshError;
-      } finally {
-        isRefreshing = false;
+      // Login/Register/Forgot password sai cũng có thể trả 401/400.
+      // Không redirect ở đây, để page tự hiện lỗi.
+      if (isAuthPublicRequest(requestUrl)) {
+        throw error;
       }
-    }
 
-    throw error;
-  }
+      if (
+          error.response?.status === 401 &&
+          !originalRequest._retry
+      ) {
+        if (isRefreshing) {
+          return new Promise((resolve, reject) => {
+            failedQueue.push({ resolve, reject });
+          })
+              .then((token) => {
+                originalRequest.headers.Authorization = `Bearer ${token}`;
+                return axiosClient(originalRequest);
+              })
+              .catch((queueError) => { throw queueError; });
+        }
+
+        originalRequest._retry = true;
+        isRefreshing = true;
+
+        const refreshToken = localStorage.getItem("refreshToken");
+
+        if (!refreshToken) {
+          clearAuthStorage();
+          redirectToLogin();
+          throw error;
+        }
+
+        try {
+          const response = await axios.post(`${API_BASE_URL}/auth/refresh`, {
+            refreshToken,
+          });
+
+          // Hỗ trợ cả 2 kiểu response:
+          // 1. { accessToken, refreshToken }
+          // 2. { data: { accessToken, refreshToken } }
+          const responseData = response.data?.data || response.data;
+
+          const newAccessToken = responseData?.accessToken;
+          const newRefreshToken = responseData?.refreshToken;
+
+          if (!newAccessToken) {
+            throw new Error("Refresh response không có accessToken");
+          }
+
+          localStorage.setItem("token", newAccessToken);
+
+          if (newRefreshToken) {
+            localStorage.setItem("refreshToken", newRefreshToken);
+          }
+
+          axiosClient.defaults.headers.common.Authorization = `Bearer ${newAccessToken}`;
+          originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+
+          processQueue(null, newAccessToken);
+
+          return axiosClient(originalRequest);
+        } catch (refreshError) {
+          processQueue(refreshError, null);
+
+          clearAuthStorage();
+          redirectToLogin();
+
+          throw refreshError;
+        } finally {
+          isRefreshing = false;
+        }
+      }
+
+      throw error;
+    }
 );
 
 export default axiosClient;

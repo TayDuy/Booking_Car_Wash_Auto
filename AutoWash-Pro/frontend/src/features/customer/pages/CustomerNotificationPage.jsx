@@ -1,24 +1,16 @@
 import React, { useState, useEffect } from "react";
 import {
     Calendar, Gift, Megaphone,
-    ChevronDown, CheckCheck, Bell, Copy, BellOff,
+    ChevronDown, CheckCheck, Bell, Copy, BellOff, Trash2, X,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import "./CustomerNotificationPage.css";
-import { getAll, markAsRead, markAllRead } from "../../../api/notificationService";
+import {
+    getAll, markAsRead, markAllRead,
+    deleteNotification, deleteAllNotifications, subscribeSSE,
+} from "../../../api/notificationService";
 import { isLoggedIn } from '../../../api/authService';
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-
-const CATEGORIES = [
-    { id: "all",     label: "Tất cả",            icon: "bell" },
-    { id: "booking", label: "Cập nhật Đặt lịch", icon: Calendar },
-    { id: "reward",  label: "Ưu đãi & Quà tặng", icon: Gift },
-    { id: "promo",   label: "Khuyến mãi",         icon: Megaphone },
-];
-
-// Map backend type string → UI category id
-// Adjust these keys to match whatever your backend returns in dto.type
 const TYPE_TO_CATEGORY = {
     BOOKING:  "booking",
     SCHEDULE: "booking",
@@ -31,7 +23,6 @@ const TYPE_TO_CATEGORY = {
     MARKETING:"promo",
 };
 
-// Map category id → icon + colour tone
 const CATEGORY_META = {
     booking: { icon: Calendar,    tone: "blue"   },
     reward:  { icon: Gift,        tone: "cyan"   },
@@ -39,7 +30,6 @@ const CATEGORY_META = {
     default: { icon: Bell,        tone: "indigo" },
 };
 
-// Map category id → display group label
 const GROUP_LABELS = {
     booking: "CẬP NHẬT ĐẶT LỊCH",
     reward:  "ƯU ĐÃI & QUÀ TẶNG",
@@ -47,7 +37,10 @@ const GROUP_LABELS = {
     default: "THÔNG BÁO KHÁC",
 };
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+const PROMO_TAGS = {
+    reward: "ƯU ĐÃI",
+    promo:  "KHUYẾN MÃI",
+};
 
 function inferCategory(dto) {
     if (!dto.type) return "default";
@@ -64,7 +57,7 @@ function mapDtoToItem(dto) {
     return {
         id:          dto.notificationId ?? dto.id,
         icon,
-        tone:        dto.isRead ? "indigo" : tone,   // dim read items a bit
+        tone:        dto.isRead ? "indigo" : tone,
         title:       dto.title  ?? "(Không có tiêu đề)",
         description: dto.body   ?? dto.message ?? "",
         time:        dto.createdAt ? new Date(dto.createdAt).toLocaleString("vi-VN") : "",
@@ -75,7 +68,6 @@ function mapDtoToItem(dto) {
 }
 
 function buildGroups(items) {
-    // preserve a stable category order
     const ORDER = ["booking", "reward", "promo", "default"];
     const buckets = {};
     items.forEach(item => {
@@ -88,7 +80,12 @@ function buildGroups(items) {
         .map(k => ({ id: k, label: GROUP_LABELS[k], items: buckets[k] }));
 }
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
+function pickPromoHighlight(items) {
+    const candidates = items.filter(it => it.catId === "promo" || it.catId === "reward");
+    if (candidates.length === 0) return null;
+    const unread = candidates.filter(it => it.unread);
+    return unread[0] ?? candidates[0];
+}
 
 function NotifIcon({ Icon, tone }) {
     return (
@@ -112,7 +109,7 @@ function EmptyState() {
     );
 }
 
-function NotifCard({ item, isFirst, onMarkRead, onCopy }) {
+function NotifCard({ item, isFirst, onMarkRead, onCopy, onDelete }) {
     const Icon = item.icon;
     return (
         <article className={`cn-card ${item.unread ? "cn-card--unread" : ""} ${isFirst ? "cn-card--highlight" : ""}`}>
@@ -120,7 +117,16 @@ function NotifCard({ item, isFirst, onMarkRead, onCopy }) {
             <div className="cn-card__body">
                 <div className="cn-card__top">
                     <h3>{item.title}</h3>
-                    <span className="cn-card__time">{item.time}</span>
+                    <div className="cn-card__top-right">
+                        <span className="cn-card__time">{item.time}</span>
+                        <button
+                            className="cn-card__delete"
+                            title="Xóa thông báo"
+                            onClick={() => onDelete?.(item.id)}
+                        >
+                            <Trash2 size={15} />
+                        </button>
+                    </div>
                 </div>
                 <p className="cn-card__desc">{item.description}</p>
 
@@ -155,23 +161,72 @@ function NotifCard({ item, isFirst, onMarkRead, onCopy }) {
     );
 }
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
+function PromoHighlightBanner({ item }) {
+    if (!item) return null;
+    const tag = PROMO_TAGS[item.catId] ?? "ƯU ĐÃI";
+    return (
+        <div className="cn-promo-card">
+            <span className="cn-promo-card__tag">{tag}</span>
+            <h4>{item.title}</h4>
+            <p>{item.description}</p>
+        </div>
+    );
+}
+
+function RealtimeToast({ toast, onClose }) {
+    if (!toast) return null;
+    const Icon = toast.icon;
+    return (
+        <div className="cn-toast" onClick={onClose}>
+            <NotifIcon Icon={Icon} tone={toast.tone} />
+            <div className="cn-toast__body">
+                <h4>{toast.title}</h4>
+                <p>{toast.description}</p>
+            </div>
+            <button
+                className="cn-toast__close"
+                onClick={(e) => { e.stopPropagation(); onClose(); }}
+            >
+                <X size={14} />
+            </button>
+        </div>
+    );
+}
 
 export default function CustomerNotificationPage() {
-    const [activeCategory, setActiveCategory] = useState("all");
-    const [allItems, setAllItems]             = useState([]);   // flat list from API
-    const [loading, setLoading]               = useState(false);
+    const [allItems, setAllItems] = useState([]);
+    const [loading, setLoading]   = useState(false);
+    const [toast, setToast]       = useState(null);
     const navigate = useNavigate();
 
     useEffect(() => {
         if (!isLoggedIn()) { navigate('/login'); return; }
         loadNotifications();
+
+        const sub = subscribeSSE(
+            (dto) => {
+                const item = mapDtoToItem(dto);
+                setAllItems(prev => [item, ...prev.filter(it => it.id !== item.id)]);
+                setToast(item);
+            },
+            (revokedId) => {
+                setAllItems(prev => prev.filter(it => it.id !== revokedId));
+                setToast(t => (t && t.id === revokedId ? null : t));
+            }
+        );
+        return () => sub.close();
     }, []);
+
+    useEffect(() => {
+        if (!toast) return;
+        const t = setTimeout(() => setToast(null), 6000);
+        return () => clearTimeout(t);
+    }, [toast]);
 
     async function loadNotifications() {
         setLoading(true);
         try {
-            const data = await getAll();          // array of NotificationResponseDTO
+            const data = await getAll();
             setAllItems((data ?? []).map(mapDtoToItem));
         } catch (err) {
             console.error('load notifications', err);
@@ -202,100 +257,72 @@ export default function CustomerNotificationPage() {
         console.log('Copied:', code);
     }
 
-    // ── Derived state ────────────────────────────────────────────────────────
+    async function handleDelete(id) {
+        const prevItems = allItems;
+        setAllItems(prev => prev.filter(it => it.id !== id));
+        try {
+            await deleteNotification(id);
+        } catch (err) {
+            console.error('delete notification', err);
+            setAllItems(prevItems);
+        }
+    }
 
-    const filteredItems =
-        activeCategory === "all"
-            ? allItems
-            : allItems.filter(it => it.catId === activeCategory);
-
-    const visibleGroups = buildGroups(filteredItems);
-
-    const counts = {
-        all:     allItems.length,
-        booking: allItems.filter(it => it.catId === "booking").length,
-        reward:  allItems.filter(it => it.catId === "reward").length,
-        promo:   allItems.filter(it => it.catId === "promo").length,
-    };
-
-    // ── Render ───────────────────────────────────────────────────────────────
+    const visibleGroups = buildGroups(allItems);
+    const promoHighlight = pickPromoHighlight(allItems);
 
     return (
         <div className="cn-app">
-            <div className="cn-body">
-                {/* ── Sidebar ── */}
-                <aside className="cn-sidebar">
-                    <p className="cn-sidebar__label">PHÂN LOẠI</p>
-                    <nav className="cn-sidebar__nav">
-                        {CATEGORIES.map(c => (
-                            <button
-                                key={c.id}
-                                className={`cn-sidebar__item ${activeCategory === c.id ? "is-active" : ""}`}
-                                onClick={() => setActiveCategory(c.id)}
-                            >
-                                <span className="cn-sidebar__item-left">
-                                    {c.icon === "bell"
-                                        ? <Bell size={18} />
-                                        : <c.icon size={18} />}
-                                    {c.label}
-                                </span>
-                                <span className="cn-sidebar__count">{counts[c.id] ?? 0}</span>
-                            </button>
-                        ))}
-                    </nav>
-
-                    <div className="cn-promo-card">
-                        <span className="cn-promo-card__tag">SẮP DIỄN RA</span>
-                        <h4>Ưu đãi Rửa xe 0đ</h4>
-                        <p>Dành cho thành viên Vàng vào thứ 4 hàng tuần.</p>
+            <main className="cn-main cn-main--full">
+                <div className="cn-main__header">
+                    <div>
+                        <h1>Trung tâm Thông báo</h1>
+                        <p>Cập nhật những thông tin mới nhất về dịch vụ của bạn.</p>
                     </div>
-                </aside>
-
-                {/* ── Main ── */}
-                <main className="cn-main">
-                    <div className="cn-main__header">
-                        <div>
-                            <h1>Trung tâm Thông báo</h1>
-                            <p>Cập nhật những thông tin mới nhất về dịch vụ của bạn.</p>
-                        </div>
+                    <div className="cn-header__actions">
                         <button className="cn-mark-read" onClick={handleMarkAllRead}>
                             <CheckCheck size={16} />
                             Đánh dấu tất cả đã đọc
                         </button>
                     </div>
+                </div>
 
-                    {loading ? (
-                        <div style={{ textAlign: "center", padding: 48, color: "var(--cn-text-muted)" }}>
-                            Đang tải thông báo…
-                        </div>
-                    ) : visibleGroups.length === 0 ? (
-                        <EmptyState />
-                    ) : (
-                        visibleGroups.map((group, gi) => (
-                            <section key={group.id} className="cn-group">
-                                <h2 className="cn-group__label">{group.label}</h2>
-                                <div className="cn-group__list">
-                                    {group.items.map((item, idx) => (
-                                        <NotifCard
-                                            key={item.id}
-                                            item={item}
-                                            isFirst={gi === 0 && idx === 0}
-                                            onMarkRead={handleMarkRead}
-                                            onCopy={handleCopy}
-                                        />
-                                    ))}
-                                </div>
-                            </section>
-                        ))
-                    )}
+                <PromoHighlightBanner item={promoHighlight} />
 
-                    {!loading && visibleGroups.length > 0 && (
-                        <button className="cn-load-more">
-                            Tải thêm thông báo <ChevronDown size={16} />
-                        </button>
-                    )}
-                </main>
-            </div>
+                {loading ? (
+                    <div style={{ textAlign: "center", padding: 48, color: "var(--cn-text-muted)" }}>
+                        Đang tải thông báo…
+                    </div>
+                ) : visibleGroups.length === 0 ? (
+                    <EmptyState />
+                ) : (
+                    visibleGroups.map((group, gi) => (
+                        <section key={group.id} className="cn-group">
+                            <h2 className="cn-group__label">{group.label}</h2>
+                            <div className="cn-group__list">
+                                {group.items.map((item, idx) => (
+                                    <NotifCard
+                                        key={item.id}
+                                        item={item}
+                                        isFirst={gi === 0 && idx === 0}
+                                        onMarkRead={handleMarkRead}
+                                        onCopy={handleCopy}
+                                        onDelete={handleDelete}
+                                    />
+                                ))}
+                            </div>
+                        </section>
+                    ))
+                )}
+
+                {!loading && visibleGroups.length > 0 && (
+                    <button className="cn-load-more">
+                        Tải thêm thông báo <ChevronDown size={16} />
+                    </button>
+                )}
+            </main>
+
+            <RealtimeToast toast={toast} onClose={() => setToast(null)} />
         </div>
     );
 }

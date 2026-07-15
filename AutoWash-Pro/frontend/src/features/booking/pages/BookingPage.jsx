@@ -1,15 +1,13 @@
 import React, { useState, useEffect } from "react";
 import "./BookingPage.css";
 import {
-  FaDroplet,
-  FaCalendarDays,
-  FaCarSide
-} from "react-icons/fa6";
-import { FaPhoneAlt } from "react-icons/fa";
-import {
-  MdDirectionsCar,
-  MdAirportShuttle
-} from "react-icons/md";
+  Droplet,
+  CalendarDays,
+  CarFront,
+  Phone,
+  Car,
+  Bus
+} from "lucide-react";
 import bookingApi from "../../../api/bookingApi";
 import customerApi from "../../../api/customerApi";
 import vehicleApi from "../../../api/vehicleApi";
@@ -152,12 +150,12 @@ export default function BookingPage() {
         const res = await getActiveServices();
         const servicesList = res.data?.data || res.data;
         const merged = servicesList?.length > 0
-          ? servicesList.map(item => ({
+            ? servicesList.map(item => ({
               ...item,
               imageUrl: DEFAULT_SERVICES[0].imageUrl,
               isPopular: false
             }))
-          : DEFAULT_SERVICES;
+            : DEFAULT_SERVICES;
         setServices(merged);
         const preId = searchParams.get("serviceId");
         if (preId) {
@@ -346,7 +344,7 @@ export default function BookingPage() {
 
   const toggleAddon = (serviceId) => {
     setSelectedAddonIds(prev =>
-      prev.includes(serviceId) ? prev.filter(id => id !== serviceId) : [...prev, serviceId]
+        prev.includes(serviceId) ? prev.filter(id => id !== serviceId) : [...prev, serviceId]
     );
   };
 
@@ -451,88 +449,88 @@ export default function BookingPage() {
             {/* 1. CHỌN DỊCH VỤ */}
             <section className="form-section-card">
               <div className="section-title-wrapper">
-                <FaDroplet className="section-icon" />
+                <Droplet className="section-icon" />
                 <h3>1. Chọn dịch vụ chính</h3>
               </div>
 
               {/* Category Tabs for Main Packages */}
               <div className="booking-service-tabs">
                 {SERVICE_TABS.map(tab => (
-                  <button
-                    key={tab.id}
-                    type="button"
-                    className={`booking-service-tab-btn ${activeServiceTab === tab.id ? "active" : ""}`}
-                    onClick={() => setActiveServiceTab(tab.id)}
-                  >
-                    {tab.label}
-                  </button>
+                    <button
+                        key={tab.id}
+                        type="button"
+                        className={`booking-service-tab-btn ${activeServiceTab === tab.id ? "active" : ""}`}
+                        onClick={() => setActiveServiceTab(tab.id)}
+                    >
+                      {tab.label}
+                    </button>
                 ))}
               </div>
 
               <div className="services-packages-row">
                 {filteredMainPackages.length === 0 ? (
-                  <div className="no-services-placeholder" style={{ gridColumn: 'span 3', textAlign: 'center', padding: '32px', color: 'var(--text-muted)' }}>
-                    Không có dịch vụ chính nào thuộc danh mục này.
-                  </div>
+                    <div className="no-services-placeholder" style={{ gridColumn: 'span 3', textAlign: 'center', padding: '32px', color: 'var(--text-muted)' }}>
+                      Không có dịch vụ chính nào thuộc danh mục này.
+                    </div>
                 ) : (
-                  filteredMainPackages.map(pkg => {
-                    const selected = selectedPackageId === pkg.serviceId;
-                    return (
-                      <div
-                        key={pkg.serviceId}
-                        className={`package-card ${selected ? "package-selected" : ""} ${pkg.isPopular ? "package-popular" : ""}`}
-                        onClick={() => setSelectedPackageId(pkg.serviceId)}
-                        role="radio"
-                        aria-checked={selected}
-                        tabIndex={0}
-                        onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSelectedPackageId(pkg.serviceId); } }}
-                      >
-                        {pkg.isPopular && <span className="popular-badge">PHỔ BIẾN</span>}
-                        <div className="package-body">
-                          <div className="package-header">
-                            <h4>{pkg.serviceName}</h4>
-                            <span className="package-price">{pkg.basePrice?.toLocaleString()}đ</span>
+                    filteredMainPackages.map(pkg => {
+                      const selected = selectedPackageId === pkg.serviceId;
+                      return (
+                          <div
+                              key={pkg.serviceId}
+                              className={`package-card ${selected ? "package-selected" : ""} ${pkg.isPopular ? "package-popular" : ""}`}
+                              onClick={() => setSelectedPackageId(pkg.serviceId)}
+                              role="radio"
+                              aria-checked={selected}
+                              tabIndex={0}
+                              onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSelectedPackageId(pkg.serviceId); } }}
+                          >
+                            {pkg.isPopular && <span className="popular-badge">PHỔ BIẾN</span>}
+                            <div className="package-body">
+                              <div className="package-header">
+                                <h4>{pkg.serviceName}</h4>
+                                <span className="package-price">{pkg.basePrice?.toLocaleString()}đ</span>
+                              </div>
+                              <p className="package-duration">⏱ {pkg.durationMinutes} phút</p>
+                              <p className="package-detail">{pkg.description || "Chi tiết gói dịch vụ"}</p>
+                            </div>
+                            <div className={`package-radio-indicator ${selected ? "radio-checked" : ""}`}>
+                              {selected && <span className="radio-dot" />}
+                            </div>
                           </div>
-                          <p className="package-duration">⏱ {pkg.durationMinutes} phút</p>
-                          <p className="package-detail">{pkg.description || "Chi tiết gói dịch vụ"}</p>
-                        </div>
-                        <div className={`package-radio-indicator ${selected ? "radio-checked" : ""}`}>
-                          {selected && <span className="radio-dot" />}
-                        </div>
-                      </div>
-                    );
-                  })
+                      );
+                    })
                 )}
               </div>
 
               {addonServices.length > 0 && (
-                <div className="addons-section">
-                  <h4 className="addons-title">Dịch vụ bổ sung (Tùy chọn thêm)</h4>
-                  <div className="addons-list">
-                    {addonServices.map(addon => {
-                      const checked = selectedAddonIds.includes(addon.serviceId);
-                      return (
-                        <label key={addon.serviceId} className={`addon-item ${checked ? "addon-checked" : ""}`}>
-                          <input
-                            type="checkbox"
-                            checked={checked}
-                            onChange={() => toggleAddon(addon.serviceId)}
-                          />
-                          <span className="addon-name">{addon.serviceName}</span>
-                          <span className="addon-price">+{addon.basePrice?.toLocaleString()}đ</span>
-                          <span className="addon-duration">{addon.durationMinutes}ph</span>
-                        </label>
-                      );
-                    })}
+                  <div className="addons-section">
+                    <h4 className="addons-title">Dịch vụ bổ sung (Tùy chọn thêm)</h4>
+                    <div className="addons-list">
+                      {addonServices.map(addon => {
+                        const checked = selectedAddonIds.includes(addon.serviceId);
+                        return (
+                            <label key={addon.serviceId} className={`addon-item ${checked ? "addon-checked" : ""}`}>
+                              <input
+                                  type="checkbox"
+                                  checked={checked}
+                                  onChange={() => toggleAddon(addon.serviceId)}
+                              />
+                              <span className="addon-name">{addon.serviceName}</span>
+                              <span className="addon-price">+{addon.basePrice?.toLocaleString()}đ</span>
+                              <span className="addon-duration">{addon.durationMinutes}ph</span>
+                            </label>
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
               )}
             </section>
 
             {/* 2. CHỌN THỜI GIAN */}
             <section className="form-section-card time-scheduler-section">
               <div className="section-title-wrapper">
-                <FaCalendarDays className="section-icon" />
+                <CalendarDays className="section-icon" />
                 <h3>2. Chọn thời gian</h3>
               </div>
               <div className="scheduler-split-layout flex flex-col md:flex-row gap-gutter">
@@ -614,7 +612,7 @@ export default function BookingPage() {
             {/* 3. THÔNG TIN XE */}
             <section className="form-section-card">
               <div className="section-title-wrapper">
-                <FaCarSide className="section-icon" />
+                <CarFront className="section-icon" />
                 <h3>3. Thông tin xe</h3>
               </div>
               <div className="vehicle-inputs-row">
@@ -650,7 +648,7 @@ export default function BookingPage() {
                                         className={`input-suggest-item ${phone === p ? "input-suggest-item-active" : ""}`}
                                         onMouseDown={() => { setPhone(p); setShowPhoneSuggest(false); }}
                                     >
-                                      <FaPhoneAlt className="suggest-item-icon" />
+                                      <Phone className="suggest-item-icon" />
                                       <span>{p}</span>
                                     </button>
                                 ))}
@@ -689,7 +687,7 @@ export default function BookingPage() {
                                 className={`saved-vehicle-chip ${selectedVehicleId === v.vehicleId ? "saved-vehicle-chip-active" : ""}`}
                                 onClick={() => applyVehicle(v)}
                             >
-                              <MdDirectionsCar className="suggest-item-icon" />
+                              <Car className="suggest-item-icon" />
                               {v.licensePlate}{v.nickname ? ` · ${v.nickname}` : v.brand ? ` · ${v.brand}` : ""}
                             </button>
                         ))}
@@ -714,7 +712,7 @@ export default function BookingPage() {
                                   className={`input-suggest-item ${selectedVehicleId === v.vehicleId ? "input-suggest-item-active" : ""}`}
                                   onMouseDown={() => applyVehicle(v)}
                               >
-                                <MdDirectionsCar className="suggest-item-icon" />
+                                <Car className="suggest-item-icon" />
                                 <span>{v.nickname || v.brand}</span>
                                 <span className="suggest-item-tag">{v.licensePlate}</span>
                               </button>
@@ -736,7 +734,7 @@ export default function BookingPage() {
                         disabled={!!selectedVehicleId}
                         onClick={() => setVehicleType("4_seats")}
                     >
-                      <MdDirectionsCar className="car-icon" /> Xe 4 chỗ
+                      <Car className="car-icon" /> Xe 4 chỗ
                     </button>
                     <button
                         type="button"
@@ -744,7 +742,7 @@ export default function BookingPage() {
                         disabled={!!selectedVehicleId}
                         onClick={() => setVehicleType("7_seats")}
                     >
-                      <MdAirportShuttle className="car-icon" /> Xe 7 chỗ
+                      <Bus className="car-icon" /> Xe 7 chỗ
                     </button>
                   </div>
                   {selectedVehicleId && (
@@ -780,27 +778,27 @@ export default function BookingPage() {
             <h3>Tóm tắt đơn hàng</h3>
             <div className="summary-billing-breakdown">
               {selectedPackageId ? (
-                <>
-                  <div className="billing-row prime-service">
-                    <span className="service-title">{selectedPackage?.serviceName}</span>
-                    <span className="service-cost">{packagePrice.toLocaleString()}đ</span>
-                  </div>
-                  {selectedAddons.length > 0 && (
-                    <div className="addons-summary">
-                      <span className="addons-summary-title">Dịch vụ thêm:</span>
-                      {selectedAddons.map(a => (
-                        <div key={a.serviceId} className="billing-row addon-row">
-                          <span className="service-title">+ {a.serviceName}</span>
-                          <span className="service-cost">{(a.basePrice || 0).toLocaleString()}đ</span>
-                        </div>
-                      ))}
+                  <>
+                    <div className="billing-row prime-service">
+                      <span className="service-title">{selectedPackage?.serviceName}</span>
+                      <span className="service-cost">{packagePrice.toLocaleString()}đ</span>
                     </div>
-                  )}
-                </>
+                    {selectedAddons.length > 0 && (
+                        <div className="addons-summary">
+                          <span className="addons-summary-title">Dịch vụ thêm:</span>
+                          {selectedAddons.map(a => (
+                              <div key={a.serviceId} className="billing-row addon-row">
+                                <span className="service-title">+ {a.serviceName}</span>
+                                <span className="service-cost">{(a.basePrice || 0).toLocaleString()}đ</span>
+                              </div>
+                          ))}
+                        </div>
+                    )}
+                  </>
               ) : (
-                <div className="billing-row prime-service">
-                  <span className="service-title">Chưa chọn dịch vụ</span>
-                </div>
+                  <div className="billing-row prime-service">
+                    <span className="service-title">Chưa chọn dịch vụ</span>
+                  </div>
               )}
               <div className="selected-datetime-preview">
                 <p>{selectedDate.getDate()} {monthNames[selectedDate.getMonth()]}, {selectedDate.getFullYear()}{selectedSlotData && ` • ${selectedSlotData.startTime}`}</p>

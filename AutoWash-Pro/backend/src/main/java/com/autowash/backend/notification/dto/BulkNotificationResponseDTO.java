@@ -16,4 +16,10 @@ public class BulkNotificationResponseDTO {
 
     /** Tiêu đề thông báo đã gửi — để admin confirm. */
     private String title;
+
+    /**
+     * Mô tả nhóm đối tượng đã gửi, ví dụ "Gold trở lên" hoặc "Tất cả khách hàng active".
+     * Chỉ để hiển thị cho admin, không dùng để xử lý logic.
+     */
+    private String targetDescription;
 }
