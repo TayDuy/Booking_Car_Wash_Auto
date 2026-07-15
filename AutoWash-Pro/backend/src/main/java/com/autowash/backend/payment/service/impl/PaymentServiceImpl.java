@@ -10,6 +10,10 @@ import com.autowash.backend.common.exception.BusinessException;
 import com.autowash.backend.common.exception.ResourceNotFoundException;
 import com.autowash.backend.loyaltytransaction.entity.LoyaltyTransaction;
 import com.autowash.backend.loyaltytransaction.repository.LoyaltyTransactionRepository;
+import com.autowash.backend.mail.service.MailService;
+import com.autowash.backend.notification.dto.NotificationCreateDTO;
+import com.autowash.backend.notification.entity.Notification;
+import com.autowash.backend.notification.service.NotificationService;
 import com.autowash.backend.payment.dto.PaymentCreateRequestDTO;
 import com.autowash.backend.payment.dto.PaymentResponseDTO;
 import com.autowash.backend.payment.dto.PaymentUpdateRequestDTO;
@@ -49,6 +53,8 @@ public class PaymentServiceImpl implements PaymentService {
     private final LoyaltyTransactionRepository loyaltyTransactionRepository;
     private final PaymentMapper paymentMapper;
     private final PayPalService                payPalService;
+    private final MailService                  mailService;
+    private final NotificationService          notificationService;
 
     // Tỉ lệ tích điểm: cứ 10,000 VND = 1 điểm
     private static final BigDecimal POINTS_PER_VND = BigDecimal.valueOf(10_000);
@@ -264,7 +270,95 @@ public class PaymentServiceImpl implements PaymentService {
         customer.setTotalSpending(customer.getTotalSpending().add(saved.getFinalAmount()));
         customerRepository.save(customer);
 
+        // Thông báo (in-app + email) khi thanh toán thành công
+        notifyPaymentSuccess(saved, customer);
+
         return saved;
+    }
+
+    /** Gửi email + tạo thông báo in-app khi thanh toán thành công. */
+    private void notifyPaymentSuccess(Payment payment, Customer customer) {
+        Booking booking = payment.getBooking();
+        String bookingCode = booking.getBookingCode();
+
+        try {
+            if (customer.getUser() != null) {
+                notificationService.create(NotificationCreateDTO.builder()
+                        .userId(customer.getUser().getId())
+                        .type(Notification.NotificationType.PAYMENT_COMPLETED)
+                        .title("Thanh toán thành công")
+                        .body(String.format(
+                                "Thanh toán %s VND cho lịch #%s đã hoàn tất.",
+                                payment.getFinalAmount().toPlainString(),
+                                bookingCode
+                        ))
+                        .referenceId(payment.getPaymentId())
+                        .referenceType("payment")
+                        .channel(Notification.NotificationChannel.in_app)
+                        .build());
+            }
+        } catch (Exception e) {
+            log.error("Lỗi khi tạo thông báo in-app cho payment {}: {}",
+                    payment.getPaymentId(), e.getMessage(), e);
+        }
+
+        try {
+            String toEmail = customer.getUser() != null ? customer.getUser().getEmail() : null;
+            if (toEmail != null) {
+                mailService.sendPaymentSuccessEmail(
+                        toEmail,
+                        customer.getFullName(),
+                        bookingCode,
+                        payment.getPaymentMethod() != null ? payment.getPaymentMethod().name() : "N/A",
+                        payment.getFinalAmount()
+                );
+            }
+        } catch (Exception e) {
+            log.error("Lỗi khi kích hoạt gửi email xác nhận thanh toán cho payment {}: {}",
+                    payment.getPaymentId(), e.getMessage(), e);
+        }
+    }
+
+    /** Gửi email + tạo thông báo in-app khi thanh toán thất bại/bị hủy. */
+    private void notifyPaymentFailed(Payment payment, String reason) {
+        Booking booking = payment.getBooking();
+        Customer customer = booking.getCustomer();
+        String bookingCode = booking.getBookingCode();
+
+        try {
+            if (customer.getUser() != null) {
+                notificationService.create(NotificationCreateDTO.builder()
+                        .userId(customer.getUser().getId())
+                        .type(Notification.NotificationType.PAYMENT_FAILED)
+                        .title("Thanh toán không thành công")
+                        .body(String.format(
+                                "Thanh toán cho lịch #%s không thành công. %s",
+                                bookingCode, reason == null ? "" : reason
+                        ))
+                        .referenceId(payment.getPaymentId())
+                        .referenceType("payment")
+                        .channel(Notification.NotificationChannel.in_app)
+                        .build());
+            }
+        } catch (Exception e) {
+            log.error("Lỗi khi tạo thông báo in-app cho payment thất bại {}: {}",
+                    payment.getPaymentId(), e.getMessage(), e);
+        }
+
+        try {
+            String toEmail = customer.getUser() != null ? customer.getUser().getEmail() : null;
+            if (toEmail != null) {
+                mailService.sendPaymentFailedEmail(
+                        toEmail,
+                        customer.getFullName(),
+                        bookingCode,
+                        reason
+                );
+            }
+        } catch (Exception e) {
+            log.error("Lỗi khi kích hoạt gửi email thanh toán thất bại cho payment {}: {}",
+                    payment.getPaymentId(), e.getMessage(), e);
+        }
     }
 
     @Override
