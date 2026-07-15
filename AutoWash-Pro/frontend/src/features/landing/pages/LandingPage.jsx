@@ -64,27 +64,26 @@ function LandingPage() {
                   Khám phá dịch vụ
                 </Link>
               </div>
-
-              <div className="landing-stats">
-                <div>
-                  <strong>10K+</strong>
-                  <span>Lượt đặt lịch</span>
-                </div>
-                <div>
-                  <strong>4.9/5</strong>
-                  <span>Đánh giá dịch vụ</span>
-                </div>
-                <div>
-                  <strong>15+</strong>
-                  <span>Chi nhánh hỗ trợ</span>
-                </div>
-              </div>
             </div>
 
             <div className="landing-hero-visual">
               <img src={heroImage} alt="Dịch vụ rửa xe tự động WashFlow Pro" />
+            </div>
 
-              <div className="hero-floating-card">
+            <div className="landing-stats">
+              <div>
+                <strong>10K+</strong>
+                <span>Lượt đặt lịch</span>
+              </div>
+              <div>
+                <strong>4.9/5</strong>
+                <span>Đánh giá dịch vụ</span>
+              </div>
+              <div>
+                <strong>15+</strong>
+                <span>Chi nhánh hỗ trợ</span>
+              </div>
+              <div>
                 <strong>100% không chạm</strong>
                 <span>An toàn cho mọi loại sơn</span>
               </div>
