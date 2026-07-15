@@ -9,6 +9,14 @@ function RegisterPage() {
   const navigate = useNavigate();
   const auth = useAuth();
 
+  useEffect(() => {
+    if (auth?.token) {
+      const role = (localStorage.getItem("role") || "").toUpperCase();
+      const home = { ADMIN: "/admin/dashboard", EMPLOYEE: "/employee/dashboard", MANAGER: "/manager/dashboard" }[role] || "/customer/home";
+      navigate(home, { replace: true });
+    }
+  }, []);
+
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
     fullName: "",
