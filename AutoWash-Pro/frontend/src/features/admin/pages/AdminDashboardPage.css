@@ -398,18 +398,6 @@
 }
 
 @media (max-width: 780px) {
-  .dashboard-main {
-    margin-left: 0;
-  }
-
-  .admin-sidebar {
-    display: none;
-  }
-
-  .admin-header {
-    padding: 0 16px;
-  }
-
   .search-box {
     width: 220px;
   }
@@ -425,4 +413,235 @@
   .register-grid {
     grid-template-columns: 1fr;
   }
+}
+
+.kpi-content {
+  min-width: 0;
+}
+
+.kpi-content h2 {
+  overflow-wrap: anywhere;
+}
+
+.panel-header > div small {
+  display: block;
+  margin-top: 5px;
+  color: #64748b;
+  font-size: 12px;
+}
+
+/* Biểu đồ doanh thu thật */
+
+.revenue-chart {
+  height: 275px;
+  padding: 26px 16px 8px;
+
+  display: grid;
+  grid-template-columns: repeat(7, minmax(45px, 1fr));
+  align-items: end;
+  gap: 12px;
+
+  border-radius: 16px;
+  background:
+    linear-gradient(#e8edf5 1px, transparent 1px)
+      0 0 / 100% 25%,
+    linear-gradient(
+      180deg,
+      rgba(0, 82, 204, 0.08),
+      transparent
+    );
+}
+
+.revenue-column {
+  height: 100%;
+  min-width: 0;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 9px;
+}
+
+.revenue-bar-area {
+  position: relative;
+  width: 100%;
+  flex: 1;
+
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.revenue-bar {
+  width: min(42px, 72%);
+  min-height: 3px;
+
+  border-radius: 9px 9px 3px 3px;
+  background: linear-gradient(180deg, #4da3ff, #0052cc);
+
+  transition:
+    height 0.35s ease,
+    filter 0.2s ease;
+}
+
+.revenue-column:hover .revenue-bar {
+  filter: brightness(1.08);
+}
+
+.revenue-bar-value {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 6px);
+  z-index: 2;
+
+  display: none;
+  padding: 6px 8px;
+
+  border-radius: 8px;
+  background: #101828;
+  color: #ffffff;
+
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+
+  transform: translateX(-50%);
+}
+
+.revenue-column:hover .revenue-bar-value {
+  display: block;
+}
+
+.revenue-day-label {
+  color: #64748b;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+/* Bảng booking */
+
+.dashboard-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.dashboard-service-cell {
+  max-width: 190px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.table-status.info {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+/* Thanh toán mới nhất */
+
+.recent-payment-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.recent-payment-item {
+  padding: 13px 0;
+
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+
+  border-bottom: 1px solid #edf0f5;
+}
+
+.recent-payment-item:last-child {
+  border-bottom: 0;
+}
+
+.recent-payment-icon {
+  width: 40px;
+  height: 40px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 12px;
+  background: #eaf2ff;
+  color: #175cd3;
+}
+
+.recent-payment-info {
+  min-width: 0;
+}
+
+.recent-payment-info strong {
+  display: block;
+  overflow: hidden;
+
+  color: #101828;
+  font-size: 14px;
+
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recent-payment-info span {
+  display: block;
+  margin-top: 4px;
+
+  color: #98a2b3;
+  font-size: 12px;
+}
+
+.recent-payment-meta {
+  display: flex;
+  align-items: flex-end;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.recent-payment-meta > strong {
+  color: #067647;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+/* Dark mode */
+
+html[data-theme="dark"] .admin-dashboard {
+  color: #e5e7eb;
+}
+
+html[data-theme="dark"] .dashboard-heading h1,
+html[data-theme="dark"] .kpi-card h2,
+html[data-theme="dark"] .panel-header h3,
+html[data-theme="dark"] .branch-info strong,
+html[data-theme="dark"] .recent-payment-info strong {
+  color: #f8fafc;
+}
+
+html[data-theme="dark"] .date-filter,
+html[data-theme="dark"] .kpi-card,
+html[data-theme="dark"] .dashboard-panel {
+  border-color: #2d3b50;
+  background: #172033;
+  color: #e5e7eb;
+  box-shadow: none;
+}
+
+html[data-theme="dark"] .revenue-chart {
+  background:
+    linear-gradient(#334155 1px, transparent 1px)
+      0 0 / 100% 25%,
+    linear-gradient(
+      180deg,
+      rgba(77, 163, 255, 0.1),
+      transparent
+    );
+}
+
+html[data-theme="dark"] .recent-payment-item {
+  border-color: #334155;
 }

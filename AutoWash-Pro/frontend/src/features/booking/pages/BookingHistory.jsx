@@ -154,8 +154,10 @@ export default function BookingHistory() {
   // Render
   // ══════════════════════════════════════════════════════════════
   return (
-      <div className="bh-page">
-        <div className="bh-container">
+    <div className="bh-page">
+      <SiteHeader />
+
+      <div className="bh-container">
 
           {/* ── Page Header ──────────────────────────────────── */}
           <div className="bh-page-header">

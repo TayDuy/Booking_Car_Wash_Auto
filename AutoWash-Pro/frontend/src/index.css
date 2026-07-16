@@ -299,3 +299,172 @@ img {
     text-align: center;
   }
 }
+
+/* =========================================================
+   ADMIN DARK MODE
+   ========================================================= */
+
+html[data-theme="dark"] {
+  color-scheme: dark;
+
+  --color-bg: #0f172a;
+  --color-bg-soft: #111c2e;
+
+  --color-surface: #172033;
+  --color-surface-blue: #1e293b;
+
+  --color-text: #f1f5f9;
+  --color-text-muted: #94a3b8;
+
+  --color-border: #334155;
+}
+
+html[data-theme="dark"] body {
+  background: #0f172a;
+  color: #e5e7eb;
+}
+
+/* Phần CSS dark mode còn lại dán tiếp ở đây */
+
+html[data-theme="dark"] {
+  color-scheme: dark;
+}
+
+html[data-theme="dark"] body {
+  background: #0f172a;
+  color: #e5e7eb;
+}
+
+html[data-theme="dark"] .admin-header {
+  border-color: #263449;
+  background: #111c2e;
+}
+
+html[data-theme="dark"] .search-box,
+html[data-theme="dark"] .admin-profile,
+html[data-theme="dark"] .admin-profile-dropdown {
+  border-color: #334155;
+  background: #172033;
+  color: #f1f5f9;
+}
+
+html[data-theme="dark"] .search-box input {
+  color: #f8fafc;
+}
+
+html[data-theme="dark"] .search-box input::placeholder {
+  color: #94a3b8;
+}
+
+html[data-theme="dark"] .admin-profile-info p,
+html[data-theme="dark"] .profile-dropdown-header p {
+  color: #94a3b8;
+}
+
+html[data-theme="dark"] .profile-dropdown-header strong {
+  color: #f8fafc;
+}
+
+html[data-theme="dark"] .admin-profile-dropdown > button {
+  color: #e2e8f0;
+}
+
+html[data-theme="dark"] .admin-profile-dropdown > button:hover {
+  background: #263449;
+}
+
+html[data-theme="dark"] .profile-dropdown-divider {
+  background: #334155;
+}
+
+html[data-theme="dark"] .manage-page,
+html[data-theme="dark"] .orders-page,
+html[data-theme="dark"] .payment-history-page {
+  background: #0f172a;
+  color: #e5e7eb;
+}
+
+html[data-theme="dark"] .manage-header h1,
+html[data-theme="dark"] .orders-header h1,
+html[data-theme="dark"] .payment-history-header h1 {
+  color: #f8fafc;
+}
+
+html[data-theme="dark"] .manage-header p,
+html[data-theme="dark"] .orders-header p,
+html[data-theme="dark"] .payment-history-header p {
+  color: #94a3b8;
+}
+
+html[data-theme="dark"] .manage-card,
+html[data-theme="dark"] .manage-toolbar,
+html[data-theme="dark"] .orders-card,
+html[data-theme="dark"] .orders-toolbar,
+html[data-theme="dark"] .orders-stat-card,
+html[data-theme="dark"] .payment-stat-card,
+html[data-theme="dark"] .payment-filter-card,
+html[data-theme="dark"] .payment-table-card {
+  border-color: #28364b;
+  background: #172033;
+  box-shadow: none;
+}
+
+html[data-theme="dark"] .booking-table th,
+html[data-theme="dark"] .orders-table th,
+html[data-theme="dark"] .payment-table th {
+  background: #1e293b;
+  color: #cbd5e1;
+}
+
+html[data-theme="dark"] .booking-table td,
+html[data-theme="dark"] .orders-table td,
+html[data-theme="dark"] .payment-table td {
+  border-color: #2d3b50;
+  color: #e5e7eb;
+}
+
+html[data-theme="dark"] .booking-table tbody tr:hover,
+html[data-theme="dark"] .orders-table tbody tr:hover,
+html[data-theme="dark"] .payment-table tbody tr:hover {
+  background: #202d40;
+}
+
+html[data-theme="dark"] .manage-search,
+html[data-theme="dark"] .manage-filter,
+html[data-theme="dark"] .orders-search,
+html[data-theme="dark"] .orders-filter,
+html[data-theme="dark"] .payment-search,
+html[data-theme="dark"] .payment-filter-select,
+html[data-theme="dark"] .payment-date-field input {
+  border-color: #334155;
+  background: #111c2e;
+  color: #e5e7eb;
+}
+
+html[data-theme="dark"] .manage-search input,
+html[data-theme="dark"] .orders-search input,
+html[data-theme="dark"] .payment-search input {
+  color: #f8fafc;
+}
+
+html[data-theme="dark"] .branch-modal,
+html[data-theme="dark"] .service-modal,
+html[data-theme="dark"] .booking-form-modal,
+html[data-theme="dark"] .orders-detail-modal,
+html[data-theme="dark"] .payment-detail-modal {
+  background: #172033;
+  color: #e5e7eb;
+}
+
+html[data-theme="dark"] .modal-header,
+html[data-theme="dark"] .orders-modal-header,
+html[data-theme="dark"] .payment-modal-header {
+  border-color: #334155;
+  background: #172033;
+}
+
+html[data-theme="dark"] .modal-header h2,
+html[data-theme="dark"] .orders-modal-header h2,
+html[data-theme="dark"] .payment-modal-header h2 {
+  color: #f8fafc;
+}

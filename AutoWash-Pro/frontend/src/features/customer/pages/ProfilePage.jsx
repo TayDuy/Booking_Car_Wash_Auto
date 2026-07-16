@@ -4,11 +4,13 @@ import { useNavigate } from 'react-router-dom';
 import customerApi from '../../../api/customerApi';
 import vehicleApi from '../../../api/vehicleApi';
 import bookingApi from '../../../api/bookingApi';
-import { logout, changePassword } from '../../../api/authService';
+import { changePassword } from '../../../api/authService';
 import { getMyTier } from '../../../api/loyaltyApi';
 import { getMyPointBalance } from '../../../api/loyaltyTransactionApi';
+import useAuth from '../../../hooks/useAuth';
 const ProfilePage = () => {
   const navigate = useNavigate();
+  const auth = useAuth();
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [showAddVehicleModal, setShowAddVehicleModal] = useState(false);
@@ -173,7 +175,7 @@ const ProfilePage = () => {
   };
 
   const handleLogout = () => {
-    logout();
+    auth.logout();
     navigate('/auth/login');
   };
 

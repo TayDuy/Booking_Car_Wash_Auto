@@ -12,7 +12,7 @@ function LoginPage() {
   useEffect(() => {
     if (auth?.token) {
       const role = (localStorage.getItem("role") || "").toUpperCase();
-      const home = { ADMIN: "/admin/dashboard", EMPLOYEE: "/employee/dashboard", MANAGER: "/manager/dashboard" }[role] || "/customer/home";
+      const home = { ADMIN: "/admin/dashboard", EMPLOYEE: "/employee/dashboard", CUSTOMER: "/customer/home", USER: "/customer/home" }[role] || "/customer/home";
       navigate(home, { replace: true });
     }
   }, []);

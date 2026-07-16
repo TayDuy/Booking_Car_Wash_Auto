@@ -133,3 +133,162 @@
     white-space: nowrap;
   }
 }
+
+/* =========================================================
+   AUDIT LOG PAGINATION
+   ========================================================= */
+
+.audit-pagination {
+  margin-top: 18px;
+  padding-top: 18px;
+
+  display: grid;
+  grid-template-columns:
+    minmax(210px, 1fr)
+    auto
+    auto;
+  align-items: center;
+  gap: 16px;
+
+  border-top: 1px solid #e5e7eb;
+}
+
+.audit-pagination-summary {
+  color: #64748b;
+  font-size: 13px;
+}
+
+.audit-pagination-summary strong {
+  color: #334155;
+}
+
+.audit-pagination-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.audit-pagination-controls button {
+  min-width: 38px;
+  height: 38px;
+  padding: 0 11px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  border: 1px solid #d7dce4;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #344054;
+
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.audit-pagination-controls
+  button:hover:not(:disabled) {
+  border-color: #2563eb;
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.audit-pagination-controls button.active {
+  border-color: #2563eb;
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.audit-pagination-controls button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.audit-pagination-ellipsis {
+  width: 28px;
+  display: inline-flex;
+  justify-content: center;
+  color: #94a3b8;
+  font-weight: 700;
+}
+
+.audit-page-size-control {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 9px;
+
+  color: #64748b;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.audit-page-size-control select {
+  height: 38px;
+  padding: 0 30px 0 10px;
+
+  border: 1px solid #d7dce4;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #334155;
+
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.refresh-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.audit-refresh-spinning {
+  animation: audit-refresh-spin 0.8s linear infinite;
+}
+
+@keyframes audit-refresh-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+html[data-theme="dark"] .audit-pagination {
+  border-color: #334155;
+}
+
+html[data-theme="dark"]
+  .audit-pagination-controls button,
+html[data-theme="dark"]
+  .audit-page-size-control select {
+  border-color: #334155;
+  background: #111c2e;
+  color: #e2e8f0;
+}
+
+html[data-theme="dark"]
+  .audit-pagination-controls button.active {
+  border-color: #2672d9;
+  background: #2672d9;
+  color: #ffffff;
+}
+
+@media (max-width: 900px) {
+  .audit-pagination {
+    grid-template-columns: 1fr;
+  }
+
+  .audit-pagination-summary {
+    text-align: center;
+  }
+
+  .audit-pagination-controls {
+    flex-wrap: wrap;
+  }
+
+  .audit-page-size-control {
+    justify-content: center;
+  }
+}
