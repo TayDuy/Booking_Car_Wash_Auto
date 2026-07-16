@@ -273,12 +273,13 @@ export default function Header({ onToggleSidebar }) {
     try {
       await logoutFromServer();
     } catch (error) {
-      console.error("Logout failed:", error);
-    } finally {
-      navigate("/auth/login", {
-        replace: true,
-      });
+      console.error("Logout server error:", error);
     }
+
+    auth.logout();
+    navigate("/auth/login", {
+      replace: true,
+    });
   }
 
   return (

@@ -551,7 +551,6 @@ export default function ManageVehiclesPage() {
                     <option value="car">Car</option>
                     <option value="suv">SUV</option>
                     <option value="truck">Truck</option>
-                    <option value="motorbike">Motorbike</option>
                   </select>
                 </div>
 
