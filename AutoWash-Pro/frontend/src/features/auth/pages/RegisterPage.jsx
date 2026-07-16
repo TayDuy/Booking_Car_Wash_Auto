@@ -329,7 +329,7 @@ function RegisterPage() {
                             name="password"
                             className="register-input password-padding"
                             type={showPassword ? "text" : "password"}
-                            placeholder="Nhập mật khẩu"
+                            placeholder="Mật khẩu"
                             autoComplete="new-password"
                             value={formData.password}
                             onChange={handleChange}
@@ -400,8 +400,8 @@ function RegisterPage() {
                 <>
                   <div className="register-card-header">
                     <h2>Xác thực tài khoản</h2>
-                    <p style={{ fontSize: "14px", color: "#64748b", marginTop: "8px" }}>
-                      Chúng tôi đã gửi mã xác minh gồm 6 chữ số đến email: <br />
+                    <p style={{ fontSize: "12.5px", color: "#64748b", marginTop: "4px" }}>
+                      Mã xác minh gồm 6 chữ số đã gửi đến email: <br />
                       <strong style={{ color: "#0046c7" }}>{formData.email}</strong>
                     </p>
                   </div>
@@ -417,8 +417,8 @@ function RegisterPage() {
                       </div>
                     )}
 
-                    <div className="form-group" style={{ marginBottom: "24px" }}>
-                      <label className="form-label" htmlFor="otp" style={{ textAlign: "center", display: "block", marginBottom: "16px", fontWeight: "600" }}>
+                    <div className="form-group" style={{ marginBottom: "12px" }}>
+                      <label className="form-label" htmlFor="otp" style={{ textAlign: "center", display: "block", marginBottom: "8px", fontWeight: "600" }}>
                         Nhập mã OTP
                       </label>
                       <div style={{ display: 'flex', justifyContent: 'center' }}>
@@ -431,10 +431,10 @@ function RegisterPage() {
                       </div>
                     </div>
 
-                    <div style={{ textAlign: "center", marginBottom: "24px", fontSize: "14px" }}>
+                    <div style={{ textAlign: "center", marginBottom: "12px", fontSize: "13px" }}>
                       {timer > 0 ? (
                         <span style={{ color: "#64748b" }}>
-                          Bạn có thể yêu cầu gửi lại mã sau <strong style={{ color: "#0046c7" }}>{timer}s</strong>
+                          Gửi lại mã sau <strong style={{ color: "#0046c7" }}>{timer}s</strong>
                         </span>
                       ) : (
                         <button
@@ -460,7 +460,7 @@ function RegisterPage() {
                       className="register-submit-button"
                       type="submit"
                       disabled={loadingRegister}
-                      style={{ marginBottom: "12px" }}
+                      style={{ marginBottom: "8px" }}
                     >
                       {loadingRegister ? "Đang xử lý..." : "Xác minh & Hoàn tất"}
                     </button>
@@ -478,10 +478,11 @@ function RegisterPage() {
                         border: "1px solid #e2e8f0",
                         color: "#64748b",
                         width: "100%",
-                        padding: "12px",
-                        borderRadius: "8px",
+                        padding: "8px",
+                        borderRadius: "6px",
                         fontWeight: "600",
-                        cursor: "pointer"
+                        cursor: "pointer",
+                        fontSize: "12px"
                       }}
                     >
                       Quay lại chỉnh sửa thông tin

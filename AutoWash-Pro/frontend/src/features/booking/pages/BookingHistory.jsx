@@ -131,8 +131,6 @@ export default function BookingHistory() {
   // ══════════════════════════════════════════════════════════════
   return (
     <div className="bh-page">
-      <SiteHeader />
-
       <div className="bh-container">
 
         {/* ── Page Header ──────────────────────────────────── */}
