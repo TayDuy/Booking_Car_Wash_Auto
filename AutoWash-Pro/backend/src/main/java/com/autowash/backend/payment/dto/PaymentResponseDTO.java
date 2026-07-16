@@ -40,6 +40,11 @@ public class PaymentResponseDTO {
     /** Số tiền được giảm = discount từ promotion + reward. */
     private BigDecimal discountAmount;
 
+    private BigDecimal promoDiscount;
+    private BigDecimal voucherDiscount;
+    private BigDecimal onlineDiscount;
+    private BigDecimal tierDiscount;
+
     /** Số tiền thực thu = originalAmount - discountAmount. */
     private BigDecimal finalAmount;
 
@@ -48,6 +53,15 @@ public class PaymentResponseDTO {
 
     /** Thời điểm thanh toán thành công — null nếu chưa paid. */
     private LocalDateTime paidAt;
+
+    private String vnpayTransactionNo;
+    private String vnpayBankCode;
+    private String vnpayCardType;
+    private String vnpayResponseCode;
+
+    private String paypalOrderId;
+    private String paypalCaptureId;
+    private String paypalPayerEmail;
 
     /** Audit timestamps. */
     private LocalDateTime createdAt;

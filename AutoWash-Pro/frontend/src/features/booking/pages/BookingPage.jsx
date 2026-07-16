@@ -10,13 +10,15 @@ import {
   MdDirectionsCar,
   MdAirportShuttle
 } from "react-icons/md";
-import { createBooking } from "../../../api/bookingService";
+import bookingApi from "../../../api/bookingApi";
 import customerApi from "../../../api/customerApi";
 import vehicleApi from "../../../api/vehicleApi";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { getActiveServices } from "../../../api/servicePackageService";
 import { getBranches } from "../../../api/branchService";
-import { getAvailableSlots } from "../../../api/timeSlotService";
+import { getSlotsByBranchAndDate } from "../../../api/timeSlotService";
+import promotionApi from "../../../api/promotionApi";
+import { getMyRewards } from "../../../api/customerRewardApi";
 
 const DEFAULT_SERVICES = [
   {
@@ -50,6 +52,9 @@ const DEFAULT_SERVICES = [
 
 export default function BookingPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+
   const [services, setServices] = useState([]);
   const [branches, setBranches] = useState([]);
   const [slots, setSlots] = useState([]);
@@ -58,7 +63,8 @@ export default function BookingPage() {
   const [selectedBranch, setSelectedBranch] = useState(null);
   const [vehicleType, setVehicleType] = useState("4_seats");
   const [note, setNote] = useState("");
-  const [selectedService, setSelectedService] = useState(null);
+  const [selectedPackageId, setSelectedPackageId] = useState(null);
+  const [selectedAddonIds, setSelectedAddonIds] = useState([]);
   const [selectedTime, setSelectedTime] = useState(null);
   const [licensePlate, setLicensePlate] = useState("");
   const [brand, setBrand] = useState("");
@@ -74,11 +80,52 @@ export default function BookingPage() {
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [activeServiceTab, setActiveServiceTab] = useState("all");
 
   const monthNames = [
     "Tháng 1", "Tháng 2", "Tháng 3", "Tháng 4", "Tháng 5", "Tháng 6",
     "Tháng 7", "Tháng 8", "Tháng 9", "Tháng 10", "Tháng 11", "Tháng 12"
   ];
+
+  const SERVICE_TABS = [
+    { id: "all", label: "Tất cả" },
+    { id: "wash", label: "Rửa xe" },
+    { id: "interior", label: "Nội thất" },
+    { id: "polish", label: "Đánh bóng" },
+    { id: "vip", label: "Combo VIP" }
+  ];
+
+  const getCategory = (service) => {
+    const name = (service.serviceName || service.name || "").toLowerCase();
+    const desc = (service.description || "").toLowerCase();
+
+    if (name.includes("add-on") || name.includes("addon") || name.includes("phụ trợ") || name.includes("nước hoa")) {
+      return "addon";
+    }
+    if (name.includes("vip") || name.includes("diamond") || name.includes("kim cương") || name.includes("combo")) {
+      return "vip";
+    }
+    if (name.includes("đánh bóng") || name.includes("polish") || name.includes("nano") || name.includes("ceramic") || desc.includes("đánh bóng") || desc.includes("nano")) {
+      return "polish";
+    }
+    if (name.includes("nội thất") || name.includes("interior") || name.includes("hút bụi") || desc.includes("nội thất") || desc.includes("hút bụi")) {
+      return "interior";
+    }
+    return "wash";
+  };
+
+  const mainPackages = React.useMemo(() => {
+    return services.filter(s => getCategory(s) !== "addon");
+  }, [services]);
+
+  const addonServices = React.useMemo(() => {
+    return services.filter(s => getCategory(s) === "addon");
+  }, [services]);
+
+  const filteredMainPackages = React.useMemo(() => {
+    if (activeServiceTab === "all") return mainPackages;
+    return mainPackages.filter(s => getCategory(s) === activeServiceTab);
+  }, [mainPackages, activeServiceTab]);
 
   // Backend lưu vehicleType là car/suv/truck, UI chỉ có 2 lựa chọn 4_seats/7_seats
   const mapVehicleTypeToUi = (backendType) => {
@@ -87,10 +134,6 @@ export default function BookingPage() {
   };
 
   // Format ngày theo giờ ĐỊA PHƯƠNG (yyyy-MM-dd), KHÔNG dùng toISOString().
-  // Lý do: toISOString() convert Date sang UTC. Với VN (UTC+7), 00:00 giờ VN
-  // ngày X = 17:00 UTC ngày (X-1) → toISOString() trả về sai lệch 1 ngày,
-  // khiến FE query slot cho ngày (X-1) thay vì ngày X đã chọn, gây ra lỗi
-  // "ngày có slot nhưng lại báo không có khung giờ trống".
   const formatDateLocal = (date) => {
     const year = date.getFullYear();
     const month = (date.getMonth() + 1).toString().padStart(2, "0");
@@ -111,32 +154,40 @@ export default function BookingPage() {
     const loadServices = async () => {
       try {
         const res = await getActiveServices();
-        if (res.data && res.data.length > 0) {
-          const merged = res.data.map((item, idx) => ({
-            ...item,
-            imageUrl: DEFAULT_SERVICES[idx]?.imageUrl || DEFAULT_SERVICES[0].imageUrl,
-            features: DEFAULT_SERVICES[idx]?.features || DEFAULT_SERVICES[0].features,
-            isPopular: idx === 1
-          }));
-          setServices(merged);
-          setSelectedService(merged[0].serviceId);
-        } else {
-          setServices(DEFAULT_SERVICES);
-          setSelectedService(DEFAULT_SERVICES[0].serviceId);
+        const servicesList = res.data?.data || res.data;
+        const merged = servicesList?.length > 0
+          ? servicesList.map(item => ({
+              ...item,
+              imageUrl: DEFAULT_SERVICES[0].imageUrl,
+              isPopular: false
+            }))
+          : DEFAULT_SERVICES;
+        setServices(merged);
+        const preId = searchParams.get("serviceId");
+        if (preId) {
+          const targetSvc = merged.find(s => s.serviceId === Number(preId));
+          if (targetSvc) {
+            if (getCategory(targetSvc) === "addon") {
+              setSelectedAddonIds([targetSvc.serviceId]);
+            } else {
+              setSelectedPackageId(targetSvc.serviceId);
+              setActiveServiceTab(getCategory(targetSvc));
+            }
+          }
         }
       } catch (err) {
         setServices(DEFAULT_SERVICES);
-        setSelectedService(DEFAULT_SERVICES[0].serviceId);
       }
     };
     loadServices();
 
     const loadBranches = async () => {
       try {
-        const res = await getBranches();
-        if (res.data && res.data.length > 0) {
-          setBranches(res.data);
-          setSelectedBranch(res.data[0].branchId);
+        const res = await getBranches('active');
+        const branchesList = res.data?.data || res.data;
+        if (branchesList && branchesList.length > 0) {
+          setBranches(branchesList);
+          setSelectedBranch(branchesList[0].branchId);
         }
       } catch (err) {
         console.log(err);
@@ -165,7 +216,7 @@ export default function BookingPage() {
     // biển số / hãng xe / loại xe, tránh phải nhập lại mỗi lần đặt lịch.
     const loadVehicles = async () => {
       try {
-        const res = await vehicleApi.list();
+        const res = await vehicleApi.listMyVehicles();
         const list = res.data || [];
         if (list.length > 0) {
           setSavedVehicles(list);
@@ -177,6 +228,8 @@ export default function BookingPage() {
       }
     };
     loadVehicles();
+
+
   }, []);
 
   useEffect(() => {
@@ -190,23 +243,95 @@ export default function BookingPage() {
       }
       try {
         const date = formatDateLocal(selectedDate);
-        const res = await getAvailableSlots(selectedBranch, date);
-        if (res.data && res.data.length > 0) {
-          const formattedSlots = res.data.map(slot => ({
-            ...slot,
-            statusType: slot.statusType || (slot.capacity <= 1 ? "PEAK" : "NORMAL"),
-            statusLabel: slot.statusLabel || `Còn ${slot.capacity || 3} chỗ`,
-            available: slot.available !== undefined ? slot.available : true
-          }));
+        // FIX: trước đây gọi getAvailableSlots (BE chỉ trả status=open) → slot đã
+        // FULL bị loại bỏ hoàn toàn khỏi response, khiến nó "biến mất" khỏi danh
+        // sách thay vì hiển thị dạng xám/disable như UX thông thường (Grab, Booking.com...).
+        // Giờ gọi getSlotsByBranchAndDate (lấy TẤT CẢ status) làm nguồn chính,
+        // rồi tự lọc/đánh dấu available ở FE — vừa hiện được slot full (để khách
+        // biết khung giờ đó tồn tại nhưng hết chỗ), vừa vẫn ẩn slot "closed"
+        // (admin chủ động đóng, không nên cho khách thấy).
+        const res = await getSlotsByBranchAndDate(selectedBranch, date);
+        const rawSlots = res.data || [];
+        const visibleSlots = rawSlots.filter(slot => slot.status !== "closed");
+
+        if (visibleSlots.length > 0) {
+          // ── GOM NHÓM SLOT THEO KHUNG GIỜ ──────────────────────────
+          // Backend trả mỗi bay (Bay 1, 2, 3, 4) một slot riêng cho cùng startTime.
+          // Khách không cần chọn bay — chỉ cần biết "08:00 còn bao nhiêu chỗ".
+          // Ta gom tất cả slot cùng startTime → 1 nút duy nhất, cộng dồn remaining.
+          const groupMap = new Map();
+          visibleSlots.forEach(slot => {
+            const key = slot.startTime;
+            const max = slot.maxCapacity ?? 1;
+            const current = slot.currentBookings ?? 0;
+            const remaining = Math.max(max - current, 0);
+            const isOpen = slot.status === "open" && remaining > 0;
+
+            if (!groupMap.has(key)) {
+              groupMap.set(key, {
+                startTime: key,
+                endTime: slot.endTime,
+                totalRemaining: 0,
+                totalMax: 0,
+                bestSlotId: null,
+                childSlots: [],
+              });
+            }
+            const group = groupMap.get(key);
+            group.totalRemaining += remaining;
+            group.totalMax += max;
+            group.childSlots.push({ slotId: slot.slotId, remaining, isOpen });
+            if (isOpen && group.bestSlotId === null) {
+              group.bestSlotId = slot.slotId;
+            }
+          });
+
+          // Nếu ngày đang xem là hôm nay → lọc bỏ các khung giờ đã qua
+          const now = new Date();
+          const isToday = selectedDate.getFullYear() === now.getFullYear()
+            && selectedDate.getMonth() === now.getMonth()
+            && selectedDate.getDate() === now.getDate();
+          const currentHHMM = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+
+          const formattedSlots = Array.from(groupMap.values()).map(g => {
+            // Nếu hôm nay và startTime đã qua → đánh dấu hết chỗ
+            const isPast = isToday && g.startTime.substring(0, 5) <= currentHHMM;
+            const available = !isPast && g.totalRemaining > 0;
+            let statusType = "NORMAL";
+            if (!available) statusType = isPast ? "FULL" : (g.totalRemaining <= 0 ? "FULL" : (g.totalRemaining <= 2 ? "PEAK" : "NORMAL"));
+            else if (g.totalRemaining <= 2) statusType = "PEAK";
+            else if (g.totalRemaining >= g.totalMax * 0.7) statusType = "ECO";
+
+            return {
+              slotId: g.bestSlotId ?? g.childSlots[0]?.slotId,
+              startTime: g.startTime,
+              endTime: g.endTime,
+              statusType,
+              statusLabel: isPast ? "Đã qua" : (available ? `Còn ${g.totalRemaining} chỗ` : "Hết chỗ"),
+              available,
+            };
+          }).sort((a, b) => a.startTime.localeCompare(b.startTime));
+
           setSlots(formattedSlots);
-          setSelectedTime(formattedSlots[0].slotId);
-          setSlotsError(null);
+          const firstAvailable = formattedSlots.find(s => s.available);
+          setSelectedTime(firstAvailable ? firstAvailable.slotId : null);
+          setSlotsError(
+              firstAvailable
+                  ? null
+                  : "Tất cả khung giờ trong ngày này đã kín chỗ. Vui lòng chọn ngày khác hoặc chi nhánh khác."
+          );
         } else {
           // KHÔNG dùng MOCK_SLOTS_DATA nữa — slot giả có thể trùng ID với slot thật
           // đã hết hạn ngày trong DB, gây lỗi 500 khi đặt lịch (validate slotDate).
           setSlots([]);
           setSelectedTime(null);
-          setSlotsError("Chi nhánh này chưa có khung giờ trống cho ngày đã chọn. Vui lòng chọn chi nhánh hoặc ngày khác.");
+          setSlotsError(
+              rawSlots.length > 0
+                  // Có slot nhưng toàn bộ đang "closed" (admin đóng thủ công)
+                  ? "Chi nhánh tạm đóng lịch đặt cho ngày này. Vui lòng chọn ngày khác hoặc chi nhánh khác."
+                  // Hoàn toàn chưa có slot nào — chưa generate lịch cho ngày này
+                  : "Chi nhánh này chưa mở lịch đặt cho ngày đã chọn. Vui lòng chọn chi nhánh hoặc ngày khác."
+          );
         }
       } catch (err) {
         setSlots([]);
@@ -217,16 +342,32 @@ export default function BookingPage() {
     loadSlots();
   }, [selectedBranch, selectedDate]);
 
-  const selectedServiceData = services.find(s => s.serviceId === selectedService);
   const selectedSlotData = slots.find(s => s.slotId === selectedTime);
 
-  const price = selectedServiceData ? selectedServiceData.basePrice : 0;
+  const selectedPackage = services.find(s => s.serviceId === selectedPackageId);
+  const selectedAddons = services.filter(s => selectedAddonIds.includes(s.serviceId));
+  const packagePrice = selectedPackage?.basePrice || 0;
+  const addonsPrice = selectedAddons.reduce((sum, s) => sum + (s.basePrice || 0), 0);
   const surcharge = vehicleType === "7_seats" ? 50000 : 0;
-  const subtotal = price + surcharge;
+  const subtotal = packagePrice + addonsPrice + surcharge;
   const tax = Math.round(subtotal * 0.08);
   const discount = paymentMethod === "online" ? Math.round(subtotal * 0.05) : 0;
-  const total = subtotal + tax - discount;
-  const rewardPoints = Math.floor(price / 10000);
+
+  const total = Math.max(0, subtotal + tax - discount);
+  const totalDuration = (selectedPackage?.durationMinutes || 0) + selectedAddons.reduce((sum, s) => sum + (s.durationMinutes || 0), 0);
+  const rewardPoints = Math.floor(packagePrice / 10000);
+  const DEPOSIT_THRESHOLD = 500000;
+  const depositRequired = subtotal > DEPOSIT_THRESHOLD;
+
+
+
+
+
+  const toggleAddon = (serviceId) => {
+    setSelectedAddonIds(prev =>
+      prev.includes(serviceId) ? prev.filter(id => id !== serviceId) : [...prev, serviceId]
+    );
+  };
 
   const previousMonth = () => {
     setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
@@ -262,7 +403,7 @@ export default function BookingPage() {
   };
 
   const handleBooking = async () => {
-    if (!selectedService) { alert("Vui lòng chọn gói dịch vụ!"); return; }
+    if (!selectedPackageId) { alert("Vui lòng chọn gói dịch vụ!"); return; }
     if (!agreeTerms) { alert("Vui lòng xác nhận thông tin dịch vụ và điều khoản dịch vụ để tiếp tục!"); return; }
 
     const customerIdRaw = localStorage.getItem("customerId");
@@ -273,6 +414,8 @@ export default function BookingPage() {
     if (!brand.trim()) { alert("Vui lòng nhập hãng xe!"); return; }
     if (!selectedTime) { alert("Vui lòng chọn khung giờ!"); return; }
     if (!selectedBranch) { alert("Vui lòng chọn chi nhánh!"); return; }
+
+    if (depositRequired) setPaymentMethod("online");
 
     try {
       await syncProfileIfChanged();
@@ -285,11 +428,26 @@ export default function BookingPage() {
         slotId: selectedTime,
         branchId: selectedBranch,
         note,
-        details: [{ serviceId: selectedService, quantity: 1 }]
+        paymentMethod: paymentMethod,
+        details: [
+          { serviceId: selectedPackageId, quantity: 1 },
+          ...selectedAddonIds.map(id => ({ serviceId: id, quantity: 1 }))
+        ]
       };
-      const result = await createBooking(bookingData);
-      const bookingId = result?.data?.bookingId || result?.data?.id || result?.data?.data?.bookingId;
-      navigate("/payment", { state: { bookingId } });
+      const response = await bookingApi.create(bookingData);
+      const result = response.data;
+      const bookingId = result?.bookingId || result?.id || result?.data?.bookingId;
+      if (paymentMethod === "offline" && !depositRequired) {
+        navigate("/customer/booking/success", {
+          state: { bookingId, bookingDetail: result }
+        });
+        return;
+      }
+      navigate("/customer/payment", {
+        state: {
+          bookingId
+        },
+      });
     } catch (error) {
       alert(error.response?.data?.message || "Đặt lịch thất bại. Vui lòng thử lại!");
     }
@@ -308,37 +466,81 @@ export default function BookingPage() {
             <section className="form-section-card">
               <div className="section-title-wrapper">
                 <FaDroplet className="section-icon" />
-                <h3>1. Chọn dịch vụ</h3>
+                <h3>1. Chọn dịch vụ chính</h3>
               </div>
-              <div className="services-card-grid">
-                {services.slice(0, 3).map(service => (
-                    <div
-                        key={service.serviceId}
-                        className={`service-item-card ${selectedService === service.serviceId ? "active-card" : ""} ${service.isPopular ? "popular-card" : ""}`}
-                        onClick={() => setSelectedService(service.serviceId)}
-                    >
-                      {service.isPopular && <span className="popular-badge">PHỔ BIẾN</span>}
-                      <div className="service-img-holder">
-                        <img src={service.imageUrl || DEFAULT_SERVICES[0].imageUrl} alt={service.serviceName} />
-                      </div>
-                      <div className="service-details-box">
-                        <div className="service-meta-header">
-                          <h4>{service.serviceName}</h4>
-                          <span className="service-price-label">{service.basePrice?.toLocaleString()}đ</span>
-                        </div>
-                        <p className="service-brief">{service.description}</p>
-                        <ul className="service-feature-checklist">
-                          {(service.features || []).map((feature, idx) => (
-                              <li key={idx}><span>✓</span> {feature}</li>
-                          ))}
-                        </ul>
-                        <div className="service-duration-info">
-                          <span>⏱ {service.durationMinutes} phút</span>
-                        </div>
-                      </div>
-                    </div>
+
+              {/* Category Tabs for Main Packages */}
+              <div className="booking-service-tabs">
+                {SERVICE_TABS.map(tab => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    className={`booking-service-tab-btn ${activeServiceTab === tab.id ? "active" : ""}`}
+                    onClick={() => setActiveServiceTab(tab.id)}
+                  >
+                    {tab.label}
+                  </button>
                 ))}
               </div>
+
+              <div className="services-packages-row">
+                {filteredMainPackages.length === 0 ? (
+                  <div className="no-services-placeholder" style={{ gridColumn: 'span 3', textAlign: 'center', padding: '32px', color: 'var(--text-muted)' }}>
+                    Không có dịch vụ chính nào thuộc danh mục này.
+                  </div>
+                ) : (
+                  filteredMainPackages.map(pkg => {
+                    const selected = selectedPackageId === pkg.serviceId;
+                    return (
+                      <div
+                        key={pkg.serviceId}
+                        className={`package-card ${selected ? "package-selected" : ""} ${pkg.isPopular ? "package-popular" : ""}`}
+                        onClick={() => setSelectedPackageId(pkg.serviceId)}
+                        role="radio"
+                        aria-checked={selected}
+                        tabIndex={0}
+                        onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSelectedPackageId(pkg.serviceId); } }}
+                      >
+                        {pkg.isPopular && <span className="popular-badge">PHỔ BIẾN</span>}
+                        <div className="package-body">
+                          <div className="package-header">
+                            <h4>{pkg.serviceName}</h4>
+                            <span className="package-price">{pkg.basePrice?.toLocaleString()}đ</span>
+                          </div>
+                          <p className="package-duration">⏱ {pkg.durationMinutes} phút</p>
+                          <p className="package-detail">{pkg.description || "Chi tiết gói dịch vụ"}</p>
+                        </div>
+                        <div className={`package-radio-indicator ${selected ? "radio-checked" : ""}`}>
+                          {selected && <span className="radio-dot" />}
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              {addonServices.length > 0 && (
+                <div className="addons-section">
+                  <h4 className="addons-title">Dịch vụ bổ sung (Tùy chọn thêm)</h4>
+                  <div className="addons-list">
+                    {addonServices.map(addon => {
+                      const checked = selectedAddonIds.includes(addon.serviceId);
+                      return (
+                        <label key={addon.serviceId} className={`addon-item ${checked ? "addon-checked" : ""}`}>
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => toggleAddon(addon.serviceId)}
+                          />
+                          <span className="addon-name">{addon.serviceName}</span>
+                          <span className="addon-price">+{addon.basePrice?.toLocaleString()}đ</span>
+                          <span className="addon-duration">{addon.durationMinutes}ph</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </section>
 
             {/* 2. CHỌN THỜI GIAN */}
@@ -367,11 +569,16 @@ export default function BookingPage() {
                           selectedDate.getDate() === day &&
                           selectedDate.getMonth() === currentDate.getMonth() &&
                           selectedDate.getFullYear() === currentDate.getFullYear();
+                      // Chặn chọn ngày quá khứ
+                      const todayMidnight = new Date();
+                      todayMidnight.setHours(0, 0, 0, 0);
+                      const cellDate = day ? new Date(currentDate.getFullYear(), currentDate.getMonth(), day) : null;
+                      const isPastDay = cellDate && cellDate < todayMidnight;
                       return (
                           <div
-                              key={index}
-                              className={`calendar-day-number-cell p-2 rounded cursor-pointer transition-colors ${day ? "clickable-day hover:bg-primary-container hover:text-on-primary-container" : "blank-day text-on-surface-variant opacity-50"} ${isSelected ? "day-selected-active bg-primary text-on-primary font-bold shadow-sm" : ""}`}
-                              onClick={() => { if (day) setSelectedDate(new Date(currentDate.getFullYear(), currentDate.getMonth(), day)); }}
+                              key={day !== null ? `day-${day}` : `blank-${index}`}
+                              className={`calendar-day-number-cell p-2 rounded transition-colors ${!day ? "blank-day text-on-surface-variant opacity-50" : isPastDay ? "past-day text-on-surface-variant opacity-30 cursor-not-allowed" : "clickable-day hover:bg-primary-container hover:text-on-primary-container cursor-pointer"} ${isSelected ? "day-selected-active bg-primary text-on-primary font-bold shadow-sm" : ""}`}
+                              onClick={() => { if (day && !isPastDay) setSelectedDate(new Date(currentDate.getFullYear(), currentDate.getMonth(), day)); }}
                           >
                             {day}
                           </div>
@@ -388,7 +595,12 @@ export default function BookingPage() {
                       </h4>
                       <div className="bay-live-status">
                         <span className="status-indicator-dot">●</span>
-                        Bay 1 & 2 đang sẵn sàng
+                        {(() => {
+                          const readyBays = [...new Set(slots.filter(s => s.available).map(s => s.bayName).filter(Boolean))];
+                          return readyBays.length > 0
+                              ? `${readyBays.join(" & ")} đang sẵn sàng`
+                              : "Chưa có bay nào sẵn sàng cho ngày này";
+                        })()}
                       </div>
                     </div>
                   </div>
@@ -407,7 +619,7 @@ export default function BookingPage() {
                           if (isSelected) className += " pill-selected";
                           return (
                               <button key={slot.slotId} type="button" disabled={isDisabled} className={className} onClick={() => setSelectedTime(slot.slotId)}>
-                                <span className="slot-clock-text">{slot.startTime}</span>
+                                <span className="slot-clock-text">{(slot.startTime || "").replace(/:00$/, "")}</span>
                                 <span className="slot-status-subtext">{isSelected ? "Đã chọn" : slot.statusLabel}</span>
                               </button>
                           );
@@ -487,6 +699,21 @@ export default function BookingPage() {
               <div className="vehicle-inputs-row">
                 <div className="form-field-group">
                   <label>Biển số xe *</label>
+                  {savedVehicles.length > 0 && (
+                      <div className="saved-vehicle-chip-row">
+                        {savedVehicles.map((v) => (
+                            <button
+                                key={v.vehicleId}
+                                type="button"
+                                className={`saved-vehicle-chip ${selectedVehicleId === v.vehicleId ? "saved-vehicle-chip-active" : ""}`}
+                                onClick={() => applyVehicle(v)}
+                            >
+                              <MdDirectionsCar className="suggest-item-icon" />
+                              {v.licensePlate}{v.nickname ? ` · ${v.nickname}` : v.brand ? ` · ${v.brand}` : ""}
+                            </button>
+                        ))}
+                      </div>
+                  )}
                   <div className="input-suggest-wrapper">
                     <input
                         type="text"
@@ -522,6 +749,7 @@ export default function BookingPage() {
                         type="button"
                         className={`segment-btn ${vehicleType === "4_seats" ? "segment-active" : ""}`}
                         onClick={() => setVehicleType("4_seats")}
+                        disabled={!!selectedVehicleId}
                     >
                       <MdDirectionsCar className="car-icon" /> Xe 4 chỗ
                     </button>
@@ -529,10 +757,16 @@ export default function BookingPage() {
                         type="button"
                         className={`segment-btn ${vehicleType === "7_seats" ? "segment-active" : ""}`}
                         onClick={() => setVehicleType("7_seats")}
+                        disabled={!!selectedVehicleId}
                     >
                       <MdAirportShuttle className="car-icon" /> Xe 7 chỗ
                     </button>
                   </div>
+                  {selectedVehicleId && (
+                      <small className="vehicle-type-locked-hint" style={{ display: 'block', marginTop: '6px', fontSize: '11px', color: '#64748b' }}>
+                        Loại xe và hãng xe theo hồ sơ xe đã lưu. Để đổi, vui lòng nhập biển số xe khác.
+                      </small>
+                  )}
                 </div>
               </div>
               <div className="form-field-group full-width-field">
@@ -542,6 +776,7 @@ export default function BookingPage() {
                     placeholder="Ví dụ: Toyota, Honda, Mazda..."
                     value={brand}
                     onChange={(e) => setBrand(e.target.value)}
+                    disabled={!!selectedVehicleId}
                 />
               </div>
               <div className="form-field-group full-width-field">
@@ -560,15 +795,35 @@ export default function BookingPage() {
             <div className="secure-checkout-badge">🛡 THANH TOÁN BẢO MẬT</div>
             <h3>Tóm tắt đơn hàng</h3>
             <div className="summary-billing-breakdown">
-              <div className="billing-row prime-service">
-                <span className="service-title">{selectedServiceData ? selectedServiceData.serviceName : "Chưa chọn gói"}</span>
-                <span className="service-cost">{price.toLocaleString()}đ</span>
-              </div>
+              {selectedPackageId ? (
+                <>
+                  <div className="billing-row prime-service">
+                    <span className="service-title">{selectedPackage?.serviceName}</span>
+                    <span className="service-cost">{packagePrice.toLocaleString()}đ</span>
+                  </div>
+                  {selectedAddons.length > 0 && (
+                    <div className="addons-summary">
+                      <span className="addons-summary-title">Dịch vụ thêm:</span>
+                      {selectedAddons.map(a => (
+                        <div key={a.serviceId} className="billing-row addon-row">
+                          <span className="service-title">+ {a.serviceName}</span>
+                          <span className="service-cost">{(a.basePrice || 0).toLocaleString()}đ</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="billing-row prime-service">
+                  <span className="service-title">Chưa chọn dịch vụ</span>
+                </div>
+              )}
               <div className="selected-datetime-preview">
                 <p>{selectedDate.getDate()} {monthNames[selectedDate.getMonth()]}, {selectedDate.getFullYear()}{selectedSlotData && ` • ${selectedSlotData.startTime}`}</p>
+                {totalDuration > 0 && <p style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>⏱ Tổng thời gian: ~{totalDuration} phút</p>}
               </div>
               <div className="billing-fees-list">
-                <div className="fee-line"><span>Giá cơ bản</span><span>{price.toLocaleString()}đ</span></div>
+                <div className="fee-line"><span>Giá dịch vụ</span><span>{(packagePrice + addonsPrice).toLocaleString()}đ</span></div>
                 <div className="fee-line">
                   <span>Phụ phí xe ({vehicleType === "4_seats" ? "4 chỗ" : "7 chỗ"})</span>
                   <span>{surcharge > 0 ? `+${surcharge.toLocaleString()}đ` : "Miễn phí"}</span>
@@ -586,6 +841,7 @@ export default function BookingPage() {
                 </div>
               </div>
             </div>
+
             <hr className="divider" />
             <div className="grand-total-section">
               <span>Tổng cộng</span>
@@ -596,6 +852,11 @@ export default function BookingPage() {
             </div>
             <div className="payment-methods-selector">
               <h5>Phương thức thanh toán</h5>
+              {depositRequired && (
+                <div className="deposit-notice">
+                  Đơn hàng trên {DEPOSIT_THRESHOLD.toLocaleString()}đ yêu cầu đặt cọc trước — vui lòng chọn thanh toán online.
+                </div>
+              )}
               <label className={`method-option-card ${paymentMethod === "online" ? "method-active" : ""}`}>
                 <input type="radio" name="payment" value="online" checked={paymentMethod === "online"} onChange={() => setPaymentMethod("online")} />
                 <div className="method-label-content">
@@ -608,8 +869,8 @@ export default function BookingPage() {
                   </div>
                 </div>
               </label>
-              <label className={`method-option-card ${paymentMethod === "offline" ? "method-active" : ""}`}>
-                <input type="radio" name="payment" value="offline" checked={paymentMethod === "offline"} onChange={() => setPaymentMethod("offline")} />
+              <label className={`method-option-card ${paymentMethod === "offline" ? "method-active" : ""} ${depositRequired ? "method-disabled" : ""}`}>
+                <input type="radio" name="payment" value="offline" checked={paymentMethod === "offline"} onChange={() => { if (!depositRequired) setPaymentMethod("offline"); }} disabled={depositRequired} />
                 <div className="method-label-content">
                   <div className="method-text-main">Thanh toán sau (Tại trạm)</div>
                   <small>Thanh toán khi hoàn tất dịch vụ</small>

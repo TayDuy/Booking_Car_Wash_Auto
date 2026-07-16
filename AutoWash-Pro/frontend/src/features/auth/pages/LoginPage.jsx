@@ -9,6 +9,14 @@ function LoginPage() {
   const navigate = useNavigate();
   const auth = useAuth();
 
+  useEffect(() => {
+    if (auth?.token) {
+      const role = (localStorage.getItem("role") || "").toUpperCase();
+      const home = { ADMIN: "/admin/dashboard", EMPLOYEE: "/employee/dashboard", MANAGER: "/manager/dashboard" }[role] || "/customer/home";
+      navigate(home, { replace: true });
+    }
+  }, []);
+
   const [formData, setFormData] = useState({
     username: "",
     password: "",
@@ -31,22 +39,46 @@ function LoginPage() {
   const redirectByRole = (role) => {
     const normalizedRole = String(role || "").toUpperCase();
 
-    if (normalizedRole === "ADMIN") {
-      navigate("/admin/dashboard", { replace: true });
+    const homeByRole = {
+      ADMIN: "/admin/dashboard",
+      EMPLOYEE: "/employee/dashboard",
+      CUSTOMER: "/customer/home",
+      USER: "/customer/home",
+    };
+
+    const routePrefixByRole = {
+      ADMIN: "/admin",
+      EMPLOYEE: "/employee",
+      CUSTOMER: "/customer",
+      USER: "/customer",
+    };
+
+    const defaultPath = homeByRole[normalizedRole];
+
+    if (!defaultPath) {
+      navigate("/unauthorized", { replace: true });
       return;
     }
 
-    if (normalizedRole === "MANAGER") {
-      navigate("/manager/dashboard", { replace: true });
+    const searchParams = new URLSearchParams(window.location.search);
+    const redirectUrl = searchParams.get("redirect");
+    const allowedPrefix = routePrefixByRole[normalizedRole];
+
+    // Chỉ dùng redirect cũ khi route đó đúng với quyền của tài khoản.
+    // Ví dụ Employee không bị đưa nhầm sang /manager hoặc /customer.
+    if (
+      redirectUrl &&
+      redirectUrl.startsWith("/") &&
+      redirectUrl.startsWith(allowedPrefix)
+    ) {
+      navigate(redirectUrl, { replace: true });
       return;
     }
 
-    navigate("/customer/home", { replace: true });
+    navigate(defaultPath, { replace: true });
   };
 
   const handleLoginSuccess = (result) => {
-    console.log("Login success result:", result);
-
     saveAuth(result);
     if (auth) {
       auth.setToken(result.accessToken);
@@ -61,9 +93,6 @@ function LoginPage() {
 
     const savedToken = localStorage.getItem("token");
     const savedRole = localStorage.getItem("role");
-
-    console.log("Saved token:", savedToken);
-    console.log("Saved role:", savedRole);
 
     if (!savedToken) {
       setErrorMessage("Đăng nhập thành công nhưng chưa lưu được token.");

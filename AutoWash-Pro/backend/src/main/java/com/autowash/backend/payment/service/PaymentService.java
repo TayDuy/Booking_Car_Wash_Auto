@@ -30,7 +30,11 @@ public interface PaymentService {
      * @param paymentId ID của payment cần xử lý.
      * @return DTO chứa thông tin chi tiết của payment sau khi đã cập nhật.
      */
-    PaymentResponseDTO processPayment(Integer paymentId);
+    default PaymentResponseDTO processPayment(Integer paymentId) {
+        return processPayment(paymentId, null, null, null, null);
+    }
+
+    PaymentResponseDTO processPayment(Integer paymentId, String transactionNo, String bankCode, String cardType, String responseCode);
 
     /**
      * Cập nhật trạng thái chung cho payment (có thể là paid, cancelled, hoặc failed).
@@ -64,7 +68,11 @@ public interface PaymentService {
      * @param paymentId ID của payment cần đánh dấu thất bại.
      * @return DTO chứa thông tin payment sau khi cập nhật.
      */
-    PaymentResponseDTO markFailed(Integer paymentId);
+    default PaymentResponseDTO markFailed(Integer paymentId) {
+        return markFailed(paymentId, null, null, null, null);
+    }
+
+    PaymentResponseDTO markFailed(Integer paymentId, String transactionNo, String bankCode, String cardType, String responseCode);
 
     /**
      * Lấy thông tin chi tiết của một payment dựa trên ID của nó.
@@ -82,4 +90,30 @@ public interface PaymentService {
      * @return DTO chứa thông tin chi tiết của payment tương ứng.
      */
     PaymentResponseDTO getByBookingId(Integer bookingId);
+
+    // ── PAYPAL ────────────────────────────────────────────────────────────────
+
+    /**
+     * Tạo PayPal Order và trả về orderId + approvalUrl để frontend redirect.
+     *
+     * @param paymentId ID của payment cần tạo đơn PayPal.
+     * @return Map chứa "orderId" và "approvalUrl".
+     */
+    java.util.Map<String, String> createPaypalOrder(Integer paymentId);
+
+    /**
+     * Capture PayPal Order sau khi khách approve — chuyển payment sang paid.
+     *
+     * @param paypalOrderId PayPal Order ID (query param "token" từ redirect).
+     * @return DTO chứa thông tin payment sau khi xử lý.
+     */
+    PaymentResponseDTO processPaypalPayment(String paypalOrderId);
+
+    /**
+     * Đánh dấu payment thất bại khi khách cancel từ trang PayPal.
+     *
+     * @param paypalOrderId PayPal Order ID (query param "token" từ redirect cancel).
+     * @return DTO chứa thông tin payment sau khi cập nhật.
+     */
+    PaymentResponseDTO markPaypalFailed(String paypalOrderId);
 }

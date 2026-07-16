@@ -7,6 +7,7 @@ import lombok.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import com.autowash.backend.promotion.entity.Promotion.PromotionStatus;
 
 /**
  * DTO dùng để nhận dữ liệu từ client khi tạo mới hoặc cập nhật một Promotion.
@@ -42,6 +43,8 @@ public class PromotionRequestDTO {
      *   fixed        → giảm số tiền cố định
      *   free_service → miễn phí toàn bộ dịch vụ
      */
+
+    private PromotionStatus status;
     @NotNull(message = "Loại giảm giá không được null")
     private DiscountType discountType;
 

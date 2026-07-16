@@ -3,133 +3,77 @@ package com.autowash.backend.payment.controller;
 import com.autowash.backend.payment.dto.*;
 import com.autowash.backend.payment.entity.Payment.PaymentStatus;
 import com.autowash.backend.payment.service.PaymentService;
-import com.autowash.backend.booking.repository.BookingRepository;
-import com.autowash.backend.payment.repository.PaymentRepository;
-import com.autowash.backend.customer.repository.CustomerRepository;
-import com.autowash.backend.security.CustomUserDetails;
-import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
-
 import com.autowash.backend.payment.service.VNPayService;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Enumeration;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.util.UriComponentsBuilder;
+import org.springframework.beans.factory.annotation.Value;
 
-/**
- * PaymentController — REST API cho nghiệp vụ thanh toán (FR-5).
- */
+import java.net.URI;
+import java.util.Enumeration;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api/v1/payments")
 @RequiredArgsConstructor
 public class PaymentController {
 
     private final PaymentService paymentService;
-    private final BookingRepository bookingRepository;
-    private final PaymentRepository paymentRepository;
-    private final CustomerRepository customerRepository;
     private final VNPayService vnPayService;
 
-    /**
-     * Tạo payment cho booking đã completed.
-     * Khách hàng sở hữu booking hoặc Staff/Admin mới được phép tạo.
-     */
+    @Value("${app.frontend-base-url:http://localhost:5173}")
+    private String frontendBaseUrl;
+
+    @PreAuthorize("hasRole('CUSTOMER')")
     @PostMapping
-    @PreAuthorize("hasAnyRole('CUSTOMER', 'STAFF', 'ADMIN')")
     public ResponseEntity<PaymentResponseDTO> create(
-            @Valid @RequestBody PaymentCreateRequestDTO request,
-            @AuthenticationPrincipal CustomUserDetails userDetails) {
-        verifyBookingOwnership(request.getBookingId(), userDetails);
+            @Valid @RequestBody PaymentCreateRequestDTO request) {
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(paymentService.createPayment(request));
     }
 
-    /**
-     * Cập nhật trạng thái payment.
-     * Khách hàng chỉ được phép hủy/đánh dấu thất bại đối với payment của chính mình.
-     * Chỉ Staff/Admin mới được xác nhận trạng thái "paid" (Đã thanh toán).
-     */
+    @PreAuthorize("hasRole('CUSTOMER')")
     @PatchMapping("/{id}/status")
-    @PreAuthorize("hasAnyRole('CUSTOMER', 'STAFF', 'ADMIN')")
     public ResponseEntity<PaymentResponseDTO> updateStatus(
             @PathVariable Integer id,
-            @Valid @RequestBody PaymentUpdateRequestDTO request,
-            @AuthenticationPrincipal CustomUserDetails userDetails) {
-        verifyPaymentOwnership(id, userDetails);
-        
-        if (PaymentStatus.paid.equals(request.getPaymentStatus())) {
-            boolean isStaffOrAdmin = userDetails.getAuthorities().stream()
-                    .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN") || a.getAuthority().equals("ROLE_STAFF"));
-            if (!isStaffOrAdmin) {
-                throw new com.autowash.backend.common.exception.BusinessException(
-                        "Khách hàng không thể tự xác nhận đã thanh toán (paid)", HttpStatus.FORBIDDEN);
-            }
-        }
-        
+            @Valid @RequestBody PaymentUpdateRequestDTO request) {
         return ResponseEntity.ok(paymentService.updateStatus(id, request));
     }
 
-    /**
-     * Lấy chi tiết payment theo paymentId.
-     * Staff/Admin có quyền xem tất cả. Khách hàng chỉ được xem payment của chính mình.
-     */
+    @PreAuthorize("isAuthenticated()")
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('CUSTOMER', 'STAFF', 'ADMIN')")
-    public ResponseEntity<PaymentResponseDTO> getById(
-            @PathVariable Integer id,
-            @AuthenticationPrincipal CustomUserDetails userDetails) {
-        verifyPaymentOwnership(id, userDetails);
+    public ResponseEntity<PaymentResponseDTO> getById(@PathVariable Integer id) {
         return ResponseEntity.ok(paymentService.getById(id));
     }
 
-    /**
-     * Lấy payment theo bookingId.
-     * Staff/Admin có quyền xem tất cả. Khách hàng chỉ được xem payment của chính mình.
-     */
+    @PreAuthorize("hasAnyRole('EMPLOYEE','ADMIN')")
     @GetMapping("/booking/{bookingId}")
-    @PreAuthorize("hasAnyRole('CUSTOMER', 'STAFF', 'ADMIN')")
     public ResponseEntity<PaymentResponseDTO> getByBookingId(
-            @PathVariable Integer bookingId,
-            @AuthenticationPrincipal CustomUserDetails userDetails) {
-        verifyBookingOwnership(bookingId, userDetails);
+            @PathVariable Integer bookingId) {
         return ResponseEntity.ok(paymentService.getByBookingId(bookingId));
     }
 
-    /**
-     * Lấy danh sách payment, có thể lọc theo status.
-     * Chỉ cho phép STAFF hoặc ADMIN xem toàn bộ danh sách.
-     */
+    @PreAuthorize("hasAnyRole('EMPLOYEE','ADMIN')")
     @GetMapping
-    @PreAuthorize("hasAnyRole('STAFF', 'ADMIN')")
     public ResponseEntity<List<PaymentResponseDTO>> getAll(
             @RequestParam(required = false) PaymentStatus status) {
         return ResponseEntity.ok(paymentService.getByStatus(status));
     }
 
-    // ============================================================
-    // VNPAY — sinh QR thanh toán & xử lý callback
-    // ============================================================
-
-    /**
-     * Sinh ảnh QR thanh toán VNPAY cho 1 payment đã tồn tại (đang ở trạng thái unpaid).
-     * Chỉ khách hàng sở hữu đơn thanh toán hoặc Staff/Admin mới được quyền sinh mã.
-     */
+    @PreAuthorize("hasRole('CUSTOMER')")
     @GetMapping("/{id}/vnpay-qr")
-    @PreAuthorize("hasAnyRole('CUSTOMER', 'STAFF', 'ADMIN')")
-    public ResponseEntity<byte[]> getVnpayQrCode(
-            HttpServletRequest request,
-            @PathVariable Integer id,
-            @AuthenticationPrincipal CustomUserDetails userDetails) throws Exception {
-        verifyPaymentOwnership(id, userDetails);
+    public ResponseEntity<byte[]> getVnpayQrCode(HttpServletRequest request,
+                                                  @PathVariable Integer id) throws Exception {
         PaymentResponseDTO payment = paymentService.getById(id);
 
         String txnRef = "PAY" + payment.getPaymentId();
@@ -144,11 +88,8 @@ public class PaymentController {
                 .body(qrImage);
     }
 
-    /**
-     * Endpoint VNPAY redirect về sau khi khách thanh toán xong (vnp_ReturnUrl).
-     */
     @GetMapping("/vnpay-return")
-    public ResponseEntity<?> vnpayReturn(HttpServletRequest request) throws Exception {
+    public ResponseEntity<Void> vnpayReturn(HttpServletRequest request) {
         Map<String, String> fields = new HashMap<>();
         for (Enumeration<String> params = request.getParameterNames(); params.hasMoreElements(); ) {
             String name = params.nextElement();
@@ -158,20 +99,138 @@ public class PaymentController {
         String vnp_SecureHash = fields.remove("vnp_SecureHash");
         fields.remove("vnp_SecureHashType");
 
-        boolean isValid = vnPayService.validateSignature(fields, vnp_SecureHash);
+        boolean isValid;
+        try {
+            isValid = vnPayService.validateSignature(fields, vnp_SecureHash);
+        } catch (java.io.UnsupportedEncodingException e) {
+            return redirectTo(failureUrl(null, "invalid_signature"));
+        }
         String responseCode = fields.get("vnp_ResponseCode");
         String txnRef = fields.get("vnp_TxnRef");
 
-        if (isValid && "00".equals(responseCode)) {
-            return ResponseEntity.ok().body("Thanh toán thành công cho giao dịch: " + txnRef);
-        } else {
-            return ResponseEntity.badRequest().body("Thanh toán thất bại hoặc chữ ký không hợp lệ");
+        if (!isValid) {
+            return redirectTo(failureUrl(null, "invalid_signature"));
         }
+
+        Integer paymentId;
+        try {
+            paymentId = Integer.parseInt(txnRef.replace("PAY", ""));
+        } catch (Exception e) {
+            return redirectTo(failureUrl(null, "invalid_order"));
+        }
+
+        PaymentResponseDTO payment;
+        try {
+            payment = paymentService.getById(paymentId);
+        } catch (Exception e) {
+            return redirectTo(failureUrl(null, "order_not_found"));
+        }
+
+        Long vnpAmount = null;
+        try {
+            vnpAmount = Long.parseLong(fields.get("vnp_Amount")) / 100;
+        } catch (Exception ignored) {
+        }
+        boolean amountMatches = vnpAmount != null && payment.getFinalAmount().longValue() == vnpAmount;
+
+        if (payment.getPaymentStatus() == PaymentStatus.unpaid && amountMatches) {
+            if ("00".equals(responseCode)) {
+                payment = paymentService.processPayment(
+                        paymentId,
+                        fields.get("vnp_TransactionNo"),
+                        fields.get("vnp_BankCode"),
+                        fields.get("vnp_CardType"),
+                        responseCode
+                );
+            } else {
+                payment = paymentService.markFailed(
+                        paymentId,
+                        fields.get("vnp_TransactionNo"),
+                        fields.get("vnp_BankCode"),
+                        fields.get("vnp_CardType"),
+                        responseCode
+                );
+            }
+        }
+
+        if (payment.getPaymentStatus() == PaymentStatus.paid) {
+            return redirectTo(successUrl(paymentId));
+        }
+        return redirectTo(failureUrl(payment.getBookingId(), "payment_failed"));
+    }
+
+    // ── PAYPAL ────────────────────────────────────────────────────────────────
+
+    /**
+     * Tạo PayPal Order cho payment {id} — gọi khi khách chọn phương thức PayPal.
+     * Trả về orderId + approvalUrl để frontend redirect (window.location.href = approvalUrl).
+     */
+    @PreAuthorize("hasRole('CUSTOMER')")
+    @PostMapping("/{id}/paypal-order")
+    public ResponseEntity<Map<String, String>> createPaypalOrder(@PathVariable Integer id) {
+        return ResponseEntity.ok(paymentService.createPaypalOrder(id));
     }
 
     /**
-     * Endpoint IPN (Instant Payment Notification) — VNPAY SERVER gọi trực tiếp tới đây
+     * PayPal redirect trình duyệt (KHÔNG kèm JWT) về đây sau khi khách approve thanh toán,
+     * kèm query "token" = PayPal order id (và "PayerID"). Capture ngay tại đây rồi
+     * redirect tiếp về trang thanh toán frontend — cùng pattern với vnpay-return.
      */
+    @GetMapping("/paypal-return")
+    public ResponseEntity<Void> paypalReturn(@RequestParam("token") String orderId) {
+        PaymentResponseDTO payment;
+        try {
+            payment = paymentService.processPaypalPayment(orderId);
+        } catch (Exception e) {
+            return redirectTo(failureUrl(null, "paypal_capture_failed"));
+        }
+
+        if (payment.getPaymentStatus() == PaymentStatus.paid) {
+            return redirectTo(successUrl(payment.getPaymentId()));
+        }
+        return redirectTo(failureUrl(payment.getBookingId(), "paypal_not_completed"));
+    }
+
+    /**
+     * Khách bấm "Cancel"/quay lại từ trang PayPal — đánh dấu payment failed và
+     * redirect về trang thanh toán để khách có thể thử lại.
+     */
+    @GetMapping("/paypal-cancel")
+    public ResponseEntity<Void> paypalCancel(@RequestParam(value = "token", required = false) String orderId) {
+        Integer bookingId = null;
+        if (orderId != null) {
+            try {
+                bookingId = paymentService.markPaypalFailed(orderId).getBookingId();
+            } catch (Exception ignored) {
+                // orderId không hợp lệ/không tìm thấy — vẫn redirect về trang thanh toán bình thường.
+            }
+        }
+        return redirectTo(failureUrl(bookingId, "paypal_cancelled"));
+    }
+
+    private String successUrl(Integer paymentId) {
+        return UriComponentsBuilder.fromUriString(frontendBaseUrl + "/customer/payment/success")
+                .queryParam("paymentId", paymentId)
+                .toUriString();
+    }
+
+    private String failureUrl(Integer bookingId, String reason) {
+        UriComponentsBuilder builder = UriComponentsBuilder
+                .fromUriString(frontendBaseUrl + "/customer/payment")
+                .queryParam("paymentFailed", "1")
+                .queryParam("reason", reason);
+        if (bookingId != null) {
+            builder.queryParam("bookingId", bookingId);
+        }
+        return builder.toUriString();
+    }
+
+    private ResponseEntity<Void> redirectTo(String url) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setLocation(URI.create(url));
+        return new ResponseEntity<>(headers, HttpStatus.FOUND);
+    }
+
     @GetMapping("/vnpay-ipn")
     public ResponseEntity<Map<String, String>> vnpayIpn(HttpServletRequest request) {
         Map<String, String> result = new HashMap<>();
@@ -241,40 +300,6 @@ public class PaymentController {
             result.put("RspCode", "99");
             result.put("Message", "Unknown error");
             return ResponseEntity.ok(result);
-        }
-    }
-
-    // ── PRIVATE HELPERS FOR OWNERSHIP CHECKS ──────────────────────────────────
-
-    private void verifyBookingOwnership(Integer bookingId, CustomUserDetails userDetails) {
-        boolean isStaffOrAdmin = userDetails.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN") || a.getAuthority().equals("ROLE_STAFF"));
-        if (isStaffOrAdmin) {
-            return;
-        }
-        com.autowash.backend.booking.entity.Booking booking = bookingRepository.findById(bookingId)
-                .orElseThrow(() -> new com.autowash.backend.common.exception.ResourceNotFoundException("Booking", "id", bookingId));
-        com.autowash.backend.customer.entity.Customer customer = customerRepository.findByUser_Id(userDetails.getId())
-                .orElseThrow(() -> new com.autowash.backend.common.exception.BusinessException("Không tìm thấy khách hàng", HttpStatus.FORBIDDEN));
-        if (!booking.getCustomer().getCustomerId().equals(customer.getCustomerId())) {
-            throw new com.autowash.backend.common.exception.BusinessException(
-                    "Bạn không có quyền truy cập thông tin thanh toán của lịch đặt này", HttpStatus.FORBIDDEN);
-        }
-    }
-
-    private void verifyPaymentOwnership(Integer paymentId, CustomUserDetails userDetails) {
-        boolean isStaffOrAdmin = userDetails.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN") || a.getAuthority().equals("ROLE_STAFF"));
-        if (isStaffOrAdmin) {
-            return;
-        }
-        com.autowash.backend.payment.entity.Payment payment = paymentRepository.findById(paymentId)
-                .orElseThrow(() -> new com.autowash.backend.common.exception.ResourceNotFoundException("Payment", "id", paymentId));
-        com.autowash.backend.customer.entity.Customer customer = customerRepository.findByUser_Id(userDetails.getId())
-                .orElseThrow(() -> new com.autowash.backend.common.exception.BusinessException("Không tìm thấy khách hàng", HttpStatus.FORBIDDEN));
-        if (!payment.getBooking().getCustomer().getCustomerId().equals(customer.getCustomerId())) {
-            throw new com.autowash.backend.common.exception.BusinessException(
-                    "Bạn không có quyền truy cập thông tin thanh toán này", HttpStatus.FORBIDDEN);
         }
     }
 }

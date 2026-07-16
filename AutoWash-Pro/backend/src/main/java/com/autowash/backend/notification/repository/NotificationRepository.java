@@ -27,4 +27,6 @@ public interface NotificationRepository extends JpaRepository<Notification, Inte
      * Dùng cho badge số trên icon thông báo — client poll định kỳ.
      */
     long countByUserIdAndIsReadFalse(Integer userId);
+
+    void deleteByUserId(Integer userId);
 }

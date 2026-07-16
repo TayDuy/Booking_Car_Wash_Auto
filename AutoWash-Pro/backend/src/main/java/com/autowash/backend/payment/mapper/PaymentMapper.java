@@ -66,6 +66,30 @@ public class PaymentMapper {
      * @return DTO an toàn trả về client
      */
     public PaymentResponseDTO toResponse(Payment payment) {
+        BigDecimal voucherDisc = payment.getReward() != null && payment.getReward().getRewardValue() != null
+                ? payment.getReward().getRewardValue()
+                : BigDecimal.ZERO;
+        
+        BigDecimal totalDisc = payment.getDiscountAmount() != null
+                ? payment.getDiscountAmount()
+                : BigDecimal.ZERO;
+
+        java.math.RoundingMode rm = java.math.RoundingMode.HALF_UP;
+
+        // Tính toán online discount (5%) dựa trên originalAmount / 1.08
+        BigDecimal onlineDisc = BigDecimal.ZERO;
+        boolean isOnline = payment.getPaymentMethod() == Payment.PaymentMethod.bank_transfer
+                || payment.getPaymentMethod() == Payment.PaymentMethod.paypal;
+        if (isOnline && payment.getOriginalAmount() != null) {
+            BigDecimal subtotal = payment.getOriginalAmount().divide(BigDecimal.valueOf(1.08), 0, rm);
+            onlineDisc = subtotal.multiply(BigDecimal.valueOf(0.05)).setScale(0, rm);
+        }
+
+        // Tính toán tier discount dựa trên hạng thành viên
+        BigDecimal tierDisc = calculateTierDiscount(payment, rm);
+
+        BigDecimal promoDisc = totalDisc.subtract(voucherDisc).subtract(onlineDisc).subtract(tierDisc).max(BigDecimal.ZERO);
+
         return PaymentResponseDTO.builder()
                 .paymentId(payment.getPaymentId())
                 // Flatten Booking — chỉ lấy id và bookingCode để tra cứu
@@ -83,15 +107,52 @@ public class PaymentMapper {
                         ? payment.getReward().getRewardName() : null)
                 // Các field tiền
                 .originalAmount(payment.getOriginalAmount())
-                .discountAmount(payment.getDiscountAmount())
+                .discountAmount(totalDisc)
+                .promoDiscount(promoDisc)
+                .voucherDiscount(voucherDisc)
+                .onlineDiscount(onlineDisc)
+                .tierDiscount(tierDisc)
                 .finalAmount(payment.getFinalAmount())
                 // Phương thức và trạng thái
                 .paymentMethod(payment.getPaymentMethod())
                 .paymentStatus(payment.getPaymentStatus())
                 .paidAt(payment.getPaidAt())
+                .vnpayTransactionNo(payment.getVnpayTransactionNo())
+                .vnpayBankCode(payment.getVnpayBankCode())
+                .vnpayCardType(payment.getVnpayCardType())
+                .vnpayResponseCode(payment.getVnpayResponseCode())
+                .paypalOrderId(payment.getPaypalOrderId())
+                .paypalCaptureId(payment.getPaypalCaptureId())
+                .paypalPayerEmail(payment.getPaypalPayerEmail())
                 // Audit
                 .createdAt(payment.getCreatedAt())
                 .updatedAt(payment.getUpdatedAt())
                 .build();
+    }
+
+    private BigDecimal calculateTierDiscount(Payment payment, java.math.RoundingMode rm) {
+        try {
+            Integer tierId = payment.getBooking().getCustomer().getTierId();
+            if (tierId == null) return BigDecimal.ZERO;
+
+            // Bỏ qua tier discount nếu promotion đã target đúng hạng này
+            if (payment.getPromotion() != null
+                    && payment.getPromotion().getTargetTier() != null
+                    && payment.getPromotion().getTargetTier().getTierId().equals(tierId)) {
+                return BigDecimal.ZERO;
+            }
+
+            BigDecimal tierPercent;
+            if (tierId == 2) tierPercent = BigDecimal.valueOf(5);
+            else if (tierId == 3) tierPercent = BigDecimal.valueOf(10);
+            else if (tierId == 4) tierPercent = BigDecimal.valueOf(15);
+            else return BigDecimal.ZERO;
+
+            if (payment.getOriginalAmount() == null) return BigDecimal.ZERO;
+            BigDecimal subtotal = payment.getOriginalAmount().divide(BigDecimal.valueOf(1.08), 0, rm);
+            return subtotal.multiply(tierPercent).divide(BigDecimal.valueOf(100), 0, rm);
+        } catch (Exception e) {
+            return BigDecimal.ZERO;
+        }
     }
 }

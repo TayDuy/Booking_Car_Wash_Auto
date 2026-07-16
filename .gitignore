@@ -2,3 +2,5 @@ AutoWash-Pro/backend/target/
 **/target/
 .vscode/
 .idea/
+AutoWash-Pro/backend/.env
+.scannerwork/
