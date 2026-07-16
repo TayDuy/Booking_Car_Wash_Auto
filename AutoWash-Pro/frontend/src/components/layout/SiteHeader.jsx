@@ -415,6 +415,7 @@ export default function SiteHeader() {
                     } catch (err) {
                       console.error("Logout error:", err);
                     }
+                    auth.logout();
                     navigate("/auth/login");
                   }}
                 >

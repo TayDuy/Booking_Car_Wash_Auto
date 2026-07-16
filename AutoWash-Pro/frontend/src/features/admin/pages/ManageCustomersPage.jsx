@@ -1,13 +1,59 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Search, Eye, Pencil, Trash2 } from "lucide-react";
+import {
+  Search,
+  Eye,
+  Pencil,
+  Trash2,
+  RefreshCw,
+} from "lucide-react";
 import customerApi from "../../../api/customerApi";
 import "./ManageCustomersPage.css";
+
+function getPaginationItems(currentPage, totalPages) {
+  if (totalPages <= 7) {
+    return Array.from(
+      { length: totalPages },
+      (_, index) => index + 1
+    );
+  }
+
+  const items = [1];
+
+  const startPage = Math.max(2, currentPage - 1);
+  const endPage = Math.min(
+    totalPages - 1,
+    currentPage + 1
+  );
+
+  if (startPage > 2) {
+    items.push("ellipsis-start");
+  }
+
+  for (
+    let page = startPage;
+    page <= endPage;
+    page += 1
+  ) {
+    items.push(page);
+  }
+
+  if (endPage < totalPages - 1) {
+    items.push("ellipsis-end");
+  }
+
+  items.push(totalPages);
+
+  return items;
+}
 
 export default function ManageCustomersPage() {
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const [keyword, setKeyword] = useState("");
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   const [showForm, setShowForm] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
@@ -24,25 +70,42 @@ export default function ManageCustomersPage() {
   }, []);
 
   async function loadCustomers() {
+    setLoading(true);
+
     try {
       const response = await customerApi.list();
 
+      console.log("CUSTOMER API:", response.data);
 
+      const result =
+        response.data?.data ||
+        response.data ||
+        [];
 
-      const result = response.data?.data || response.data || [];
-
-      if (Array.isArray(result))
+      if (Array.isArray(result)) {
         setCustomers(result);
-      else if (Array.isArray(result.content))
+      } else if (Array.isArray(result.content)) {
         setCustomers(result.content);
-      else
+      } else {
         setCustomers([]);
-    } catch (e) {
-      console.error(e);
+      }
+    } catch (error) {
+      console.error("Load customers failed:", error);
+
       setCustomers([]);
+
+      alert(
+        error.response?.data?.message ||
+        "Không tải được danh sách khách hàng."
+      );
     } finally {
       setLoading(false);
     }
+  }
+
+  async function handleRefreshCustomers() {
+    setCurrentPage(1);
+    await loadCustomers();
   }
   const filteredCustomers = useMemo(() => {
     return customers.filter((customer) => {
@@ -58,6 +121,54 @@ export default function ManageCustomersPage() {
       return text.includes(keyword.toLowerCase());
     });
   }, [customers, keyword]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [keyword, pageSize]);
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredCustomers.length / pageSize)
+  );
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
+  const paginatedCustomers = useMemo(() => {
+    const startIndex =
+      (currentPage - 1) * pageSize;
+
+    return filteredCustomers.slice(
+      startIndex,
+      startIndex + pageSize
+    );
+  }, [
+    filteredCustomers,
+    currentPage,
+    pageSize,
+  ]);
+
+  const paginationItems = useMemo(
+    () =>
+      getPaginationItems(
+        currentPage,
+        totalPages
+      ),
+    [currentPage, totalPages]
+  );
+
+  const firstVisibleItem =
+    filteredCustomers.length === 0
+      ? 0
+      : (currentPage - 1) * pageSize + 1;
+
+  const lastVisibleItem = Math.min(
+    currentPage * pageSize,
+    filteredCustomers.length
+  );
 
   function handleViewCustomer(customer) {
     setSelectedCustomer(customer);
@@ -133,8 +244,18 @@ export default function ManageCustomersPage() {
           <p>Theo dõi thông tin khách hàng trong hệ thống.</p>
         </div>
 
-        <button className="refresh-btn" onClick={loadCustomers}>
-          Làm mới
+        <button
+          type="button"
+          className="refresh-btn"
+          onClick={handleRefreshCustomers}
+          disabled={loading}
+        >
+          <RefreshCw
+            size={18}
+            className={loading ? "customer-refresh-spinning" : ""}
+          />
+
+          {loading ? "Đang tải..." : "Làm mới"}
         </button>
       </div>
 
@@ -156,61 +277,150 @@ export default function ManageCustomersPage() {
         ) : filteredCustomers.length === 0 ? (
           <div className="empty-state">Không có khách hàng phù hợp.</div>
         ) : (
-          <div className="booking-table-wrap">
-            <table className="booking-table">
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>ID</th>
-                  <th>Họ tên</th>
-                  <th>Email</th>
-                  <th>Số điện thoại</th>
-                  <th>Điểm</th>
-                  <th>Thao tác</th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {filteredCustomers.map((customer, index) => (
-                  <tr key={customer.customerId || customer.id || index}>
-                    <td>{index + 1}</td>
-                    <td>{customer.customerId || "N/A"}</td>
-                    <td>{customer.fullName || customer.name || "N/A"}</td>
-                    <td>{customer.email || customer.user?.email || "N/A"}</td>
-                    <td>{customer.phone || customer.user?.phone || "N/A"}</td>
-                    <td>{customer.totalPoints ?? customer.loyaltyPoints ?? customer.points ?? 0}</td>
-                    <td>
-                      <div className="action-group">
-                        <button
-                          className="action-btn view"
-                          title="Xem chi tiết"
-                          onClick={() => handleViewCustomer(customer)}
-                        >
-                          <Eye size={16} />
-                        </button>
-
-                        <button
-                          className="action-btn edit"
-                          title="Sửa khách hàng"
-                          onClick={() => openEditForm(customer)}
-                        >
-                          <Pencil size={16} />
-                        </button>
-
-                        <button
-                          className="action-btn cancel"
-                          title="Xóa/khóa khách hàng"
-                          onClick={() => handleDeleteCustomer(customer)}
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    </td>
+          <>
+            <div className="booking-table-wrap">
+              <table className="booking-table">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>ID</th>
+                    <th>Họ tên</th>
+                    <th>Email</th>
+                    <th>Số điện thoại</th>
+                    <th>Điểm</th>
+                    <th>Thao tác</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+
+                <tbody>
+                  {paginatedCustomers.map((customer, index) => (
+                    <tr key={customer.customerId || customer.id || index}>
+                      <td>
+                        {(currentPage - 1) * pageSize +
+                          index +
+                          1}
+                      </td>
+                      <td>{customer.customerId || "N/A"}</td>
+                      <td>{customer.fullName || customer.name || "N/A"}</td>
+                      <td>{customer.email || customer.user?.email || "N/A"}</td>
+                      <td>{customer.phone || customer.user?.phone || "N/A"}</td>
+                      <td>{customer.totalPoints ?? customer.loyaltyPoints ?? customer.points ?? 0}</td>
+                      <td>
+                        <div className="action-group">
+                          <button
+                            className="action-btn view"
+                            title="Xem chi tiết"
+                            onClick={() => handleViewCustomer(customer)}
+                          >
+                            <Eye size={16} />
+                          </button>
+
+                          <button
+                            className="action-btn edit"
+                            title="Sửa khách hàng"
+                            onClick={() => openEditForm(customer)}
+                          >
+                            <Pencil size={16} />
+                          </button>
+
+                          <button
+                            className="action-btn cancel"
+                            title="Xóa/khóa khách hàng"
+                            onClick={() => handleDeleteCustomer(customer)}
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="customer-pagination">
+              <div className="customer-pagination-summary">
+                Hiển thị{" "}
+                <strong>
+                  {firstVisibleItem}–{lastVisibleItem}
+                </strong>{" "}
+                trong tổng số{" "}
+                <strong>
+                  {filteredCustomers.length}
+                </strong>{" "}
+                khách hàng
+              </div>
+
+              <div className="customer-pagination-controls">
+                <button
+                  type="button"
+                  disabled={currentPage === 1}
+                  onClick={() =>
+                    setCurrentPage((previousPage) =>
+                      Math.max(previousPage - 1, 1)
+                    )
+                  }
+                >
+                  Trước
+                </button>
+
+                {paginationItems.map((item) =>
+                  typeof item === "number" ? (
+                    <button
+                      type="button"
+                      key={item}
+                      className={
+                        item === currentPage
+                          ? "active"
+                          : ""
+                      }
+                      onClick={() => setCurrentPage(item)}
+                    >
+                      {item}
+                    </button>
+                  ) : (
+                    <span
+                      className="customer-pagination-ellipsis"
+                      key={item}
+                    >
+                      …
+                    </span>
+                  )
+                )}
+
+                <button
+                  type="button"
+                  disabled={currentPage === totalPages}
+                  onClick={() =>
+                    setCurrentPage((previousPage) =>
+                      Math.min(
+                        previousPage + 1,
+                        totalPages
+                      )
+                    )
+                  }
+                >
+                  Sau
+                </button>
+              </div>
+
+              <label className="customer-page-size-control">
+                <span>Mỗi trang</span>
+
+                <select
+                  value={pageSize}
+                  onChange={(event) =>
+                    setPageSize(
+                      Number(event.target.value)
+                    )
+                  }
+                >
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                  <option value={50}>50</option>
+                </select>
+              </label>
+            </div>
+          </>
         )}
       </div>
 

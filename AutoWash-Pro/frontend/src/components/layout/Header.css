@@ -1,79 +1,115 @@
 .admin-header {
   position: sticky;
   top: 0;
-  z-index: 20;
+  z-index: 1000;
 
-  height: 72px;
-
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-
+  width: 100%;
+  min-height: 78px;
   padding: 0 28px;
 
-  background: rgba(255, 255, 255, 0.92);
-  backdrop-filter: blur(18px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
 
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid #e5eaf1;
+  background: #ffffff;
 }
 
 .header-left,
 .header-right {
   display: flex;
   align-items: center;
+}
+
+.header-left {
+  min-width: 0;
+  flex: 1;
   gap: 16px;
 }
 
+.header-right {
+  flex: 0 0 auto;
+  gap: 10px;
+}
+
+/* Nút icon chung */
+
 .icon-btn {
-  width: 40px;
-  height: 40px;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
 
-  display: flex;
-  justify-content: center;
+  display: inline-flex;
   align-items: center;
+  justify-content: center;
 
-  border: none;
-  border-radius: 12px;
+  padding: 0;
+  border: 0;
+  border-radius: 11px;
 
-  background: white;
-  color: #334155;
+  background: transparent;
+  color: #344054;
 
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition:
+    background 0.2s ease,
+    color 0.2s ease;
 }
 
 .icon-btn:hover {
-  background: #eaf2ff;
-  color: #0052cc;
+  background: #f2f4f7;
+  color: #175cd3;
 }
 
+/* Ô tìm kiếm */
+
 .search-box {
-  width: 420px;
-  height: 44px;
+  width: min(460px, 100%);
+  height: 46px;
+  min-width: 220px;
+
+  padding: 0 15px;
 
   display: flex;
   align-items: center;
   gap: 10px;
 
-  padding: 0 14px;
-
-  border: 1px solid #d7dce4;
+  border: 1px solid #d7dee9;
   border-radius: 12px;
+  background: #ffffff;
+  color: #667085;
 
-  background: white;
-  color: #64748b;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.search-box:focus-within {
+  border-color: #2e6fea;
+  box-shadow: 0 0 0 4px rgba(46, 111, 234, 0.12);
 }
 
 .search-box input {
-  flex: 1;
-  height: 100%;
+  width: 100%;
+  min-width: 0;
 
-  border: none;
-  outline: none;
+  padding: 0;
+  border: 0;
+  outline: 0;
+
   background: transparent;
+  color: #101828;
 
+  font: inherit;
   font-size: 14px;
 }
+
+.search-box input::placeholder {
+  color: #98a2b3;
+}
+
+/* Thông báo */
 
 .notification-btn {
   position: relative;
@@ -81,62 +117,332 @@
 
 .notification-dot {
   position: absolute;
-  top: -4px;
-  right: -4px;
+  top: 1px;
+  right: 1px;
 
-  min-width: 18px;
-  height: 18px;
+  min-width: 19px;
+  height: 19px;
+  padding: 0 5px;
 
-  display: flex;
-  justify-content: center;
+  display: inline-flex;
   align-items: center;
+  justify-content: center;
 
+  border: 2px solid #ffffff;
   border-radius: 999px;
-  background: #ef4444;
-  color: white;
+  background: #d92d20;
+  color: #ffffff;
 
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 800;
+  line-height: 1;
+}
+
+/* Nút đổi giao diện */
+
+.theme-toggle-btn.active {
+  background: #fff3d6;
+  color: #b54708;
+}
+
+/* Khối tài khoản Admin */
+
+.admin-profile-wrapper {
+  position: relative;
+  margin-left: 4px;
 }
 
 .admin-profile {
-  height: 48px;
+  min-width: 170px;
+  min-height: 56px;
+  padding: 7px 12px;
+
+  display: flex;
+  align-items: center;
+  gap: 11px;
+
+  border: 1px solid #dfe5ee;
+  border-radius: 16px;
+  background: #ffffff;
+  color: #172033;
+
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.admin-profile:hover,
+.admin-profile.open {
+  border-color: #a8bfdf;
+  background: #f8fbff;
+  box-shadow: 0 5px 16px rgba(34, 75, 130, 0.1);
+}
+
+.admin-avatar {
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 50%;
+  background: #2672d9;
+  color: #ffffff;
+
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.admin-avatar.large {
+  width: 46px;
+  height: 46px;
+  flex-basis: 46px;
+}
+
+.admin-profile-info {
+  min-width: 0;
+  flex: 1;
+}
+
+.admin-profile-info strong {
+  display: block;
+  overflow: hidden;
+
+  color: inherit;
+  font-size: 14px;
+  line-height: 1.3;
+
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-profile-info p {
+  margin: 2px 0 0;
+
+  color: #667085;
+  font-size: 12px;
+  line-height: 1.3;
+
+  text-transform: uppercase;
+}
+
+.profile-chevron {
+  flex: 0 0 auto;
+  color: #475467;
+  transition: transform 0.2s ease;
+}
+
+.profile-chevron.rotated {
+  transform: rotate(180deg);
+}
+
+/* Menu tài khoản xổ xuống */
+
+.admin-profile-dropdown {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: 1500;
+
+  width: 255px;
+  padding: 9px;
+
+  border: 1px solid #e1e7ef;
+  border-radius: 15px;
+  background: #ffffff;
+
+  box-shadow: 0 18px 45px rgba(15, 23, 42, 0.18);
+}
+
+.profile-dropdown-header {
+  padding: 10px;
+
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.profile-dropdown-header > div:last-child {
+  min-width: 0;
+}
+
+.profile-dropdown-header strong {
+  display: block;
+  overflow: hidden;
+
+  color: #101828;
+  font-size: 14px;
+
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profile-dropdown-header p {
+  margin: 3px 0 0;
+
+  color: #667085;
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.profile-dropdown-divider {
+  height: 1px;
+  margin: 6px 0;
+  background: #edf0f5;
+}
+
+.admin-profile-dropdown > button {
+  width: 100%;
+  min-height: 42px;
+  padding: 0 11px;
 
   display: flex;
   align-items: center;
   gap: 10px;
 
-  padding: 6px 10px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: #344054;
 
-  border-radius: 14px;
-  background: white;
-
-  border: 1px solid #e5e7eb;
-}
-
-.admin-avatar {
-  width: 36px;
-  height: 36px;
-
-  display: flex;
-  justify-content: center;
-  align-items: center;
-
-  border-radius: 50%;
-
-  background: linear-gradient(135deg, #0052cc, #4da3ff);
-  color: white;
-
-  font-weight: 800;
-}
-
-.admin-profile strong {
-  display: block;
+  font: inherit;
   font-size: 14px;
+  font-weight: 650;
+  text-align: left;
+
+  cursor: pointer;
 }
 
-.admin-profile p {
-  margin: 2px 0 0;
-  color: #64748b;
-  font-size: 12px;
+.admin-profile-dropdown > button:hover {
+  background: #f2f6fb;
+}
+
+.admin-profile-dropdown .logout-menu-item {
+  color: #d92d20;
+}
+
+.admin-profile-dropdown .logout-menu-item:hover {
+  background: #fff1f0;
+}
+
+/* Dark mode riêng cho Header */
+
+html[data-theme="dark"] .admin-header {
+  border-color: #29364a;
+  background: #111c2e;
+}
+
+html[data-theme="dark"] .icon-btn {
+  color: #cbd5e1;
+}
+
+html[data-theme="dark"] .icon-btn:hover {
+  background: #263449;
+  color: #ffffff;
+}
+
+html[data-theme="dark"] .search-box,
+html[data-theme="dark"] .admin-profile,
+html[data-theme="dark"] .admin-profile-dropdown {
+  border-color: #334155;
+  background: #172033;
+  color: #f1f5f9;
+}
+
+html[data-theme="dark"] .search-box input {
+  color: #f8fafc;
+}
+
+html[data-theme="dark"] .search-box input::placeholder {
+  color: #94a3b8;
+}
+
+html[data-theme="dark"] .admin-profile:hover,
+html[data-theme="dark"] .admin-profile.open {
+  background: #202d40;
+}
+
+html[data-theme="dark"] .admin-profile-info p,
+html[data-theme="dark"] .profile-dropdown-header p {
+  color: #94a3b8;
+}
+
+html[data-theme="dark"] .profile-dropdown-header strong {
+  color: #f8fafc;
+}
+
+html[data-theme="dark"] .profile-dropdown-divider {
+  background: #334155;
+}
+
+html[data-theme="dark"] .admin-profile-dropdown > button {
+  color: #e2e8f0;
+}
+
+html[data-theme="dark"] .admin-profile-dropdown > button:hover {
+  background: #263449;
+}
+
+html[data-theme="dark"]
+  .admin-profile-dropdown
+  .logout-menu-item {
+  color: #f97066;
+}
+
+html[data-theme="dark"] .notification-dot {
+  border-color: #111c2e;
+}
+
+/* Responsive */
+
+@media (max-width: 900px) {
+  .admin-header {
+    padding: 0 18px;
+  }
+
+  .search-box {
+    width: 300px;
+  }
+
+  .admin-profile {
+    min-width: auto;
+  }
+
+  .admin-profile-info {
+    display: none;
+  }
+}
+
+@media (max-width: 620px) {
+  .admin-header {
+    gap: 10px;
+  }
+
+  .header-left {
+    gap: 8px;
+  }
+
+  .search-box {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .header-right {
+    gap: 4px;
+  }
+
+  .admin-profile {
+    padding: 6px;
+  }
+
+  .admin-profile .profile-chevron {
+    display: none;
+  }
 }

@@ -1,29 +1,53 @@
+/* ÁP DỤNG BOX-SIZING ĐỂ TRIỆT TIÊU TÍNH THỪA KÍCH THƯỚC */
+.register-page,
+.register-page * {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
 .register-page {
+  width: 100vw;
+  /* THAY ĐỔI 1: Thay height thành min-height để màn hình tự động giãn ra nếu nội dung dài hơn */
   min-height: 100vh;
-  padding: 32px;
+  padding: 20px 16px;
   background:
     radial-gradient(circle at top right, rgba(0, 193, 253, 0.14), transparent 30%),
     linear-gradient(135deg, #f7f9ff 0%, #edf5ff 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* THAY ĐỔI 2: Cho phép cuộn trang tự nhiên khi màn hình của thiết bị quá thấp/quá nhỏ */
+  overflow-y: auto;
 }
 
 .register-container {
-  min-height: calc(100vh - 64px);
+  width: 100%;
+  max-width: 1100px;
+  /* THAY ĐỔI 3: Bỏ height cố định, chuyển thành min-height và height: auto để khung thích ứng linh hoạt */
+  min-height: 640px;
+  height: auto;
   display: grid;
-  grid-template-columns: 0.95fr 1.05fr;
-  overflow: hidden;
-  border-radius: 32px;
+  grid-template-columns: 1.1fr 1fr;
+  border-radius: 20px;
   background: #ffffff;
-  box-shadow: 0 24px 80px rgba(0, 74, 173, 0.12);
+  box-shadow: 0 20px 60px rgba(0, 74, 173, 0.1);
+  overflow: hidden;
 }
 
-/* LEFT HERO */
+/* LEFT HERO (BÊN XANH) */
 .register-left {
   position: relative;
-  padding: 48px;
+  padding: 32px;
   color: #ffffff;
   background:
     linear-gradient(135deg, rgba(0, 59, 143, 0.94), rgba(0, 193, 253, 0.78)),
     url("../../../assets/hero.png") center/cover no-repeat;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  /* THAY ĐỔI 4: Đảm bảo cột bên trái luôn cao bằng cột bên phải */
+  min-height: 100%;
 }
 
 .register-left::after {
@@ -42,88 +66,89 @@
 .register-brand {
   display: flex;
   align-items: center;
-  gap: 12px;
-  font-size: 22px;
+  gap: 8px;
+  font-size: 18px;
   font-weight: 800;
 }
 
 .register-logo {
-  width: 44px;
-  height: 44px;
+  width: 32px;
+  height: 32px;
   display: grid;
   place-items: center;
-  border-radius: 14px;
+  border-radius: 10px;
   background: #ffffff;
   color: #004aad;
-  font-size: 24px;
-  font-weight: 800;
 }
 
 .register-hero-content {
-  max-width: 560px;
-  margin-top: 120px;
+  max-width: 440px;
+  margin-top: 24px;
 }
 
 .register-badge {
   display: inline-flex;
   align-items: center;
-  min-height: 34px;
-  padding: 0 14px;
+  min-height: 24px;
+  padding: 0 10px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.18);
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 700;
 }
 
 .register-hero-content h1 {
-  margin: 22px 0 18px;
-  font-size: 50px;
-  line-height: 1.08;
+  margin: 12px 0 8px;
+  font-size: 30px;
+  line-height: 1.25;
   font-weight: 800;
-  letter-spacing: -1.2px;
+  letter-spacing: -0.5px;
 }
 
 .register-hero-content p {
-  max-width: 500px;
   margin: 0;
-  font-size: 17px;
-  line-height: 1.7;
-  color: rgba(255, 255, 255, 0.9);
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.85);
 }
 
 .register-stats {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 18px;
-  margin-top: 44px;
+  gap: 10px;
+  margin-top: 24px;
 }
 
 .register-stats div {
-  padding: 18px;
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.14);
-  backdrop-filter: blur(12px);
+  padding: 10px 8px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(10px);
+  text-align: center;
 }
 
 .register-stats strong {
   display: block;
-  font-size: 22px;
+  font-size: 16px;
   font-weight: 800;
 }
 
 .register-stats span {
   display: block;
-  margin-top: 4px;
-  font-size: 13px;
-  color: rgba(255, 255, 255, 0.82);
+  margin-top: 2px;
+  font-size: 10.5px;
+  color: rgba(255, 255, 255, 0.8);
+  white-space: nowrap;
 }
 
-/* RIGHT FORM */
+/* RIGHT FORM (BÊN TRẮNG) */
 .register-right {
   display: flex;
-  align-items: center;
+  flex-direction: column;
   justify-content: center;
-  padding: 34px 42px;
+  align-items: center;
+  padding: 24px 32px;
+  /* Trả lại padding hợp lý để các phần tử không bị đè */
   background:
     radial-gradient(circle at top right, rgba(0, 193, 253, 0.12), transparent 32%),
     linear-gradient(135deg, #f7f9ff 0%, #edf5ff 100%);
@@ -131,140 +156,108 @@
 
 .register-form-wrapper {
   width: 100%;
-  max-width: 690px;
+  max-width: 420px;
 }
 
 .register-form-logo {
   display: flex;
   flex-direction: column;
   align-items: center;
-  margin-bottom: 22px;
+  margin-bottom: 12px;
   text-align: center;
 }
 
 .register-form-logo-box {
-  width: 54px;
-  height: 54px;
+  width: 32px;
+  height: 32px;
   display: grid;
   place-items: center;
-  margin-bottom: 12px;
-  border-radius: 14px;
+  margin-bottom: 4px;
+  border-radius: 8px;
   background: #004aad;
-  color: #ffffff;
-  font-size: 24px;
-  font-weight: 800;
-  box-shadow: 0 12px 24px rgba(0, 74, 173, 0.22);
+  box-shadow: 0 4px 10px rgba(0, 74, 173, 0.16);
 }
 
 .register-form-logo h1 {
-  margin: 0 0 6px;
+  margin: 0;
   color: #003b8f;
-  font-size: 27px;
+  font-size: 16px;
   font-weight: 800;
 }
 
 .register-form-logo p {
   margin: 0;
   color: #6b7280;
-  font-size: 14px;
+  font-size: 11px;
 }
 
 .register-card {
-  padding: 34px;
+  padding: 16px 20px;
   border: 1px solid #dbe4f0;
-  border-radius: 16px;
+  border-radius: 14px;
   background: #ffffff;
-  box-shadow: 0 18px 50px rgba(0, 74, 173, 0.08);
+  box-shadow: 0 10px 30px rgba(0, 74, 173, 0.05);
 }
 
 .register-card-header {
-  margin-bottom: 26px;
+  margin-bottom: 12px;
   text-align: center;
 }
 
 .register-card-header h2 {
-  margin: 0 0 10px;
+  margin: 0 0 2px;
   color: #003b8f;
-  font-size: 30px;
+  font-size: 19px;
   font-weight: 800;
 }
 
 .register-card-header p {
   margin: 0;
   color: #4b5563;
-  font-size: 15px;
+  font-size: 12px;
 }
 
 .register-form {
   display: flex;
   flex-direction: column;
-  gap: 15px;
+  gap: 8px;
 }
 
 .register-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 14px;
+  gap: 10px;
+}
+
+.form-group {
+  text-align: left;
 }
 
 .form-label {
   display: block;
-  margin-bottom: 8px;
+  margin-bottom: 2px;
   color: #111827;
-  font-size: 14px;
-  font-weight: 800;
+  font-size: 11.5px;
+  font-weight: 700;
 }
 
 .register-input {
   width: 100%;
-  height: 50px;
-  padding: 0 14px;
+  height: 36px;
+  padding: 0 10px;
   border: 1px solid #bfc8d9;
-  border-radius: 8px;
-  background: #ffffff;
+  border-radius: 6px;
+  background: #f8faff;
   color: #111827;
-  font-size: 15px;
+  font-size: 13px;
   outline: none;
   transition: 0.2s ease;
 }
 
 .register-input:focus {
   border-color: #004aad;
-  box-shadow: 0 0 0 3px rgba(0, 74, 173, 0.12);
-}
-
-.register-otp-row {
-  display: grid;
-  grid-template-columns: 1fr 116px;
-  gap: 8px;
-}
-
-.otp-send-button,
-.otp-verify-button {
-  min-height: 50px;
-  border-radius: 8px;
-  background: #00b7f1;
-  color: #003b8f;
-  font-size: 14px;
-  font-weight: 800;
-  white-space: nowrap;
-  transition: 0.2s ease;
-}
-
-.otp-send-button:hover,
-.otp-verify-button:hover {
-  background: #009ed6;
-}
-
-.otp-send-button:disabled,
-.otp-verify-button:disabled {
-  opacity: 0.75;
-  cursor: not-allowed;
-}
-
-.otp-verify-button.verified {
-  background: #16a34a;
-  color: #ffffff;
+  box-shadow: 0 0 0 2px rgba(0, 74, 173, 0.12);
+  background: #ffffff;
 }
 
 .register-password-wrap {
@@ -272,22 +265,22 @@
 }
 
 .password-padding {
-  padding-right: 48px;
+  padding-right: 32px;
 }
 
 .register-eye-btn {
   position: absolute;
   top: 50%;
-  right: 12px;
-  width: 34px;
-  height: 34px;
+  right: 8px;
+  width: 24px;
+  height: 24px;
   display: grid;
   place-items: center;
   transform: translateY(-50%);
   border-radius: 999px;
   background: transparent;
   color: #6b7280;
-  font-size: 15px;
+  font-size: 12px;
 }
 
 .register-eye-btn:hover {
@@ -297,16 +290,16 @@
 .register-policy {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
-  margin-top: 4px;
-  color: #374151;
-  font-size: 13px;
-  line-height: 1.5;
+  gap: 6px;
+  margin-top: 1px;
+  color: #4b5563;
+  font-size: 11px;
+  line-height: 1.35;
 }
 
 .register-policy input {
-  width: 18px;
-  height: 18px;
+  width: 13px;
+  height: 13px;
   margin-top: 1px;
   accent-color: #004aad;
 }
@@ -317,14 +310,14 @@
 
 .register-submit-button {
   width: 100%;
-  min-height: 54px;
+  min-height: 36px;
   margin-top: 2px;
-  border-radius: 8px;
+  border-radius: 6px;
   background: #004aad;
   color: #ffffff;
-  font-size: 18px;
-  font-weight: 800;
-  box-shadow: 0 12px 24px rgba(0, 74, 173, 0.22);
+  font-size: 13px;
+  font-weight: 700;
+  box-shadow: 0 4px 12px rgba(0, 74, 173, 0.16);
   transition: 0.2s ease;
 }
 
@@ -334,14 +327,14 @@
 }
 
 .register-submit-button:disabled {
-  opacity: 0.75;
+  opacity: 0.7;
   cursor: not-allowed;
   transform: none;
 }
 
 .register-divider {
   position: relative;
-  margin: 24px 0 20px;
+  margin: 8px 0;
   text-align: center;
 }
 
@@ -358,26 +351,27 @@
 .register-divider span {
   position: relative;
   z-index: 1;
-  padding: 0 16px;
+  padding: 0 8px;
   background: #ffffff;
-  color: #6b7280;
-  font-size: 13px;
+  color: #a0a8bd;
+  font-size: 10px;
   font-weight: 700;
 }
 
 .register-google-button {
   width: 100%;
-  min-height: 50px;
+  min-height: 34px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 12px;
+  gap: 8px;
   border: 1px solid #bfc8d9;
-  border-radius: 8px;
+  border-radius: 6px;
   background: #ffffff;
   color: #111827;
-  font-size: 15px;
-  font-weight: 800;
+  font-size: 13px;
+  font-weight: 700;
+  transition: 0.2s ease;
 }
 
 .register-google-button:hover {
@@ -386,28 +380,28 @@
 }
 
 .register-login-text {
-  margin: 28px 0 0;
+  margin: 8px 0 0;
   text-align: center;
-  color: #374151;
-  font-size: 15px;
+  color: #4b5563;
+  font-size: 12.5px;
 }
 
 .register-login-text a {
   color: #003b8f;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .register-footer-links {
   display: flex;
   justify-content: center;
-  gap: 26px;
-  margin-top: 22px;
+  gap: 16px;
+  margin-top: 12px;
 }
 
 .register-footer-links a {
   color: #6b7280;
-  font-size: 13px;
-  font-weight: 700;
+  font-size: 11px;
+  font-weight: 600;
 }
 
 .register-footer-links a:hover {
@@ -415,11 +409,10 @@
 }
 
 .register-message {
-  padding: 12px 14px;
-  border-radius: 8px;
-  font-size: 14px;
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 11.5px;
   font-weight: 700;
-  line-height: 1.5;
 }
 
 .register-message.error {
@@ -432,60 +425,53 @@
   color: #16a34a;
 }
 
+/* RESPONSIVE */
 @media (max-width: 1180px) {
   .register-container {
     grid-template-columns: 1fr;
+    height: auto;
   }
 
   .register-left {
-    min-height: 430px;
+    min-height: 280px;
+    padding: 24px;
   }
 
   .register-hero-content {
-    margin-top: 76px;
+    margin-top: 24px;
   }
 }
 
 @media (max-width: 760px) {
-  .register-page {
-    padding: 0;
-  }
-
   .register-container {
     min-height: 100vh;
     border-radius: 0;
   }
 
   .register-left {
-    padding: 28px;
+    padding: 20px;
+    min-height: 220px;
   }
 
   .register-hero-content h1 {
-    font-size: 34px;
+    font-size: 24px;
   }
 
   .register-stats {
     grid-template-columns: 1fr;
+    gap: 6px;
   }
 
   .register-right {
-    padding: 32px 20px;
+    padding: 16px 12px;
   }
 
   .register-card {
-    padding: 28px 22px;
+    padding: 16px 12px;
   }
 
   .register-grid {
     grid-template-columns: 1fr;
-  }
-
-  .register-otp-row {
-    grid-template-columns: 1fr;
-  }
-
-  .otp-send-button,
-  .otp-verify-button {
-    width: 100%;
+    gap: 8px;
   }
 }

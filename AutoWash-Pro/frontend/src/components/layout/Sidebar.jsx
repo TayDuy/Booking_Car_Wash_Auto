@@ -11,6 +11,10 @@ import {
   BarChart3,
   ScrollText,
   Bell,
+  ShoppingCart,
+  ReceiptText,
+  ShieldCheck,
+  Settings,
 } from "lucide-react";
 import "./Sidebar.css";
 
@@ -29,6 +33,8 @@ const menuGroups = [
       { label: "Xe của khách", path: "/admin/vehicles", icon: Car },
       { label: "Chi nhánh", path: "/admin/branches", icon: Building2 },
       { label: "Dịch vụ", path: "/admin/services", icon: Package },
+      { label: "Đơn hàng", path: "/admin/orders", icon: ShoppingCart },
+      { label: "Thanh toán", path: "/admin/payments", icon: ReceiptText },
     ],
   },
   {
@@ -40,6 +46,8 @@ const menuGroups = [
   {
     title: "Báo cáo & hệ thống",
     items: [
+      { label: "Phân quyền", path: "/admin/roles", icon: ShieldCheck },
+      { label: "Cấu hình", path: "/admin/settings", icon: Settings },
       { label: "Thông báo", path: "/admin/notifications", icon: Bell },
       { label: "Báo cáo", path: "/admin/reports", icon: BarChart3 },
       { label: "Nhật ký hệ thống", path: "/admin/audit-logs", icon: ScrollText },
