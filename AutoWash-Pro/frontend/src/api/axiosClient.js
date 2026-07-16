@@ -57,11 +57,20 @@ function redirectToLogin() {
 }
 
 function isAuthPublicRequest(url = "") {
-  return (
-    url.includes("/auth/") ||
-    url.includes("/notifications/stream") ||
-    url.includes("/service-packages/active")
-  );
+  const publicEndpoints = [
+    "/auth/login",
+    "/auth/register",
+    "/auth/send-otp",
+    "/auth/verify-otp",
+    "/auth/google",
+    "/auth/refresh",
+    "/auth/forgot-password/request",
+    "/auth/forgot-password/reset",
+    "/auth/sse-ticket",
+    "/notifications/stream",
+    "/service-packages/active",
+  ];
+  return publicEndpoints.some((endpoint) => url.includes(endpoint));
 }
 
 axiosClient.interceptors.response.use(

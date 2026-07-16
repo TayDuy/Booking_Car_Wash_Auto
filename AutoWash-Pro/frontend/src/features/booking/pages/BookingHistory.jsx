@@ -284,7 +284,7 @@ export default function BookingHistory() {
                                 {paymentLabel}
                               </div>
                             </div>
-                            <div className="bh-card-amount">{fmt.format(booking.totalAmount || 0)}</div>
+                            <div className="bh-card-amount">{fmt.format(booking.finalAmount || booking.totalAmount || 0)}</div>
                           </div>
                         </div>
 
@@ -464,7 +464,7 @@ export default function BookingHistory() {
                               </table>
                               <div className="bh-services-total">
                                 <span className="bh-services-total-label">Tổng cộng</span>
-                                <span className="bh-services-total-value">{fmt.format(detailModal.totalAmount || 0)}</span>
+                                <span className="bh-services-total-value">{fmt.format(detailModal.finalAmount || detailModal.totalAmount || 0)}</span>
                               </div>
                               <div style={{ marginTop: '12px', textAlign: 'right' }}>
                                 <button

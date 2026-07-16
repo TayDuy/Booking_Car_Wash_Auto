@@ -67,4 +67,9 @@ public class BookingResponseDTO {
 
     private String paymentStatus;
     private String paymentMethod;
+    private Integer paymentId;
+    private BigDecimal originalAmount;
+    private BigDecimal discountAmount;
+    private BigDecimal finalAmount;
+    private String vnpayBankCode;
 }

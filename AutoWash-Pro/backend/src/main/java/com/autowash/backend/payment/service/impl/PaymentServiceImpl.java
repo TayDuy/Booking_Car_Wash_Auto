@@ -557,8 +557,8 @@ public class PaymentServiceImpl implements PaymentService {
                                 payment.getFinalAmount().toPlainString(),
                                 bookingCode
                         ))
-                        .referenceId(payment.getPaymentId())
-                        .referenceType("payment")
+                        .referenceId(booking.getBookingId())
+                        .referenceType("booking")
                         .channel(Notification.NotificationChannel.in_app)
                         .build());
             }
@@ -599,8 +599,8 @@ public class PaymentServiceImpl implements PaymentService {
                                 "Thanh toán cho lịch #%s không thành công. %s",
                                 bookingCode, reason == null ? "" : reason
                         ))
-                        .referenceId(payment.getPaymentId())
-                        .referenceType("payment")
+                        .referenceId(booking.getBookingId())
+                        .referenceType("booking")
                         .channel(Notification.NotificationChannel.in_app)
                         .build());
             }
