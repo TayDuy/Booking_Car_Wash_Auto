@@ -6,7 +6,7 @@ import LandingPage from "../features/landing/pages/LandingPage";
 
 import AuthLayout from "../layouts/AuthLayout";
 import CustomerLayout from "../layouts/CustomerLayout";
-import AdminLayout from "../layouts/AdminLayout";
+import DashboardLayout from "../layouts/DashboardLayout";
 import EmployeeLayout from "../layouts/EmployeeLayout";
 
 import LoginPage from "../features/auth/pages/LoginPage";
@@ -43,6 +43,10 @@ import ReportsPage from "../features/admin/pages/ReportsPage";
 import AuditLogsPage from "../features/admin/pages/AuditLogsPage";
 import ManageBranchesPage from "../features/admin/pages/ManageBranchesPage";
 import ManageServicesPage from "../features/admin/pages/ManageServicesPage";
+import RoleManagementPage from "../features/admin/pages/RoleManagementPage";
+import SystemSettingsPage from "../features/admin/pages/SystemSettingsPage";
+import ManageOrdersPage from "../features/admin/pages/ManageOrdersPage";
+import PaymentHistoryPage from "../features/admin/pages/PaymentHistoryPage";
 
 import EmployeeDashboardPage from "../features/employee/pages/EmployeeDashboardPage";
 import EmployeeQueuePage from "../features/employee/pages/EmployeeQueuePage";
@@ -106,7 +110,7 @@ function AppRoutes() {
         path="/admin"
         element={
           <ProtectedRoute allowedRoles={["ADMIN"]}>
-            <AdminLayout />
+            <DashboardLayout />
           </ProtectedRoute>
         }
       >
@@ -125,6 +129,10 @@ function AppRoutes() {
         />
         <Route path="reports" element={<ReportsPage />} />
         <Route path="audit-logs" element={<AuditLogsPage />} />
+        <Route path="roles" element={<RoleManagementPage />} />
+        <Route path="settings" element={<SystemSettingsPage />} />
+        <Route path="orders" element={<ManageOrdersPage />} />
+        <Route path="payments" element={<PaymentHistoryPage />} />
       </Route>
 
       {/* Employee */}

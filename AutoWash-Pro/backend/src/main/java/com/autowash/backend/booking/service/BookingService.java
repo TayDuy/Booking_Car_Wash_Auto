@@ -6,6 +6,7 @@ import com.autowash.backend.booking.dto.BookingRescheduleRequestDTO;
 import com.autowash.backend.booking.dto.BookingResponseDTO;
 import com.autowash.backend.booking.dto.BookingSummaryResponseDTO;
 import com.autowash.backend.booking.dto.BookingUpdateRequestDTO;
+import com.autowash.backend.booking.dto.AssignableStaffResponseDTO;
 
 import java.util.List;
 
@@ -125,5 +126,9 @@ public interface BookingService {
 
     BookingResponseDTO checkInBooking(Integer bookingId);
 
+    BookingResponseDTO startWashBooking(Integer bookingId);
+
     BookingResponseDTO completeBooking(Integer bookingId);
+
+    List<AssignableStaffResponseDTO> getAssignableStaff(Integer bookingId);
 }

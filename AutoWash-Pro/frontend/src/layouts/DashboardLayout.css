@@ -3,8 +3,12 @@
 }
 
 .dashboard-shell {
+  --sidebar-width: 230px;
+  --sidebar-collapsed-width: 82px;
+
   min-height: 100vh;
   display: flex;
+
   background: #f6f8fb;
   color: #111827;
 }
@@ -12,9 +16,37 @@
 .dashboard-main {
   flex: 1;
   min-width: 0;
-  margin-left: 260px;
+  margin-left: var(--sidebar-width);
+
+  transition: margin-left 0.25s ease;
+}
+
+.dashboard-shell.sidebar-collapsed .dashboard-main {
+  margin-left: var(--sidebar-collapsed-width);
 }
 
 .dashboard-content {
+  min-width: 0;
   padding: 28px;
+}
+
+/* Dark mode */
+html[data-theme="dark"] .dashboard-shell {
+  background: #0f172a;
+  color: #e5e7eb;
+}
+
+/* Màn hình nhỏ */
+@media (max-width: 900px) {
+  .dashboard-main {
+    margin-left: 0;
+  }
+
+  .dashboard-shell.sidebar-collapsed .dashboard-main {
+    margin-left: 0;
+  }
+
+  .dashboard-content {
+    padding: 18px;
+  }
 }
