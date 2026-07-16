@@ -13,6 +13,9 @@ function PaymentPage() {
     const location = useLocation();
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
+    const isEmployeeFlow =
+        location.state?.source === "employee" ||
+        location.pathname.startsWith("/employee/");
     
     const bookingIdFromBookingPage = location.state?.bookingId;
     const bookingIdFromQuery = searchParams.get("bookingId");

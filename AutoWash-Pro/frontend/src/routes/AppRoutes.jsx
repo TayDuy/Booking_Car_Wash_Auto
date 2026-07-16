@@ -140,6 +140,8 @@ function AppRoutes() {
         <Route path="dashboard" element={<EmployeeDashboardPage />} />
         <Route path="queue" element={<EmployeeQueuePage />} />
         <Route path="bookings/new" element={<WalkInBookingPage />} />
+        <Route path="payment" element={<PaymentPage />} />
+        <Route path="payment/success" element={<PaymentSuccessPage />} />
       </Route>
 
       {/* Not found */}
