@@ -1,6 +1,7 @@
 import axios from "axios";
 
-const API_BASE_URL = "http://localhost:8080/api/v1";
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080/api/v1";
+export const BACKEND_ROOT_URL = API_BASE_URL.replace("/api/v1", "");
 
 const axiosClient = axios.create({
   baseURL: API_BASE_URL,
@@ -20,7 +21,9 @@ axiosClient.interceptors.request.use(
 
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => {
+    throw error;
+  }
 );
 
 let isRefreshing = false;
@@ -54,14 +57,20 @@ function redirectToLogin() {
 }
 
 function isAuthPublicRequest(url = "") {
-  return (
-    url.includes("/auth/login") ||
-    url.includes("/auth/register") ||
-    url.includes("/auth/send-otp") ||
-    url.includes("/auth/verify-otp") ||
-    url.includes("/auth/google") ||
-    url.includes("/auth/forgot-password")
-  );
+  const publicEndpoints = [
+    "/auth/login",
+    "/auth/register",
+    "/auth/send-otp",
+    "/auth/verify-otp",
+    "/auth/google",
+    "/auth/refresh",
+    "/auth/forgot-password/request",
+    "/auth/forgot-password/reset",
+    "/auth/sse-ticket",
+    "/notifications/stream",
+    "/service-packages/active",
+  ];
+  return publicEndpoints.some((endpoint) => url.includes(endpoint));
 }
 
 axiosClient.interceptors.response.use(
@@ -70,7 +79,7 @@ axiosClient.interceptors.response.use(
     const originalRequest = error.config;
 
     if (!originalRequest) {
-      return Promise.reject(error);
+      throw error;
     }
 
     const requestUrl = originalRequest.url || "";
@@ -78,12 +87,11 @@ axiosClient.interceptors.response.use(
     // Login/Register/Forgot password sai cũng có thể trả 401/400.
     // Không redirect ở đây, để page tự hiện lỗi.
     if (isAuthPublicRequest(requestUrl)) {
-      return Promise.reject(error);
+      throw error;
     }
 
     if (
-      error.response &&
-      error.response.status === 401 &&
+      error.response?.status === 401 &&
       !originalRequest._retry
     ) {
       if (isRefreshing) {
@@ -94,7 +102,7 @@ axiosClient.interceptors.response.use(
             originalRequest.headers.Authorization = `Bearer ${token}`;
             return axiosClient(originalRequest);
           })
-          .catch((queueError) => Promise.reject(queueError));
+          .catch((queueError) => { throw queueError; });
       }
 
       originalRequest._retry = true;
@@ -105,7 +113,7 @@ axiosClient.interceptors.response.use(
       if (!refreshToken) {
         clearAuthStorage();
         redirectToLogin();
-        return Promise.reject(error);
+        throw error;
       }
 
       try {
@@ -143,13 +151,13 @@ axiosClient.interceptors.response.use(
         clearAuthStorage();
         redirectToLogin();
 
-        return Promise.reject(refreshError);
+        throw refreshError;
       } finally {
         isRefreshing = false;
       }
     }
 
-    return Promise.reject(error);
+    throw error;
   }
 );
 

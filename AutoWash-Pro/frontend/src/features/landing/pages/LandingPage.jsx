@@ -1,7 +1,51 @@
-import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { getActiveServices } from "../../../api/servicePackageService";
+import PublicHeader from "../../../components/layout/PublicHeader";
+import PublicFooter from "../../../components/layout/PublicFooter";
+import heroImage from "../../../assets/hero.png";
 import "./LandingPage.css";
 
+function PricingSkeletonCard() {
+  return (
+    <article className="pricing-card skeleton">
+      <div className="skeleton-box skeleton-title" style={{ height: "24px", width: "60%", marginBottom: "16px" }} />
+      <div className="skeleton-box skeleton-price" style={{ height: "36px", width: "40%", marginBottom: "20px" }} />
+      <div className="skeleton-box skeleton-desc" style={{ height: "14px", width: "100%", marginBottom: "8px" }} />
+      <div className="skeleton-box skeleton-desc" style={{ height: "14px", width: "80%", marginBottom: "24px" }} />
+      <div className="skeleton-box skeleton-btn" style={{ height: "40px", width: "100%" }} />
+    </article>
+  );
+}
+
 function LandingPage() {
+  const navigate = useNavigate();
+  const [services, setServices] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      const role = (localStorage.getItem("role") || "").toUpperCase();
+      const home = { ADMIN: "/admin/dashboard", EMPLOYEE: "/employee/dashboard", MANAGER: "/manager/dashboard" }[role] || "/customer/home";
+      navigate(home, { replace: true });
+      return;
+    }
+  }, []);
+
+  useEffect(() => {
+    getActiveServices()
+      .then((res) => {
+        const list = res.data?.data || res.data || [];
+        setServices(Array.isArray(list) ? list : []);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  const formatPrice = (price) =>
+    (price ?? 0).toLocaleString("vi-VN") + " VND";
+
   return (
     <div className="landing-page">
       <header className="landing-header">
@@ -13,7 +57,7 @@ function LandingPage() {
 
           <nav className="landing-nav">
             <a href="#services">Dịch vụ</a>
-            <a href="#process">Quy trình</a>
+            <a href="#process">Đặt lịch</a>
             <a href="#pricing">Bảng giá</a>
             <a href="#contact">Liên hệ</a>
           </nav>
@@ -50,31 +94,30 @@ function LandingPage() {
                   Đặt lịch ngay
                 </Link>
 
-                <a href="#services" className="secondary-button">
+                <Link to="/services" className="secondary-button">
                   Khám phá dịch vụ
-                </a>
-              </div>
-
-              <div className="landing-stats">
-                <div>
-                  <strong>10K+</strong>
-                  <span>Lượt đặt lịch</span>
-                </div>
-                <div>
-                  <strong>4.9/5</strong>
-                  <span>Đánh giá dịch vụ</span>
-                </div>
-                <div>
-                  <strong>15+</strong>
-                  <span>Chi nhánh hỗ trợ</span>
-                </div>
+                </Link>
               </div>
             </div>
 
             <div className="landing-hero-visual">
-              <img src="/src/assets/hero.png" alt="Dịch vụ rửa xe tự động WashFlow Pro" />
+              <img src={heroImage} alt="Dịch vụ rửa xe tự động WashFlow Pro" />
+            </div>
 
-              <div className="hero-floating-card">
+            <div className="landing-stats">
+              <div>
+                <strong>10K+</strong>
+                <span>Lượt đặt lịch</span>
+              </div>
+              <div>
+                <strong>4.9/5</strong>
+                <span>Đánh giá dịch vụ</span>
+              </div>
+              <div>
+                <strong>15+</strong>
+                <span>Chi nhánh hỗ trợ</span>
+              </div>
+              <div>
                 <strong>100% không chạm</strong>
                 <span>An toàn cho mọi loại sơn</span>
               </div>
@@ -178,52 +221,37 @@ function LandingPage() {
               <article className="pricing-card">
                 <h3>Gói Cơ Bản</h3>
                 <strong>150.000 VND</strong>
-                <p className="package-desc" style={{ color: "#64748b", fontSize: "14px", marginBottom: "20px" }}>
-                  * Phù hợp cho xe di chuyển hàng ngày, cần làm sạch nhanh bụi bẩn đô thị.
-                </p>
                 <ul>
-                  <li>Rửa thân xe và gầm xe bằng bọt tuyết công nghệ không chạm siêu sạch.</li>
-                  <li>Xịt rửa áp lực cao loại bỏ bùn đất hốc bánh xe.</li>
-                  <li>Hệ thống sấy khô tự động áp lực lớn, hạn chế vệt nước đọng.</li>
-                  <li>Vệ sinh cơ bản bề mặt mâm (lazang) và làm bóng lốp xe.</li>
-                  <li>Thời gian thực hiện: 15 phút.</li>
+                  <li>Rửa không chạm</li>
+                  <li>Làm khô tự động</li>
+                  <li>Vệ sinh lốp xe</li>
                 </ul>
-                <Link to="/auth/register?package=basic">Chọn gói</Link>
+                <Link to="/auth/register">Chọn gói</Link>
               </article>
 
               <article className="pricing-card featured">
                 <span>Phổ biến nhất</span>
                 <h3>Gói Cao Cấp</h3>
                 <strong>350.000 VND</strong>
-                <p className="package-desc" style={{ color: "rgba(255,255,255,0.8)", fontSize: "14px", marginBottom: "20px" }}>
-                  * Giải pháp chăm sóc toàn diện cả trong lẫn ngoài được 80% khách hàng lựa chọn.
-                </p>
                 <ul>
-                  <li>Bao gồm toàn bộ quy trình làm sạch sâu của Gói Cơ Bản</li>
-                  <li>Phủ một lớp Nano Wax bảo vệ, tăng độ bóng sâu và tạo hiệu ứng lá sen chống bám nước bụi bẩn.</li>
-                  <li>Hút bụi chi tiết toàn bộ thảm sàn, ghế ngồi và các khe kẽ nội thất.</li>
-                  <li>Lau dưỡng bề mặt táp-lô, táp-pi cửa bằng dung dịch chuyên dụng.</li>
-                  <li>Xông tinh dầu diệt khuẩn, khử mùi ẩm mốc khoang cabin.</li>
-                  <li>Thời gian thực hiện: 35 - 40 phút.</li>
+                  <li>Tất cả từ gói cơ bản</li>
+                  <li>Phủ nano bảo vệ sơn</li>
+                  <li>Vệ sinh nội thất cơ bản</li>
+                  <li>Khử mùi khoang xe</li>
                 </ul>
-                <Link to="/auth/register?package=premium">Chọn gói</Link>
+                <Link to="/auth/register">Chọn gói</Link>
               </article>
 
               <article className="pricing-card">
                 <h3>Gói Đặc Biệt</h3>
                 <strong>600.000 VND</strong>
-                <p className="package-desc" style={{ color: "#64748b", fontSize: "14px", marginBottom: "20px" }}>
-                  * Dành cho xe đi tỉnh, xe lâu ngày chưa chăm sóc hoặc chuẩn bị đi sự kiện quan trọng.
-                </p>
                 <ul>
-                  <li>Bao gồm toàn bộ quy trình cao cấp của Gói Cao Cấp</li>
-                  <li>Tẩy chuyên sâu các vết ố kính, bụi sắt, nhựa đường và mủ cây bám trên bề mặt sơn.</li>
-                  <li>Đánh bóng nhẹ (vớt bóng) loại bỏ các vết xước dăm nhẹ, phục hồi độ tươi của màu sơn gốc.</li>
-                  <li>Vệ sinh và dưỡng chi tiết lồng dè, mâm xe chuyên sâu.</li>
-                  <li>Dọn sạch bụi bẩn và dưỡng bảo vệ các đường ống cao su trong khoang máy.</li>
-                  <li>Thời gian thực hiện: 70 - 90 phút.</li>
+                  <li>Tất cả từ gói cao cấp</li>
+                  <li>Đánh bóng bề mặt chuyên sâu</li>
+                  <li>Tẩy ố kính và lazang</li>
+                  <li>Bảo dưỡng khoang máy</li>
                 </ul>
-                <Link to="/auth/register?package=special">Chọn gói</Link>
+                <Link to="/auth/register">Chọn gói</Link>
               </article>
             </div>
           </div>
@@ -251,42 +279,7 @@ function LandingPage() {
         </section>
       </main>
 
-      <footer className="landing-footer" id="contact">
-        <div className="app-container landing-footer-grid">
-          <div>
-            <h3>WashFlow Pro</h3>
-            <p>
-              Hệ thống đặt lịch rửa xe tự động, tiện lợi và chuyên nghiệp cho
-              khách hàng hiện đại.
-            </p>
-          </div>
-
-          <div>
-            <h4>Liên kết</h4>
-            <a href="#services">Dịch vụ</a>
-            <a href="#process">Quy trình</a>
-            <a href="#pricing">Bảng giá</a>
-          </div>
-
-          <div>
-            <h4>Hỗ trợ</h4>
-            <Link to="/customer/support">Trợ giúp</Link>
-            <Link to="/auth/login">Đăng nhập</Link>
-            <Link to="/auth/register">Đăng ký</Link>
-          </div>
-
-          <div>
-            <h4>Liên hệ</h4>
-            <p>123 Đường Công Nghệ, TP.HCM</p>
-            <p>1900 8888</p>
-            <p>support@washflow.vn</p>
-          </div>
-        </div>
-
-        <div className="landing-copyright">
-          © 2026 WashFlow Pro. All rights reserved.
-        </div>
-      </footer>
+      <PublicFooter />
     </div>
   );
 }

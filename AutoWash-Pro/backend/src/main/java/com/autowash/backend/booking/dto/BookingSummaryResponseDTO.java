@@ -23,9 +23,15 @@ public class BookingSummaryResponseDTO {
     private String bookingCode;
     private LocalDateTime bookingDate;
     private BookingStatus status;
+    private LocalDateTime checkInAt;
+    private LocalDateTime completedAt;
+    private Boolean loyaltyPointGranted;
+
+    private Integer priorityScore;
 
     private String customerName;
     private String licensePlate;            // đổi từ vehiclePlateNumber cho đồng nhất với Mapper
+    private String vehicleNickname;
     private String branchName;
 
     // TimeSlot — tách date + startTime thay vì slotTime
@@ -33,4 +39,8 @@ public class BookingSummaryResponseDTO {
     private LocalTime slotStartTime;
 
     private BigDecimal totalAmount;         // sum(subTotal) từ BookingDetail
+
+    private String paymentStatus;
+    private String paymentMethod;
+    private BigDecimal finalAmount;
 }

@@ -12,7 +12,7 @@ import com.autowash.backend.payment.repository.PaymentRepository;
 import com.autowash.backend.payment.dto.RedeemResponseDTO;
 import com.autowash.backend.reward.entity.Reward;
 import com.autowash.backend.reward.repository.RewardRepository;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -47,10 +47,15 @@ public class RedeemService {
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Customer", "id", dto.getCustomerId()));
 
-        if (!reward.isRedeemableBy(customer.getTotalPoints())) {
+        Integer currentBalance = loyaltyTransactionRepository
+                .findTopByCustomerIdOrderByCreatedAtDesc(customer.getCustomerId())
+                .map(LoyaltyTransaction::getBalanceAfter)
+                .orElse(0);
+
+        if (!reward.isRedeemableBy(currentBalance)) {
             throw new BusinessException(
                     String.format("Không đủ điểm để đổi reward. Cần %d điểm, hiện có %d điểm.",
-                            reward.getRequiredPoints(), customer.getTotalPoints()),
+                            reward.getRequiredPoints(), currentBalance),
                     HttpStatus.CONFLICT);
         }
 
@@ -69,11 +74,9 @@ public class RedeemService {
         }
 
         // ── 4. Trừ điểm khách hàng ────────────────────────────────────────────
-        int balanceBefore = customer.getTotalPoints();
+        int balanceBefore = currentBalance;
         int balanceAfter  = balanceBefore - reward.getRequiredPoints();
 
-        customer.setTotalPoints(balanceAfter);
-        customerRepository.save(customer);
 
         // ── 5. Tạo loyalty_transaction type = redeem ──────────────────────────
         LoyaltyTransaction tx = LoyaltyTransaction.builder()

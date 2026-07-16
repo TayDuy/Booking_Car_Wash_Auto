@@ -30,6 +30,9 @@ public class BookingResponseDTO {
     private LocalDateTime startTime;
     private LocalDateTime endTime;
     private String note;
+    private LocalDateTime checkInAt;
+    private LocalDateTime completedAt;
+    private Boolean loyaltyPointGranted;
     private LocalDateTime updatedAt;
     private BigDecimal totalAmount;         // sum(subTotal) từ BookingDetail
 
@@ -42,6 +45,7 @@ public class BookingResponseDTO {
     private Integer vehicleId;
     private String licensePlate;
     private Vehicle.VehicleType vehicleType;
+    private String vehicleNickname;
 
     // ── TimeSlot ─────────────────────────────────────────────────────────────
     // Không có field slotTime trong entity → tách thành 3 field riêng
@@ -60,4 +64,12 @@ public class BookingResponseDTO {
 
     // ── Chi tiết dịch vụ ─────────────────────────────────────────────────────
     private List<BookingDetailItemResponseDTO> details;
+
+    private String paymentStatus;
+    private String paymentMethod;
+    private Integer paymentId;
+    private BigDecimal originalAmount;
+    private BigDecimal discountAmount;
+    private BigDecimal finalAmount;
+    private String vnpayBankCode;
 }

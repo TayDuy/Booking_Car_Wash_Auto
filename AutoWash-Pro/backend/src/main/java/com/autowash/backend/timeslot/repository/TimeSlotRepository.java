@@ -27,12 +27,36 @@ public interface TimeSlotRepository extends JpaRepository<TimeSlot, Integer> {
             WHERE b.branchId = :branchId
               AND ts.slotDate = :date
               AND ts.status   = :status
+              AND wb.status   <> 'maintenance'
             ORDER BY ts.startTime
             """)
     List<TimeSlot> findByBranchAndDateAndStatus(
             @Param("branchId") Integer branchId,
             @Param("date")     LocalDate date,
             @Param("status")   SlotStatus status
+    );
+
+    /**
+     * FIX: lấy TẤT CẢ slot theo branch+ngày, KHÔNG lọc theo status.
+     * Dùng cho:
+     *  - Admin xem toàn bộ slot trong ngày (kể cả full/closed) — trước đây
+     *    getByBranchAndDate() bị lỗi tái sử dụng nhầm findByBranchAndDateAndStatus(..., open)
+     *    nên admin không thấy được slot đã full/closed.
+     *  - FE phân biệt "chi nhánh chưa tạo lịch cho ngày này" (danh sách rỗng)
+     *    với "đã tạo lịch nhưng hết chỗ hết rồi" (có slot nhưng toàn full).
+     */
+    @Query("""
+            SELECT ts FROM TimeSlot ts
+            JOIN FETCH ts.branch b
+            JOIN FETCH ts.washBay wb
+            WHERE b.branchId = :branchId
+              AND ts.slotDate = :date
+              AND wb.status <> 'maintenance'
+            ORDER BY ts.startTime
+            """)
+    List<TimeSlot> findByBranchAndDate(
+            @Param("branchId") Integer branchId,
+            @Param("date")     LocalDate date
     );
 
     /**
@@ -43,8 +67,40 @@ public interface TimeSlotRepository extends JpaRepository<TimeSlot, Integer> {
     boolean existsByWashBay_BayIdAndSlotDateAndStartTime(
             Integer bayId, LocalDate slotDate, java.time.LocalTime startTime
     );
+
+    /**
+     * Tìm các slot của cùng 1 bay, cùng ngày, có khung giờ CHỒNG LẤN với
+     * [startTime, endTime) đang xét — chặn trường hợp start_time khác nhau
+     * nhưng khoảng giờ vẫn giao nhau (vd 09:00-09:40 và 09:30-10:00).
+     * excludeSlotId dùng khi update() để không tự so trùng với chính slot đang sửa
+     * (truyền null khi tạo mới).
+     */
+    @Query("""
+            SELECT ts FROM TimeSlot ts
+            WHERE ts.washBay.bayId = :bayId
+              AND ts.slotDate = :slotDate
+              AND ts.startTime < :endTime
+              AND ts.endTime > :startTime
+              AND (:excludeSlotId IS NULL OR ts.slotId <> :excludeSlotId)
+            """)
+    List<TimeSlot> findOverlapping(
+            @Param("bayId") Integer bayId,
+            @Param("slotDate") LocalDate slotDate,
+            @Param("startTime") java.time.LocalTime startTime,
+            @Param("endTime") java.time.LocalTime endTime,
+            @Param("excludeSlotId") Integer excludeSlotId
+    );
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT ts FROM TimeSlot ts WHERE ts.slotId = :slotId")
     Optional<TimeSlot> findByIdForUpdate(@Param("slotId") Integer slotId);
+
+    /**
+     * Sinh hàng loạt slot (generate cho cả tháng): lấy TOÀN BỘ slot đã tồn tại
+     * của 1 bay trong khoảng ngày [from, to] bằng ĐÚNG 1 QUERY.
+     */
+    List<TimeSlot> findByWashBay_BayIdAndSlotDateBetween(
+            Integer bayId, LocalDate from, LocalDate to
+    );
 
 }

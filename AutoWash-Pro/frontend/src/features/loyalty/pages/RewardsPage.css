@@ -1,0 +1,842 @@
+.rewards-page {
+  padding: 32px;
+  background: #f8fafc;
+  min-height: 100vh;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  color: #1e293b;
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.rewards-back-nav {
+  margin-bottom: 24px;
+}
+
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #4f46e5;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 14px;
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.back-link:hover {
+  color: #3730a3;
+  transform: translateX(-4px);
+}
+
+/* Hero Section */
+.loyalty-hero-section {
+  margin-bottom: 32px;
+}
+
+.loyalty-hero-container {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: 40px;
+  align-items: center;
+}
+
+.loyalty-hero-intro h1 {
+  font-size: 38px;
+  font-weight: 900;
+  line-height: 1.2;
+  margin: 12px 0 16px;
+  background: linear-gradient(135deg, #1e293b 30%, #4f46e5);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.loyalty-hero-intro p {
+  font-size: 16px;
+  line-height: 1.6;
+  color: #64748b;
+  margin: 0;
+}
+
+.premium-badge {
+  display: inline-block;
+  padding: 6px 14px;
+  background: #e0e7ff;
+  color: #4f46e5;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  border-radius: 99px;
+  text-transform: uppercase;
+}
+
+/* Membership Card - Metallic Styles */
+.loyalty-membership-card {
+  position: relative;
+  height: 230px;
+  border-radius: 24px;
+  padding: 28px;
+  color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.15);
+  overflow: hidden;
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  cursor: default;
+}
+
+.loyalty-membership-card:hover {
+  transform: translateY(-8px) rotate(1deg);
+}
+
+.card-shine {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0) 60%);
+  pointer-events: none;
+}
+
+/* Card Header */
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.card-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 900;
+  letter-spacing: 2px;
+  font-size: 15px;
+}
+
+.brand-logo {
+  font-size: 20px;
+  color: #fbbf24;
+}
+
+.card-chip {
+  width: 40px;
+  height: 30px;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  border-radius: 6px;
+  position: relative;
+}
+
+/* Card Body */
+.card-body {
+  margin-top: auto;
+  margin-bottom: auto;
+}
+
+.card-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  opacity: 0.8;
+}
+
+.card-tier-name {
+  font-size: 32px;
+  font-weight: 900;
+  margin: 4px 0;
+  letter-spacing: 1px;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.card-number {
+  font-family: monospace;
+  font-size: 15px;
+  letter-spacing: 2px;
+  opacity: 0.9;
+}
+
+/* Card Footer */
+.card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+
+.card-holder span, .card-points span {
+  display: block;
+  font-size: 10px;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+
+.card-holder strong, .card-points strong {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+/* Metallic Themes */
+.tier-member {
+  background: linear-gradient(135deg, #1e293b, #334155);
+}
+
+.tier-silver {
+  background: linear-gradient(135deg, #64748b, #94a3b8, #cbd5e1);
+  box-shadow: 0 20px 40px rgba(100, 116, 139, 0.2);
+}
+.tier-silver .card-tier-name {
+  background: linear-gradient(135deg, #ffffff, #e2e8f0);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.tier-gold {
+  background: linear-gradient(135deg, #b45309, #d97706, #fbbf24);
+  box-shadow: 0 20px 40px rgba(217, 119, 6, 0.2);
+}
+.tier-gold .card-tier-name {
+  background: linear-gradient(135deg, #ffffff, #fef3c7);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.tier-platinum {
+  background: linear-gradient(135deg, #0f172a, #1e1b4b, #312e81);
+  box-shadow: 0 20px 40px rgba(49, 46, 129, 0.25);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+.tier-platinum .card-tier-name {
+  background: linear-gradient(135deg, #818cf8, #a5b4fc, #e0e7ff);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: holo 3s ease infinite alternate;
+}
+
+@keyframes holo {
+  0% { filter: hue-rotate(0deg); }
+  100% { filter: hue-rotate(30deg); }
+}
+
+/* Progress Tracker Section */
+.loyalty-progress-section {
+  margin-bottom: 40px;
+}
+
+.progress-card {
+  background: #ffffff;
+  border-radius: 24px;
+  padding: 32px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.04);
+}
+
+.progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.progress-header h3 {
+  font-size: 20px;
+  font-weight: 800;
+  margin: 0;
+  color: #0f172a;
+}
+
+.progress-percentage {
+  font-size: 18px;
+  font-weight: 900;
+  color: #4f46e5;
+  background: #f0fdf4;
+  padding: 6px 14px;
+  border-radius: 99px;
+  border: 1px solid #dcfce7;
+}
+
+.progress-track-container {
+  position: relative;
+  padding: 20px 10px 40px;
+}
+
+.progress-bar-glow {
+  height: 8px;
+  background: #f1f5f9;
+  border-radius: 99px;
+  position: relative;
+}
+
+.progress-fill-active {
+  height: 100%;
+  border-radius: 99px;
+  background: linear-gradient(90deg, #4f46e5, #818cf8);
+  box-shadow: 0 0 12px rgba(79, 70, 229, 0.4);
+  position: relative;
+  transition: width 0.8s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.progress-nodes {
+  display: flex;
+  justify-content: space-between;
+  position: absolute;
+  top: 14px;
+  left: 0;
+  right: 0;
+}
+
+.node {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+}
+
+.node-dot {
+  width: 20px;
+  height: 20px;
+  border-radius: 99px;
+  background: #ffffff;
+  border: 4px solid #cbd5e1;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  transition: all 0.3s ease;
+}
+
+.node.active .node-dot {
+  border-color: #4f46e5;
+  background: #ffffff;
+  transform: scale(1.15);
+  box-shadow: 0 0 10px rgba(79, 70, 229, 0.3);
+}
+
+.node-label {
+  margin-top: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #94a3b8;
+}
+
+.node.active .node-label {
+  color: #0f172a;
+}
+
+.progress-footer {
+  margin-top: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-top: 1px solid #f1f5f9;
+  padding-top: 20px;
+}
+
+.stat-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: #f8fafc;
+  border-radius: 12px;
+  font-size: 14px;
+}
+
+.stat-pill span {
+  color: #64748b;
+}
+
+.stat-pill strong {
+  color: #0f172a;
+}
+
+.stat-pill .divider {
+  color: #cbd5e1;
+}
+
+.progress-tip {
+  margin: 0;
+  font-size: 14px;
+  color: #475569;
+}
+
+.next-tier-highlight {
+  color: #4f46e5;
+  font-weight: 800;
+}
+
+/* Alert Toast */
+.rewards-alert-toast {
+  padding: 16px 24px;
+  background: #ecfdf5;
+  color: #065f46;
+  border: 1px solid #a7f3d0;
+  border-radius: 16px;
+  font-weight: 700;
+  margin-bottom: 32px;
+  box-shadow: 0 10px 20px rgba(6, 95, 70, 0.03);
+}
+
+/* Section Header */
+.section-header {
+  margin-bottom: 24px;
+}
+
+.section-header h2 {
+  font-size: 24px;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0 0 6px;
+}
+
+.section-header p {
+  color: #64748b;
+  margin: 0;
+}
+
+/* Tiers Benefits Table */
+.tiers-benefits-section {
+  margin-bottom: 48px;
+}
+
+.benefits-matrix-container {
+  background: #ffffff;
+  border-radius: 24px;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.03);
+}
+
+.benefits-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.benefits-table th {
+  background: #f8fafc;
+  padding: 18px 24px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #475569;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.benefits-table td {
+  padding: 18px 24px;
+  font-size: 14px;
+  color: #334155;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.benefits-table tr:last-child td {
+  border-bottom: none;
+}
+
+.tier-col {
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tier-col.member { color: #475569; }
+.tier-col.silver { color: #64748b; }
+.tier-col.gold { color: #d97706; }
+.tier-col.platinum { color: #4f46e5; }
+
+.tier-icon {
+  font-size: 18px;
+}
+
+/* Highlight Current Row */
+.current-row {
+  background: #f5f3ff !important;
+}
+
+.current-row td {
+  font-weight: 600;
+}
+
+/* Welcome Vouchers */
+.welcome-vouchers-container {
+  margin-bottom: 16px;
+}
+
+.empty-state-card {
+  background: #ffffff;
+  border: 2px dashed #cbd5e1;
+  border-radius: 24px;
+  padding: 40px;
+  text-align: center;
+  color: #64748b;
+}
+
+.empty-state-card.flat {
+  border-style: solid;
+  padding: 24px;
+  border-radius: 16px;
+}
+
+.empty-icon {
+  font-size: 40px;
+  display: block;
+  margin-bottom: 12px;
+}
+
+.welcome-vouchers-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 24px;
+}
+
+.welcome-voucher-card {
+  background: #ffffff;
+  border-radius: 20px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 10px 25px rgba(15, 23, 42, 0.04);
+  overflow: hidden;
+  transition: transform 0.2s ease;
+}
+
+.welcome-voucher-card:hover {
+  transform: translateY(-4px);
+}
+
+.voucher-card-inner {
+  display: flex;
+  height: 120px;
+}
+
+.voucher-left-side {
+  flex: 1.4;
+  padding: 20px;
+  background: linear-gradient(135deg, #4f46e5, #6366f1);
+  color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  position: relative;
+}
+
+.voucher-tag {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  opacity: 0.8;
+}
+
+.voucher-left-side h3 {
+  font-size: 15px;
+  font-weight: 700;
+  margin: 6px 0;
+  line-height: 1.2;
+}
+
+.voucher-val-display {
+  font-size: 24px;
+  font-weight: 900;
+}
+
+.voucher-right-side {
+  flex: 1;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: flex-end;
+  border-left: 2px dashed #f1f5f9;
+  position: relative;
+}
+
+/* Ticket circles */
+.voucher-right-side::before, .voucher-right-side::after {
+  content: '';
+  width: 16px;
+  height: 16px;
+  background: #f8fafc;
+  border-radius: 99px;
+  position: absolute;
+  left: -9px;
+}
+.voucher-right-side::before { top: -8px; }
+.voucher-right-side::after { bottom: -8px; }
+
+.voucher-code {
+  font-family: monospace;
+  font-size: 13px;
+  font-weight: 800;
+  color: #0f172a;
+  background: #f1f5f9;
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+
+.voucher-pill {
+  font-size: 11px;
+  font-weight: 800;
+  padding: 4px 10px;
+  border-radius: 99px;
+}
+
+.voucher-pill.unused {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.voucher-pill.used {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.voucher-pill.expired {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.voucher-expiry {
+  font-size: 11px;
+  color: #64748b;
+}
+
+/* Premium Rewards Cards */
+.reward-card-premium {
+  background: #ffffff;
+  border-radius: 24px;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.04);
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.reward-card-premium:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.08);
+}
+
+.reward-visual {
+  height: 120px;
+  padding: 24px;
+  color: #ffffff;
+  position: relative;
+  overflow: hidden;
+}
+
+.reward-points-tag {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  padding: 6px 14px;
+  border-radius: 99px;
+  background: rgba(255,255,255,0.2);
+  backdrop-filter: blur(8px);
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.reward-glow-ball {
+  position: absolute;
+  right: -30px;
+  bottom: -30px;
+  width: 120px;
+  height: 120px;
+  border-radius: 99px;
+  background: rgba(255,255,255,0.12);
+  filter: blur(10px);
+}
+
+.bg-grad-1 { background: linear-gradient(135deg, #4f46e5, #6366f1); }
+.bg-grad-2 { background: linear-gradient(135deg, #0ea5e9, #2563eb); }
+.bg-grad-3 { background: linear-gradient(135deg, #10b981, #059669); }
+
+.reward-content {
+  padding: 24px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.reward-content h3 {
+  font-size: 18px;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0 0 16px;
+  line-height: 1.3;
+}
+
+.reward-details-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid #f1f5f9;
+  padding-bottom: 16px;
+}
+
+.reward-details-row span {
+  display: block;
+  font-size: 11px;
+  color: #64748b;
+  margin-bottom: 4px;
+}
+
+.reward-details-row strong {
+  font-size: 15px;
+  color: #1e293b;
+}
+
+.reward-action-btn {
+  width: 100%;
+  border: none;
+  padding: 12px;
+  font-size: 14px;
+  font-weight: 800;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.reward-action-btn.active {
+  background: #4f46e5;
+  color: #ffffff;
+}
+.reward-action-btn.active:hover {
+  background: #3730a3;
+}
+
+.reward-action-btn.disabled {
+  background: #f1f5f9;
+  color: #94a3b8;
+  cursor: not-allowed;
+}
+
+/* Redeemed Vouchers History */
+.redeemed-vouchers-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.redeemed-voucher-card-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 16px 24px;
+  border: 1px solid #e2e8f0;
+}
+
+.voucher-row-left {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.voucher-points-badge {
+  padding: 8px 14px;
+  background: #f1f5f9;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 800;
+  color: #475569;
+  min-width: 70px;
+  text-align: center;
+}
+
+.voucher-row-text h4 {
+  font-size: 15px;
+  font-weight: 700;
+  margin: 0 0 4px;
+  color: #0f172a;
+}
+
+.voucher-row-details {
+  font-size: 13px;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.voucher-row-details strong {
+  color: #1e293b;
+}
+
+.voucher-row-details .dot {
+  color: #cbd5e1;
+}
+
+.voucher-row-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.status-pill {
+  font-size: 11px;
+  font-weight: 800;
+  padding: 4px 10px;
+  border-radius: 99px;
+}
+
+.status-pill.unused { background: #dcfce7; color: #15803d; }
+.status-pill.used { background: #fee2e2; color: #b91c1c; }
+.status-pill.expired { background: #f1f5f9; color: #475569; }
+
+.used-booking-text {
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+.rewards-page-loading {
+  color: #4f46e5;
+  font-weight: 700;
+  margin-bottom: 16px;
+}
+
+/* Responsiveness */
+@media (max-width: 1024px) {
+  .loyalty-hero-container {
+    grid-template-columns: 1fr;
+    gap: 32px;
+  }
+  .loyalty-membership-card {
+    max-width: 420px;
+    margin: 0 auto;
+  }
+}
+
+@media (max-width: 768px) {
+  .rewards-page {
+    padding: 16px;
+  }
+  .loyalty-hero-intro h1 {
+    font-size: 28px;
+  }
+  .progress-footer {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .redeemed-voucher-card-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+  .voucher-row-right {
+    align-items: flex-start;
+    border-top: 1px solid #f1f5f9;
+    width: 100%;
+    padding-top: 12px;
+  }
+  .benefits-matrix-container {
+    overflow-x: auto;
+  }
+  .benefits-table th, .benefits-table td {
+    padding: 12px 16px;
+    font-size: 13px;
+  }
+}

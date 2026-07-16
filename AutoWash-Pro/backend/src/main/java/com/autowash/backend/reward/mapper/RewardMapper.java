@@ -56,6 +56,8 @@ public class RewardMapper {
                 .rewardValue(reward.getRewardValue())
                 .vehicleType(reward.getVehicleType())
                 .status(reward.getStatus())
+                .requiredTierLevel(reward.getRequiredTierLevel())
+                .welcomeReward(reward.isWelcomeReward())
                 .createdAt(reward.getCreatedAt())
                 .build();
     }

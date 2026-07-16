@@ -8,6 +8,10 @@ import com.autowash.backend.auth.service.RefreshTokenService;
 import com.autowash.backend.common.dto.ApiResponse;
 import com.autowash.backend.security.JwtTokenProvider;
 import com.autowash.backend.user.entity.User;
+import com.autowash.backend.user.repository.UserRepository;
+import com.autowash.backend.auth.service.SseTicketService;
+import com.autowash.backend.security.CustomUserDetails;
+
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -24,12 +28,21 @@ public class AuthController {
     private final OtpService otpService;
     private final RefreshTokenService refreshTokenService;
     private final JwtTokenProvider tokenProvider;
+    private final SseTicketService sseTicketService;
+    private final UserRepository userRepository;
 
-    public AuthController(AuthService authService, OtpService otpService, RefreshTokenService refreshTokenService, JwtTokenProvider tokenProvider) {
+    public AuthController(AuthService authService,
+                          OtpService otpService,
+                          RefreshTokenService refreshTokenService,
+                          JwtTokenProvider tokenProvider,
+                          SseTicketService sseTicketService,
+                          UserRepository userRepository) {
         this.authService = authService;
         this.otpService = otpService;
         this.refreshTokenService = refreshTokenService;
         this.tokenProvider = tokenProvider;
+        this.sseTicketService = sseTicketService;
+        this.userRepository = userRepository;
     }
 
     /**
@@ -156,6 +169,14 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.success("Đăng nhập Google thành công!!!",response));
     }
 
+    @PutMapping("/change-password")
+    public ResponseEntity<ApiResponse<Void>> changePassword(
+            @Valid @RequestBody ChangePasswordRequestDTO request,
+            @AuthenticationPrincipal com.autowash.backend.security.CustomUserDetails userDetails) {
+        authService.changePassword(userDetails.getId(), request.getOldPassword(), request.getNewPassword());
+        return ResponseEntity.ok(ApiResponse.success("Đổi mật khẩu thành công", null));
+    }
+
     @PostMapping("/forgot-password/request")
     public ResponseEntity<ApiResponse<Void>> requestForgotPassword(
             @Valid @RequestBody ForgotPasswordRequestDTO request,
@@ -169,6 +190,33 @@ public class AuthController {
             @Valid @RequestBody ForgotPasswordResetDTO request) {
         authService.verifyAndResetPassword(request.getEmail(), request.getOtp(), request.getNewPassword());
         return ResponseEntity.ok(ApiResponse.success("Đặt lại mật khẩu thành công", null));
+    }
+
+    @PostMapping("/sse-ticket")
+    public ResponseEntity<ApiResponse<String>> createSseTicket(
+            @AuthenticationPrincipal org.springframework.security.core.userdetails.UserDetails userDetails) {
+        if (userDetails == null) {
+            throw new com.autowash.backend.common.exception.BusinessException(
+                    "Chưa đăng nhập hoặc phiên làm việc đã hết hạn",
+                    HttpStatus.UNAUTHORIZED
+            );
+        }
+
+        Integer userId;
+        if (userDetails instanceof CustomUserDetails) {
+            userId = ((CustomUserDetails) userDetails).getId();
+        } else {
+            User user = userRepository.findByEmailIgnoreCase(userDetails.getUsername())
+                    .or(() -> userRepository.findByUsernameIgnoreCase(userDetails.getUsername()))
+                    .orElseThrow(() -> new com.autowash.backend.common.exception.BusinessException(
+                            "Không tìm thấy người dùng",
+                            HttpStatus.NOT_FOUND
+                    ));
+            userId = user.getId();
+        }
+
+        String ticket = sseTicketService.createTicket(userId);
+        return ResponseEntity.ok(ApiResponse.success("Tạo vé kết nối thành công", ticket));
     }
 
     private String getClientIp(HttpServletRequest request) {

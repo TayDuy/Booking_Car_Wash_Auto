@@ -82,6 +82,14 @@ public class Reward {
     @Builder.Default
     private RewardStatus status = RewardStatus.active;
 
+    /**
+     * Cấp hạng tối thiểu để thấy và đổi reward này.
+     * null = mọi hạng đều thấy được.
+     * priorityLevel: Member=1, Silver=2, Gold=3, Platinum=4.
+     */
+    @Column(name = "required_tier_level")
+    private Integer requiredTierLevel;
+
     /** Audit — set tự động khi INSERT. */
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -94,6 +102,13 @@ public class Reward {
     public enum RewardStatus { active, inactive }
 
     // ── Helpers ──────────────────────────────────────────────────────────────
+
+    /** Kiểm tra xem đây có phải là phần thưởng chào mừng thăng hạng hay không. */
+    public boolean isWelcomeReward() {
+        return this.requiredTierLevel != null 
+                && this.requiredPoints != null 
+                && this.requiredPoints <= 1;
+    }
 
     /** Khách có đủ điểm để đổi reward này không. */
     public boolean isRedeemableBy(Integer customerPoints) {

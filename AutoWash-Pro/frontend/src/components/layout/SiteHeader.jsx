@@ -64,10 +64,19 @@ export default function SiteHeader() {
     const connectSSE = async () => {
       try {
         const { subscribeSSE } = await import("../../api/notificationService");
-        es = subscribeSSE((msg) => {
-          setUnreadCount((prev) => prev + 1);
-          setNotifications((prev) => [msg, ...prev]);
-        });
+        es = subscribeSSE(
+          (msg) => {
+            setUnreadCount((prev) => prev + 1);
+            setNotifications((prev) => [msg, ...prev]);
+          },
+          null,
+          async () => {
+            const countRes = await countUnread();
+            setUnreadCount(countRes.count || 0);
+            const listRes = await getUnread();
+            setNotifications(listRes || []);
+          }
+        );
       } catch (err) {
         console.warn("SSE subscribe failed:", err);
       }
@@ -107,6 +116,13 @@ export default function SiteHeader() {
           onClick={() => navigate("/customer/home")}
         >
           Trang chủ
+        </button>
+
+        <button
+          className={isActive("/customer/services") ? "active-link" : ""}
+          onClick={() => navigate("/customer/services")}
+        >
+          Dịch vụ
         </button>
 
         <button
@@ -203,13 +219,27 @@ export default function SiteHeader() {
                         } catch (err) {
                           console.error("Lỗi đánh dấu đã đọc:", err);
                         }
+                        setIsOpenNotification(false);
+                        if (noti.referenceType === 'payment') {
+                          try {
+                            const { default: axiosClient } = await import("../../api/axiosClient");
+                            const resp = await axiosClient.get(`/payments/${noti.referenceId}`);
+                            const pid = resp.data?.data?.bookingId;
+                            if (pid) { navigate(`/customer/booking/${pid}`); return; }
+                          } catch {}
+                        }
+                        if (noti.referenceId) {
+                          navigate(`/customer/booking/${noti.referenceId}`);
+                        } else {
+                          navigate('/customer/history');
+                        }
                       }}
                     >
                       <p style={{ margin: "0 0 4px 0", fontSize: "13px", fontWeight: noti.read ? "normal" : "600", color: "#334155" }}>
                         {noti.title}
                       </p>
                       <p style={{ margin: "0 0 4px 0", fontSize: "12px", color: "#64748b", lineHeight: '1.4' }}>
-                        {noti.content}
+                        {noti.body ?? noti.content}
                       </p>
                       <span style={{ fontSize: "10px", color: "#94a3b8" }}>
                         {noti.createdAt ? new Date(noti.createdAt).toLocaleString("vi-VN") : "Vừa xong"}
@@ -298,7 +328,9 @@ export default function SiteHeader() {
                   <div className="profile-dropdown-name">
                     {user?.fullName || user?.username || "Khách Hàng"}
                   </div>
-                  <div className="profile-dropdown-role">Thành viên</div>
+                  <div className="profile-dropdown-role">
+                    {user?.role === "ADMIN" ? "Quản trị viên" : user?.role === "STAFF" ? "Nhân viên" : user?.role === "MANAGER" ? "Quản lý" : "Thành viên"}
+                  </div>
                 </div>
               </div>
 
@@ -321,10 +353,17 @@ export default function SiteHeader() {
                   className="profile-menu-item"
                   onClick={() => {
                     setIsOpenProfile(false);
-                    navigate("/customer/profile#personal-info");
-                    // Scroll to section helper
-                    const el = document.getElementById("personal-info");
-                    if (el) el.scrollIntoView({ behavior: "smooth" });
+                    const role = String(user?.role || "").toUpperCase();
+                    if (role === "ADMIN") {
+                      navigate("/admin");
+                    } else if (role === "MANAGER" || role === "STAFF") {
+                      navigate("/manager");
+                    } else {
+                      navigate("/customer/profile#personal-info");
+                      // Scroll to section helper
+                      const el = document.getElementById("personal-info");
+                      if (el) el.scrollIntoView({ behavior: "smooth" });
+                    }
                   }}
                 >
                   <LayoutDashboard size={16} />

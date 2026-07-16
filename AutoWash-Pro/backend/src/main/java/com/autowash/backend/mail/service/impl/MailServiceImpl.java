@@ -34,6 +34,7 @@ public class MailServiceImpl implements MailService {
     private boolean logOtpCode;
 
     @Override
+    @Async("mailTaskExecutor")
     public void sendOtpEmail(String toEmail, String otpCode, String purpose) {
         if (logOtpCode) {
             log.info("Bắt đầu gửi email OTP đến {} - MÃ OTP THẬT: {}", toEmail, otpCode);
@@ -41,18 +42,42 @@ public class MailServiceImpl implements MailService {
             log.info("Bắt đầu gửi email OTP đến {}", toEmail);
         }
         try {
-            SimpleMailMessage message = new SimpleMailMessage();
-            message.setTo(toEmail);
-            message.setSubject("Mã xác thực OTP - WashFlow Pro");
-            String content = String.format(
-                    "Xin chào,\n\nMã xác thực OTP của bạn là: %s\n" +
-                    "Mã này được sử dụng cho mục đích: %s.\n" +
-                    "Thời gian hiệu lực là 5 phút. Vui lòng không chia sẻ mã này với bất kỳ ai.\n\n" +
-                    "Trân trọng,\nWashFlow Pro Team",
-                    otpCode, purpose
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+            helper.setTo(toEmail);
+            helper.setSubject("Mã xác thực OTP - WashFlow Pro");
+            helper.setFrom(mailFrom);
+
+            String purposeLabel = switch (purpose.toUpperCase()) {
+                case "PASSWORD_RESET" -> "đặt lại mật khẩu";
+                default -> "xác thực tài khoản";
+            };
+
+            String htmlContent = String.format(
+                "<!DOCTYPE html><html><head><meta charset=\"utf-8\">" +
+                "<style>" +
+                "body{margin:0;padding:0;background-color:#f4f7fa;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}" +
+                ".container{max-width:480px;margin:40px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,0.08)}" +
+                ".header{background:#003d9b;padding:24px;text-align:center}" +
+                ".header h1{margin:0;color:#fff;font-size:20px;font-weight:700}" +
+                ".body{padding:32px 24px;text-align:center}" +
+                ".otp-code{font-size:36px;font-weight:800;letter-spacing:8px;color:#003d9b;background:#eef2ff;padding:16px 24px;border-radius:8px;display:inline-block;margin:16px 0}" +
+                ".footer{background:#f8fafc;padding:16px 24px;text-align:center;font-size:12px;color:#94a3b8}" +
+                "</style></head><body>" +
+                "<div class=\"container\">" +
+                "<div class=\"header\"><h1>Mã xác thực OTP</h1></div>" +
+                "<div class=\"body\">" +
+                "<p style=\"font-size:16px;color:#334155;margin-bottom:8px\">Xin chào,</p>" +
+                "<p style=\"font-size:14px;color:#64748b;margin-bottom:4px\">Mã OTP dùng để <strong>%s</strong> của bạn là:</p>" +
+                "<div class=\"otp-code\">%s</div>" +
+                "<p style=\"font-size:13px;color:#94a3b8;margin-top:16px\">Mã có hiệu lực trong <strong>5 phút</strong>. Không chia sẻ mã này với bất kỳ ai.</p>" +
+                "</div>" +
+                "<div class=\"footer\">WashFlow Pro &bull; Hệ thống chăm sóc xe tự động</div>" +
+                "</div></body></html>",
+                purposeLabel, otpCode
             );
-            message.setText(content);
-            message.setFrom(mailFrom);
+
+            helper.setText(htmlContent, true);
             mailSender.send(message);
             log.info("Đã gửi thành công email OTP đến {}", toEmail);
         } catch (Exception e) {
@@ -65,7 +90,7 @@ public class MailServiceImpl implements MailService {
     }
 
     @Override
-    @Async
+    @Async("mailTaskExecutor")
     public void sendBookingConfirmationEmail(
             String toEmail,
             String customerName,
@@ -104,7 +129,7 @@ public class MailServiceImpl implements MailService {
             NumberFormat currencyFormatter = NumberFormat.getCurrencyInstance(new Locale("vi", "VN"));
             String formattedPrice = currencyFormatter.format(totalPrice);
 
-            String ctaUrl = "http://localhost:5173/bookings";
+            String ctaUrl = "http://localhost:5173/customer/history";
 
             String safeCustomerName = HtmlUtils.htmlEscape(customerName);
             String safeBranchName = HtmlUtils.htmlEscape(branchName);
@@ -276,6 +301,186 @@ public class MailServiceImpl implements MailService {
             log.info("Đã gửi thành công email xác nhận đặt lịch đến {}", toEmail);
         } catch (Exception e) {
             log.error("Lỗi khi gửi email xác nhận đặt lịch đến {}: {}", toEmail, e.getMessage(), e);
+        }
+    }
+
+    @Override
+    @Async("mailTaskExecutor")
+    public void sendPasswordChangedEmail(String toEmail, String username) {
+        log.info("Bắt đầu gửi email thông báo đổi mật khẩu đến {}", toEmail);
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setTo(toEmail);
+            message.setSubject("Mật khẩu tài khoản của bạn đã được thay đổi - WashFlow Pro");
+            String content = String.format(
+                    "Xin chào %s,\n\nMật khẩu tài khoản WashFlow Pro của bạn vừa được thay đổi thành công.\n" +
+                    "Nếu không phải bạn thực hiện thay đổi này, vui lòng liên hệ ngay với bộ phận hỗ trợ của chúng tôi qua hotline 1900 8888 hoặc phản hồi email này để khóa tài khoản khẩn cấp.\n\n" +
+                    "Trân trọng,\nWashFlow Pro Team",
+                    username
+            );
+            message.setText(content);
+            message.setFrom(mailFrom);
+            mailSender.send(message);
+            log.info("Đã gửi thành công email thông báo đổi mật khẩu đến {}", toEmail);
+        } catch (Exception e) {
+            log.error("Lỗi khi gửi email thông báo đổi mật khẩu đến {}: {}", toEmail, e.getMessage(), e);
+        }
+    }
+
+    @Override
+    @Async("mailTaskExecutor")
+    public void sendBookingCancelledEmail(String toEmail, String customerName, String bookingCode, String reason) {
+        log.info("Bắt đầu gửi email thông báo hủy đặt lịch đến {}", toEmail);
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+            helper.setTo(toEmail);
+            helper.setSubject("Đặt lịch đã bị hủy - WashFlow Pro");
+            helper.setFrom(mailFrom);
+
+            String safeCustomerName = HtmlUtils.htmlEscape(customerName);
+            String safeBookingCode = HtmlUtils.htmlEscape(bookingCode);
+            String safeReason = reason != null ? HtmlUtils.htmlEscape(reason) : "Không có lý do";
+
+            String htmlContent = String.format(
+                "<!DOCTYPE html><html><head><meta charset=\"utf-8\">" +
+                "<style>body{margin:0;padding:0;background-color:#f4f7fa;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}" +
+                ".container{max-width:480px;margin:40px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,0.08)}" +
+                ".header{background:#dc2626;padding:24px;text-align:center}" +
+                ".header h1{margin:0;color:#fff;font-size:20px;font-weight:700}" +
+                ".body{padding:32px 24px;text-align:center}" +
+                ".detail{background:#fef2f2;border-radius:8px;padding:16px;margin:16px 0;text-align:left}" +
+                ".detail dt{font-size:12px;color:#94a3b8;margin-top:8px}" +
+                ".detail dd{font-size:14px;font-weight:600;color:#1e293b;margin:2px 0 0 0}" +
+                ".footer{background:#f8fafc;padding:16px 24px;text-align:center;font-size:12px;color:#94a3b8}" +
+                "</style></head><body>" +
+                "<div class=\"container\">" +
+                "<div class=\"header\"><h1>Đặt lịch đã bị hủy</h1></div>" +
+                "<div class=\"body\">" +
+                "<p style=\"font-size:16px;color:#334155\">Xin chào %s,</p>" +
+                "<p style=\"font-size:14px;color:#64748b\">Đặt lịch của bạn đã bị hủy.</p>" +
+                "<div class=\"detail\">" +
+                "<dl><dt>Mã đặt lịch</dt><dd>%s</dd>" +
+                "<dt>Lý do</dt><dd>%s</dd></dl>" +
+                "</div>" +
+                "<p style=\"font-size:13px;color:#94a3b8;margin-top:16px\">Vui lòng liên hệ hotline 1900 8888 nếu cần hỗ trợ.</p>" +
+                "</div>" +
+                "<div class=\"footer\">WashFlow Pro &bull; Hệ thống chăm sóc xe tự động</div>" +
+                "</div></body></html>",
+                safeCustomerName, safeBookingCode, safeReason
+            );
+
+            helper.setText(htmlContent, true);
+            mailSender.send(message);
+            log.info("Đã gửi thành công email thông báo hủy đặt lịch đến {}", toEmail);
+        } catch (Exception e) {
+            log.error("Lỗi khi gửi email thông báo hủy đặt lịch đến {}: {}", toEmail, e.getMessage(), e);
+        }
+    }
+
+    @Override
+    @Async("mailTaskExecutor")
+    public void sendPaymentSuccessEmail(String toEmail, String customerName, String bookingCode, String paymentMethod, BigDecimal finalAmount) {
+        log.info("Bắt đầu gửi email xác nhận thanh toán thành công đến {}", toEmail);
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+            helper.setTo(toEmail);
+            helper.setSubject("Thanh toán thành công - WashFlow Pro");
+            helper.setFrom(mailFrom);
+
+            NumberFormat currencyFormatter = NumberFormat.getCurrencyInstance(new Locale("vi", "VN"));
+            String formattedAmount = currencyFormatter.format(finalAmount);
+            String safeCustomerName = HtmlUtils.htmlEscape(customerName);
+            String safeBookingCode = HtmlUtils.htmlEscape(bookingCode);
+            String safePaymentMethod = HtmlUtils.htmlEscape(paymentMethod);
+
+            String htmlContent = String.format(
+                "<!DOCTYPE html><html><head><meta charset=\"utf-8\">" +
+                "<style>body{margin:0;padding:0;background-color:#f4f7fa;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}" +
+                ".container{max-width:480px;margin:40px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,0.08)}" +
+                ".header{background:#059669;padding:24px;text-align:center}" +
+                ".header h1{margin:0;color:#fff;font-size:20px;font-weight:700}" +
+                ".body{padding:32px 24px;text-align:center}" +
+                ".amount{font-size:32px;font-weight:800;color:#059669;padding:16px 0}" +
+                ".detail{background:#f0fdf4;border-radius:8px;padding:16px;margin:16px 0;text-align:left}" +
+                ".detail dt{font-size:12px;color:#94a3b8;margin-top:8px}" +
+                ".detail dd{font-size:14px;font-weight:600;color:#1e293b;margin:2px 0 0 0}" +
+                ".footer{background:#f8fafc;padding:16px 24px;text-align:center;font-size:12px;color:#94a3b8}" +
+                "</style></head><body>" +
+                "<div class=\"container\">" +
+                "<div class=\"header\"><h1>Thanh toán thành công</h1></div>" +
+                "<div class=\"body\">" +
+                "<p style=\"font-size:16px;color:#334155\">Xin chào %s,</p>" +
+                "<p style=\"font-size:14px;color:#64748b\">Cảm ơn bạn đã thanh toán. Giao dịch của bạn đã được xử lý thành công.</p>" +
+                "<div class=\"amount\">%s</div>" +
+                "<div class=\"detail\">" +
+                "<dl><dt>Mã đặt lịch</dt><dd>%s</dd>" +
+                "<dt>Phương thức thanh toán</dt><dd>%s</dd></dl>" +
+                "</div>" +
+                "<p style=\"font-size:13px;color:#94a3b8;margin-top:16px\">Mọi thắc mắc xin liên hệ hotline 1900 8888.</p>" +
+                "</div>" +
+                "<div class=\"footer\">WashFlow Pro &bull; Hệ thống chăm sóc xe tự động</div>" +
+                "</div></body></html>",
+                safeCustomerName, formattedAmount, safeBookingCode, safePaymentMethod
+            );
+
+            helper.setText(htmlContent, true);
+            mailSender.send(message);
+            log.info("Đã gửi thành công email xác nhận thanh toán đến {}", toEmail);
+        } catch (Exception e) {
+            log.error("Lỗi khi gửi email xác nhận thanh toán đến {}: {}", toEmail, e.getMessage(), e);
+        }
+    }
+
+    @Override
+    @Async("mailTaskExecutor")
+    public void sendPaymentFailedEmail(String toEmail, String customerName, String bookingCode, String reason) {
+        log.info("Bắt đầu gửi email thông báo thanh toán thất bại đến {}", toEmail);
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+            helper.setTo(toEmail);
+            helper.setSubject("Thanh toán không thành công - WashFlow Pro");
+            helper.setFrom(mailFrom);
+
+            String safeCustomerName = HtmlUtils.htmlEscape(customerName);
+            String safeBookingCode = HtmlUtils.htmlEscape(bookingCode);
+            String safeReason = reason != null ? HtmlUtils.htmlEscape(reason) : "Không có thông tin";
+
+            String htmlContent = String.format(
+                "<!DOCTYPE html><html><head><meta charset=\"utf-8\">" +
+                "<style>body{margin:0;padding:0;background-color:#f4f7fa;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}" +
+                ".container{max-width:480px;margin:40px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,0.08)}" +
+                ".header{background:#dc2626;padding:24px;text-align:center}" +
+                ".header h1{margin:0;color:#fff;font-size:20px;font-weight:700}" +
+                ".body{padding:32px 24px;text-align:center}" +
+                ".detail{background:#fef2f2;border-radius:8px;padding:16px;margin:16px 0;text-align:left}" +
+                ".detail dt{font-size:12px;color:#94a3b8;margin-top:8px}" +
+                ".detail dd{font-size:14px;font-weight:600;color:#1e293b;margin:2px 0 0 0}" +
+                ".footer{background:#f8fafc;padding:16px 24px;text-align:center;font-size:12px;color:#94a3b8}" +
+                "</style></head><body>" +
+                "<div class=\"container\">" +
+                "<div class=\"header\"><h1>Thanh toán không thành công</h1></div>" +
+                "<div class=\"body\">" +
+                "<p style=\"font-size:16px;color:#334155\">Xin chào %s,</p>" +
+                "<p style=\"font-size:14px;color:#64748b\">Rất tiếc, thanh toán cho lịch đặt của bạn không thành công.</p>" +
+                "<div class=\"detail\">" +
+                "<dl><dt>Mã đặt lịch</dt><dd>%s</dd>" +
+                "<dt>Lý do</dt><dd>%s</dd></dl>" +
+                "</div>" +
+                "<p style=\"font-size:13px;color:#94a3b8;margin-top:16px\">Vui lòng kiểm tra lại phương thức thanh toán hoặc liên hệ hotline 1900 8888.</p>" +
+                "</div>" +
+                "<div class=\"footer\">WashFlow Pro &bull; Hệ thống chăm sóc xe tự động</div>" +
+                "</div></body></html>",
+                safeCustomerName, safeBookingCode, safeReason
+            );
+
+            helper.setText(htmlContent, true);
+            mailSender.send(message);
+            log.info("Đã gửi thành công email thông báo thanh toán thất bại đến {}", toEmail);
+        } catch (Exception e) {
+            log.error("Lỗi khi gửi email thông báo thanh toán thất bại đến {}: {}", toEmail, e.getMessage(), e);
         }
     }
 }

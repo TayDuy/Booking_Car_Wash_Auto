@@ -74,7 +74,7 @@ public interface RewardService {
      * @param vehicleType loại xe của customer, ví dụ: car, motorbike, both
      * @return danh sách reward có thể đổi
      */
-    List<RewardResponseDTO> getRedeemableRewards(Integer customerId, String vehicleType);
+    List<RewardResponseDTO> getRedeemableRewards(Integer customerId, String vehicleType, Integer userId);
 
     /**
      * FR7: Customer đổi điểm lấy reward.
@@ -92,5 +92,5 @@ public interface RewardService {
      * @param dto thông tin customer và loại xe
      * @return kết quả đổi reward, bao gồm điểm trước và sau khi đổi
      */
-    RedeemRewardResponseDTO redeemReward(Integer rewardId, RedeemRewardRequestDTO dto);
+    RedeemRewardResponseDTO redeemReward(Integer rewardId, RedeemRewardRequestDTO dto, Integer userId);
 }

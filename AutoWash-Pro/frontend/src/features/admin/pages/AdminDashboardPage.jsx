@@ -1,264 +1,298 @@
+import { useEffect, useState } from "react";
+import bookingApi from "../../../api/bookingApi";
+import { getBranches } from "../../../api/branchService";
+import auditLogApi from "../../../api/auditLogApi";
+import {
+  CalendarCheck,
+  DollarSign,
+  Users,
+  Car,
+  Eye,
+  ArrowUpRight,
+} from "lucide-react";
 import "./AdminDashboardPage.css";
 
-function AdminDashboardPage() {
-  const stats = [
+export default function AdminDashboardPage() {
+  const [bookings, setBookings] = useState([]);
+  const [bookingLoading, setBookingLoading] = useState(true);
+
+  const [branches, setBranches] = useState([]);
+  const [branchLoading, setBranchLoading] = useState(true);
+
+  const [auditLogs, setAuditLogs] = useState([]);
+
+  const totalBookings = bookings.length;
+  const totalBranches = branches.length;
+
+  const completedBookings = bookings.filter(
+    (booking) => booking.status === "completed"
+  ).length;
+
+  const activeBranches = branches.filter(
+    (branch) => branch.status === "active"
+  ).length;
+
+  const todayText = new Date().toLocaleDateString("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+  const kpis = [
     {
-      icon: "📅",
-      label: "Tổng booking hôm nay",
-      value: "42",
-      badge: "+12%",
-      tone: "blue",
+      title: "Tổng đặt lịch",
+      value: bookingLoading ? "..." : totalBookings,
+      change: "Tổng số đơn trong hệ thống",
+      icon: CalendarCheck,
+      color: "blue",
     },
     {
-      icon: "💵",
-      label: "Doanh thu hôm nay",
-      value: "12.5M",
-      sub: "VNĐ",
-      badge: "+8.4%",
-      tone: "cyan",
+      title: "Chi nhánh",
+      value: branchLoading ? "..." : totalBranches,
+      change: `${activeBranches} đang hoạt động`,
+      icon: DollarSign,
+      color: "green",
     },
     {
-      icon: "👤",
-      label: "Tổng khách hàng",
-      value: "1,284",
-      badge: "New",
-      tone: "gray",
+      title: "Đơn hoàn thành",
+      value: bookingLoading ? "..." : completedBookings,
+      change: "Đã hoàn tất",
+      icon: Users,
+      color: "purple",
     },
     {
-      icon: "👥",
-      label: "Tổng nhân viên",
-      value: "15",
-      tone: "orange",
-    },
-    {
-      icon: "🏢",
-      label: "Chi nhánh hoạt động",
-      value: "4/5",
-      tone: "purple",
-    },
-    {
-      icon: "✅",
-      label: "Tỷ lệ hoàn thành",
-      value: "94%",
-      tone: "green",
+      title: "Đang hoạt động",
+      value: bookingLoading ? "..." : (totalBookings - completedBookings),
+      change: "Đơn chưa hoàn thành",
+      icon: Car,
+      color: "orange",
     },
   ];
 
-  const bookings = [
-    {
-      code: "WF-1024",
-      avatar: "NA",
-      customer: "Nguyễn Văn A",
-      service: "Gói Cao Cấp",
-      branch: "Quận 7",
-      time: "10:00",
-      status: "completed",
-      statusText: "Hoàn thành",
-      total: "350.000 VNĐ",
-    },
-    {
-      code: "WF-1023",
-      avatar: "TH",
-      customer: "Trần Thị H",
-      service: "Rửa Tiêu Chuẩn",
-      branch: "Quận 1",
-      time: "11:30",
-      status: "processing",
-      statusText: "Đang rửa",
-      total: "150.000 VNĐ",
-    },
-    {
-      code: "WF-1022",
-      avatar: "LV",
-      customer: "Lê Văn V",
-      service: "Gói VIP",
-      branch: "Thủ Đức",
-      time: "14:00",
-      status: "pending",
-      statusText: "Chờ nhận xe",
-      total: "850.000 VNĐ",
-    },
-    {
-      code: "WF-1021",
-      avatar: "PQ",
-      customer: "Phạm Quốc Q",
-      service: "Vệ sinh Nội thất",
-      branch: "Quận 7",
-      time: "09:15",
-      status: "cancelled",
-      statusText: "Đã hủy",
-      total: "0 VNĐ",
-    },
-  ];
+  useEffect(() => {
+    async function loadBookings() {
+      try {
+        const response = await bookingApi.list();
+        const result = response.data?.data || response.data || [];
+        if (Array.isArray(result)) {
+          setBookings(result);
+        } else if (Array.isArray(result.content)) {
+          setBookings(result.content);
+        } else {
+          setBookings([]);
+        }
+      } catch {
+        setBookings([]);
+      } finally {
+        setBookingLoading(false);
+      }
+    }
 
-  const quickActions = [
-    { icon: "🏢", title: "Thêm chi nhánh" },
-    { icon: "🎟", title: "Tạo khuyến mãi" },
-    { icon: "🧾", title: "Thêm dịch vụ" },
-    { icon: "📋", title: "Xem báo cáo" },
-  ];
+    async function loadBranches() {
+      try {
+        const response = await getBranches();
+        const result = response.data?.data || response.data || [];
+        if (Array.isArray(result)) {
+          setBranches(result);
+        } else if (Array.isArray(result.content)) {
+          setBranches(result.content);
+        } else {
+          setBranches([]);
+        }
+      } catch {
+        setBranches([]);
+      } finally {
+        setBranchLoading(false);
+      }
+    }
+
+    async function loadAuditLogs() {
+      try {
+        const response = await auditLogApi.getAll();
+        const result = response.data?.data || response.data || [];
+        setAuditLogs(Array.isArray(result) ? result.slice(0, 5) : []);
+      } catch {
+        setAuditLogs([]);
+      }
+    }
+
+    loadBookings();
+    loadBranches();
+    loadAuditLogs();
+  }, []);
 
   return (
-    <div className="st-dashboard">
-      <div className="st-dashboard-header">
+    <div className="admin-dashboard">
+      <div className="dashboard-heading">
         <div>
-          <h1>Tổng quan hệ thống</h1>
-          <p>
-            Chào mừng trở lại, đây là hiệu suất hoạt động của chuỗi WashFlow hôm nay.
-          </p>
+          <h1>Xin chào, Admin!</h1>
+          <p>Chào mừng bạn quay trở lại hệ thống WashFlow Pro.</p>
         </div>
 
-        <div className="st-header-actions">
-          <button className="st-soft-btn" type="button">
-            ⬇ Xuất báo cáo
-          </button>
-          <button className="st-primary-btn" type="button">
-            + Booking mới
-          </button>
-        </div>
+        <button className="date-filter">
+          Hôm nay: {todayText}
+        </button>
       </div>
 
-      <section className="st-stat-grid">
-        {stats.map((item) => (
-          <div className="st-stat-card" key={item.label}>
-            <div className={`st-stat-icon ${item.tone}`}>{item.icon}</div>
-            {item.badge && <span className="st-stat-badge">{item.badge}</span>}
-            <p>{item.label}</p>
-            <h3>
-              {item.value}
-              {item.sub && <small>{item.sub}</small>}
-            </h3>
-          </div>
-        ))}
+      <section className="kpi-grid">
+        {kpis.map((item) => {
+          const Icon = item.icon;
+
+          return (
+            <div className="kpi-card" key={item.title}>
+              <div className={`kpi-icon ${item.color}`}>
+                <Icon size={24} />
+              </div>
+
+              <div>
+                <p>{item.title}</p>
+                <h2>{item.value}</h2>
+                <span>
+                  <ArrowUpRight size={14} />
+                  {item.change}
+                </span>
+              </div>
+            </div>
+          );
+        })}
       </section>
 
-      <section className="st-main-grid">
-        <div className="st-card st-revenue-card">
-          <div className="st-card-head">
-            <div>
-              <h2>Doanh thu 7 ngày gần nhất</h2>
-              <p>Thống kê doanh thu thực tế so với mục tiêu</p>
-            </div>
-
-            <div className="st-tabs">
-              <button className="active" type="button">
-                Theo ngày
-              </button>
-              <button type="button">Theo tuần</button>
-            </div>
+      <section className="dashboard-grid">
+        <div className="dashboard-panel revenue-panel">
+          <div className="panel-header">
+            <h3>Doanh thu theo ngày</h3>
+            <button>7 ngày qua</button>
           </div>
 
-          <div className="st-chart">
-            <div className="st-chart-line"></div>
-            <div className="st-chart-line"></div>
-            <div className="st-chart-line"></div>
-
-            <div className="st-chart-labels">
-              <span>T2</span>
-              <span>T3</span>
-              <span>T4</span>
-              <span>T5</span>
-              <span>T6</span>
-              <span>T7</span>
-              <span>CN</span>
-            </div>
+          <div className="revenue-placeholder">
+            <p>Biểu đồ doanh thu sẽ được hiển thị tại đây.</p>
+            <p><small>Kết nối với API reports/dashboard để có dữ liệu thực tế.</small></p>
           </div>
         </div>
 
-        <div className="st-card st-booking-status-card">
-          <h2>Trạng thái Booking</h2>
-
-          <div className="st-donut">
-            <div className="st-donut-inner">
-              <strong>42</strong>
-              <span>HÔM NAY</span>
-            </div>
+        <div className="dashboard-panel">
+          <div className="panel-header">
+            <h3>Tình trạng chi nhánh</h3>
+            <a href="/admin/branches">Xem tất cả</a>
           </div>
 
-          <div className="st-legend">
-            <span><i className="done"></i> Hoàn thành (65%)</span>
-            <span><i className="processing"></i> Đang xử lý (20%)</span>
-            <span><i className="waiting"></i> Chờ xác nhận</span>
-            <span><i className="cancel"></i> Đã hủy (5%)</span>
+          <div className="branch-list">
+            {branchLoading ? (
+              <p>Đang tải chi nhánh...</p>
+            ) : branches.length === 0 ? (
+              <p>Chưa có dữ liệu chi nhánh.</p>
+            ) : (
+              branches.map((branch, index) => (
+                <div className="branch-item" key={branch.branchId || branch.id || index}>
+                  <div className="branch-thumb">🏢</div>
+
+                  <div className="branch-info">
+                    <strong>{branch.branchName || branch.name || "N/A"}</strong>
+                    <p>{branch.address || "N/A"}</p>
+                  </div>
+
+                  <div className="branch-meta">
+                    <span
+                      className={
+                        branch.status === "active"
+                          ? "status-pill success"
+                          : "status-pill danger"
+                      }
+                    >
+                      {branch.status === "active" ? "Hoạt động" : "Tạm dừng"}
+                    </span>
+
+                    <small>Sức chứa: {branch.capacity || 0}</small>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
       </section>
 
-      <section className="st-bottom-grid">
-        <div className="st-card st-table-card">
-          <div className="st-table-head">
-            <div>
-              <h2>Booking gần đây</h2>
-              <p>Cập nhật lúc 14:20 PM</p>
-            </div>
-
-            <button type="button">Xem tất cả</button>
+      <section className="dashboard-grid bottom-grid">
+        <div className="dashboard-panel">
+          <div className="panel-header">
+            <h3>Đặt lịch mới nhất</h3>
+            <a href="/admin/bookings">Xem tất cả</a>
           </div>
 
-          <table className="st-booking-table">
+          <table className="admin-table">
             <thead>
               <tr>
-                <th>Mã đơn</th>
+                <th>#</th>
                 <th>Khách hàng</th>
-                <th>Dịch vụ</th>
                 <th>Chi nhánh</th>
+                <th>Dịch vụ</th>
                 <th>Thời gian</th>
                 <th>Trạng thái</th>
-                <th>Tổng tiền</th>
+                <th></th>
               </tr>
             </thead>
 
             <tbody>
-              {bookings.map((booking) => (
-                <tr key={booking.code}>
-                  <td className="code">{booking.code}</td>
-                  <td>
-                    <div className="st-customer">
-                      <span>{booking.avatar}</span>
-                      <strong>{booking.customer}</strong>
-                    </div>
-                  </td>
-                  <td>{booking.service}</td>
-                  <td>{booking.branch}</td>
-                  <td>{booking.time}</td>
-                  <td>
-                    <span className={`st-status ${booking.status}`}>
-                      {booking.statusText}
-                    </span>
-                  </td>
-                  <td className="money">{booking.total}</td>
+              {bookingLoading ? (
+                <tr>
+                  <td colSpan="7">Đang tải dữ liệu đặt lịch...</td>
                 </tr>
-              ))}
+              ) : bookings.length === 0 ? (
+                <tr>
+                  <td colSpan="7">Chưa có dữ liệu đặt lịch.</td>
+                </tr>
+              ) : (
+                bookings.slice(0, 5).map((booking, index) => (
+                  <tr key={booking.bookingId || booking.id || index}>
+                    <td>{index + 1}</td>
+                    <td>{booking.customerName || booking.customer?.fullName || booking.customer || "N/A"}</td>
+                    <td>{booking.branchName || booking.branch?.branchName || booking.branch || "N/A"}</td>
+                    <td>{booking.serviceName || booking.service?.serviceName || booking.service || "N/A"}</td>
+                    <td>{booking.bookingDate || booking.startTime || booking.time || "N/A"}</td>
+                    <td>
+                      <span
+                        className={
+                          booking.status === "confirmed" || booking.status === "Đã xác nhận"
+                            ? "table-status success"
+                            : booking.status === "cancelled" || booking.status === "Đã hủy"
+                              ? "table-status danger"
+                              : "table-status warning"
+                        }
+                      >
+                        {booking.status || "pending"}
+                      </span>
+                    </td>
+                    <td>
+                      <button className="view-btn">
+                        <Eye size={16} />
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
 
-        <aside className="st-side-column">
-          <div className="st-card st-quick-card">
-            <h2>Thao tác nhanh</h2>
-
-            <div className="st-quick-list">
-              {quickActions.map((item) => (
-                <button type="button" key={item.title}>
-                  <span>{item.icon}</span>
-                  <strong>{item.title}</strong>
-                </button>
-              ))}
-            </div>
+        <div className="dashboard-panel">
+          <div className="panel-header">
+            <h3>Nhật ký hệ thống mới nhất</h3>
+            <a href="/admin/audit-logs">Xem tất cả</a>
           </div>
 
-          <div className="st-blue-card">
-            <h2>Tối ưu hóa doanh thu</h2>
-            <p>
-              Bạn có 3 khung giờ trống tại chi nhánh Quận 7. Tạo khuyến mãi chớp
-              nhoáng để lấp đầy lịch?
-            </p>
-            <button type="button">Tạo ngay</button>
+          <div className="log-list">
+            {auditLogs.length === 0 ? (
+              <p>Chưa có nhật ký hệ thống.</p>
+            ) : (
+              auditLogs.map((log, index) => (
+                <div className="log-item" key={log.id || index}>
+                  <div className="log-icon blue">📋</div>
+                  <p>{log.action || log.details || "Không có mô tả"}</p>
+                  <span>{log.performedBy || ""}</span>
+                </div>
+              ))
+            )}
           </div>
-        </aside>
+        </div>
       </section>
     </div>
   );
 }
-
-export default AdminDashboardPage;

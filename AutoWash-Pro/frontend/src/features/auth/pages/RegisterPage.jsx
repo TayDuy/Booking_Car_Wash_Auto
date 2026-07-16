@@ -9,6 +9,14 @@ function RegisterPage() {
   const navigate = useNavigate();
   const auth = useAuth();
 
+  useEffect(() => {
+    if (auth?.token) {
+      const role = (localStorage.getItem("role") || "").toUpperCase();
+      const home = { ADMIN: "/admin/dashboard", EMPLOYEE: "/employee/dashboard", MANAGER: "/manager/dashboard" }[role] || "/customer/home";
+      navigate(home, { replace: true });
+    }
+  }, []);
+
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
     fullName: "",
@@ -72,7 +80,10 @@ function RegisterPage() {
       setErrorMessage("Mật khẩu phải có ít nhất 8 ký tự.");
       return;
     }
-    if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(formData.password)) {
+    const hasLowercase = /[a-z]/.test(formData.password);
+    const hasUppercase = /[A-Z]/.test(formData.password);
+    const hasDigit = /\d/.test(formData.password);
+    if (!hasLowercase || !hasUppercase || !hasDigit) {
       setErrorMessage("Mật khẩu phải chứa ít nhất 1 chữ hoa, 1 chữ thường và 1 số.");
       return;
     }
