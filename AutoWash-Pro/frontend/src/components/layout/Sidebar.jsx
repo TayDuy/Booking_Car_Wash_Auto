@@ -1,16 +1,19 @@
-﻿import { NavLink } from "react-router-dom";
-import useAuth from "../../hooks/useAuth";
+import React from "react";
+import { NavLink } from "react-router-dom";
 import {
   LayoutDashboard,
   CalendarCheck,
+  ShoppingCart,
   Users,
   Car,
   Building2,
   Package,
   Megaphone,
   BarChart3,
+  ReceiptText,
   ScrollText,
-  Bell,
+  ShieldCheck,
+  Settings,
 } from "lucide-react";
 import "./Sidebar.css";
 
@@ -25,6 +28,7 @@ const menuGroups = [
     title: "Quản lý",
     items: [
       { label: "Đặt lịch", path: "/admin/bookings", icon: CalendarCheck },
+      { label: "Đơn hàng", path: "/admin/orders", icon: ShoppingCart },
       { label: "Khách hàng", path: "/admin/customers", icon: Users },
       { label: "Xe của khách", path: "/admin/vehicles", icon: Car },
       { label: "Chi nhánh", path: "/admin/branches", icon: Building2 },
@@ -40,19 +44,16 @@ const menuGroups = [
   {
     title: "Báo cáo & hệ thống",
     items: [
-      { label: "Thông báo", path: "/admin/notifications", icon: Bell },
+      {label: "Lịch sử thanh toán", path: "/admin/payments", icon: ReceiptText},
       { label: "Báo cáo", path: "/admin/reports", icon: BarChart3 },
       { label: "Nhật ký hệ thống", path: "/admin/audit-logs", icon: ScrollText },
+      { label: "Phân quyền", path: "/admin/roles", icon: ShieldCheck },
+      { label: "Cấu hình", path: "/admin/settings", icon: Settings },
     ],
   },
 ];
 
 export default function Sidebar() {
-  const auth = useAuth();
-  const user = auth?.user;
-  const displayName = user?.fullName || user?.username || "Admin";
-  const displayRole = user?.role === "ADMIN" ? "Quản trị viên" : user?.role || "Admin";
-
   return (
     <aside className="admin-sidebar">
       <div className="sidebar-brand">
@@ -90,10 +91,10 @@ export default function Sidebar() {
       </nav>
 
       <div className="sidebar-user">
-        <div className="user-avatar">{displayName.charAt(0).toUpperCase()}</div>
+        <div className="user-avatar">A</div>
         <div>
-          <strong>{displayName}</strong>
-          <p>{displayRole}</p>
+          <strong>Admin</strong>
+          <p>Super Administrator</p>
         </div>
       </div>
     </aside>

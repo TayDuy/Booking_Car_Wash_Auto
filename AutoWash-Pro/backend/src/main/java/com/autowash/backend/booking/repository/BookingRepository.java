@@ -29,7 +29,7 @@ public interface BookingRepository extends JpaRepository<Booking, Integer> {
         LEFT JOIN FETCH b.vehicle
         LEFT JOIN FETCH b.branch
         LEFT JOIN FETCH b.slot
-        ORDER BY b.priorityScore DESC, b.bookingDate ASC
+        ORDER BY b.bookingDate DESC, b.bookingId DESC
         """)
     List<Booking> findAllWithAssociations();
 

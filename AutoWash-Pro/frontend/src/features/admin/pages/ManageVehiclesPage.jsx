@@ -1,5 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Eye, Pencil, Plus, Search, Trash2 } from "lucide-react";
+import {
+  Eye,
+  Pencil,
+  Plus,
+  Search,
+  Trash2,
+  RefreshCw,
+} from "lucide-react";
 import vehicleApi from "../../../api/vehicleApi";
 import "./ManageVehiclesPage.css";
 
@@ -12,10 +19,50 @@ const emptyForm = {
   color: "",
 };
 
+function getPaginationItems(currentPage, totalPages) {
+  if (totalPages <= 7) {
+    return Array.from(
+      { length: totalPages },
+      (_, index) => index + 1
+    );
+  }
+
+  const items = [1];
+
+  const startPage = Math.max(2, currentPage - 1);
+  const endPage = Math.min(
+    totalPages - 1,
+    currentPage + 1
+  );
+
+  if (startPage > 2) {
+    items.push("ellipsis-start");
+  }
+
+  for (
+    let page = startPage;
+    page <= endPage;
+    page += 1
+  ) {
+    items.push(page);
+  }
+
+  if (endPage < totalPages - 1) {
+    items.push("ellipsis-end");
+  }
+
+  items.push(totalPages);
+
+  return items;
+}
+
 export default function ManageVehiclesPage() {
   const [vehicles, setVehicles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [keyword, setKeyword] = useState("");
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   const [showForm, setShowForm] = useState(false);
   const [editingVehicle, setEditingVehicle] = useState(null);
@@ -26,11 +73,17 @@ export default function ManageVehiclesPage() {
   }, []);
 
   async function loadVehicles() {
+    setLoading(true);
+
     try {
       const response = await vehicleApi.list();
 
+      console.log("VEHICLE API:", response.data);
 
-      const result = response.data?.data || response.data || [];
+      const result =
+        response.data?.data ||
+        response.data ||
+        [];
 
       if (Array.isArray(result)) {
         setVehicles(result);
@@ -41,10 +94,21 @@ export default function ManageVehiclesPage() {
       }
     } catch (error) {
       console.error("Load vehicles failed:", error);
+
       setVehicles([]);
+
+      alert(
+        error.response?.data?.message ||
+        "Không tải được danh sách xe."
+      );
     } finally {
       setLoading(false);
     }
+  }
+
+  async function handleRefreshVehicles() {
+    setCurrentPage(1);
+    await loadVehicles();
   }
 
   const filteredVehicles = useMemo(() => {
@@ -64,6 +128,54 @@ export default function ManageVehiclesPage() {
       return text.includes(keyword.toLowerCase());
     });
   }, [vehicles, keyword]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [keyword, pageSize]);
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredVehicles.length / pageSize)
+  );
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
+  const paginatedVehicles = useMemo(() => {
+    const startIndex =
+      (currentPage - 1) * pageSize;
+
+    return filteredVehicles.slice(
+      startIndex,
+      startIndex + pageSize
+    );
+  }, [
+    filteredVehicles,
+    currentPage,
+    pageSize,
+  ]);
+
+  const paginationItems = useMemo(
+    () =>
+      getPaginationItems(
+        currentPage,
+        totalPages
+      ),
+    [currentPage, totalPages]
+  );
+
+  const firstVisibleItem =
+    filteredVehicles.length === 0
+      ? 0
+      : (currentPage - 1) * pageSize + 1;
+
+  const lastVisibleItem = Math.min(
+    currentPage * pageSize,
+    filteredVehicles.length
+  );
 
   function openCreateForm() {
     setEditingVehicle(null);
@@ -116,7 +228,8 @@ export default function ManageVehiclesPage() {
       setShowForm(false);
       setEditingVehicle(null);
       setFormData(emptyForm);
-      loadVehicles();
+      setCurrentPage(1);
+      await loadVehicles();
     } catch (error) {
       console.error("Save vehicle failed:", error);
       alert("Lưu xe thất bại. Kiểm tra lại dữ liệu hoặc API backend.");
@@ -137,7 +250,7 @@ export default function ManageVehiclesPage() {
     try {
       await vehicleApi.delete(vehicleId);
       alert("Xoá xe thành công.");
-      loadVehicles();
+      await loadVehicles();
     } catch (error) {
       console.error("Delete vehicle failed:", error);
       alert("Xoá xe thất bại.");
@@ -147,19 +260,17 @@ export default function ManageVehiclesPage() {
   function handleView(vehicle) {
     alert(
       `ID: ${vehicle.vehicleId || vehicle.id || "N/A"}\n` +
-        `Khách hàng: ${
-          vehicle.customerName || vehicle.customer?.fullName || "N/A"
-        }\n` +
-        `Biển số: ${vehicle.licensePlate || "N/A"}\n` +
-        `Hãng: ${vehicle.brand || "N/A"}\n` +
-        `Model: ${vehicle.model || "N/A"}\n` +
-        `Loại xe: ${vehicle.vehicleType || "N/A"}\n` +
-        `Màu: ${vehicle.color || "N/A"}\n` +
-        `Trạng thái: ${
-          vehicle.active === false || vehicle.isActive === false
-            ? "Không hoạt động"
-            : "Đang hoạt động"
-        }`
+      `Khách hàng: ${vehicle.customerName || vehicle.customer?.fullName || "N/A"
+      }\n` +
+      `Biển số: ${vehicle.licensePlate || "N/A"}\n` +
+      `Hãng: ${vehicle.brand || "N/A"}\n` +
+      `Model: ${vehicle.model || "N/A"}\n` +
+      `Loại xe: ${vehicle.vehicleType || "N/A"}\n` +
+      `Màu: ${vehicle.color || "N/A"}\n` +
+      `Trạng thái: ${vehicle.active === false || vehicle.isActive === false
+        ? "Không hoạt động"
+        : "Đang hoạt động"
+      }`
     );
   }
 
@@ -188,8 +299,20 @@ export default function ManageVehiclesPage() {
           />
         </div>
 
-        <button className="refresh-btn" onClick={loadVehicles}>
-          Làm mới
+        <button
+          type="button"
+          className="refresh-btn"
+          onClick={handleRefreshVehicles}
+          disabled={loading}
+        >
+          <RefreshCw
+            size={18}
+            className={
+              loading ? "vehicle-refresh-spinning" : ""
+            }
+          />
+
+          {loading ? "Đang tải..." : "Làm mới"}
         </button>
       </div>
 
@@ -199,83 +322,172 @@ export default function ManageVehiclesPage() {
         ) : filteredVehicles.length === 0 ? (
           <div className="empty-state">Không có xe phù hợp.</div>
         ) : (
-          <div className="booking-table-wrap">
-            <table className="booking-table">
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>Biển số</th>
-                  <th>Khách hàng</th>
-                  <th>Hãng</th>
-                  <th>Model</th>
-                  <th>Loại xe</th>
-                  <th>Màu</th>
-                  <th>Trạng thái</th>
-                  <th>Thao tác</th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {filteredVehicles.map((vehicle, index) => (
-                  <tr key={vehicle.vehicleId || vehicle.id || index}>
-                    <td>{index + 1}</td>
-                    <td>{vehicle.licensePlate || "N/A"}</td>
-                    <td>
-                      {vehicle.customerName ||
-                        vehicle.customer?.fullName ||
-                        "N/A"}
-                    </td>
-                    <td>{vehicle.brand || "N/A"}</td>
-                    <td>{vehicle.model || "N/A"}</td>
-                    <td>{vehicle.vehicleType || "N/A"}</td>
-                    <td>{vehicle.color || "N/A"}</td>
-                    <td>
-                      <span
-                        className={
-                          vehicle.active === false ||
-                          vehicle.isActive === false
-                            ? "status-badge danger"
-                            : "status-badge success"
-                        }
-                      >
-                        {vehicle.active === false ||
-                        vehicle.isActive === false
-                          ? "Inactive"
-                          : "Active"}
-                      </span>
-                    </td>
-                    <td>
-                      <div className="action-group">
-                        <button
-                          className="action-btn view"
-                          title="Xem chi tiết"
-                          onClick={() => handleView(vehicle)}
-                        >
-                          <Eye size={16} />
-                        </button>
-
-                        <button
-                          className="action-btn edit"
-                          title="Sửa xe"
-                          onClick={() => openEditForm(vehicle)}
-                        >
-                          <Pencil size={16} />
-                        </button>
-
-                        <button
-                          className="action-btn cancel"
-                          title="Xoá xe"
-                          onClick={() => handleDelete(vehicle)}
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    </td>
+          <>
+            <div className="booking-table-wrap">
+              <table className="booking-table">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Biển số</th>
+                    <th>Khách hàng</th>
+                    <th>Hãng</th>
+                    <th>Model</th>
+                    <th>Loại xe</th>
+                    <th>Màu</th>
+                    <th>Trạng thái</th>
+                    <th>Thao tác</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+
+                <tbody>
+                  {paginatedVehicles.map((vehicle, index) => (
+                    <tr key={vehicle.vehicleId || vehicle.id || index}>
+                      <td>
+                        {(currentPage - 1) * pageSize +
+                          index +
+                          1}
+                      </td>
+                      <td>{vehicle.licensePlate || "N/A"}</td>
+                      <td>
+                        {vehicle.customerName ||
+                          vehicle.customer?.fullName ||
+                          "N/A"}
+                      </td>
+                      <td>{vehicle.brand || "N/A"}</td>
+                      <td>{vehicle.model || "N/A"}</td>
+                      <td>{vehicle.vehicleType || "N/A"}</td>
+                      <td>{vehicle.color || "N/A"}</td>
+                      <td>
+                        <span
+                          className={
+                            vehicle.active === false ||
+                              vehicle.isActive === false
+                              ? "status-badge danger"
+                              : "status-badge success"
+                          }
+                        >
+                          {vehicle.active === false ||
+                            vehicle.isActive === false
+                            ? "Inactive"
+                            : "Active"}
+                        </span>
+                      </td>
+                      <td>
+                        <div className="action-group">
+                          <button
+                            className="action-btn view"
+                            title="Xem chi tiết"
+                            onClick={() => handleView(vehicle)}
+                          >
+                            <Eye size={16} />
+                          </button>
+
+                          <button
+                            className="action-btn edit"
+                            title="Sửa xe"
+                            onClick={() => openEditForm(vehicle)}
+                          >
+                            <Pencil size={16} />
+                          </button>
+
+                          <button
+                            className="action-btn cancel"
+                            title="Xoá xe"
+                            onClick={() => handleDelete(vehicle)}
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="vehicle-pagination">
+              <div className="vehicle-pagination-summary">
+                Hiển thị{" "}
+                <strong>
+                  {firstVisibleItem}–{lastVisibleItem}
+                </strong>{" "}
+                trong tổng số{" "}
+                <strong>
+                  {filteredVehicles.length}
+                </strong>{" "}
+                xe
+              </div>
+
+              <div className="vehicle-pagination-controls">
+                <button
+                  type="button"
+                  disabled={currentPage === 1}
+                  onClick={() =>
+                    setCurrentPage((previousPage) =>
+                      Math.max(previousPage - 1, 1)
+                    )
+                  }
+                >
+                  Trước
+                </button>
+
+                {paginationItems.map((item) =>
+                  typeof item === "number" ? (
+                    <button
+                      type="button"
+                      key={item}
+                      className={
+                        item === currentPage
+                          ? "active"
+                          : ""
+                      }
+                      onClick={() => setCurrentPage(item)}
+                    >
+                      {item}
+                    </button>
+                  ) : (
+                    <span
+                      className="vehicle-pagination-ellipsis"
+                      key={item}
+                    >
+                      …
+                    </span>
+                  )
+                )}
+
+                <button
+                  type="button"
+                  disabled={currentPage === totalPages}
+                  onClick={() =>
+                    setCurrentPage((previousPage) =>
+                      Math.min(
+                        previousPage + 1,
+                        totalPages
+                      )
+                    )
+                  }
+                >
+                  Sau
+                </button>
+              </div>
+
+              <label className="vehicle-page-size-control">
+                <span>Mỗi trang</span>
+
+                <select
+                  value={pageSize}
+                  onChange={(event) =>
+                    setPageSize(
+                      Number(event.target.value)
+                    )
+                  }
+                >
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                  <option value={50}>50</option>
+                </select>
+              </label>
+            </div>
+          </>
         )}
       </div>
 

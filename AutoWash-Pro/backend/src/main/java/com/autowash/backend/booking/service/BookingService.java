@@ -6,6 +6,7 @@ import com.autowash.backend.booking.dto.BookingRescheduleRequestDTO;
 import com.autowash.backend.booking.dto.BookingResponseDTO;
 import com.autowash.backend.booking.dto.BookingSummaryResponseDTO;
 import com.autowash.backend.booking.dto.BookingUpdateRequestDTO;
+import com.autowash.backend.booking.dto.AssignableStaffResponseDTO;
 
 import java.util.List;
 
@@ -60,6 +61,11 @@ public interface BookingService {
      * Admin lấy toàn bộ booking.
      */
     List<BookingSummaryResponseDTO> getAllBookings();
+
+   /**
+   * Admin lấy danh sách nhân viên active thuộc đúng chi nhánh booking.
+   */
+   List<AssignableStaffResponseDTO> getAssignableStaff(Integer bookingId);
 
     /**
      * Customer lấy danh sách booking của mình.
@@ -124,6 +130,13 @@ public interface BookingService {
     BookingResponseDTO confirmBooking(Integer bookingId);
 
     BookingResponseDTO checkInBooking(Integer bookingId);
+
+    /**
+    * Admin bắt đầu thực hiện dịch vụ.
+    *
+    * checked_in → in_progress
+    */
+    BookingResponseDTO startWashBooking(Integer bookingId);
 
     BookingResponseDTO completeBooking(Integer bookingId);
 }

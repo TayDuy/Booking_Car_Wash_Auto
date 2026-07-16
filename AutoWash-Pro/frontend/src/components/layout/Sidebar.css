@@ -139,3 +139,78 @@
   color: #22c55e;
   font-size: 12px;
 }
+
+/* =========================================================
+   SIDEBAR COLLAPSED
+   ========================================================= */
+
+.dashboard-shell.sidebar-collapsed .admin-sidebar {
+  width: var(--sidebar-collapsed-width);
+  padding-left: 12px;
+  padding-right: 12px;
+}
+
+/* Logo chỉ giữ biểu tượng */
+.dashboard-shell.sidebar-collapsed .sidebar-brand {
+  justify-content: center;
+  gap: 0;
+}
+
+.dashboard-shell.sidebar-collapsed .sidebar-brand > div:last-child {
+  display: none;
+}
+
+/* Ẩn tiêu đề nhóm */
+.dashboard-shell.sidebar-collapsed .menu-title {
+  display: none;
+}
+
+/* Thu gọn khoảng cách giữa các nhóm */
+.dashboard-shell.sidebar-collapsed .menu-group {
+  margin-bottom: 12px;
+}
+
+/* Chỉ giữ icon menu */
+.dashboard-shell.sidebar-collapsed .sidebar-link {
+  width: 48px;
+  margin-left: auto;
+  margin-right: auto;
+  padding: 0;
+
+  justify-content: center;
+  gap: 0;
+}
+
+.dashboard-shell.sidebar-collapsed .sidebar-link span {
+  display: none;
+}
+
+.dashboard-shell.sidebar-collapsed .sidebar-link:hover {
+  transform: none;
+}
+
+/* Phần tài khoản dưới Sidebar chỉ giữ avatar */
+.dashboard-shell.sidebar-collapsed .sidebar-user {
+  padding: 10px 0;
+  justify-content: center;
+  gap: 0;
+}
+
+.dashboard-shell.sidebar-collapsed
+  .sidebar-user
+  > div:last-child {
+  display: none;
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+  .admin-sidebar {
+    width: 230px;
+    box-shadow: 12px 0 30px rgba(15, 23, 42, 0.25);
+  }
+
+  .dashboard-shell.sidebar-collapsed .admin-sidebar {
+    width: 230px;
+    transform: translateX(-100%);
+  }
+}

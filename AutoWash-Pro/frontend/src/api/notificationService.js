@@ -38,55 +38,125 @@ export async function markAllRead(){
 }
 
 export function subscribeSSE(onMessage) {
-  let es = null;
+  let eventSource = null;
+  let retryTimer = null;
   let active = true;
   let retryCount = 0;
+
   const MAX_RETRIES = 5;
 
+  const handleRetry = () => {
+    if (!active || retryCount >= MAX_RETRIES) {
+      return;
+    }
+
+    retryCount += 1;
+
+    const delay = Math.min(
+      30000,
+      1000 * Math.pow(2, retryCount)
+    );
+
+    console.log(
+      `SSE reconnecting in ${delay / 1000}s ` +
+        `(attempt ${retryCount}/${MAX_RETRIES})...`
+    );
+
+    retryTimer = window.setTimeout(() => {
+      retryTimer = null;
+      connect();
+    }, delay);
+  };
+
   const connect = async () => {
-    if (!active) return;
+    if (!active) {
+      return;
+    }
+
     try {
-      const token = localStorage.getItem('token');
-      if (!token) return;
+      const token = localStorage.getItem("token");
 
-      const resp = await axiosClient.post('/auth/sse-ticket');
-      const ticket = resp.data?.data || resp.data;
+      if (!token) {
+        return;
+      }
 
-      es = new EventSource(`${BASE_URL}/stream?ticket=${ticket}`);
+      const response =
+        await axiosClient.post("/auth/sse-ticket");
 
-      es.onopen = () => {
-        retryCount = 0; // Reset on successful connection
+      /*
+       * React StrictMode có thể cleanup effect trong lúc
+       * request lấy ticket vẫn đang chạy.
+       */
+      if (!active) {
+        return;
+      }
+
+      const ticket =
+        response.data?.data || response.data;
+
+      if (!ticket) {
+        console.warn("SSE ticket không hợp lệ.");
+        return;
+      }
+
+      eventSource = new EventSource(
+        `${BASE_URL}/stream?ticket=${encodeURIComponent(
+          ticket
+        )}`
+      );
+
+      eventSource.onopen = () => {
+        if (!active) {
+          eventSource?.close();
+          return;
+        }
+
+        retryCount = 0;
       };
 
-      es.onmessage = (e) => {
+      eventSource.onmessage = (event) => {
+        if (!active) {
+          return;
+        }
+
         try {
-          const d = JSON.parse(e.data);
-          onMessage(d);
-        } catch (err) {
-          console.warn('SSE parse', err);
+          const notification = JSON.parse(event.data);
+          onMessage(notification);
+        } catch (error) {
+          console.warn(
+            "Không phân tích được dữ liệu SSE:",
+            error
+          );
         }
       };
 
-      es.onerror = (err) => {
-        console.warn('SSE connection error. Closing and retrying...', err);
-        es.close();
+      eventSource.onerror = (error) => {
+        if (!active) {
+          return;
+        }
+
+        console.warn(
+          "SSE connection error. Retrying...",
+          error
+        );
+
+        eventSource?.close();
+        eventSource = null;
+
         handleRetry();
       };
-    } catch (err) {
-      console.error('SSE ticket request failed.', err);
+    } catch (error) {
+      if (!active) {
+        return;
+      }
+
+      console.error(
+        "SSE ticket request failed:",
+        error
+      );
+
       handleRetry();
     }
-  };
-
-  const handleRetry = () => {
-    if (retryCount >= MAX_RETRIES) {
-      console.warn(`SSE subscription: reached max retry limit (${MAX_RETRIES}). Stopping auto-reconnect.`);
-      return;
-    }
-    retryCount++;
-    const delay = Math.min(30000, 1000 * Math.pow(2, retryCount)); // Exponential backoff: 2s, 4s, 8s, 16s, 30s
-    console.log(`SSE reconnecting in ${delay / 1000}s (attempt ${retryCount}/${MAX_RETRIES})...`);
-    setTimeout(connect, delay);
   };
 
   connect();
@@ -94,7 +164,16 @@ export function subscribeSSE(onMessage) {
   return {
     close: () => {
       active = false;
-      if (es) es.close();
-    }
+
+      if (retryTimer !== null) {
+        window.clearTimeout(retryTimer);
+        retryTimer = null;
+      }
+
+      if (eventSource) {
+        eventSource.close();
+        eventSource = null;
+      }
+    },
   };
 }

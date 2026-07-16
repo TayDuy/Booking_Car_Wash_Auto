@@ -32,6 +32,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.autowash.backend.washbay.entity.WashBay;
+import com.autowash.backend.washbay.entity.WashBay.BayStatus;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -244,6 +246,52 @@ public class BookingServiceImpl implements BookingService {
         return bookingMapper.toResponse(booking, details);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<AssignableStaffResponseDTO> getAssignableStaff(
+            Integer bookingId
+    ) {
+        Booking booking = findBookingOrThrow(bookingId);
+
+        if (booking.getBranch() == null) {
+            throw new BusinessException(
+                    "Booking chưa có thông tin chi nhánh",
+                    HttpStatus.CONFLICT
+            );
+        }
+
+        Integer branchId = booking.getBranch().getBranchId();
+
+        List<Employee> employees =
+                employeeRepository.findByBranch_BranchIdAndStatus(
+                        branchId,
+                        Employee.StaffStatus.active
+                );
+
+        return employees.stream()
+                .filter(Employee::isAssignable)
+                .map(employee ->
+                        AssignableStaffResponseDTO.builder()
+                                .employeeId(employee.getEmployeeId())
+                                .fullName(employee.getFullName())
+                                .phone(employee.getPhone())
+                                .email(employee.getEmail())
+                                .role(employee.getRole())
+                                .branchId(
+                                        employee.getBranch() != null
+                                                ? employee.getBranch().getBranchId()
+                                                : null
+                                )
+                                .branchName(
+                                        employee.getBranch() != null
+                                                ? employee.getBranch().getBranchName()
+                                                : null
+                                )
+                                .build()
+                )
+                .toList();
+    }
+
     /** Lấy danh sách tóm tắt tất cả booking. */
     @Override
     @Transactional(readOnly = true)
@@ -337,9 +385,104 @@ public class BookingServiceImpl implements BookingService {
         }
 
         booking.setStatus(BookingStatus.checked_in);
+        booking.setCheckInAt(LocalDateTime.now());
 
         Booking saved = bookingRepository.save(booking);
-        List<BookingDetail> details = bookingDetailRepository.findByBooking(saved);
+
+        List<BookingDetail> details =
+                bookingDetailRepository.findByBooking(saved);
+
+        return bookingMapper.toResponse(saved, details);
+    }
+
+    @Override
+    @Transactional
+    public BookingResponseDTO startWashBooking(Integer bookingId) {
+        Booking booking = findBookingOrThrow(bookingId);
+
+        if (!BookingStatus.checked_in.equals(booking.getStatus())) {
+            throw new BusinessException(
+                    "Chỉ booking checked_in mới được bắt đầu rửa",
+                    HttpStatus.BAD_REQUEST
+            );
+        }
+
+        Employee assignedStaff = booking.getAssignedStaff();
+
+        if (assignedStaff == null) {
+            throw new BusinessException(
+                    "Booking chưa được phân công nhân viên",
+                    HttpStatus.CONFLICT
+            );
+        }
+
+        if (!assignedStaff.isAssignable()) {
+            throw new BusinessException(
+                    "Nhân viên được phân công hiện không hoạt động",
+                    HttpStatus.CONFLICT
+            );
+        }
+
+        if (
+                assignedStaff.getBranch() == null ||
+                booking.getBranch() == null ||
+                !assignedStaff.getBranch().getBranchId()
+                        .equals(booking.getBranch().getBranchId())
+        ) {
+            throw new BusinessException(
+                    "Nhân viên được phân công không thuộc chi nhánh của booking",
+                    HttpStatus.CONFLICT
+            );
+        }
+
+        TimeSlot slot = booking.getSlot();
+
+        if (slot == null || slot.getWashBay() == null) {
+            throw new BusinessException(
+                    "Booking chưa được gán khu vực rửa xe",
+                    HttpStatus.CONFLICT
+            );
+        }
+
+        WashBay washBay = slot.getWashBay();
+
+        if (
+                washBay.getBranch() == null ||
+                booking.getBranch() == null ||
+                !washBay.getBranch().getBranchId()
+                        .equals(booking.getBranch().getBranchId())
+        ) {
+            throw new BusinessException(
+                    "Khu vực rửa xe không thuộc chi nhánh của booking",
+                    HttpStatus.CONFLICT
+            );
+        }
+
+        if (!BayStatus.available.equals(washBay.getStatus())) {
+            throw new BusinessException(
+                    "Khu vực rửa xe '" +
+                            washBay.getBayName() +
+                            "' hiện không khả dụng. Trạng thái: " +
+                            washBay.getStatus(),
+                    HttpStatus.CONFLICT
+            );
+        }
+
+        booking.setStatus(BookingStatus.in_progress);
+        washBay.setStatus(BayStatus.occupied);
+
+        Booking saved = bookingRepository.save(booking);
+
+        log.info(
+                "[Admin] Bắt đầu xử lý booking #{}; nhân viên #{}; wash bay #{}",
+                saved.getBookingId(),
+                assignedStaff.getEmployeeId(),
+                washBay.getBayId()
+        );
+
+        List<BookingDetail> details =
+                bookingDetailRepository.findByBooking(saved);
+
         return bookingMapper.toResponse(saved, details);
     }
 
@@ -498,7 +641,30 @@ public class BookingServiceImpl implements BookingService {
                     HttpStatus.BAD_REQUEST);
         }
 
+        TimeSlot slot = booking.getSlot();
+
+        if (slot == null || slot.getWashBay() == null) {
+            throw new BusinessException(
+                    "Booking không có khu vực rửa xe",
+                    HttpStatus.CONFLICT
+            );
+        }
+
+        WashBay washBay = slot.getWashBay();
+
+        if (!BayStatus.occupied.equals(washBay.getStatus())) {
+            throw new BusinessException(
+                    "Không thể hoàn thành booking vì khu vực rửa xe '" +
+                            washBay.getBayName() +
+                            "' không ở trạng thái occupied",
+                    HttpStatus.CONFLICT
+            );
+        }
+
         booking.setStatus(BookingStatus.completed);
+        booking.setCompleteAt(LocalDateTime.now());
+
+        washBay.setStatus(BayStatus.available);
 
         // Tự động cập nhật payment → paid CHỈ khi phương thức thanh toán là tiền mặt (cash/pos).
         // Bank_transfer / paypal phải chờ VNPay/PayPal callback xác nhận — không auto-pay.
@@ -519,7 +685,6 @@ public class BookingServiceImpl implements BookingService {
         });
 
         // Giải phóng slot capacity — tránh đầy ảo
-        TimeSlot slot = booking.getSlot();
         slot.decrementBookings();
         timeSlotRepository.save(slot);
 
