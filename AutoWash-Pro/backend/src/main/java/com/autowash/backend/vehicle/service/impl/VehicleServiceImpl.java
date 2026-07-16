@@ -44,10 +44,28 @@ public class VehicleServiceImpl implements VehicleService {
             .toList();
     }
 
+    private Customer resolveCustomer(Integer userId, Integer customerId) {
+        return customerRepository.findByUser_Id(userId)
+                .orElseGet(() -> {
+                    if (customerId == null) {
+                        throw new BusinessException("Không tìm thấy khách hàng", HttpStatus.NOT_FOUND);
+                    }
+                    return customerRepository.findById(customerId)
+                            .orElseThrow(() -> new BusinessException("Không tìm thấy khách hàng", HttpStatus.NOT_FOUND));
+                });
+    }
+
+    private Vehicle findVehicleForUserOrAdmin(Integer userId, Integer vehicleId) {
+        return customerRepository.findByUser_Id(userId)
+                .map(customer -> vehicleRespository.findByVehicleIdAndCustomer_CustomerId(vehicleId, customer.getCustomerId())
+                        .orElseThrow(() -> new BusinessException("Không tìm thấy xe", HttpStatus.NOT_FOUND)))
+                .orElseGet(() -> vehicleRespository.findById(vehicleId)
+                        .orElseThrow(() -> new BusinessException("Không tìm thấy xe", HttpStatus.NOT_FOUND)));
+    }
+
     @Override
     public VehicleResponse addVehicle(Integer userId, VehicleRequest request) {
-        Customer customer = customerRepository.findByUser_Id(userId)
-                .orElseThrow(() -> new BusinessException("Không tìm thấy khách hàng", HttpStatus.NOT_FOUND));
+        Customer customer = resolveCustomer(userId, request.getCustomerId());
         String normalizedPlate = request.getLicensePlate().trim().toUpperCase();
         if (vehicleRespository.existsByLicensePlate(normalizedPlate)) {
             throw new BusinessException("Biển số xe này đã được đăng ký trong hệ thống");
@@ -68,10 +86,9 @@ public class VehicleServiceImpl implements VehicleService {
     @Override
     @Transactional
     public VehicleResponse updateVehicle(Integer userId, Integer vehicleId, VehicleRequest request) {
-        Customer customer = customerRepository.findByUser_Id(userId)
-                .orElseThrow(() -> new BusinessException("Không tìm thấy khách hàng", HttpStatus.NOT_FOUND));
+        Customer customer = resolveCustomer(userId, request.getCustomerId());
         Vehicle vehicle = vehicleRespository.findByVehicleIdAndCustomer_CustomerId(vehicleId, customer.getCustomerId())
-                .orElseThrow(() -> new BusinessException("Không tìm thấy xe của bạn", HttpStatus.NOT_FOUND));
+                .orElseThrow(() -> new BusinessException("Không tìm thấy xe", HttpStatus.NOT_FOUND));
         String normalizedPlate = request.getLicensePlate().trim().toUpperCase();
         // Kiểm tra nếu đổi biển số thì biển số mới có bị trùng không
         if (!vehicle.getLicensePlate().equals(normalizedPlate)
@@ -91,10 +108,7 @@ public class VehicleServiceImpl implements VehicleService {
     @Override
     @Transactional
     public void deleteVehicle(Integer userId, Integer vehicleId) {
-        Customer customer = customerRepository.findByUser_Id(userId)
-                .orElseThrow(() -> new BusinessException("Không tìm thấy khách hàng", HttpStatus.NOT_FOUND));
-        Vehicle vehicle = vehicleRespository.findByVehicleIdAndCustomer_CustomerId(vehicleId, customer.getCustomerId())
-                .orElseThrow(() -> new BusinessException("Không tìm thấy xe của bạn", HttpStatus.NOT_FOUND));
+        Vehicle vehicle = findVehicleForUserOrAdmin(userId, vehicleId);
         List<BookingStatus> activeStatuses = List.of(
                 BookingStatus.pending,
                 BookingStatus.confirmed,
@@ -109,10 +123,7 @@ public class VehicleServiceImpl implements VehicleService {
     @Override
     @Transactional
     public VehicleResponse toggleActive(Integer userId, Integer vehicleId) {
-        Customer customer = customerRepository.findByUser_Id(userId)
-                .orElseThrow(() -> new BusinessException("Không tìm thấy khách hàng", HttpStatus.NOT_FOUND));
-        Vehicle vehicle = vehicleRespository.findByVehicleIdAndCustomer_CustomerId(vehicleId, customer.getCustomerId())
-                .orElseThrow(() -> new BusinessException("Không tìm thấy xe của bạn", HttpStatus.NOT_FOUND));
+        Vehicle vehicle = findVehicleForUserOrAdmin(userId, vehicleId);
 
         if (vehicle.getIsActive()) {
             List<BookingStatus> activeStatuses = List.of(

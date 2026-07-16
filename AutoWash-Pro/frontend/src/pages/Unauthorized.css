@@ -47,4 +47,23 @@
   color: white;
   text-decoration: none;
   font-weight: 700;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.unauthorized-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  align-items: center;
+}
+
+.unauthorized-btn.secondary {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.unauthorized-btn.secondary:hover {
+  background: #d1d5db;
 }
