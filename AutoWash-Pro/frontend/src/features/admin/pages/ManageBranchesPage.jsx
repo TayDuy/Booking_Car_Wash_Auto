@@ -13,8 +13,6 @@ const emptyForm = {
     branchName: "",
     address: "",
     phone: "",
-    openTime: "07:00:00",
-    closeTime: "21:00:00",
     capacity: 4,
     status: "active",
 };
@@ -40,7 +38,7 @@ export default function ManageBranchesPage() {
         try {
             const response = await getBranches();
 
-
+            console.log("BRANCH API:", response.data);
 
             const result = response.data?.data || response.data || [];
 
@@ -94,8 +92,6 @@ export default function ManageBranchesPage() {
             branchName: branch.branchName || branch.name || "",
             address: branch.address || "",
             phone: branch.phone || "",
-            openTime: branch.openTime || branch.open_time || "07:00:00",
-            closeTime: branch.closeTime || branch.close_time || "21:00:00",
             capacity: branch.capacity || 4,
             status: branch.status || "active",
         });
@@ -155,7 +151,7 @@ export default function ManageBranchesPage() {
         }
 
         const currentStatus = String(branch.status || "").toLowerCase();
-        const nextStatus = currentStatus === "active" ? "closed" : "active";
+        const nextStatus = currentStatus === "active" ? "inactive" : "active";
 
         const ok = window.confirm(
             `Bạn có chắc muốn đổi trạng thái chi nhánh này sang ${nextStatus}?`
@@ -198,7 +194,8 @@ export default function ManageBranchesPage() {
         const value = String(status || "").toLowerCase();
 
         if (value === "active") return "success";
-        if (value === "closed" || value === "inactive") return "danger";
+        if (value === "inactive") return "danger";
+
         return "warning";
     }
 
@@ -206,8 +203,8 @@ export default function ManageBranchesPage() {
         const value = String(status || "").toLowerCase();
 
         if (value === "active") return "Hoạt động";
-        if (value === "closed") return "Đã đóng";
         if (value === "inactive") return "Tạm dừng";
+
         return status || "N/A";
     }
 
@@ -243,7 +240,6 @@ export default function ManageBranchesPage() {
                 >
                     <option value="all">Tất cả trạng thái</option>
                     <option value="active">Hoạt động</option>
-                    <option value="closed">Đã đóng</option>
                     <option value="inactive">Tạm dừng</option>
                 </select>
 
@@ -259,14 +255,13 @@ export default function ManageBranchesPage() {
                     <div className="empty-state">Không có chi nhánh phù hợp.</div>
                 ) : (
                     <div className="booking-table-wrap">
-                        <table className="booking-table">
+                        <table className="booking-table branch-table">
                             <thead>
                                 <tr>
                                     <th>#</th>
                                     <th>Tên chi nhánh</th>
                                     <th>Địa chỉ</th>
                                     <th>Số điện thoại</th>
-                                    <th>Giờ mở cửa</th>
                                     <th>Sức chứa</th>
                                     <th>Trạng thái</th>
                                     <th>Thao tác</th>
@@ -280,11 +275,7 @@ export default function ManageBranchesPage() {
                                         <td>{branch.branchName || branch.name || "N/A"}</td>
                                         <td>{branch.address || "N/A"}</td>
                                         <td>{branch.phone || "N/A"}</td>
-                                        <td>
-                                            {(branch.openTime || branch.open_time || "N/A") +
-                                                " - " +
-                                                (branch.closeTime || branch.close_time || "N/A")}
-                                        </td>
+
                                         <td>{branch.capacity || 0}</td>
                                         <td>
                                             <span
@@ -361,14 +352,7 @@ export default function ManageBranchesPage() {
                             <p>
                                 <strong>Số điện thoại:</strong> {selectedBranch.phone || "N/A"}
                             </p>
-                            <p>
-                                <strong>Giờ mở cửa:</strong>{" "}
-                                {selectedBranch.openTime || selectedBranch.open_time || "N/A"}
-                            </p>
-                            <p>
-                                <strong>Giờ đóng cửa:</strong>{" "}
-                                {selectedBranch.closeTime || selectedBranch.close_time || "N/A"}
-                            </p>
+
                             <p>
                                 <strong>Sức chứa:</strong> {selectedBranch.capacity || 0}
                             </p>
@@ -422,36 +406,6 @@ export default function ManageBranchesPage() {
                                 </div>
 
                                 <div className="form-group">
-                                    <label>Giờ mở cửa</label>
-                                    <input
-                                        type="time"
-                                        name="openTime"
-                                        value={String(formData.openTime).slice(0, 5)}
-                                        onChange={(e) =>
-                                            setFormData((prev) => ({
-                                                ...prev,
-                                                openTime: e.target.value + ":00",
-                                            }))
-                                        }
-                                    />
-                                </div>
-
-                                <div className="form-group">
-                                    <label>Giờ đóng cửa</label>
-                                    <input
-                                        type="time"
-                                        name="closeTime"
-                                        value={String(formData.closeTime).slice(0, 5)}
-                                        onChange={(e) =>
-                                            setFormData((prev) => ({
-                                                ...prev,
-                                                closeTime: e.target.value + ":00",
-                                            }))
-                                        }
-                                    />
-                                </div>
-
-                                <div className="form-group">
                                     <label>Sức chứa</label>
                                     <input
                                         type="number"
@@ -470,7 +424,6 @@ export default function ManageBranchesPage() {
                                         onChange={handleChange}
                                     >
                                         <option value="active">Hoạt động</option>
-                                        <option value="closed">Đã đóng</option>
                                         <option value="inactive">Tạm dừng</option>
                                     </select>
                                 </div>
