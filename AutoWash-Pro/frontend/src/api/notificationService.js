@@ -53,7 +53,7 @@ export async function adminRevoke(id){
   return resp.data;
 }
 
-export function subscribeSSE(onMessage, onRevoke) {
+export function subscribeSSE(onMessage, onRevoke, onReconnect) {
   let es = null;
   let active = true;
   let retryCount = 0;
@@ -72,6 +72,7 @@ export function subscribeSSE(onMessage, onRevoke) {
 
       es.onopen = () => {
         retryCount = 0;
+        onReconnect?.();
       };
 
       es.addEventListener('notification', (e) => {

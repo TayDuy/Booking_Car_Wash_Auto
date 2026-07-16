@@ -209,7 +209,7 @@ public class PaymentController {
     }
 
     private String successUrl(Integer paymentId) {
-        return UriComponentsBuilder.fromUriString(frontendBaseUrl + "/customer/payment")
+        return UriComponentsBuilder.fromUriString(frontendBaseUrl + "/customer/payment/success")
                 .queryParam("paymentId", paymentId)
                 .toUriString();
     }

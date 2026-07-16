@@ -297,18 +297,25 @@ const ProfilePage = () => {
     return 'Đồng';
   };
 
-  const getPointsNeeded = (points) => {
-    if (points >= 5000) return 0;
-    if (points >= 1500) return 5000 - points;
-    if (points >= 500) return 1500 - points;
-    return 500 - points;
+  const getPointsNeeded = (tierId, amount) => {
+    if (tierId >= 4) return 0;
+    if (tierId === 3) return Math.max(0, 15000000 - amount);
+    if (tierId === 2) return Math.max(0, 5000000 - amount);
+    return Math.max(0, 2000000 - amount);
   };
 
-  const getNextTierName = (points) => {
-    if (points >= 5000) return 'Tối đa';
-    if (points >= 1500) return 'Bạch Kim';
-    if (points >= 500) return 'Vàng';
+  const getNextTierName = (tierId) => {
+    if (tierId >= 4) return 'Tối đa';
+    if (tierId === 3) return 'Bạch Kim';
+    if (tierId === 2) return 'Vàng';
     return 'Bạc';
+  };
+
+  const getNextTierTarget = (tierId) => {
+    if (tierId >= 4) return 15000000;
+    if (tierId === 3) return 15000000;
+    if (tierId === 2) return 5000000;
+    return 2000000;
   };
 
   function getCurrentTierName() {
@@ -328,6 +335,14 @@ const ProfilePage = () => {
         loyaltyInfo?.totalPoints ||
         loyaltyInfo?.points ||
         user.totalPoints ||
+        0
+    );
+  };
+
+  const getCurrentSpending = () => {
+    return Number(
+      loyaltyInfo?.totalSpending ||
+        user.totalSpending ||
         0
     );
   };
@@ -491,10 +506,10 @@ const ProfilePage = () => {
                           </div>
                           <div className="wallet-progress-wrap">
                             <div className="progress-track">
-                              <div className="progress-fill" style={{ width: `${Math.min((getCurrentPoints() || 0) / 5000 * 100, 100)}%` }}></div>
+                              <div className="progress-fill" style={{ width: `${Math.min((getCurrentSpending() || 0) / getNextTierTarget(user.tierId) * 100, 100)}%` }}></div>
                             </div>
-                            {getPointsNeeded(getCurrentPoints()) > 0 ? (
-                              <p className="points-hint">Cần thêm {getPointsNeeded(getCurrentPoints())} điểm để lên hạng {getNextTierName(getCurrentPoints())}</p>
+                            {getPointsNeeded(user.tierId, getCurrentSpending()) > 0 ? (
+                              <p className="points-hint">Cần thêm {getPointsNeeded(user.tierId, getCurrentSpending()).toLocaleString("vi-VN")}₫ để lên hạng {getNextTierName(user.tierId)}</p>
                             ) : (
                               <p className="points-hint">Đã đạt hạng thành viên cao nhất 🎉</p>
                             )}
@@ -509,7 +524,7 @@ const ProfilePage = () => {
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: '#64748b', marginBottom: '6px' }}>
                           <span style={{ fontWeight: '600' }}>Tiến trình thăng hạng:</span>
                           <span style={{ fontWeight: '700', color: 'var(--primary)' }}>
-                            {getCurrentPoints().toLocaleString("vi-VN")} / {getCurrentPoints() >= 5000 ? '5.000' : (getCurrentPoints() >= 1500 ? '5.000' : (getCurrentPoints() >= 500 ? '1.500' : '500'))} pts
+                            {getCurrentSpending().toLocaleString("vi-VN")}₫ / {getNextTierTarget(user.tierId).toLocaleString("vi-VN")}₫
                           </span>
                         </div>
                         <div className="progress-track" style={{ backgroundColor: 'rgba(0, 74, 173, 0.1)', height: '10px', borderRadius: '999px', overflow: 'hidden' }}>
@@ -517,12 +532,12 @@ const ProfilePage = () => {
                             background: 'linear-gradient(90deg, var(--color-primary) 0%, var(--color-secondary) 100%)', 
                             height: '100%', 
                             borderRadius: '999px',
-                            width: `${Math.min((getCurrentPoints() || 0) / (getCurrentPoints() >= 5000 ? 5000 : (getCurrentPoints() >= 1500 ? 5000 : (getCurrentPoints() >= 500 ? 1500 : 500))) * 100, 100)}%` 
+                            width: `${Math.min((getCurrentSpending() || 0) / getNextTierTarget(user.tierId) * 100, 100)}%` 
                           }}></div>
                         </div>
-                        {getPointsNeeded(getCurrentPoints()) > 0 ? (
+                        {getPointsNeeded(user.tierId, getCurrentSpending()) > 0 ? (
                           <p className="points-hint" style={{ color: '#64748b', marginTop: '6px', fontSize: '12px', margin: '6px 0 0' }}>
-                            Bạn cần tích lũy thêm <strong>{getPointsNeeded(getCurrentPoints()).toLocaleString("vi-VN")}</strong> điểm để nâng cấp lên hạng <strong>{getNextTierName(getCurrentPoints())}</strong>.
+                            Bạn cần tích lũy thêm <strong>{getPointsNeeded(user.tierId, getCurrentSpending()).toLocaleString("vi-VN")}₫</strong> để nâng cấp lên hạng <strong>{getNextTierName(user.tierId)}</strong>.
                           </p>
                         ) : (
                           <p className="points-hint" style={{ color: 'var(--color-success)', marginTop: '6px', fontSize: '12px', margin: '6px 0 0', fontWeight: '600' }}>
@@ -707,7 +722,7 @@ const ProfilePage = () => {
                                 break;
                             }
 
-                            const amountString = (booking.totalAmount || booking.price || 0).toLocaleString('vi-VN') + 'đ';
+                            const amountString = (booking.finalAmount || booking.totalAmount || booking.price || 0).toLocaleString('vi-VN') + 'đ';
 
                             return (
                               <tr key={booking.bookingId}>

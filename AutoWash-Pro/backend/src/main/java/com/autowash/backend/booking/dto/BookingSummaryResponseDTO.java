@@ -42,4 +42,5 @@ public class BookingSummaryResponseDTO {
 
     private String paymentStatus;
     private String paymentMethod;
+    private BigDecimal finalAmount;
 }

@@ -23,6 +23,7 @@ import com.autowash.backend.timeslot.entity.TimeSlot;
 import com.autowash.backend.timeslot.repository.TimeSlotRepository;
 import com.autowash.backend.vehicle.entity.Vehicle;
 import com.autowash.backend.vehicle.repository.VehicleRepository;
+import com.autowash.backend.washbay.entity.WashBay;
 import com.autowash.backend.customerreward.entity.CustomerReward;
 import com.autowash.backend.customerreward.repository.CustomerRewardRepository;
 import com.autowash.backend.payment.entity.Payment;
@@ -175,6 +176,10 @@ public class BookingServiceImpl implements BookingService {
 
         if (!slot.hasCapacity()) {
             throw new BusinessException("Slot đã đầy, vui lòng chọn khung giờ khác", HttpStatus.CONFLICT);
+        }
+
+        if (slot.getWashBay().getStatus() == WashBay.BayStatus.maintenance) {
+            throw new BusinessException("Bay đang bảo trì, vui lòng chọn khung giờ khác.", HttpStatus.BAD_REQUEST);
         }
 
         Branch branch = branchRepository.findById(request.getBranchId())
