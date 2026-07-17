@@ -26,6 +26,7 @@ import com.autowash.backend.servicepackage.repository.ServicePackageRepository;
 import com.autowash.backend.timeslot.repository.TimeSlotRepository;
 import com.autowash.backend.vehicle.entity.Vehicle;
 import com.autowash.backend.vehicle.repository.VehicleRepository;
+import com.autowash.backend.washbay.repository.WashBayRepository;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -61,6 +62,7 @@ public class EmployeeServiceImpl implements EmployeeService {
     private final VehicleRepository vehicleRepository;
     private final TimeSlotRepository timeSlotRepository;
     private final ServicePackageRepository servicePackageRepository;
+    private final WashBayRepository washBayRepository;
 
     // =========================================================
     // PROFILE
@@ -366,7 +368,8 @@ public class EmployeeServiceImpl implements EmployeeService {
     @Transactional
     public EmployeeQueueBookingResponseDTO startWash(
             Integer userId,
-            Integer bookingId
+            Integer bookingId,
+            Integer bayId
     ) {
         Employee employee = getCurrentActiveEmployee(userId);
         Branch branch = requireOperationalBranch(employee);
@@ -384,20 +387,51 @@ public class EmployeeServiceImpl implements EmployeeService {
             );
         }
 
-        WashBay washBay = requireWashBay(booking);
+        WashBay washBay;
 
-        requireWashBayBelongsToBranch(
-                washBay,
-                branch.getBranchId()
-        );
+        if (bayId != null) {
+            washBay = washBayRepository.findById(bayId)
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "WashBay", "id", bayId
+                    ));
 
-        if (!BayStatus.available.equals(washBay.getStatus())) {
-            throw new BusinessException(
-                    "Khu vực rửa xe '" + washBay.getBayName()
-                            + "' hiện không khả dụng. Trạng thái hiện tại: "
-                            + washBay.getStatus(),
-                    HttpStatus.CONFLICT
+            requireWashBayBelongsToBranch(
+                    washBay,
+                    branch.getBranchId()
             );
+
+            if (!BayStatus.available.equals(washBay.getStatus())) {
+                throw new BusinessException(
+                        "Khu vực rửa xe '" + washBay.getBayName()
+                                + "' hiện không khả dụng. Trạng thái hiện tại: "
+                                + washBay.getStatus(),
+                        HttpStatus.CONFLICT
+                );
+            }
+
+            TimeSlot slot = booking.getSlot();
+            if (slot != null && !washBay.getBayId().equals(
+                    slot.getWashBay() != null
+                            ? slot.getWashBay().getBayId() : null)) {
+                slot.setWashBay(washBay);
+                timeSlotRepository.save(slot);
+            }
+        } else {
+            washBay = requireWashBay(booking);
+
+            requireWashBayBelongsToBranch(
+                    washBay,
+                    branch.getBranchId()
+            );
+
+            if (!BayStatus.available.equals(washBay.getStatus())) {
+                throw new BusinessException(
+                        "Khu vực rửa xe '" + washBay.getBayName()
+                                + "' hiện không khả dụng. Trạng thái hiện tại: "
+                                + washBay.getStatus(),
+                        HttpStatus.CONFLICT
+                );
+            }
         }
 
         /*
@@ -419,10 +453,11 @@ public class EmployeeServiceImpl implements EmployeeService {
         Booking savedBooking = bookingRepository.save(booking);
 
         log.info(
-                "[Employee] Employee #{} bắt đầu xử lý booking #{} tại wash bay #{}",
+                "[Employee] Employee #{} bắt đầu xử lý booking #{} tại wash bay #{}{}",
                 employee.getEmployeeId(),
                 savedBooking.getBookingId(),
-                washBay.getBayId()
+                washBay.getBayId(),
+                bayId != null ? " (reassigned from slot's bay)" : ""
         );
 
         return mapBookingResponse(savedBooking);
@@ -579,11 +614,12 @@ public class EmployeeServiceImpl implements EmployeeService {
                 resolveVehicleType(request.getVehicleType());
 
         return vehicleRepository
-                .findByLicensePlateAndCustomer_CustomerId(
-                        normalizedPlate,
-                        customer.getCustomerId()
-                )
+                .findByLicensePlate(normalizedPlate)
                 .map(existingVehicle -> {
+                    if (!existingVehicle.getCustomer().getCustomerId().equals(customer.getCustomerId())) {
+                        existingVehicle.setCustomer(customer);
+                    }
+
                     existingVehicle.setIsActive(true);
                     existingVehicle.setVehicleType(requestedType);
 
