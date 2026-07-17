@@ -36,6 +36,23 @@ function unwrapResponse(response) {
   return response?.data?.data ?? response?.data ?? response;
 }
 
+function unwrapList(response) {
+  const responseData = unwrapResponse(response);
+
+  if (Array.isArray(responseData)) {
+    return responseData;
+  }
+
+  const possibleLists = [
+    responseData?.content,
+    responseData?.items,
+    responseData?.slots,
+    responseData?.services,
+  ];
+
+  return possibleLists.find(Array.isArray) || [];
+}
+
 function getErrorMessage(error) {
   const validationErrors = error?.response?.data?.errors;
 
@@ -173,6 +190,19 @@ function getSlotBayName(slot) {
   );
 }
 
+function isSlotAvailable(slot) {
+  return slot?.available !== false &&
+    String(slot?.status ?? "available").toLowerCase() !== "unavailable";
+}
+
+function getEmployeeBranch(profile) {
+  return {
+    id: profile?.branchId ?? profile?.branch?.branchId ?? profile?.branch?.id,
+    name: profile?.branchName ?? profile?.branch?.branchName ?? profile?.branch?.name,
+    address: profile?.branchAddress ?? profile?.branch?.address,
+  };
+}
+
 function isSlotInFuture(slot, selectedDate) {
   const startTime = getSlotStartTime(slot);
 
@@ -190,7 +220,7 @@ function isSlotInFuture(slot, selectedDate) {
 
   return slotDateTime.getTime() > Date.now();
 }
-  const SERVICE_TABS = [
+const SERVICE_TABS = [
     { id: "all", label: "Tất cả" },
     { id: "wash", label: "Rửa xe" },
     { id: "interior", label: "Nội thất" },
@@ -306,6 +336,11 @@ function WalkInBookingPage() {
   const [services, setServices] = useState([]);
   const [slots, setSlots] = useState([]);
 
+  const employeeBranch = useMemo(
+    () => getEmployeeBranch(profile),
+    [profile]
+  );
+
   const [initialLoading, setInitialLoading] = useState(true);
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -319,16 +354,28 @@ function WalkInBookingPage() {
         setInitialLoading(true);
         setError("");
 
-        const [profileResponse, servicesResponse] = await Promise.all([
+        const [profileResult, servicesResult] = await Promise.allSettled([
           employeeApi.getProfile(),
           servicePackageApi.active(),
         ]);
 
-        const profileData = unwrapResponse(profileResponse);
-        const servicesData = unwrapResponse(servicesResponse);
+        const errors = [];
 
-        setProfile(profileData ?? null);
-        setServices(Array.isArray(servicesData) ? servicesData : []);
+        if (profileResult.status === "fulfilled") {
+          setProfile(unwrapResponse(profileResult.value) ?? null);
+        } else {
+          setProfile(null);
+          errors.push(getErrorMessage(profileResult.reason));
+        }
+
+        if (servicesResult.status === "fulfilled") {
+          setServices(unwrapList(servicesResult.value));
+        } else {
+          setServices([]);
+          errors.push(getErrorMessage(servicesResult.reason));
+        }
+
+        setError([...new Set(errors)].join(" "));
       } catch (requestError) {
         setError(getErrorMessage(requestError));
       } finally {
@@ -341,7 +388,7 @@ function WalkInBookingPage() {
 
   useEffect(() => {
     const loadSlots = async () => {
-      if (!profile?.branchId || !form.date) {
+      if (!employeeBranch.id || !form.date) {
         setSlots([]);
         return;
       }
@@ -351,17 +398,15 @@ function WalkInBookingPage() {
         setError("");
 
         const response = await getAvailableSlots(
-          profile.branchId,
+          employeeBranch.id,
           form.date
         );
 
-        const responseData = unwrapResponse(response);
-
-        const availableSlots = Array.isArray(responseData)
-          ? responseData.filter((slot) =>
-              isSlotInFuture(slot, form.date)
-            )
-          : [];
+        const availableSlots = unwrapList(response).filter(
+          (slot) =>
+            isSlotAvailable(slot) &&
+            isSlotInFuture(slot, form.date)
+        );
 
         setSlots(availableSlots);
 
@@ -390,7 +435,7 @@ function WalkInBookingPage() {
     };
 
     loadSlots();
-  }, [profile?.branchId, form.date]);
+  }, [employeeBranch.id, form.date]);
 
   const filteredServices = useMemo(() => {
     if (activeServiceTab === "all") {
@@ -473,21 +518,45 @@ function WalkInBookingPage() {
 
   const handleServiceToggle = (serviceId) => {
     const normalizedId = String(serviceId);
+    const selectedService = services.find(
+      (service) => String(getServiceId(service)) === normalizedId
+    );
+    const isAddon = getCategory(selectedService) === "addon";
 
     setForm((currentForm) => {
       const exists =
         currentForm.selectedServiceIds.includes(normalizedId);
 
+      if (exists) {
+        return {
+          ...currentForm,
+          selectedServiceIds: currentForm.selectedServiceIds.filter(
+            (id) => id !== normalizedId
+          ),
+        };
+      }
+
+      if (!isAddon) {
+        const addonIds = currentForm.selectedServiceIds.filter((id) => {
+          const service = services.find(
+            (item) => String(getServiceId(item)) === id
+          );
+
+          return getCategory(service) === "addon";
+        });
+
+        return {
+          ...currentForm,
+          selectedServiceIds: [normalizedId, ...addonIds],
+        };
+      }
+
       return {
         ...currentForm,
-        selectedServiceIds: exists
-          ? currentForm.selectedServiceIds.filter(
-              (id) => id !== normalizedId
-            )
-          : [
-              ...currentForm.selectedServiceIds,
-              normalizedId,
-            ],
+        selectedServiceIds: [
+          ...currentForm.selectedServiceIds,
+          normalizedId,
+        ],
       };
     });
 
@@ -495,6 +564,10 @@ function WalkInBookingPage() {
   };
 
   const validateForm = () => {
+    if (!employeeBranch.id) {
+      return "Tài khoản Employee chưa được phân chi nhánh.";
+    }
+
     if (!form.guestName.trim()) {
       return "Vui lòng nhập tên khách hàng.";
     }
@@ -524,8 +597,20 @@ function WalkInBookingPage() {
       return "Vui lòng chọn khung giờ.";
     }
 
+    if (!selectedSlotData) {
+      return "Khung giờ đã chọn không còn khả dụng. Vui lòng chọn lại.";
+    }
+
     if (form.selectedServiceIds.length === 0) {
       return "Vui lòng chọn ít nhất một dịch vụ.";
+    }
+
+    const hasMainService = selectedServices.some(
+      (service) => getCategory(service) !== "addon"
+    );
+
+    if (!hasMainService) {
+      return "Vui lòng chọn một dịch vụ chính trước khi chọn dịch vụ bổ sung.";
     }
 
     if (!agreeTerms) {
@@ -556,6 +641,7 @@ function WalkInBookingPage() {
       brand: form.brand.trim() || null,
       model: form.model.trim() || null,
       vehicleType: form.vehicleType,
+      branchId: Number(employeeBranch.id),
       slotId: Number(form.slotId),
       details: form.selectedServiceIds.map((serviceId) => ({
         serviceId: Number(serviceId),
@@ -578,6 +664,14 @@ function WalkInBookingPage() {
       const bookingId = booking?.bookingId ?? booking?.id;
 
       if (form.paymentMethod === "online") {
+        if (!bookingId) {
+          setSuccessBooking(booking);
+          setError(
+            "Booking đã được tạo nhưng chưa thể mở thanh toán vì backend không trả về bookingId. Vui lòng kiểm tra trong hàng đợi."
+          );
+          return;
+        }
+
         navigate("/employee/payment", {
           state: {
             bookingId,
@@ -594,6 +688,8 @@ function WalkInBookingPage() {
         ...INITIAL_FORM,
         date: form.date,
       });
+      setAgreeTerms(false);
+      setActiveServiceTab("all");
     } catch (requestError) {
       setError(getErrorMessage(requestError));
     } finally {
@@ -636,11 +732,11 @@ function WalkInBookingPage() {
           <span>Chi nhánh đang làm việc</span>
 
           <strong>
-            {profile?.branchName || "Chưa xác định"}
+            {employeeBranch.name || "Chưa xác định"}
           </strong>
 
           <small>
-            {profile?.branchAddress || "Chưa có địa chỉ"}
+            {employeeBranch.address || "Chưa có địa chỉ"}
           </small>
         </div>
       </header>
@@ -739,10 +835,10 @@ function WalkInBookingPage() {
             id="employeeBranch"
             type="text"
             value={
-              profile?.branchName
-                ? `${profile.branchName}${
-                    profile.branchAddress
-                      ? ` - ${profile.branchAddress}`
+              employeeBranch.name
+                ? `${employeeBranch.name}${
+                    employeeBranch.address
+                      ? ` - ${employeeBranch.address}`
                       : ""
                   }`
                 : "Chưa xác định chi nhánh"
@@ -1065,7 +1161,7 @@ function WalkInBookingPage() {
 
             <div>
               <h2>Chọn dịch vụ</h2>
-              <p>Có thể chọn một hoặc nhiều dịch vụ.</p>
+              <p>Chọn một dịch vụ chính và các dịch vụ bổ sung nếu cần.</p>
             </div>
           </div>
 
