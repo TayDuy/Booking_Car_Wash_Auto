@@ -125,7 +125,8 @@ public interface EmployeeService {
      */
     EmployeeQueueBookingResponseDTO startWash(
             Integer userId,
-            Integer bookingId
+            Integer bookingId,
+            Integer bayId
     );
 
     // =========================================================

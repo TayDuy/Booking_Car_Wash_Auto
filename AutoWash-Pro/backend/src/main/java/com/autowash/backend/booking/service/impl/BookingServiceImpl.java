@@ -112,32 +112,33 @@ public class BookingServiceImpl implements BookingService {
         Customer customer = customerRepository.findById(request.getCustomerId())
                 .orElseThrow(() -> new ResourceNotFoundException("Customer", "id", request.getCustomerId()));
 
-        // ← Thay vehicleRepository.findById bằng logic check biển số
+        // Kiểm tra biển số trên toàn bộ DB trước (tránh unique constraint violation)
         String normalizedPlate = request.getLicensePlate().trim().toUpperCase();
-        Vehicle vehicle = vehicleRepository.findByLicensePlateAndCustomer_CustomerId(normalizedPlate, customer.getCustomerId())
+        Vehicle vehicle = vehicleRepository.findByLicensePlate(normalizedPlate)
                 .map(existing -> {
                     boolean needsUpdate = false;
 
-                    // Xe đã có sẵn của đúng customer này -> kích hoạt lại nếu trước đó bị soft-delete
+                    // Xe đã tồn tại (của bất kỳ customer nào) -> gán lại cho customer hiện tại
+                    if (!existing.getCustomer().getCustomerId().equals(customer.getCustomerId())) {
+                        existing.setCustomer(customer);
+                        needsUpdate = true;
+                    }
+
+                    // Kích hoạt lại nếu trước đó bị soft-delete
                     if (!Boolean.TRUE.equals(existing.getIsActive())) {
                         existing.setIsActive(true);
                         needsUpdate = true;
                     }
 
-                    // FIX: trước đây khi khách chọn xe cũ và đổi loại xe (4 chỗ <-> 7 chỗ)
-                    // ngay trên trang booking, lựa chọn đó chỉ được dùng để tính phụ phí
-                    // cho lần đặt này rồi bị bỏ qua — hồ sơ xe (Vehicle) vẫn giữ loại xe
-                    // cũ. Lần đặt lịch sau đó, xe lại được autofill với loại xe sai.
-                    // Giờ đồng bộ luôn: nếu loại xe chọn trên booking khác với loại xe
-                    // đang lưu trong hồ sơ, cập nhật lại hồ sơ xe cho khớp.
+                    // Đồng bộ loại xe (4 chỗ / 7 chỗ)
                     Vehicle.VehicleType requestedType = resolveVehicleType(request.getVehicleType());
                     if (existing.getVehicleType() != requestedType) {
                         existing.setVehicleType(requestedType);
                         needsUpdate = true;
                     }
 
-                    // Đồng bộ hãng xe (brand) nếu có thay đổi từ người dùng
-                    if (request.getBrand() != null && !request.getBrand().trim().isEmpty() 
+                    // Đồng bộ hãng xe (brand) nếu có thay đổi
+                    if (request.getBrand() != null && !request.getBrand().trim().isEmpty()
                             && !request.getBrand().trim().equalsIgnoreCase(existing.getBrand())) {
                         existing.setBrand(request.getBrand().trim());
                         needsUpdate = true;
@@ -146,9 +147,7 @@ public class BookingServiceImpl implements BookingService {
                     return needsUpdate ? vehicleRepository.save(existing) : existing;
                 })
                 .orElseGet(() -> {
-                    // Không tìm thấy xe của customer này với biển số đó -> tạo mới
-                    // (kể cả khi biển số đã tồn tại dưới customer khác, vì 1 xe
-                    //  thực tế có thể đổi chủ / được nhiều khách nhập nhầm)
+                    // Biển số chưa tồn tại trong DB -> tạo xe mới
                     Vehicle newVehicle = Vehicle.builder()
                             .customer(customer)
                             .licensePlate(normalizedPlate)
