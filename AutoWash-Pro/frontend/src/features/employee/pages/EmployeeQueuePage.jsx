@@ -1,5 +1,11 @@
-import { useCallback, useEffect, useState } from "react";
-import { AlertCircle, ClipboardList, X } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  AlertCircle,
+  ChevronLeft,
+  ChevronRight,
+  ClipboardList,
+  X,
+} from "lucide-react";
 
 import employeeApi from "../../../api/employeeApi";
 import EmployeeBookingCard from "../components/EmployeeBookingCard";
@@ -45,11 +51,49 @@ const BOOKING_ACTIONS = {
     employeeApi.completeBooking(bookingId),
 };
 
+const PAGE_SIZE_OPTIONS = [6, 9, 12, 18];
+
+function normalizeQueueData(responseData) {
+  if (Array.isArray(responseData)) {
+    return {
+      items: responseData,
+      serverPaged: false,
+      totalElements: responseData.length,
+      totalPages: 0,
+    };
+  }
+
+  const content = responseData?.content;
+
+  if (Array.isArray(content)) {
+    return {
+      items: content,
+      serverPaged: true,
+      totalElements: Number(responseData.totalElements) || content.length,
+      totalPages: Number(responseData.totalPages) || 1,
+    };
+  }
+
+  return {
+    items: [],
+    serverPaged: false,
+    totalElements: 0,
+    totalPages: 0,
+  };
+}
+
 function EmployeeQueuePage() {
   const [selectedDate, setSelectedDate] = useState(getTodayInputValue);
   const [selectedStatus, setSelectedStatus] = useState("");
 
   const [bookings, setBookings] = useState([]);
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(9);
+  const [queueMeta, setQueueMeta] = useState({
+    serverPaged: false,
+    totalElements: 0,
+    totalPages: 0,
+  });
   const [queueLoading, setQueueLoading] = useState(true);
   const [queueError, setQueueError] = useState("");
 
@@ -69,31 +113,44 @@ function EmployeeQueuePage() {
       const response = await employeeApi.getQueue({
         date: selectedDate,
         status: selectedStatus,
+        page,
+        size: pageSize,
       });
 
       const responseData = unwrapResponse(response);
+      const normalizedData = normalizeQueueData(responseData);
 
-      setBookings(
-        Array.isArray(responseData) ? responseData : []
-      );
+      setBookings(normalizedData.items);
+      setQueueMeta({
+        serverPaged: normalizedData.serverPaged,
+        totalElements: normalizedData.totalElements,
+        totalPages: normalizedData.totalPages,
+      });
     } catch (error) {
       setBookings([]);
+      setQueueMeta({
+        serverPaged: false,
+        totalElements: 0,
+        totalPages: 0,
+      });
       setQueueError(getErrorMessage(error));
     } finally {
       setQueueLoading(false);
     }
-  }, [selectedDate, selectedStatus]);
+  }, [page, pageSize, selectedDate, selectedStatus]);
 
   useEffect(() => {
     loadQueue();
   }, [loadQueue]);
 
   const handleDateChange = (date) => {
+    setPage(0);
     setSelectedDate(date);
     setDetailBookingId(null);
   };
 
   const handleStatusChange = (status) => {
+    setPage(0);
     setSelectedStatus(status);
     setDetailBookingId(null);
   };
@@ -211,6 +268,42 @@ function EmployeeQueuePage() {
     setDetailBookingId(null);
   };
 
+  const totalElements = queueMeta.serverPaged
+    ? queueMeta.totalElements
+    : bookings.length;
+
+  const totalPages = queueMeta.serverPaged
+    ? Math.max(queueMeta.totalPages, 1)
+    : Math.max(Math.ceil(bookings.length / pageSize), 1);
+
+  const visibleBookings = useMemo(() => {
+    if (queueMeta.serverPaged) {
+      return bookings;
+    }
+
+    const firstIndex = page * pageSize;
+    return bookings.slice(firstIndex, firstIndex + pageSize);
+  }, [bookings, page, pageSize, queueMeta.serverPaged]);
+
+  const firstVisibleItem = totalElements === 0
+    ? 0
+    : page * pageSize + 1;
+  const lastVisibleItem = Math.min(
+    page * pageSize + visibleBookings.length,
+    totalElements
+  );
+
+  useEffect(() => {
+    if (!queueLoading && page > totalPages - 1) {
+      setPage(Math.max(totalPages - 1, 0));
+    }
+  }, [page, queueLoading, totalPages]);
+
+  const handlePageSizeChange = (event) => {
+    setPageSize(Number(event.target.value));
+    setPage(0);
+  };
+
   return (
     <section className="employee-queue-page">
       <header className="employee-queue-page__header">
@@ -231,8 +324,8 @@ function EmployeeQueuePage() {
           <ClipboardList size={22} aria-hidden="true" />
 
           <div>
-            <strong>{bookings.length}</strong>
-            <span>booking đang hiển thị</span>
+            <strong>{totalElements}</strong>
+            <span>booking phù hợp</span>
           </div>
         </div>
       </header>
@@ -315,7 +408,7 @@ function EmployeeQueuePage() {
             <div className="employee-queue-page__spinner" />
             <p>Đang tải hàng đợi...</p>
           </div>
-        ) : bookings.length === 0 ? (
+        ) : totalElements === 0 ? (
           <div className="employee-queue-page__state">
             <ClipboardList size={42} aria-hidden="true" />
             <h3>Chưa có booking</h3>
@@ -326,7 +419,7 @@ function EmployeeQueuePage() {
           </div>
         ) : (
           <div className="employee-queue-page__grid">
-            {bookings.map((booking) => (
+            {visibleBookings.map((booking) => (
               <EmployeeBookingCard
                 key={booking.bookingId}
                 booking={booking}
@@ -338,6 +431,59 @@ function EmployeeQueuePage() {
               />
             ))}
           </div>
+        )}
+
+        {!queueLoading && totalElements > 0 && (
+          <nav
+            className="employee-queue-page__pagination"
+            aria-label="Phân trang danh sách booking"
+          >
+            <div className="employee-queue-page__pagination-info">
+              <span>
+                Hiển thị <strong>{firstVisibleItem}–{lastVisibleItem}</strong>
+                {" "}trên <strong>{totalElements}</strong> booking
+              </span>
+
+              <label>
+                Số dòng
+                <select
+                  value={pageSize}
+                  onChange={handlePageSizeChange}
+                  aria-label="Số booking trên mỗi trang"
+                >
+                  {PAGE_SIZE_OPTIONS.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
+            <div className="employee-queue-page__pagination-controls">
+              <button
+                type="button"
+                onClick={() => setPage((currentPage) => currentPage - 1)}
+                disabled={page === 0}
+                aria-label="Trang trước"
+              >
+                <ChevronLeft size={18} aria-hidden="true" />
+              </button>
+
+              <span aria-live="polite">
+                Trang <strong>{page + 1}</strong> / {totalPages}
+              </span>
+
+              <button
+                type="button"
+                onClick={() => setPage((currentPage) => currentPage + 1)}
+                disabled={page >= totalPages - 1}
+                aria-label="Trang sau"
+              >
+                <ChevronRight size={18} aria-hidden="true" />
+              </button>
+            </div>
+          </nav>
         )}
       </section>
 

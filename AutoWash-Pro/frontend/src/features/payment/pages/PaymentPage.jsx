@@ -9,6 +9,11 @@ const API_BASE = BACKEND_ROOT_URL;
 const STORE_NAME = "AutoWash Pro";
 const VNPAY_EXPIRE_SECONDS = 15 * 60;
 
+function hasStatus(value, ...statuses) {
+    const normalizedValue = String(value || "").toLowerCase();
+    return statuses.includes(normalizedValue);
+}
+
 function PaymentPage() {
     const location = useLocation();
     const navigate = useNavigate();
@@ -16,6 +21,12 @@ function PaymentPage() {
     const isEmployeeFlow =
         location.state?.source === "employee" ||
         location.pathname.startsWith("/employee/");
+    const successPath = isEmployeeFlow
+        ? "/employee/payment/success"
+        : "/customer/payment/success";
+    const fallbackPath = isEmployeeFlow
+        ? "/employee/queue"
+        : "/customer/home";
     
     const bookingIdFromBookingPage = location.state?.bookingId;
     const bookingIdFromQuery = searchParams.get("bookingId");
@@ -52,7 +63,9 @@ function PaymentPage() {
     const [errorMessage, setErrorMessage] = useState("");
     const [paymentId, setPaymentId] = useState("");
     const [isLoading, setIsLoading] = useState(false);
-    const [bookingDetail, setBookingDetail] = useState(null);
+    const [bookingDetail, setBookingDetail] = useState(
+        location.state?.bookingDetail || null
+    );
     const [qrImageUrl, setQrImageUrl] = useState(null);
     const [qrLoading, setQrLoading] = useState(false);
     const [isCheckingStatus, setIsCheckingStatus] = useState(false);
@@ -66,6 +79,8 @@ function PaymentPage() {
 
     // Fetch vouchers khả dụng của khách và danh sách promotions hoạt động
     useEffect(() => {
+        if (isEmployeeFlow) return;
+
         const customerId = localStorage.getItem("customerId");
         if (!customerId) return;
         const cid = parseInt(customerId, 10);
@@ -79,24 +94,39 @@ function PaymentPage() {
             const list = Array.isArray(res) ? res : res?.data || [];
             setPaymentPromotions(list);
         }).catch(() => {});
-    }, []);
+    }, [isEmployeeFlow]);
 
     // API lấy thông tin chi tiết đặt lịch
     async function handleGetBookingDetail(id) {
         try {
-            const response = await axiosClient.get(`/bookings/${id}`);
+            const detailPath = isEmployeeFlow
+                ? `/employee/bookings/${id}`
+                : `/bookings/${id}`;
+            const response = await axiosClient.get(detailPath);
             const result = response.data?.data || response.data;
             setBookingDetail(result);
         } catch (error) {
-            console.log("Cannot get booking detail", error);
+            setErrorMessage(
+                error.response?.data?.message ||
+                error.message ||
+                "Không thể tải thông tin booking để thanh toán."
+            );
         }
     }
+
+    useEffect(() => {
+        if (!bookingId) {
+            setErrorMessage(
+                "Không tìm thấy booking cần thanh toán. Vui lòng quay lại danh sách booking."
+            );
+        }
+    }, [bookingId]);
 
     // Auto-redirect nếu booking đã được thanh toán hoặc đã bị hủy
     useEffect(() => {
         if (!bookingDetail) return;
         if (bookingDetail.paymentStatus?.toLowerCase() !== "paid") {
-            if (bookingDetail.status === "cancelled" || bookingDetail.status === "no_show") {
+            if (hasStatus(bookingDetail.status, "cancelled", "no_show")) {
                 setErrorMessage(`Lịch hẹn này đã bị hủy hoặc ở trạng thái không thể thanh toán (${bookingDetail.status}).`);
             }
             return;
@@ -104,11 +134,14 @@ function PaymentPage() {
         // Đã thanh toán -> redirect với paymentId để PaymentSuccessPage fetch real data
         const pid = bookingDetail.paymentId;
         if (pid) {
-            navigate("/customer/payment/success?paymentId=" + pid, { replace: true });
+            navigate(
+                `${successPath}?paymentId=${pid}`,
+                { replace: true, state: { source: isEmployeeFlow ? "employee" : "customer" } }
+            );
         } else {
-            navigate("/customer/home", { replace: true });
+            navigate(fallbackPath, { replace: true });
         }
-    }, [bookingDetail, navigate]);
+    }, [bookingDetail, fallbackPath, isEmployeeFlow, navigate, successPath]);
 
     // Load booking detail từ bookingId
     useEffect(() => {
@@ -154,15 +187,15 @@ function PaymentPage() {
     async function handleCreatePayment(silent = false) {
         if (!bookingId) return;
 
-        const isUnpayable = bookingDetail && (bookingDetail.status === "cancelled" || bookingDetail.status === "no_show");
+        const isUnpayable = bookingDetail && hasStatus(bookingDetail.status, "cancelled", "no_show");
         if (isUnpayable) return;
 
         const data = {
             bookingId: Number(bookingId),
             paymentMethod: paymentMethod,
-            promotionId: promotionId ? Number(promotionId) : null,
-            rewardId: rewardId ? Number(rewardId) : null,
-            voucherCode: voucherCode || null,
+            promotionId: !isEmployeeFlow && promotionId ? Number(promotionId) : null,
+            rewardId: !isEmployeeFlow && rewardId ? Number(rewardId) : null,
+            voucherCode: !isEmployeeFlow ? voucherCode || null : null,
         };
 
         try {
@@ -192,7 +225,7 @@ function PaymentPage() {
             return;
         }
 
-        const isUnpayable = bookingDetail && (bookingDetail.status === "cancelled" || bookingDetail.status === "no_show");
+        const isUnpayable = bookingDetail && hasStatus(bookingDetail.status, "cancelled", "no_show");
         if (isUnpayable) {
             setErrorMessage(`Không thể thanh toán cho booking đã ở trạng thái "${bookingDetail.status}".`);
             return;
@@ -204,9 +237,9 @@ function PaymentPage() {
             const data = {
                 bookingId: Number(bookingId),
                 paymentMethod: "paypal",
-                promotionId: promotionId ? Number(promotionId) : null,
-                rewardId: rewardId ? Number(rewardId) : null,
-                voucherCode: voucherCode || null,
+                promotionId: !isEmployeeFlow && promotionId ? Number(promotionId) : null,
+                rewardId: !isEmployeeFlow && rewardId ? Number(rewardId) : null,
+                voucherCode: !isEmployeeFlow ? voucherCode || null : null,
             };
 
             const response = await axiosClient.post("/payments", data);
@@ -279,8 +312,8 @@ function PaymentPage() {
     useEffect(() => {
         if (!bookingId || !bookingDetail) return;
         
-        const isUnpayable = bookingDetail.status === "cancelled" || bookingDetail.status === "no_show";
-        const isPaid = paymentResult?.paymentStatus === "paid" || bookingDetail.paymentStatus?.toLowerCase() === "paid";
+        const isUnpayable = hasStatus(bookingDetail.status, "cancelled", "no_show");
+        const isPaid = hasStatus(paymentResult?.paymentStatus, "paid") || hasStatus(bookingDetail.paymentStatus, "paid");
         
         if (isUnpayable || isPaid) return;
 
@@ -302,7 +335,7 @@ function PaymentPage() {
 
     // Countdown Timer đếm ngược QR code VNPAY
     useEffect(() => {
-        if (!qrImageUrl || paymentResult?.paymentStatus === "paid") return;
+        if (!qrImageUrl || hasStatus(paymentResult?.paymentStatus, "paid")) return;
         setTimeLeft(VNPAY_EXPIRE_SECONDS);
         const timer = setInterval(() => {
             setTimeLeft((prev) => (prev > 0 ? prev - 1 : 0));
@@ -312,7 +345,7 @@ function PaymentPage() {
 
     // Polling tự động mỗi 5s để cập nhật trạng thái đã thanh toán từ VNPAY IPN callback
     useEffect(() => {
-        const isPaid = paymentResult?.paymentStatus === "paid" || bookingDetail?.paymentStatus?.toLowerCase() === "paid";
+        const isPaid = hasStatus(paymentResult?.paymentStatus, "paid") || hasStatus(bookingDetail?.paymentStatus, "paid");
         if (!paymentId || !qrImageUrl || isPaid || timeLeft <= 0) {
             return;
         }
@@ -324,16 +357,20 @@ function PaymentPage() {
 
     // Dịch chuyển đến trang success khi payment đổi trạng thái sang paid
     useEffect(() => {
-        if (paymentResult?.paymentStatus === "paid") {
+        if (hasStatus(paymentResult?.paymentStatus, "paid")) {
             const timer = setTimeout(() => {
-                navigate("/customer/payment/success", {
+                navigate(successPath, {
                     replace: true,
-                    state: { paymentResult, bookingDetail },
+                    state: {
+                        paymentResult,
+                        bookingDetail,
+                        source: isEmployeeFlow ? "employee" : "customer",
+                    },
                 });
             }, 900);
             return () => clearTimeout(timer);
         }
-    }, [paymentResult?.paymentStatus, bookingDetail]);
+    }, [paymentResult?.paymentStatus, bookingDetail, isEmployeeFlow, navigate, successPath]);
 
     // Revoke object URL tránh rò rỉ bộ nhớ
     useEffect(() => {
@@ -348,16 +385,46 @@ function PaymentPage() {
     const timerSeconds = String(timeLeft % 60).padStart(2, "0");
 
     const orderCode = paymentId ? `PAY${paymentId}` : "—";
-    const isPaid = paymentResult?.paymentStatus === "paid" || bookingDetail?.paymentStatus?.toLowerCase() === "paid";
+    const isPaid = hasStatus(paymentResult?.paymentStatus, "paid") || hasStatus(bookingDetail?.paymentStatus, "paid");
     
     // Price breakdown
-    const serviceTotal = Number(bookingDetail?.totalAmount || 0);
-    const isSuvOrTruck = bookingDetail?.vehicleType?.toLowerCase() === "suv" || bookingDetail?.vehicleType?.toLowerCase() === "truck";
-    const surcharge = isSuvOrTruck ? 50000 : 0;
+    const bookingDetails = Array.isArray(bookingDetail?.details)
+        ? bookingDetail.details
+        : Array.isArray(bookingDetail?.bookingDetail)
+            ? bookingDetail.bookingDetail
+            : [];
+    const detailsTotal = bookingDetails.reduce((sum, detail) => {
+        const unitPrice = Number(
+            detail?.unitPrice ??
+            detail?.servicePrice ??
+            detail?.basePrice ??
+            detail?.price ??
+            0
+        );
+        const quantity = Number(detail?.quantity || 1);
+        return sum + unitPrice * quantity;
+    }, 0);
+    const vehicleType = String(bookingDetail?.vehicleType || "").toLowerCase();
+    const isSevenSeatVehicle = ["7_seats", "suv", "truck"].includes(vehicleType);
+    const surcharge = isSevenSeatVehicle ? 50000 : 0;
+    const storedServiceAmount = Number(bookingDetail?.serviceAmount || 0);
+    const storedSubtotal = Number(bookingDetail?.subtotal || 0);
+    const storedTotalAmount = Number(bookingDetail?.totalAmount || 0);
+    const serviceTotal =
+        detailsTotal ||
+        storedServiceAmount ||
+        (storedSubtotal > 0 ? Math.max(0, storedSubtotal - surcharge) : 0) ||
+        (storedTotalAmount > 0
+            ? Math.max(0, Math.round(storedTotalAmount / 1.08) - surcharge)
+            : 0);
     const subtotal = serviceTotal + surcharge;
     const tax = Math.round(subtotal * 0.08);
 
-    const originalAmount = Number(paymentResult?.originalAmount || (subtotal + tax));
+    const originalAmount = Number(
+        paymentResult?.originalAmount ??
+        bookingDetail?.totalAmount ??
+        (subtotal + tax)
+    );
     
     // Giảm giá online 5% nếu chọn VNPAY/PayPal
     const isOnline = selectedMethod === "vnpay" || selectedMethod === "paypal";
@@ -373,8 +440,9 @@ function PaymentPage() {
         : Math.max(0, originalAmount - onlineDiscount - voucherDiscount - promoDiscount - tierDiscount);
 
     const effectiveMethod = paymentResult?.paymentMethod === "paypal" || selectedMethod === "paypal" ? "paypal" : "vnpay";
-    const firstService = bookingDetail?.details?.[0] || bookingDetail?.bookingDetail?.[0] || null;
-    const isBookingUnpayable = bookingDetail && (bookingDetail.status === "cancelled" || bookingDetail.status === "no_show");
+    const firstService = bookingDetails[0] || null;
+    const bookingStatus = String(bookingDetail?.status || "").toLowerCase();
+    const isBookingUnpayable = ["cancelled", "no_show"].includes(bookingStatus);
 
     return (
         <div className="payment-page">
@@ -416,24 +484,28 @@ function PaymentPage() {
                             </div>
 
                             <div className="payment-method-grid">
-                                <div
+                                <button
+                                    type="button"
                                     className={`method-card ${selectedMethod === "vnpay" ? "active" : ""} ${isPaid ? "disabled" : ""}`}
                                     onClick={() => { if (!isPaid) setSelectedMethod("vnpay"); }}
+                                    disabled={isPaid}
                                 >
                                     <span className="method-icon-img vnpay-logo" />
                                     <span>VNPAY QR</span>
-                                </div>
-                                <div
+                                </button>
+                                <button
+                                    type="button"
                                     className={`method-card ${selectedMethod === "paypal" ? "active" : ""} ${isPaid ? "disabled" : ""}`}
                                     onClick={() => { if (!isPaid) setSelectedMethod("paypal"); }}
+                                    disabled={isPaid}
                                 >
                                     <span className="method-icon-img paypal-logo" />
                                     <span>PayPal</span>
-                                </div>
-                                <div className="method-card disabled" title="Sắp ra mắt">
+                                </button>
+                                <button type="button" className="method-card disabled" title="Sắp ra mắt" disabled>
                                     <span className="material-symbols-outlined method-icon">payments</span>
                                     <span>Ví điện tử</span>
-                                </div>
+                                </button>
                             </div>
 
                             {selectedMethod === "paypal" ? (
@@ -608,7 +680,9 @@ function PaymentPage() {
                                     </span>
                                 </div>
                                 <div className="summary-detail-row">
-                                    <span className="detail-label">Xe của bạn</span>
+                                    <span className="detail-label">
+                                        {isEmployeeFlow ? "Xe khách hàng" : "Xe của bạn"}
+                                    </span>
                                     <span className="vehicle-badge-pill">
                                         <span className="material-symbols-outlined">directions_car</span>
                                         {bookingDetail?.vehicleNickname 
@@ -618,11 +692,16 @@ function PaymentPage() {
                                 </div>
                                 <div className="summary-detail-row">
                                     <span className="detail-label">Chi nhánh</span>
-                                    <span className="detail-value">{bookingDetail?.branchName || "AutoWash Pro"}</span>
+                                    <span className="detail-value">
+                                        {bookingDetail?.branchName ||
+                                            bookingDetail?.branch?.branchName ||
+                                            "AutoWash Pro"}
+                                    </span>
                                 </div>
                             </div>
 
-                            {/* Voucher & Rewards list dạng card radio Shadcn-ui */}
+                            {/* Voucher chỉ thuộc luồng khách hàng đăng nhập. */}
+                            {!isEmployeeFlow && (
                             <div className="payment-voucher-section">
                                 <div className="voucher-section-title">
                                     <span className="material-symbols-outlined">confirmation_number</span>
@@ -685,6 +764,7 @@ function PaymentPage() {
                                     Bạn có <strong>{bookingDetail?.customerPoints || 0} điểm</strong> tích lũy khả dụng
                                 </p>
                             </div>
+                            )}
 
                             {/* Stripe-like Price Breakdown chi tiết */}
                             <div className="payment-price-breakdown">
@@ -694,7 +774,7 @@ function PaymentPage() {
                                 </div>
                                 {surcharge > 0 && (
                                     <div className="breakdown-row surcharge">
-                                        <span>Phụ phí xe cỡ lớn (SUV/Truck)</span>
+                                        <span>Phụ phí xe 7 chỗ</span>
                                         <span>+{surcharge.toLocaleString()}đ</span>
                                     </div>
                                 )}

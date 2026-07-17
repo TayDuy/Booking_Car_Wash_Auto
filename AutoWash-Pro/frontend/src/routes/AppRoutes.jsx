@@ -147,9 +147,14 @@ function AppRoutes() {
         <Route index element={<Navigate to="dashboard" replace />} />
         <Route path="dashboard" element={<EmployeeDashboardPage />} />
         <Route path="queue" element={<EmployeeQueuePage />} />
+        <Route
+          path="bookings"
+          element={<Navigate to="/employee/queue" replace />}
+        />
         <Route path="bookings/new" element={<WalkInBookingPage />} />
         <Route path="payment" element={<PaymentPage />} />
         <Route path="payment/success" element={<PaymentSuccessPage />} />
+        <Route path="*" element={<Navigate to="dashboard" replace />} />
       </Route>
 
       {/* Not found */}

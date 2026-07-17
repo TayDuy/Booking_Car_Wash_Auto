@@ -32,6 +32,18 @@ function unwrapResponse(response) {
   return response?.data?.data ?? response?.data ?? response;
 }
 
+function unwrapQueue(response) {
+  const responseData = unwrapResponse(response);
+
+  if (Array.isArray(responseData)) {
+    return responseData;
+  }
+
+  return Array.isArray(responseData?.content)
+    ? responseData.content
+    : [];
+}
+
 function getErrorMessage(error) {
   return (
     error?.response?.data?.message ||
@@ -61,6 +73,18 @@ function formatRole(role) {
   return roleLabels[normalizedRole] || role || "Nhân viên";
 }
 
+function normalizeStatus(status) {
+  return String(status ?? "").trim().toLowerCase();
+}
+
+function formatServiceNames(serviceNames) {
+  if (Array.isArray(serviceNames)) {
+    return serviceNames.filter(Boolean).join(", ") || "Chưa có dịch vụ";
+  }
+
+  return serviceNames || "Chưa có dịch vụ";
+}
+
 function EmployeeDashboardPage() {
   const [profile, setProfile] = useState(null);
   const [bookings, setBookings] = useState([]);
@@ -81,18 +105,32 @@ function EmployeeDashboardPage() {
 
       setError("");
 
-      const [profileResponse, queueResponse] = await Promise.all([
+      const [profileResult, queueResult] = await Promise.allSettled([
         employeeApi.getProfile(),
         employeeApi.getQueue({
           date: today,
+          page: 0,
+          size: 100,
         }),
       ]);
 
-      const profileData = unwrapResponse(profileResponse);
-      const queueData = unwrapResponse(queueResponse);
+      const errors = [];
 
-      setProfile(profileData ?? null);
-      setBookings(Array.isArray(queueData) ? queueData : []);
+      if (profileResult.status === "fulfilled") {
+        setProfile(unwrapResponse(profileResult.value) ?? null);
+      } else {
+        setProfile(null);
+        errors.push(getErrorMessage(profileResult.reason));
+      }
+
+      if (queueResult.status === "fulfilled") {
+        setBookings(unwrapQueue(queueResult.value));
+      } else {
+        setBookings([]);
+        errors.push(getErrorMessage(queueResult.reason));
+      }
+
+      setError([...new Set(errors)].join(" "));
     } catch (requestError) {
       setError(getErrorMessage(requestError));
     } finally {
@@ -111,29 +149,48 @@ function EmployeeDashboardPage() {
 
       pending: bookings.filter(
         (booking) =>
-          booking.status === EMPLOYEE_BOOKING_STATUS.PENDING
+          normalizeStatus(booking.status) ===
+          normalizeStatus(EMPLOYEE_BOOKING_STATUS.PENDING)
       ).length,
 
       confirmed: bookings.filter(
         (booking) =>
-          booking.status === EMPLOYEE_BOOKING_STATUS.CONFIRMED
+          normalizeStatus(booking.status) ===
+          normalizeStatus(EMPLOYEE_BOOKING_STATUS.CONFIRMED)
       ).length,
 
       checkedIn: bookings.filter(
         (booking) =>
-          booking.status === EMPLOYEE_BOOKING_STATUS.CHECKED_IN
+          normalizeStatus(booking.status) ===
+          normalizeStatus(EMPLOYEE_BOOKING_STATUS.CHECKED_IN)
       ).length,
 
       inProgress: bookings.filter(
         (booking) =>
-          booking.status === EMPLOYEE_BOOKING_STATUS.IN_PROGRESS
+          normalizeStatus(booking.status) ===
+          normalizeStatus(EMPLOYEE_BOOKING_STATUS.IN_PROGRESS)
       ).length,
     };
   }, [bookings]);
 
   const recentBookings = useMemo(() => {
+    const statusPriority = {
+      [normalizeStatus(EMPLOYEE_BOOKING_STATUS.IN_PROGRESS)]: 0,
+      [normalizeStatus(EMPLOYEE_BOOKING_STATUS.CHECKED_IN)]: 1,
+      [normalizeStatus(EMPLOYEE_BOOKING_STATUS.CONFIRMED)]: 2,
+      [normalizeStatus(EMPLOYEE_BOOKING_STATUS.PENDING)]: 3,
+    };
+
     return [...bookings]
       .sort((firstBooking, secondBooking) => {
+        const statusDifference =
+          (statusPriority[normalizeStatus(firstBooking.status)] ?? 99) -
+          (statusPriority[normalizeStatus(secondBooking.status)] ?? 99);
+
+        if (statusDifference !== 0) {
+          return statusDifference;
+        }
+
         const firstTime =
           firstBooking.slotStartTime || "00:00:00";
 
@@ -221,11 +278,15 @@ function EmployeeDashboardPage() {
             <span>Chi nhánh làm việc</span>
 
             <strong>
-              {profile?.branchName || "Chưa được phân chi nhánh"}
+              {profile?.branchName ||
+                profile?.branch?.branchName ||
+                "Chưa được phân chi nhánh"}
             </strong>
 
             <small>
-              {profile?.branchAddress || "Chưa có địa chỉ"}
+              {profile?.branchAddress ||
+                profile?.branch?.address ||
+                "Chưa có địa chỉ"}
             </small>
           </div>
         </div>
@@ -382,8 +443,7 @@ function EmployeeDashboardPage() {
                   <span>Dịch vụ</span>
 
                   <strong>
-                    {booking.serviceNames?.join(", ") ||
-                      "Chưa có dịch vụ"}
+                    {formatServiceNames(booking.serviceNames)}
                   </strong>
                 </div>
 
@@ -397,7 +457,9 @@ function EmployeeDashboardPage() {
 
                 <BookingStatusBadge status={booking.status} />
                 {(() => {
-                  const isPaid = booking.status === 'completed' || booking.paymentStatus?.toLowerCase() === 'paid';
+                  const isPaid =
+                    normalizeStatus(booking.status) === "completed" ||
+                    normalizeStatus(booking.paymentStatus) === "paid";
                   if (isPaid) {
                     return <span className="dashboard-payment-badge dashboard-payment-paid">Đã thanh toán</span>;
                   }
