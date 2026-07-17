@@ -72,7 +72,7 @@ public class LoyaltyTierEvaluationController {
      * Ở đây {customerId} là customer.customer_id, không phải account.user_id.
      */
     @PostMapping("/customers/{customerId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'EMPLOYEE')")
     public ResponseEntity<CustomerTierEvaluationResponseDTO> evaluateOneCustomer(
             @PathVariable Integer customerId
     ) {
@@ -87,7 +87,7 @@ public class LoyaltyTierEvaluationController {
      * POST /api/v1/loyalty-tiers/evaluation/branches/{branchId}/customers
      */
     @PostMapping("/branches/{branchId}/customers")
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'EMPLOYEE')")
     public ResponseEntity<List<CustomerTierEvaluationResponseDTO>> evaluateCustomersByBranch(
             @PathVariable Integer branchId
     ) {

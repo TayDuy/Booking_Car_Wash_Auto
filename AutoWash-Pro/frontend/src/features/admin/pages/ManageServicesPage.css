@@ -132,3 +132,33 @@
     grid-column: span 1;
   }
 }
+
+/* Giữ cột thời gian đủ rộng */
+.service-table th:nth-child(5),
+.service-table td:nth-child(5) {
+  min-width: 100px;
+  white-space: nowrap;
+}
+
+/* Giữ cột trạng thái đủ rộng */
+.service-table th:nth-child(6),
+.service-table td:nth-child(6) {
+  min-width: 118px;
+  white-space: nowrap;
+}
+
+/* Không cho chữ Hoạt động / Tạm dừng xuống dòng */
+.service-table td:nth-child(6) .status-badge {
+  width: auto;
+  min-width: 92px;
+  padding: 7px 12px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  white-space: nowrap !important;
+  word-break: normal;
+  overflow-wrap: normal;
+  line-height: 1;
+}

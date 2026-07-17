@@ -26,6 +26,7 @@ function PromotionListPage() {
   const [pointBalance, setPointBalance] = useState(0);
   const [pointHistory, setPointHistory] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyPage, setHistoryPage] = useState(1);
   const [animatedPoints, setAnimatedPoints] = useState(0);
 
   const customerId = localStorage.getItem("customerId");
@@ -116,23 +117,41 @@ function PromotionListPage() {
     const value = promotion.value || promotion.discountValue || 0;
 
     const discount =
-      promotion.discountType === "PERCENT"
+      promotion.discountType?.toUpperCase() === "PERCENT"
         ? `${value}%`
         : formatMoney(value);
 
+    const vehicleLabel =
+      promotion.vehicleType === null
+        ? "Tất cả xe"
+        : promotion.vehicleType === "sedan"
+        ? "Xe 4 chỗ"
+        : promotion.vehicleType === "suv"
+        ? "Xe 7 chỗ"
+        : promotion.vehicleType === "truck"
+        ? "Xe bán tải"
+        : promotion.vehicleType === "minivan"
+        ? "Xe gia đình"
+        : promotion.vehicleType || "Tất cả xe";
+
     return {
       id: promotion.promotionId || promotion.id,
-      title: promotion.title || promotion.name || "Khuyến mãi đặc biệt",
+      title: promotion.title || promotion.promotionName || "Khuyến mãi đặc biệt",
       description:
         promotion.description ||
         "Ưu đãi hấp dẫn từ WashFlow Pro dành cho khách hàng.",
-      code: promotion.code || promotion.promotionCode || "WFPVOUCHER",
+      code: promotion.code || promotion.promotionCode || `KM-AUTO-${promotion.promotionId || promotion.id || ""}`,
       discount,
       expiredDate: promotion.endDate
         ? new Date(promotion.endDate).toLocaleDateString("vi-VN")
         : "Vô thời hạn",
-      status: promotion.status === "ACTIVE" ? "available" : "expired",
-      tag: promotion.vehicleType || "Tất cả xe",
+      status: promotion.status === "active" ? "available" : "expired",
+      tag: vehicleLabel,
+      minOrderValue: promotion.minOrderValue || 0,
+      discountType: promotion.discountType || "PERCENT",
+      targetTierId: promotion.targetTierId || null,
+      targetTierName: promotion.targetTierName || null,
+      usageLimit: promotion.usageLimit || null,
     };
   }
 
@@ -145,7 +164,12 @@ function PromotionListPage() {
     try {
       setMessage("");
 
-      await redeemReward(rewardId, customerId);
+      const res = await redeemReward(rewardId, customerId);
+      const data = res?.data || res || {};
+
+      if (data.remainingPoints !== undefined) {
+        setPointBalance(Number(data.remainingPoints));
+      }
 
       const voucherData = await getMyRewards(customerId);
       const nextVouchers = voucherData?.data || voucherData || [];
@@ -164,11 +188,24 @@ function PromotionListPage() {
     }
   }
 
+  function handleUsePromotion(promotion) {
+    if (promotion.status !== "available") {
+      return;
+    }
+
+    localStorage.setItem("selectedPromotionId", promotion.id);
+    localStorage.setItem("selectedPromotionDiscount", promotion.discount);
+    localStorage.setItem("selectedPromotionCode", promotion.code);
+
+    navigate("/customer/booking");
+  }
+
   function handleUseVoucher(voucher) {
     if (voucher.status !== "UNUSED") {
       return;
     }
 
+    localStorage.setItem("selectedRewardId", voucher.rewardId);
     localStorage.setItem("selectedVoucherCode", voucher.voucherCode);
     localStorage.setItem("selectedVoucherValue", voucher.discountValue || 0);
 
@@ -222,6 +259,7 @@ function PromotionListPage() {
       const res = await getMyTransactionHistory();
       const list = res?.data || res || [];
       setPointHistory(Array.isArray(list) ? list : []);
+      setHistoryPage(1);
     } catch (err) {
       console.error("Load point history error:", err);
       setPointHistory([]);
@@ -237,13 +275,14 @@ function PromotionListPage() {
   }, [loading]);
 
   function getCurrentPoints() {
-    return Number(
+    const balance =
       pointBalance ||
-        loyaltyInfo?.currentPoints ||
-        loyaltyInfo?.totalPoints ||
-        loyaltyInfo?.points ||
-        0
-    );
+      loyaltyInfo?.currentBalance ||
+      loyaltyInfo?.currentPoints ||
+      loyaltyInfo?.points ||
+      0;
+
+    return Number(balance);
   }
 
   function getCurrentVisits() {
@@ -256,54 +295,54 @@ function PromotionListPage() {
 
   function getCurrentTierName() {
     return (
-      loyaltyInfo?.currentTierName ||
-      loyaltyInfo?.newTierName ||
       loyaltyInfo?.tierName ||
-      getTierName()
+        loyaltyInfo?.newTierName ||
+        getTierName()
     );
   }
 
   function getNextTierInfo() {
-    const points = getCurrentPoints();
     const visits = getCurrentVisits();
+    const spending = getTotalSpending();
 
     const tiers = [
       {
         name: "Member",
         displayName: "Thành viên",
-        minPoints: 0,
         minVisits: 0,
+        minSpending: 0,
       },
       {
         name: "Silver",
         displayName: "Thành viên Bạc",
-        minPoints: 1000,
-        minVisits: 5,
+        minVisits: 10,
+        minSpending: 2000000,
       },
       {
         name: "Gold",
         displayName: "Thành viên Vàng",
-        minPoints: 3000,
-        minVisits: 10,
+        minVisits: 25,
+        minSpending: 5000000,
       },
       {
         name: "Platinum",
         displayName: "Thành viên Kim Cương",
-        minPoints: 7000,
-        minVisits: 20,
+        minVisits: 60,
+        minSpending: 15000000,
       },
     ];
 
+    // Hạng tiếp theo là hạng đầu tiên mà cả số lượt rửa và số tiền chi tiêu đều chưa đạt ngưỡng
     const nextTier = tiers.find(
-      (tier) => points < tier.minPoints || visits < tier.minVisits
+      (tier) => visits < tier.minVisits && spending < tier.minSpending
     );
 
     if (!nextTier) {
       return {
         nextName: "Hạng cao nhất",
         progressPercent: 100,
-        missingPoints: 0,
         missingVisits: 0,
+        missingSpending: 0,
       };
     }
 
@@ -314,25 +353,39 @@ function PromotionListPage() {
 
     const previousTier = tiers[previousTierIndex];
 
-    const pointRange = nextTier.minPoints - previousTier.minPoints || 1;
-    const pointProgress =
-      ((points - previousTier.minPoints) / pointRange) * 100;
-
     const visitRange = nextTier.minVisits - previousTier.minVisits || 1;
     const visitProgress =
       ((visits - previousTier.minVisits) / visitRange) * 100;
 
+    const spendingRange = nextTier.minSpending - previousTier.minSpending || 1;
+    const spendingProgress =
+      ((spending - previousTier.minSpending) / spendingRange) * 100;
+
+    // Do áp dụng điều kiện thăng hạng OR nên tiến trình lấy giá trị max
     const progressPercent = Math.max(
       0,
-      Math.min(100, Math.floor(Math.min(pointProgress, visitProgress)))
+      Math.min(100, Math.floor(Math.max(visitProgress, spendingProgress)))
     );
 
     return {
       nextName: nextTier.displayName,
       progressPercent,
-      missingPoints: Math.max(0, nextTier.minPoints - points),
       missingVisits: Math.max(0, nextTier.minVisits - visits),
+      missingSpending: Math.max(0, nextTier.minSpending - spending),
     };
+  }
+
+  function isPromotionApplicableForUser(promotion) {
+    if (!loyaltyInfo) return true;
+    if (!promotion.targetTierId) return true;
+
+    const userTierId = Number(
+      loyaltyInfo.tierId || 
+      loyaltyInfo.newTierId || 
+      1
+    );
+
+    return userTierId >= promotion.targetTierId;
   }
 
   const voucherStats = useMemo(() => {
@@ -346,7 +399,20 @@ function PromotionListPage() {
     };
   }, [myVouchers]);
 
-  const rewardPreview = rewards.slice(0, 4);
+  const rewardPreview = rewards.filter((r) => {
+    // 1. Kiểm tra hạng thành viên tối thiểu
+    const customerTierLevel = Number(loyaltyInfo?.tierId || loyaltyInfo?.newTierId || 1);
+    if (r.requiredTierLevel !== null && r.requiredTierLevel !== undefined && r.requiredTierLevel > customerTierLevel) {
+      return false;
+    }
+    // 2. Loại trừ quà chào mừng welcome rewards đã được nhận/đổi
+    const isWelcome = r.requiredTierLevel !== null && r.requiredTierLevel !== undefined && r.requiredPoints <= 1;
+    if (isWelcome) {
+      const alreadyHas = myVouchers.some((v) => v.rewardId === r.rewardId);
+      return !alreadyHas;
+    }
+    return true;
+  });
 
   if (loading) {
     return (
@@ -356,6 +422,12 @@ function PromotionListPage() {
       </div>
     );
   }
+
+  const itemsPerPage = 5;
+  const totalPages = Math.ceil(pointHistory.length / itemsPerPage);
+  const indexOfLastItem = historyPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentHistory = pointHistory.slice(indexOfFirstItem, indexOfLastItem);
 
   return (
     <div className="offer-page">
@@ -379,7 +451,12 @@ function PromotionListPage() {
               <button
                 type="button"
                 className="offer-secondary-btn"
-                onClick={() => setActiveTab("vouchers")}
+                onClick={() => {
+                  setActiveTab("vouchers");
+                  setTimeout(() => {
+                    document.querySelector(".offer-tabs-panel")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                  }, 100);
+                }}
               >
                 Xem voucher của tôi
               </button>
@@ -420,9 +497,15 @@ function PromotionListPage() {
             </div>
 
             <p className="member-progress-text">
-              Còn {formatPoint(getNextTierInfo().missingPoints)} điểm và{" "}
-              {getNextTierInfo().missingVisits} lượt rửa để đạt{" "}
-              {getNextTierInfo().nextName}.
+              {getNextTierInfo().nextName === "Hạng cao nhất" ? (
+                "Bạn đã đạt hạng thành viên cao nhất!"
+              ) : (
+                <>
+                  Còn <strong>{getNextTierInfo().missingVisits} lượt rửa</strong> hoặc{" "}
+                  <strong>{formatMoney(getNextTierInfo().missingSpending)}</strong> chi tiêu để đạt{" "}
+                  <strong>{getNextTierInfo().nextName}</strong>.
+                </>
+              )}
             </p>
 
             <div className="member-card-footer">
@@ -431,7 +514,7 @@ function PromotionListPage() {
                 <strong>WF-{customerId || "0000"}-2026</strong>
               </div>
 
-              <button type="button">Chi tiết quyền lợi</button>
+              <button type="button" onClick={() => navigate("/customer/rewards")}>Chi tiết quyền lợi</button>
             </div>
           </div>
 
@@ -484,7 +567,7 @@ function PromotionListPage() {
               <span>★</span>
               <div>
                 <strong>Đổi điểm</strong>
-                <small>{rewards.length} phần thưởng</small>
+                <small>{rewardPreview.length} phần thưởng</small>
               </div>
             </button>
 
@@ -561,23 +644,33 @@ function PromotionListPage() {
                     <strong>{promotion.expiredDate}</strong>
                   </div>
 
-                  <Link
-                    to="/customer/booking"
+                  <div className="promo-meta">
+                    <span>Điều kiện</span>
+                    <strong>
+                      {promotion.targetTierName
+                        ? `Hạng ${promotion.targetTierName}`
+                        : "Mọi hạng"}
+                      {promotion.minOrderValue > 0 &&
+                        ` · Đơn từ ${formatMoney(promotion.minOrderValue)}`}
+                    </strong>
+                  </div>
+
+                  <button
+                    type="button"
                     className={
-                      promotion.status === "available"
+                      promotion.status === "available" && isPromotionApplicableForUser(promotion)
                         ? "offer-card-btn"
                         : "offer-card-btn disabled"
                     }
-                    onClick={(event) => {
-                      if (promotion.status !== "available") {
-                        event.preventDefault();
-                      }
-                    }}
+                    disabled={promotion.status !== "available" || !isPromotionApplicableForUser(promotion)}
+                    onClick={() => handleUsePromotion(promotion)}
                   >
-                    {promotion.status === "available"
-                      ? "Dùng ngay"
-                      : "Đã hết hạn"}
-                  </Link>
+                    {promotion.status !== "available"
+                      ? "Đã hết hạn"
+                      : !isPromotionApplicableForUser(promotion)
+                      ? `Yêu cầu Hạng ${promotion.targetTierName}`
+                      : "Dùng ngay"}
+                  </button>
                 </article>
               ))}
             </div>
@@ -642,10 +735,15 @@ function PromotionListPage() {
                     <button
                       type="button"
                       className="offer-card-btn"
-                      disabled={reward.status !== "active"}
+                      disabled={reward.status !== "active" || pointBalance < reward.requiredPoints}
+                      title={
+                        pointBalance < reward.requiredPoints
+                          ? "Bạn không đủ điểm để đổi phần thưởng này"
+                          : ""
+                      }
                       onClick={() => handleRedeemReward(reward.rewardId)}
                     >
-                      Đổi ngay
+                      {pointBalance < reward.requiredPoints ? "Thiếu điểm" : "Đổi ngay"}
                     </button>
                   </div>
                 </article>
@@ -774,7 +872,7 @@ function PromotionListPage() {
                   </thead>
 
                   <tbody>
-                    {pointHistory.map((tx) => {
+                    {currentHistory.map((tx) => {
                       const isEarn = tx.transactionType === "earn";
                       return (
                         <tr key={tx.loyaltyTransactionId}>
@@ -800,14 +898,50 @@ function PromotionListPage() {
                   </tbody>
                 </table>
 
-                <button
-                  type="button"
-                  className="history-load-more"
-                  onClick={loadPointHistory}
-                  disabled={historyLoading}
-                >
-                  {historyLoading ? "Đang tải..." : "Tải lại"}
-                </button>
+                <div className="history-pagination-wrapper">
+                  <div className="pagination-info">
+                    Hiển thị <strong>{indexOfFirstItem + 1} - {Math.min(indexOfLastItem, pointHistory.length)}</strong> trên tổng số <strong>{pointHistory.length}</strong> giao dịch
+                  </div>
+                  <div className="pagination-controls">
+                    <button
+                      type="button"
+                      className="btn-paginate"
+                      onClick={() => setHistoryPage((prev) => Math.max(prev - 1, 1))}
+                      disabled={historyPage === 1}
+                    >
+                      ❮ Trước
+                    </button>
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNumber) => (
+                      <button
+                        key={pageNumber}
+                        type="button"
+                        className={`btn-paginate number-btn ${
+                          historyPage === pageNumber ? "active" : ""
+                        }`}
+                        onClick={() => setHistoryPage(pageNumber)}
+                      >
+                        {pageNumber}
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      className="btn-paginate"
+                      onClick={() => setHistoryPage((prev) => Math.min(prev + 1, totalPages))}
+                      disabled={historyPage === totalPages}
+                    >
+                      Sau ❯
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-paginate refresh-btn"
+                      onClick={loadPointHistory}
+                      disabled={historyLoading}
+                      title="Tải lại dữ liệu"
+                    >
+                      {historyLoading ? "..." : "🔄"}
+                    </button>
+                  </div>
+                </div>
               </>
             )}
           </div>

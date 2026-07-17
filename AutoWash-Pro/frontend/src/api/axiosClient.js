@@ -62,12 +62,9 @@ function redirectToLogin() {
 
 function isAuthPublicRequest(url = "") {
   return (
-      url.includes("/auth/login") ||
-      url.includes("/auth/register") ||
-      url.includes("/auth/send-otp") ||
-      url.includes("/auth/verify-otp") ||
-      url.includes("/auth/google") ||
-      url.includes("/auth/forgot-password")
+    url.includes("/auth/") ||
+    url.includes("/notifications/stream") ||
+    url.includes("/service-packages/active")
   );
 }
 

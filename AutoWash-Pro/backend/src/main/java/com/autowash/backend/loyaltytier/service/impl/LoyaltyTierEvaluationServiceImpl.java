@@ -37,6 +37,8 @@ public class LoyaltyTierEvaluationServiceImpl implements LoyaltyTierEvaluationSe
     private final LoyaltyTierRepository loyaltyTierRepository;
     private final LoyaltyTransactionRepository loyaltyTransactionRepository;
     private final LoyaltyTierMapper loyaltyTierMapper;
+    private final com.autowash.backend.reward.repository.RewardRepository rewardRepository;
+    private final com.autowash.backend.customerreward.repository.CustomerRewardRepository customerRewardRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -52,11 +54,17 @@ public class LoyaltyTierEvaluationServiceImpl implements LoyaltyTierEvaluationSe
             tierName = tier != null ? tier.getTierName() : null;
         }
 
+        Integer currentBalance = loyaltyTransactionRepository
+                .findTopByCustomerIdOrderByCreatedAtDesc(customer.getCustomerId())
+                .map(LoyaltyTransaction::getBalanceAfter)
+                .orElse(0);
+
         return CustomerTierResponseDTO.builder()
                 .customerId(customer.getCustomerId())
                 .tierId(customer.getTierId())
                 .tierName(tierName)
                 .currentPoints(customer.getTotalPoints())
+                .currentBalance(currentBalance)
                 .totalVisits(customer.getTotalVisits())
                 .totalSpending(customer.getTotalSpending())
                 .build();
@@ -130,11 +138,15 @@ public class LoyaltyTierEvaluationServiceImpl implements LoyaltyTierEvaluationSe
      *
      * Dù gọi bằng userId hay customerId thì cuối cùng cũng phải lấy ra Customer trước,
      * sau đó dùng customer.getCustomerId() để tính điểm, lượt, chi tiêu.
+     *
+     * - currentPoints dùng totalPoints (lifetime) để xét hạng — không bị ảnh hưởng khi redeem.
+     * - currentBalance riêng (từ transaction ledger) hiển thị số điểm khả dụng trên UI.
      */
     private CustomerTierEvaluationResponseDTO evaluateCustomer(Customer customer) {
         Integer customerId = customer.getCustomerId();
 
-        Integer currentPoints = getCurrentPoints(customerId);
+        Integer lifetimePoints = getLifetimePoints(customer);
+        Integer currentBalance = getCurrentBalance(customerId);
         Integer totalVisits = getTotalVisits(customer);
         BigDecimal totalSpending = getTotalSpending(customer);
 
@@ -147,7 +159,6 @@ public class LoyaltyTierEvaluationServiceImpl implements LoyaltyTierEvaluationSe
 
         LoyaltyTier matchedTier = findMatchedTier(
                 activeTiers,
-                currentPoints,
                 totalVisits,
                 totalSpending
         );
@@ -160,6 +171,66 @@ public class LoyaltyTierEvaluationServiceImpl implements LoyaltyTierEvaluationSe
 
         boolean tierChanged = !Objects.equals(previousTierId, matchedTier.getTierId());
 
+        // Lấy priorityLevel của hạng cũ để so sánh chặng nâng cấp
+        int previousPriorityLevel = activeTiers.stream()
+                .filter(t -> Objects.equals(t.getTierId(), previousTierId))
+                .findFirst()
+                .map(LoyaltyTier::getPriorityLevel)
+                .orElse(1); // mặc định Member (priorityLevel = 1) nếu previousTierId null
+
+        for (LoyaltyTier tier : activeTiers) {
+            if (tier.getPriorityLevel() > matchedTier.getPriorityLevel()
+                    || tier.getPriorityLevel() <= 1) {
+                continue;
+            }
+
+            List<com.autowash.backend.reward.entity.Reward> unlockedRewards = rewardRepository
+                    .findByRequiredTierLevelAndStatus(tier.getPriorityLevel(),
+                            com.autowash.backend.reward.entity.Reward.RewardStatus.active);
+
+            for (com.autowash.backend.reward.entity.Reward reward : unlockedRewards) {
+                boolean shouldAward = false;
+
+                // Kiểm tra xem đây có phải là nâng cấp vượt qua mốc tier này trong lượt đánh giá hiện tại hay không
+                if (tier.getPriorityLevel() > previousPriorityLevel) {
+                    // TRƯỜNG HỢP A: THĂNG HẠNG mới hoặc THĂNG HẠNG LẠI (Upgrade/Re-upgrade)
+                    // Chỉ chặn phát voucher thăng hạng mới nếu đang sở hữu voucher thăng hạng UNUSED cho phần thưởng này
+                    boolean alreadyHasUnused = customerRewardRepository
+                            .existsByCustomer_CustomerIdAndReward_RewardIdAndRedeemedPointsAndStatus(
+                                    customerId,
+                                    reward.getRewardId(),
+                                    0,
+                                    "UNUSED"
+                            );
+                    shouldAward = !alreadyHasUnused;
+                } else {
+                    // TRƯỜNG HỢP B: GIỮ HẠNG (Non-upgrade) hoặc QUÉT BÙ ĐẮP TÀI KHOẢN CŨ
+                    // Chỉ phát nếu khách hàng CHƯA TỪNG nhận voucher thăng hạng cho phần thưởng này trong lịch sử
+                    boolean alreadyReceived = customerRewardRepository
+                            .existsByCustomer_CustomerIdAndReward_RewardId(
+                                    customerId,
+                                    reward.getRewardId()
+                            );
+                    shouldAward = !alreadyReceived;
+                }
+
+                if (shouldAward) {
+                    com.autowash.backend.customerreward.entity.CustomerReward voucher = com.autowash.backend.customerreward.entity.CustomerReward.builder()
+                            .customer(customer)
+                            .reward(reward)
+                            .voucherCode("VOU-TIER-" + java.util.UUID.randomUUID().toString().substring(0, 8).toUpperCase())
+                            .status("UNUSED")
+                            .redeemedPoints(0)
+                            .discountType(reward.getRewardType().name())
+                            .discountValue(reward.getRewardValue())
+                            .redeemedAt(java.time.LocalDateTime.now())
+                            .expiredAt(java.time.LocalDateTime.now().plusDays(30))
+                            .build();
+                    customerRewardRepository.save(voucher);
+                }
+            }
+        }
+
         String message = tierChanged
                 ? "Customer tier updated successfully"
                 : "Customer tier unchanged";
@@ -169,11 +240,23 @@ public class LoyaltyTierEvaluationServiceImpl implements LoyaltyTierEvaluationSe
                 previousTierId,
                 previousTierName,
                 matchedTier,
-                currentPoints,
+                lifetimePoints,
+                currentBalance,
                 totalVisits,
                 totalSpending,
                 message
         );
+    }
+
+    private Integer getLifetimePoints(Customer customer) {
+        return customer.getTotalPoints() != null ? customer.getTotalPoints() : 0;
+    }
+
+    private Integer getCurrentBalance(Integer customerId) {
+        return loyaltyTransactionRepository
+                .findTopByCustomerIdOrderByCreatedAtDesc(customerId)
+                .map(LoyaltyTransaction::getBalanceAfter)
+                .orElse(0);
     }
 
     /**
@@ -184,14 +267,12 @@ public class LoyaltyTierEvaluationServiceImpl implements LoyaltyTierEvaluationSe
      */
     private LoyaltyTier findMatchedTier(
             List<LoyaltyTier> activeTiers,
-            Integer currentPoints,
             Integer totalVisits,
             BigDecimal totalSpending
     ) {
         return activeTiers.stream()
                 .filter(tier -> isMatchedShopeeStyle(
                         tier,
-                        currentPoints,
                         totalVisits,
                         totalSpending
                 ))
@@ -202,21 +283,16 @@ public class LoyaltyTierEvaluationServiceImpl implements LoyaltyTierEvaluationSe
     /**
      * Logic match tier:
      * totalVisits >= minVisits
-     * AND
-     * (currentPoints >= minPoints OR totalSpending >= minSpending)
+     * OR
+     * totalSpending >= minSpending
      */
     private boolean isMatchedShopeeStyle(
             LoyaltyTier tier,
-            Integer currentPoints,
             Integer totalVisits,
             BigDecimal totalSpending
     ) {
         Integer requiredVisits = tier.getMinVisits() != null
                 ? tier.getMinVisits()
-                : 0;
-
-        Integer requiredPoints = tier.getMinPoints() != null
-                ? tier.getMinPoints()
                 : 0;
 
         BigDecimal requiredSpending = tier.getMinSpending() != null
@@ -227,16 +303,11 @@ public class LoyaltyTierEvaluationServiceImpl implements LoyaltyTierEvaluationSe
                 ? totalVisits
                 : 0;
 
-        Integer safePoints = currentPoints != null
-                ? currentPoints
-                : 0;
-
         BigDecimal safeSpending = totalSpending != null
                 ? totalSpending
                 : BigDecimal.ZERO;
 
         boolean isDefaultTier = requiredVisits <= 0
-                && requiredPoints <= 0
                 && requiredSpending.compareTo(BigDecimal.ZERO) <= 0;
 
         if (isDefaultTier) {
@@ -244,14 +315,10 @@ public class LoyaltyTierEvaluationServiceImpl implements LoyaltyTierEvaluationSe
         }
 
         boolean enoughVisits = safeVisits >= requiredVisits;
+        boolean enoughSpending = safeSpending.compareTo(requiredSpending) >= 0;
 
-        boolean enoughPoints = requiredPoints <= 0
-                || safePoints >= requiredPoints;
-
-        boolean enoughSpending = requiredSpending.compareTo(BigDecimal.ZERO) <= 0
-                || safeSpending.compareTo(requiredSpending) >= 0;
-
-        return enoughVisits && (enoughPoints || enoughSpending);
+        // Giai đoạn đầu: dùng OR để tránh làm sụt hạng sốc khách hàng cũ
+        return enoughVisits || enoughSpending;
     }
 
     /**

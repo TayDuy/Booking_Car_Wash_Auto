@@ -110,9 +110,8 @@ public class TimeSlotServiceImpl implements TimeSlotService {
         if (entity.getCurrentBookings() == null) {
             entity.setCurrentBookings(0);
         }
-        if (entity.getMaxCapacity() == null) {
-            entity.setMaxCapacity(1);
-        }
+        // Mỗi bay chỉ nhận 1 xe mỗi khung giờ — ignore request value
+        entity.setMaxCapacity(1);
 
         return mapper.toResponse(slotRepository.save(entity));
     }
@@ -249,6 +248,10 @@ public class TimeSlotServiceImpl implements TimeSlotService {
             List<String> skippedReasons, int[] totalCandidatesRef, LocalDate today,
             GenerateSlotsRequestDTO request
     ) {
+        if (bay.getStatus() != WashBay.BayStatus.available) {
+            skippedReasons.add(bay.getBayName() + ": bay " + bay.getStatus() + ", bỏ qua");
+            return;
+        }
         for (int day = 1; day <= daysInMonth; day++) {
             LocalDate date = yearMonth.atDay(day);
 
@@ -288,7 +291,7 @@ public class TimeSlotServiceImpl implements TimeSlotService {
                         .slotDate(date)
                         .startTime(start)
                         .endTime(end)
-                        .maxCapacity(request.getMaxCapacity())
+                        .maxCapacity(1)  // 1 bay = 1 xe
                         .status(SlotStatus.open)
                         .build();
 

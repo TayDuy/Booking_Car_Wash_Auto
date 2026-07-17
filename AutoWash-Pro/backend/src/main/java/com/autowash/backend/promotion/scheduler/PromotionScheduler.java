@@ -2,9 +2,11 @@ package com.autowash.backend.promotion.scheduler;
 
 import com.autowash.backend.promotion.service.PromotionService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class PromotionScheduler {
@@ -19,7 +21,7 @@ public class PromotionScheduler {
         int expiredCount = promotionService.expireExpiredPromotions();
 
         if (expiredCount > 0) {
-            System.out.println("Expired promotions updated: " + expiredCount);
+            log.info("Expired promotions updated: {}", expiredCount);
         }
     }
 }

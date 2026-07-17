@@ -22,5 +22,6 @@ public class CustomerProfileResponse {
     private Integer totalVisits;
     private BigDecimal totalSpending;
     private Integer tierId;
+    private String tierName;
     private LocalDateTime joinedAt;
 }

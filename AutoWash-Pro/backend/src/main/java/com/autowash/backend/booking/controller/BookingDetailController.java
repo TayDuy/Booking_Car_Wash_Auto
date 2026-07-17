@@ -30,12 +30,12 @@ public class BookingDetailController {
      * GET: /api/v1/bookings/{bookingId}/details
      */
     @GetMapping("/{bookingId}/details")
-    @PreAuthorize("hasAnyRole('CUSTOMER', 'STAFF', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('CUSTOMER', 'EMPLOYEE', 'ADMIN')")
     public ResponseEntity<List<BookingDetailItemResponseDTO>> getDetailsByBookingId(
             @PathVariable Integer bookingId,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         boolean isStaffOrAdmin = userDetails.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN") || a.getAuthority().equals("ROLE_STAFF"));
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN") || a.getAuthority().equals("ROLE_EMPLOYEE"));
         Integer userId = isStaffOrAdmin ? null : userDetails.getId();
         return ResponseEntity.ok(bookingDetailService.getByBookingId(bookingId, userId));
     }
@@ -74,12 +74,12 @@ public class BookingDetailController {
      * GET: /api/v1/bookings/details/{detailId}
      */
     @GetMapping("/details/{detailId}")
-    @PreAuthorize("hasAnyRole('CUSTOMER', 'STAFF', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('CUSTOMER', 'EMPLOYEE', 'ADMIN')")
     public ResponseEntity<BookingDetailItemResponseDTO> getDetailById(
             @PathVariable Integer detailId,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         boolean isStaffOrAdmin = userDetails.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN") || a.getAuthority().equals("ROLE_STAFF"));
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN") || a.getAuthority().equals("ROLE_EMPLOYEE"));
         Integer userId = isStaffOrAdmin ? null : userDetails.getId();
         return ResponseEntity.ok(bookingDetailService.getById(detailId, userId));
     }

@@ -1,158 +1,145 @@
-import { useEffect, useMemo, useState } from "react";
-import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
-import { CheckCircle2, Copy, Home, ListChecks } from "lucide-react";
+import { useState, useEffect } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { CheckCircle2, ListChecks, Home } from "lucide-react";
 import bookingApi from "../../../api/bookingApi";
-import "./BookingSuccessPage.css";
 
-const fmt = new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" });
-const fmtDate = (d) =>
-    d ? new Date(d).toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" }) : "-";
-const fmtTime = (t) => (t ? String(t).substring(0, 5) : "");
+const fmtDate = (d) => d ? new Date(d).toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" }) : "-";
+const fmtTime = (t) => t ? new Date(`2000-01-01T${t}`).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }) : null;
 
 function BookingSuccessPage() {
-    const { bookingId: bookingIdParam } = useParams();
-    const location = useLocation();
-    const navigate = useNavigate();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { bookingId, bookingDetail: initialDetail } = location.state || {};
 
-    const [booking, setBooking] = useState(location.state?.booking || null);
-    const [isLoading, setIsLoading] = useState(!location.state?.booking);
-    const [error, setError] = useState(null);
-    const [copied, setCopied] = useState(false);
+  const [bookingDetail, setBookingDetail] = useState(initialDetail || null);
 
-// FIX: POST /bookings chỉ trả về BookingCreateResponseDTO (bookingId, bookingCode,
-// bookingDate, status, totalAmount, message) — KHÔNG có branchName, licensePlate,
-// slotDate/slotStartTime/slotEndTime. Vì vậy nếu chỉ dùng location.state.booking
-// thì Chi nhánh / Biển số xe / Ngày / Giờ luôn hiện "-".
-// GET /bookings/{id} mới trả về BookingResponseDTO đầy đủ các field này.
-    useEffect(() => {
-        const id = bookingIdParam || booking?.bookingId || booking?.id;
-        if (!id) return;
-        let cancelled = false;
-        async function loadBooking() {
-            try {
-                if (!booking) setIsLoading(true);
-                const res = await bookingApi.get(id);
-                if (!cancelled) setBooking((prev) => ({ ...prev, ...res.data }));
-            } catch (err) {
-                console.error("Không thể tải thông tin booking:", err);
-                if (!cancelled && !booking) {
-                    setError("Không thể tải thông tin đặt lịch. Vui lòng thử lại sau.");
-                }
-            } finally {
-                if (!cancelled) setIsLoading(false);
-            }
-        }
-        loadBooking();
-        return () => { cancelled = true; };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [bookingIdParam]);
-
-    const bookingId = booking?.bookingId || booking?.id || bookingIdParam;
-    const bookingCode = booking?.bookingCode || (bookingId ? `#${bookingId}` : "—");
-    const details = useMemo(() => booking?.details || [], [booking]);
-
-    function handleCopyCode() {
-        if (!bookingCode) return;
-        navigator.clipboard?.writeText(bookingCode);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 1500);
+  // Nếu thiếu dữ liệu (refresh trang), fetch full detail từ API
+  useEffect(() => {
+    if (bookingId && !bookingDetail) {
+      bookingApi.get(bookingId).then(res => setBookingDetail(res.data)).catch(() => {});
     }
+  }, [bookingId, bookingDetail]);
 
-    if (isLoading) {
-        return (
-            <div className="app-container" style={{ padding: "72px 0" }}>
-                <div className="card booking-success-empty">Đang tải thông tin đặt lịch...</div>
-            </div>
-        );
-    }
+  const details = bookingDetail?.details || [];
+  const firstService = details[0] || null;
+  const serviceNames = details.map(d => d.serviceName).join(", ");
+  const slotDate = bookingDetail?.slotDate;
+  const slotStartTime = bookingDetail?.slotStartTime;
+  const slotEndTime = bookingDetail?.slotEndTime;
 
-    if (error || !booking) {
-        return (
-            <div className="app-container" style={{ padding: "72px 0" }}>
-                <div className="card booking-success-empty">
-                    {error || "Không tìm thấy thông tin đặt lịch để hiển thị."}
-                    <div style={{ marginTop: 20 }}>
-                        <Link to="/customer/home" className="primary-button">Về trang chủ</Link>
-                    </div>
-                </div>
-            </div>
-        );
-    }
+  const timeRange = slotStartTime && slotEndTime
+    ? `${fmtTime(slotStartTime)} - ${fmtTime(slotEndTime)}`
+    : "-";
 
-    return (
-        <div className="app-container" style={{ padding: "72px 0" }}>
-            <div className="card booking-success-card">
-                <div className="booking-success-icon">
-                    <CheckCircle2 size={44} strokeWidth={2} />
-                </div>
+  const paymentMethod = bookingDetail?.paymentMethod;
+  const isOnline = paymentMethod?.toLowerCase() === "online";
 
-                <h1 className="booking-success-title">Đặt Lịch Thành Công!</h1>
-                <p className="section-subtitle booking-success-subtitle">
-                    Cảm ơn bạn đã đặt lịch tại AutoWash Pro. Chúng tôi đã ghi nhận yêu cầu của bạn và sẽ
-                    liên hệ nếu cần thêm thông tin.
-                </p>
-
-                <div className="booking-code-chip">
-                    <span>Mã đặt lịch</span>
-                    <strong>{bookingCode}</strong>
-                    <button type="button" onClick={handleCopyCode} title="Sao chép mã">
-                        <Copy size={16} />
-                    </button>
-                </div>
-                {copied && <p className="section-subtitle" style={{ margin: "6px 0 0" }}>Đã sao chép!</p>}
-
-                <div className="booking-success-divider" />
-
-                <div className="booking-success-grid">
-                    <div><span>Chi nhánh</span><strong>{booking.branchName || "-"}</strong></div>
-                    <div><span>Biển số xe</span><strong>{booking.licensePlate || "-"}</strong></div>
-                    <div><span>Ngày</span><strong>{fmtDate(booking.slotDate || booking.bookingDate)}</strong></div>
-                    <div>
-                        <span>Giờ</span>
-                        <strong>
-                            {fmtTime(booking.slotStartTime)}
-                            {booking.slotEndTime ? ` - ${fmtTime(booking.slotEndTime)}` : ""}
-                        </strong>
-                    </div>
-                </div>
-
-                {details.length > 0 && (
-                    <>
-                        <div className="booking-success-divider" />
-                        <table className="booking-success-table">
-                            <thead>
-                            <tr><th>Dịch vụ</th><th>SL</th><th>Thành tiền</th></tr>
-                            </thead>
-                            <tbody>
-                            {details.map((d) => (
-                                <tr key={d.bookingDetailId || d.serviceId}>
-                                    <td>{d.serviceName}</td>
-                                    <td>{d.quantity}</td>
-                                    <td>{fmt.format(d.subTotal || 0)}</td>
-                                </tr>
-                            ))}
-                            </tbody>
-                        </table>
-                        <div className="booking-success-total">
-                            <span>Tổng cộng</span>
-                            <strong>{fmt.format(booking.totalAmount || 0)}</strong>
-                        </div>
-                    </>
-                )}
-
-                <div className="booking-success-actions">
-                    <button type="button" className="primary-button" onClick={() => navigate("/customer/history")}>
-                        <ListChecks size={18} />
-                        Xem lịch sử đặt lịch
-                    </button>
-                    <button type="button" className="secondary-button" onClick={() => navigate("/customer/home")}>
-                        <Home size={18} />
-                        Về trang chủ
-                    </button>
-                </div>
-            </div>
+  return (
+    <div className="pay-success-page">
+      <div className="pay-success-inner">
+        <div className="pay-success-icon">
+          <CheckCircle2 size={44} strokeWidth={2} />
         </div>
-    );
+        <h1>Đặt Lịch Thành Công!</h1>
+        <p className="pay-success-subtitle">
+          {isOnline
+            ? "Cảm ơn bạn đã sử dụng dịch vụ của AutoWash Pro. Vui lòng tiến hành thanh toán để xác nhận lịch hẹn."
+            : "Cảm ơn bạn đã sử dụng dịch vụ của AutoWash Pro. Vui lòng đến trạm đúng giờ và thanh toán khi hoàn tất dịch vụ."}
+        </p>
+
+        <div className="pay-success-layout">
+          <div className="pay-success-card">
+            <h3>Chi tiết đặt lịch</h3>
+            <p className="pay-success-card-hint">Thông tin đặt lịch của bạn</p>
+
+            <div className="pay-success-divider" />
+
+            <div className="booking-summary-row">
+              <div>
+                <span>Booking ID</span>
+                <strong>#{bookingId || "-"}</strong>
+              </div>
+              <div>
+                <span>Dịch vụ</span>
+                <strong>{serviceNames || firstService?.serviceName || "-"}</strong>
+              </div>
+            </div>
+            <div className="booking-summary-row">
+              <div>
+                <span>Ngày</span>
+                <strong>{slotDate ? fmtDate(slotDate) : "-"}</strong>
+              </div>
+              <div>
+                <span>Giờ</span>
+                <strong>{timeRange}</strong>
+              </div>
+            </div>
+            <div className="booking-summary-row">
+              <div>
+                <span>Biển số xe</span>
+                <strong>{bookingDetail?.licensePlate || "-"}</strong>
+              </div>
+              <div>
+                <span>Thanh toán</span>
+                <strong>{isOnline ? "Trực tuyến" : "Tại trạm"}</strong>
+              </div>
+            </div>
+            {bookingDetail?.branchName && (
+              <div className="booking-summary-row">
+                <div>
+                  <span>Chi nhánh</span>
+                  <strong>{bookingDetail.branchName}</strong>
+                </div>
+                <div>
+                  <span>Tổng tiền</span>
+                  <strong>{(bookingDetail.totalAmount || 0).toLocaleString()}đ</strong>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="pay-success-side">
+            <div className="next-steps-card">
+              <h3>Bước tiếp theo</h3>
+              <p className="pay-success-card-hint">Bạn có thể làm gì tiếp theo</p>
+              <div className="next-step">
+                <span className="next-step-num">1</span>
+                <div>
+                  <strong>Đến trạm đúng giờ</strong>
+                  <p>Hãy mang xe đến trung tâm đúng khung giờ đã đặt.</p>
+                </div>
+              </div>
+              <div className="next-step">
+                <span className="next-step-num">2</span>
+                <div>
+                  <strong>{bookingDetail?.paymentMethod?.toLowerCase() === "online" ? "Xác nhận thanh toán" : "Thanh toán tại trạm"}</strong>
+                  <p>{bookingDetail?.paymentMethod?.toLowerCase() === "online" 
+                      ? "Cổng thanh toán trực tuyến sẽ xác nhận giao dịch của bạn." 
+                      : "Hoàn tất thanh toán sau khi dịch vụ kết thúc."}</p>
+                </div>
+              </div>
+              <div className="next-step">
+                <span className="next-step-num">3</span>
+                <div>
+                  <strong>Theo dõi trạng thái</strong>
+                  <p>Xem lịch sử và tiến độ trong mục "Lịch sử".</p>
+                </div>
+              </div>
+            </div>
+
+            <button type="button" className="pay-success-btn primary" onClick={() => navigate("/customer/history")}>
+              <ListChecks size={18} />
+              Xem lịch sử đặt lịch
+            </button>
+            <button type="button" className="pay-success-btn secondary" onClick={() => navigate("/customer/home")}>
+              <Home size={18} />
+              Về trang chủ
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export default BookingSuccessPage;

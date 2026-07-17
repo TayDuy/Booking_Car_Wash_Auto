@@ -30,4 +30,6 @@ public class VehicleRequest {
 
     @Size(max = 50, message = "Tên gọi(nickname) không được dài quá 50 ký tự")
     private String nickname;
+
+    private Integer customerId;
 }

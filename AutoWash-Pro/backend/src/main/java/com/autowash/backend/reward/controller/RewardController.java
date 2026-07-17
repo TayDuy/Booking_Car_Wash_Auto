@@ -133,7 +133,7 @@ public class RewardController {
      *
      * GET /api/v1/rewards/redeemable?customerId=1&vehicleType=car
      */
-    @PreAuthorize("hasAnyRole('CUSTOMER', 'STAFF', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('CUSTOMER', 'EMPLOYEE', 'ADMIN')")
     @GetMapping("/redeemable")
     public ResponseEntity<List<RewardResponseDTO>> getRedeemableRewards(
             @RequestParam Integer customerId,
@@ -152,7 +152,7 @@ public class RewardController {
      * POST /api/v1/rewards/{id}/redeem
      */
     @PostMapping("/{id}/redeem")
-    @PreAuthorize("hasAnyRole('CUSTOMER', 'STAFF', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('CUSTOMER', 'EMPLOYEE', 'ADMIN')")
     public ResponseEntity<RedeemRewardResponseDTO> redeemReward(
             @PathVariable("id") Integer rewardId,
             @Valid @RequestBody RedeemRewardRequestDTO dto,

@@ -54,7 +54,7 @@ public class TimeSlotController {
      * (read-only) nên việc mở thêm quyền CUSTOMER là an toàn.
      */
     @GetMapping
-    @PreAuthorize("hasAnyRole('CUSTOMER', 'STAFF', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('CUSTOMER', 'EMPLOYEE', 'ADMIN')")
     public ResponseEntity<List<TimeSlotResponseDTO>> getByBranchAndDate(
             @RequestParam Integer branchId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
@@ -65,7 +65,7 @@ public class TimeSlotController {
      * GET /api/v1/time-slots/{id}
      */
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('STAFF', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('EMPLOYEE', 'ADMIN')")
     public ResponseEntity<TimeSlotResponseDTO> getById(@PathVariable Integer id) {
         return ResponseEntity.ok(service.getById(id));
     }
@@ -75,7 +75,7 @@ public class TimeSlotController {
      * Admin tạo slot mới cho một bay trong một ngày cụ thể.
      */
     @PostMapping
-    @PreAuthorize("hasAnyRole('STAFF', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('EMPLOYEE', 'ADMIN')")
     public ResponseEntity<TimeSlotResponseDTO> create(
             @Valid @RequestBody TimeSlotRequestDTO request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(service.create(request));
@@ -86,7 +86,7 @@ public class TimeSlotController {
      * Admin cập nhật slot (đổi giờ, sức chứa...).
      */
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('STAFF', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('EMPLOYEE', 'ADMIN')")
     public ResponseEntity<TimeSlotResponseDTO> update(
             @PathVariable Integer id,
             @Valid @RequestBody TimeSlotRequestDTO request) {
@@ -98,7 +98,7 @@ public class TimeSlotController {
      * Admin đóng/mở slot nhanh mà không cần truyền toàn bộ body.
      */
     @PatchMapping("/{id}/status")
-    @PreAuthorize("hasAnyRole('STAFF', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('EMPLOYEE', 'ADMIN')")
     public ResponseEntity<TimeSlotResponseDTO> changeStatus(
             @PathVariable Integer id,
             @RequestParam SlotStatus value) {
@@ -110,14 +110,14 @@ public class TimeSlotController {
      * Chỉ xóa được slot chưa có booking nào — service sẽ throw nếu vi phạm.
      */
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('STAFF', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('EMPLOYEE', 'ADMIN')")
     public ResponseEntity<Void> delete(@PathVariable Integer id) {
         service.delete(id);
         return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/generate")
-    @PreAuthorize("hasAnyRole('STAFF', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('EMPLOYEE', 'ADMIN')")
     public ResponseEntity<GenerateSlotsResponseDTO> generateMonthlySlots(
             @Valid @RequestBody GenerateSlotsRequestDTO request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(service.generateMonthlySlots(request));

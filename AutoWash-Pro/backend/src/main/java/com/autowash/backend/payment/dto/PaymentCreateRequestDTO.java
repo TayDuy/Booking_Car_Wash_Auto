@@ -39,4 +39,9 @@ public class PaymentCreateRequestDTO {
      * Service sẽ validate khách đủ điểm và reward còn active.
      */
     private Integer rewardId;
+
+    /**
+     * Mã voucher của khách hàng (đổi thưởng/khuyến mãi) muốn áp dụng.
+     */
+    private String voucherCode;
 }

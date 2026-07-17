@@ -16,6 +16,10 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 
 import java.util.HashMap;
 import java.util.Map;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import java.util.Arrays;
+import java.util.stream.Collectors;
+import java.util.LinkedHashMap;
 
 /**
  * Xử lý tập trung tất cả exception trong toàn bộ ứng dụng.
@@ -260,6 +264,36 @@ public class GlobalExceptionHandler {
      * <p>Không trả {@code ex.getMessage()} ra client để tránh lộ
      * thông tin nội bộ (tên class, SQL, đường dẫn file, ...).</p>
      */
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<Map<String, Object>> handleMethodArgumentTypeMismatch(
+            MethodArgumentTypeMismatchException ex
+    ) {
+        String message;
+
+        Class<?> requiredType = ex.getRequiredType();
+
+        if (requiredType != null && requiredType.isEnum()) {
+            String allowedValues = Arrays.stream(requiredType.getEnumConstants())
+                    .map(Object::toString)
+                    .collect(Collectors.joining(", "));
+
+            message = "Giá trị '" + ex.getValue()
+                    + "' không hợp lệ cho tham số '" + ex.getName()
+                    + "'. Giá trị hợp lệ: " + allowedValues;
+        } else {
+            message = "Giá trị '" + ex.getValue()
+                    + "' không hợp lệ cho tham số '" + ex.getName() + "'";
+        }
+
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("message", message);
+        response.put("status", HttpStatus.BAD_REQUEST.value());
+
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(response);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleGenericException(Exception ex) {
         // log.error với stacktrace đầy đủ để debug

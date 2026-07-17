@@ -11,6 +11,7 @@ public class CustomerTierResponseDTO {
     private Integer tierId;
     private String tierName;
     private Integer currentPoints;
+    private Integer currentBalance;
     private Integer totalVisits;
     private BigDecimal totalSpending;
 }

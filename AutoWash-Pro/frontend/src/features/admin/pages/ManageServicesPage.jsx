@@ -31,7 +31,7 @@ export default function ManageServicesPage() {
 
     try {
       const response = await servicePackageApi.list();
-
+      console.log("SERVICE API:", response.data);
 
       const result = response.data?.data || response.data || [];
 
@@ -229,7 +229,7 @@ export default function ManageServicesPage() {
           <div className="empty-state">Không có dịch vụ phù hợp.</div>
         ) : (
           <div className="booking-table-wrap">
-            <table className="booking-table">
+            <table className="booking-table service-table">
               <thead>
                 <tr>
                   <th>#</th>
