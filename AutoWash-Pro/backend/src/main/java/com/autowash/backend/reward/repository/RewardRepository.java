@@ -26,6 +26,11 @@ public interface RewardRepository extends JpaRepository<Reward, Integer> {
     List<Reward> findByStatus(RewardStatus status);
 
     /**
+     * Tìm các reward theo hạng thành viên tối thiểu yêu cầu và trạng thái.
+     */
+    List<Reward> findByRequiredTierLevelAndStatus(Integer requiredTierLevel, RewardStatus status);
+
+    /**
      * Lấy reward theo loại — VD: admin muốn xem tất cả free_wash reward.
      */
     List<Reward> findByStatusAndRewardType(RewardStatus status, RewardType rewardType);

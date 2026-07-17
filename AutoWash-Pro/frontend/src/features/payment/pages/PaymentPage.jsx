@@ -1,39 +1,50 @@
 import "./PaymentPage.css";
 import { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import { BACKEND_ROOT_URL } from "../../../api/axiosClient";
+import axiosClient, { BACKEND_ROOT_URL } from "../../../api/axiosClient";
+import promotionApi from "../../../api/promotionApi";
+import { getMyRewards } from "../../../api/customerRewardApi";
 
 const API_BASE = BACKEND_ROOT_URL;
 const STORE_NAME = "AutoWash Pro";
-
-// VNPAY sandbox hết hạn giao dịch sau 15 phút kể từ vnp_CreateDate
-// (xem VNPayServiceImpl#createPaymentUrl -> cld.add(Calendar.MINUTE, 15)).
 const VNPAY_EXPIRE_SECONDS = 15 * 60;
 
 function PaymentPage() {
     const location = useLocation();
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
+    
     const bookingIdFromBookingPage = location.state?.bookingId;
     const bookingIdFromQuery = searchParams.get("bookingId");
     const paymentIdFromQuery = searchParams.get("paymentId");
     const paymentFailedFromQuery = searchParams.get("paymentFailed");
     const failReasonFromQuery = searchParams.get("reason");
+    
     const bookingId = bookingIdFromBookingPage
         ? String(bookingIdFromBookingPage)
         : (bookingIdFromQuery || "");
-    // Khách chọn giữa VNPAY (QR nội địa) và PayPal (thẻ/ví quốc tế).
-    // "vnpay" -> gửi paymentMethod="bank_transfer" cho backend (enum không có "vnpay").
-    // "paypal" -> gửi paymentMethod="paypal" thẳng, khớp enum PaymentMethod.paypal.
+
+    // Cấu hình ban đầu cho Voucher/Promotion từ location.state hoặc localStorage
+    const promotionFromState = location.state?.promotionId || location.state?.selectedPromoId;
+    const rewardFromState = location.state?.rewardId || location.state?.selectedRewardId;
+    const voucherCodeFromState = location.state?.selectedVouchCode;
+
     const [selectedMethod, setSelectedMethod] = useState("vnpay");
     const paymentMethod = selectedMethod === "paypal" ? "paypal" : "bank_transfer";
 
-    // Promotion & Reward LUÔN LÀ TUỲ CHỌN — nếu khách không có mã/điểm thì cứ để
-    // trống, hàm handleCreatePayment bên dưới đã tự gửi null khi rỗng nên việc
-    // thanh toán không bao giờ bị chặn bởi 2 trường này.
-    const [promotionId, setPromotionId] = useState("");
-    const [rewardId, setRewardId] = useState("");
-
+    const [promotionId, setPromotionId] = useState(
+        String(promotionFromState || "")
+    );
+    const [rewardId, setRewardId] = useState(
+        String(rewardFromState || "")
+    );
+    const [voucherCode, setVoucherCode] = useState(
+        voucherCodeFromState || ""
+    );
+    
+    const [paymentVouchers, setPaymentVouchers] = useState([]);
+    const [paymentPromotions, setPaymentPromotions] = useState([]);
+    
     const [paymentResult, setPaymentResult] = useState(null);
     const [errorMessage, setErrorMessage] = useState("");
     const [paymentId, setPaymentId] = useState("");
@@ -42,39 +53,76 @@ function PaymentPage() {
     const [qrImageUrl, setQrImageUrl] = useState(null);
     const [qrLoading, setQrLoading] = useState(false);
     const [isCheckingStatus, setIsCheckingStatus] = useState(false);
-
-    // Cờ để chỉ tự động tạo payment + QR một lần duy nhất khi vào trang.
-    const autoTriggeredRef = useRef(false);
-
-    // Lưu lại object URL hiện tại để revoke khi tạo QR mới / rời trang (tránh leak bộ nhớ).
-    const qrObjectUrlRef = useRef(null);
-
-    // Đồng hồ đếm ngược "Hết hạn sau", đồng bộ với thời gian hết hạn thật của VNPAY (15 phút).
     const [timeLeft, setTimeLeft] = useState(VNPAY_EXPIRE_SECONDS);
 
-    // Gọi thẳng backend GET /api/v1/payments/{id}/vnpay-qr — endpoint này trả về
-    // ảnh PNG (byte[]) đã được ký HMAC-SHA512 hợp lệ trỏ tới cổng thanh toán VNPAY
-    // sandbox thật, KHÔNG còn dựng QR VietQR ở phía client nữa.
+    const autoTriggeredRef = useRef(false);
+    const qrObjectUrlRef = useRef(null);
+    const debounceTimerRef = useRef(null);
+
+
+
+    // Fetch vouchers khả dụng của khách và danh sách promotions hoạt động
+    useEffect(() => {
+        const customerId = localStorage.getItem("customerId");
+        if (!customerId) return;
+        const cid = parseInt(customerId, 10);
+        
+        getMyRewards(cid).then(res => {
+            const list = Array.isArray(res) ? res : res?.data || [];
+            setPaymentVouchers(list.filter(v => v.status === "UNUSED"));
+        }).catch(() => {});
+
+        promotionApi.active().then(res => {
+            const list = Array.isArray(res) ? res : res?.data || [];
+            setPaymentPromotions(list);
+        }).catch(() => {});
+    }, []);
+
+    // API lấy thông tin chi tiết đặt lịch
+    async function handleGetBookingDetail(id) {
+        try {
+            const response = await axiosClient.get(`/bookings/${id}`);
+            const result = response.data?.data || response.data;
+            setBookingDetail(result);
+        } catch (error) {
+            console.log("Cannot get booking detail", error);
+        }
+    }
+
+    // Auto-redirect nếu booking đã được thanh toán hoặc đã bị hủy
+    useEffect(() => {
+        if (!bookingDetail) return;
+        if (bookingDetail.paymentStatus?.toLowerCase() !== "paid") {
+            if (bookingDetail.status === "cancelled" || bookingDetail.status === "no_show") {
+                setErrorMessage(`Lịch hẹn này đã bị hủy hoặc ở trạng thái không thể thanh toán (${bookingDetail.status}).`);
+            }
+            return;
+        }
+        // Đã thanh toán -> redirect với paymentId để PaymentSuccessPage fetch real data
+        const pid = bookingDetail.paymentId;
+        if (pid) {
+            navigate("/customer/payment/success?paymentId=" + pid, { replace: true });
+        } else {
+            navigate("/customer/home", { replace: true });
+        }
+    }, [bookingDetail, navigate]);
+
+    // Load booking detail từ bookingId
+    useEffect(() => {
+        if (bookingId) {
+            handleGetBookingDetail(bookingId).then(() => {});
+        }
+    }, [bookingId]);
+
+    // Fetch VNPAY QR Code Image
     async function fetchVnpayQrImage(id) {
         setQrLoading(true);
         setErrorMessage("");
         try {
-            const response = await fetch(`${API_BASE}/api/v1/payments/${id}/vnpay-qr`, {
-                method: "GET",
-                headers: {
-                    Authorization: `Bearer ${localStorage.getItem("token")}`,
-                },
+            const response = await axiosClient.get(`/payments/${id}/vnpay-qr`, {
+                responseType: "blob",
             });
-
-            if (!response.ok) {
-                // Endpoint lỗi trả JSON message, còn thành công trả ảnh nên đọc text để báo lỗi.
-                const text = await response.text().catch(() => "");
-                throw new Error(text || `Không tạo được QR VNPAY (HTTP ${response.status})`);
-            }
-
-            const blob = await response.blob();
-
-            // Revoke URL cũ trước khi tạo URL mới để tránh leak bộ nhớ.
+            const blob = response.data;
             if (qrObjectUrlRef.current) {
                 URL.revokeObjectURL(qrObjectUrlRef.current);
             }
@@ -82,226 +130,114 @@ function PaymentPage() {
             qrObjectUrlRef.current = objectUrl;
             setQrImageUrl(objectUrl);
         } catch (error) {
-            setErrorMessage(error.message || "Không tạo được mã QR VNPAY");
+            if (error.response?.data instanceof Blob) {
+                error.response.data.text().then(t => {
+                    try { 
+                        const j = JSON.parse(t); 
+                        setErrorMessage(j.message || j.error || t); 
+                    } catch { 
+                        setErrorMessage(t); 
+                    }
+                });
+            } else {
+                setErrorMessage(error.response?.data?.message || error.message || "Không tạo được mã QR VNPAY");
+            }
         } finally {
             setQrLoading(false);
         }
     }
 
-    async function handleCreatePayment() {
+    // Tạo hoặc Cập nhật Payment record
+    async function handleCreatePayment(silent = false) {
+        if (!bookingId) return;
 
-        // Nếu đã có payment (đã POST /payments thành công trước đó), "Tạo lại mã QR"
-        // chỉ cần gọi lại GET .../vnpay-qr cho paymentId cũ — KHÔNG tạo payment mới,
-        // tránh tạo trùng nhiều payment "unpaid" cho cùng một booking.
-        if (paymentId) {
-            await fetchVnpayQrImage(paymentId);
-            return;
-        }
+        const isUnpayable = bookingDetail && (bookingDetail.status === "cancelled" || bookingDetail.status === "no_show");
+        if (isUnpayable) return;
 
-        if (!bookingId) {
-            setErrorMessage("Please enter Booking ID");
-            return;
-        }
-
-        if (isNaN(Number(bookingId))) {
-            setErrorMessage("Booking ID must be a number");
-            return;
-        }
-
-        if (Number(bookingId) <= 0) {
-            setErrorMessage("Booking ID must be greater than 0");
-            return;
-        }
-
-        // Cho phép tạo payment ngay cả khi booking đang pending/confirmed/in_progress.
-        // Chỉ chặn khi booking đã bị hủy hoặc khách không đến — 2 trạng thái này
-        // không còn ý nghĩa để thanh toán.
-        if (bookingDetail && (bookingDetail.status === "cancelled" || bookingDetail.status === "no_show")) {
-            setErrorMessage(
-                `Không thể thanh toán cho booking đã ở trạng thái "${bookingDetail.status}".`
-            );
-            return;
-        }
-
-        // promotionId / rewardId là TUỲ CHỌN: rỗng -> gửi null, backend tự hiểu
-        // là "không áp dụng ưu đãi" và vẫn tạo payment / QR bình thường.
         const data = {
             bookingId: Number(bookingId),
             paymentMethod: paymentMethod,
             promotionId: promotionId ? Number(promotionId) : null,
             rewardId: rewardId ? Number(rewardId) : null,
+            voucherCode: voucherCode || null,
         };
 
         try {
-            setIsLoading(true);
-            const response = await fetch(`${API_BASE}/api/v1/payments`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${localStorage.getItem("token")}`,
-                },
-                body: JSON.stringify(data),
-            });
+            if (!silent) setIsLoading(true);
+            setErrorMessage(""); // clear previous error
+            const response = await axiosClient.post("/payments", data);
+            const result = response.data?.data || response.data;
 
-            const result = await response.json();
-
-            if (response.ok) {
-                setPaymentResult(result);
-                setPaymentId(result.paymentId);
-                setErrorMessage("");
-                // Tạo payment xong -> gọi backend sinh QR VNPAY thật cho paymentId vừa tạo
+            setPaymentResult(result);
+            setPaymentId(result.paymentId);
+            
+            if (selectedMethod === "vnpay") {
                 await fetchVnpayQrImage(result.paymentId);
-            } else {
-                setPaymentResult(null);
-                setErrorMessage(result.message);
             }
         } catch (error) {
-            setErrorMessage("Network Error");
-            console.log("Cannot create payment", error);
+            setErrorMessage(error.response?.data?.message || error.message || "Lỗi tạo thông tin thanh toán");
         } finally {
-            setIsLoading(false);
+            if (!silent) setIsLoading(false);
         }
     }
 
-    // Tạo payment (nếu chưa có) với paymentMethod="paypal", sau đó tạo PayPal Order
-    // và redirect trình duyệt sang trang PayPal để khách đăng nhập & xác nhận thanh toán.
-    // Khi khách approve xong, PayPal tự redirect trình duyệt về backend (paypal-return),
-    // backend capture rồi redirect tiếp về đúng trang này với ?paymentId=... (giống VNPAY).
+    // PayPal Order Flow
     async function handlePayPalPay() {
         setErrorMessage("");
-
         if (!bookingId) {
-            setErrorMessage("Please enter Booking ID");
+            setErrorMessage("Vui lòng cung cấp Booking ID");
             return;
         }
-        if (isNaN(Number(bookingId)) || Number(bookingId) <= 0) {
-            setErrorMessage("Booking ID must be a number greater than 0");
-            return;
-        }
-        if (bookingDetail && (bookingDetail.status === "cancelled" || bookingDetail.status === "no_show")) {
-            setErrorMessage(
-                `Không thể thanh toán cho booking đã ở trạng thái "${bookingDetail.status}".`
-            );
+
+        const isUnpayable = bookingDetail && (bookingDetail.status === "cancelled" || bookingDetail.status === "no_show");
+        if (isUnpayable) {
+            setErrorMessage(`Không thể thanh toán cho booking đã ở trạng thái "${bookingDetail.status}".`);
             return;
         }
 
         setIsLoading(true);
         try {
-            let currentPaymentId = paymentId;
+            // Luôn gọi cập nhật/tạo payment record trước để sync voucher/method sang PayPal
+            const data = {
+                bookingId: Number(bookingId),
+                paymentMethod: "paypal",
+                promotionId: promotionId ? Number(promotionId) : null,
+                rewardId: rewardId ? Number(rewardId) : null,
+                voucherCode: voucherCode || null,
+            };
 
-            // Chưa có payment -> tạo mới với paymentMethod = "paypal".
-            if (!currentPaymentId) {
-                const data = {
-                    bookingId: Number(bookingId),
-                    paymentMethod: "paypal",
-                    promotionId: promotionId ? Number(promotionId) : null,
-                    rewardId: rewardId ? Number(rewardId) : null,
-                };
+            const response = await axiosClient.post("/payments", data);
+            const result = response.data?.data || response.data;
+            setPaymentResult(result);
+            const currentPaymentId = result.paymentId;
+            setPaymentId(currentPaymentId);
 
-                const response = await fetch(`${API_BASE}/api/v1/payments`, {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${localStorage.getItem("token")}`,
-                    },
-                    body: JSON.stringify(data),
-                });
-                const result = await response.json();
+            const orderResponse = await axiosClient.post(`/payments/${currentPaymentId}/paypal-order`);
+            const orderResult = orderResponse.data?.data || orderResponse.data;
 
-                if (!response.ok) {
-                    setErrorMessage(result.message || "Không tạo được payment");
-                    return;
-                }
-
-                setPaymentResult(result);
-                currentPaymentId = result.paymentId;
-                setPaymentId(currentPaymentId);
-            }
-
-            // Tạo PayPal Order cho payment vừa có -> nhận approvalUrl để redirect.
-            const orderResponse = await fetch(
-                `${API_BASE}/api/v1/payments/${currentPaymentId}/paypal-order`,
-                {
-                    method: "POST",
-                    headers: {
-                        Authorization: `Bearer ${localStorage.getItem("token")}`,
-                    },
-                }
-            );
-            const orderResult = await orderResponse.json();
-
-            if (!orderResponse.ok) {
-                setErrorMessage(orderResult.message || "Không tạo được đơn hàng PayPal");
-                return;
-            }
-
-            // Điều hướng cả trang sang PayPal (không phải điều hướng nội bộ React Router).
             window.location.href = orderResult.approvalUrl;
         } catch (error) {
-            setErrorMessage("Network Error");
-            console.log("Cannot create PayPal order", error);
+            setErrorMessage(error.response?.data?.message || error.message || "Lỗi kết nối PayPal");
         } finally {
             setIsLoading(false);
         }
     }
 
-    // Với VNPAY thật, trạng thái "paid" CHỈ được xác nhận qua vnpay-ipn (server-to-server,
-    // có kiểm tra chữ ký HMAC-SHA512 + số tiền) — client không còn được tự PATCH status
-    // sang "paid" nữa (làm vậy là giả mạo thanh toán). Hàm này chỉ ĐỌC lại trạng thái
-    // mới nhất từ backend để biết VNPAY đã xác nhận hay chưa.
+    // Lấy trạng thái Payment hiện tại (polling/manual check)
     async function handleGetPayment(silent = false) {
         if (!paymentId) return;
-
         try {
-            const response = await fetch(`${API_BASE}/api/v1/payments/${paymentId}`, {
-                method: "GET",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${localStorage.getItem("token")}`
-                },
-            });
-
-            const result = await response.json();
-
-            if (response.ok) {
-                setPaymentResult(result);
-                if (!silent) setErrorMessage("");
-            } else if (!silent) {
-                setPaymentResult(null);
-                setErrorMessage(result.message);
-            }
+            const response = await axiosClient.get(`/payments/${paymentId}`);
+            const result = response.data?.data || response.data;
+            setPaymentResult(result);
+            if (!silent) setErrorMessage("");
         } catch (error) {
-            if (!silent) setErrorMessage("Network Error");
+            if (!silent) setErrorMessage(error.response?.data?.message || error.message || "Lỗi lấy trạng thái giao dịch");
             console.log("Cannot get payment", error);
         }
     }
 
-    async function handleGetBookingDetail(id) {
-        try {
-            const response = await fetch(`http://localhost:8080/api/v1/bookings/${id}`, {
-                method: "GET",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${localStorage.getItem("token")}`
-                }
-            });
-
-            const result = await response.json();
-
-            if (response.ok) {
-                setBookingDetail(result);
-            } else {
-                console.log(result.message);
-            }
-        } catch (error) {
-            console.log("Cannot get booking detail", error);
-        }
-    }
-
-    // Khi VNPAY redirect trình duyệt thật về đây (không phải điều hướng nội bộ của
-    // React Router), location.state luôn rỗng. Đọc kết quả từ query string thay thế:
-    // - Thành công: có ?paymentId=... -> load lại payment để hiển thị trạng thái "paid".
-    // - Thất bại: có ?paymentFailed=1&reason=... -> hiển thị lý do, cho phép thử lại.
+    // Redirect xử lý query string từ VNPay/PayPal callback
     useEffect(() => {
         if (paymentIdFromQuery && !autoTriggeredRef.current) {
             autoTriggeredRef.current = true;
@@ -311,7 +247,7 @@ function PaymentPage() {
                 invalid_signature: "Chữ ký giao dịch không hợp lệ. Vui lòng thử lại.",
                 invalid_order: "Không xác định được đơn hàng thanh toán.",
                 order_not_found: "Không tìm thấy đơn hàng tương ứng.",
-                payment_failed: "Giao dịch không thành công. Vui lòng thử lại.",
+                payment_failed: "Giao dịch bị từ chối hoặc thất bại. Vui lòng thử lại.",
                 paypal_cancelled: "Bạn đã hủy thanh toán PayPal. Vui lòng thử lại nếu muốn tiếp tục.",
                 paypal_not_completed: "PayPal chưa xác nhận hoàn tất giao dịch. Vui lòng thử lại.",
                 paypal_capture_failed: "Không xác nhận được thanh toán PayPal. Vui lòng thử lại.",
@@ -320,92 +256,70 @@ function PaymentPage() {
                 reasonMessages[failReasonFromQuery] || "Thanh toán không thành công. Vui lòng thử lại."
             );
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [paymentIdFromQuery, paymentFailedFromQuery, failReasonFromQuery]);
 
-    // Có paymentId (từ query khi redirect về, hoặc vừa tạo) nhưng chưa có QR ảnh
-    // (nghĩa là không cần quét QR nữa — chỉ cần load lại trạng thái mới nhất).
+    // Load lại trạng thái payment khi có ID
     useEffect(() => {
         if (paymentId && !qrImageUrl) {
             handleGetPayment(false).then(() => {});
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [paymentId]);
 
-    // Khi đã có payment nhưng chưa có booking detail (trường hợp vào từ redirect,
-    // chỉ có paymentId trong query) -> lấy bookingId từ payment để hiển thị tóm tắt.
+    // Lấy booking detail dựa vào paymentResult nếu vào từ link redirect trực tiếp
     useEffect(() => {
         if (!bookingDetail && paymentResult?.bookingId) {
             handleGetBookingDetail(paymentResult.bookingId).then(() => {});
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [paymentResult?.bookingId]);
 
+    // Debounce Live-Sync call khi đổi voucher/method (định cấu hình 400ms)
     useEffect(() => {
-        if (bookingId) {
-            // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch dữ liệu booking từ server, không phải sync state nội bộ
-            handleGetBookingDetail(bookingId).then(() => {});
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [bookingId]);
+        if (!bookingId || !bookingDetail) return;
+        
+        const isUnpayable = bookingDetail.status === "cancelled" || bookingDetail.status === "no_show";
+        const isPaid = paymentResult?.paymentStatus === "paid" || bookingDetail.paymentStatus?.toLowerCase() === "paid";
+        
+        if (isUnpayable || isPaid) return;
 
-    // Tự động tạo payment + sinh mã QR ngay khi vào trang, miễn là booking chưa bị
-    // hủy / không đến. Không còn chờ trạng thái "completed" nữa.
-    useEffect(() => {
-        if (
-            selectedMethod === "vnpay" &&
-            bookingId &&
-            bookingDetail &&
-            bookingDetail.status !== "cancelled" &&
-            bookingDetail.status !== "no_show" &&
-            !autoTriggeredRef.current
-        ) {
-            autoTriggeredRef.current = true;
-            // eslint-disable-next-line react-hooks/set-state-in-effect -- gọi API tạo payment + QR, không phải sync state nội bộ
-            handleCreatePayment().then(() => {});
+        if (selectedMethod === "vnpay") {
+            if (debounceTimerRef.current) {
+                clearTimeout(debounceTimerRef.current);
+            }
+            debounceTimerRef.current = setTimeout(() => {
+                handleCreatePayment(true).then(() => {});
+            }, 400);
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [bookingId, bookingDetail?.status, selectedMethod]);
 
-    // Khi có mã QR mới -> reset đồng hồ về 15:00 (khớp vnp_ExpireDate ở backend)
-    // và bắt đầu đếm ngược mỗi giây.
+        return () => {
+            if (debounceTimerRef.current) {
+                clearTimeout(debounceTimerRef.current);
+            }
+        };
+    }, [bookingId, bookingDetail?.status, selectedMethod, voucherCode, promotionId, paymentResult?.paymentStatus]);
+
+    // Countdown Timer đếm ngược QR code VNPAY
     useEffect(() => {
         if (!qrImageUrl || paymentResult?.paymentStatus === "paid") return;
-        // eslint-disable-next-line react-hooks/set-state-in-effect -- reset đồng hồ đếm ngược khi có QR mới, cần chạy đồng bộ ngay khi effect kích hoạt
         setTimeLeft(VNPAY_EXPIRE_SECONDS);
         const timer = setInterval(() => {
             setTimeLeft((prev) => (prev > 0 ? prev - 1 : 0));
         }, 1000);
         return () => clearInterval(timer);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [qrImageUrl]);
+    }, [qrImageUrl, paymentResult?.paymentStatus]);
 
-    // Poll trạng thái payment mỗi 5s trong khi đang chờ khách quét & thanh toán qua VNPAY.
-    // Khi VNPAY gọi vnpay-ipn về backend và cập nhật status -> paid, poll này sẽ tự
-    // phát hiện ra và dừng lại (không cần khách bấm nút "đã thanh toán" thủ công nữa).
+    // Polling tự động mỗi 5s để cập nhật trạng thái đã thanh toán từ VNPAY IPN callback
     useEffect(() => {
-        if (!paymentId || !qrImageUrl || paymentResult?.paymentStatus === "paid" || timeLeft <= 0) {
+        const isPaid = paymentResult?.paymentStatus === "paid" || bookingDetail?.paymentStatus?.toLowerCase() === "paid";
+        if (!paymentId || !qrImageUrl || isPaid || timeLeft <= 0) {
             return;
         }
         const poller = setInterval(() => {
             handleGetPayment(true).then(() => {});
         }, 5000);
         return () => clearInterval(poller);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [paymentId, qrImageUrl, paymentResult?.paymentStatus, timeLeft > 0]);
+    }, [paymentId, qrImageUrl, paymentResult?.paymentStatus, bookingDetail?.paymentStatus, timeLeft]);
 
-    // Revoke object URL của ảnh QR khi rời trang, tránh leak bộ nhớ.
-    useEffect(() => {
-        return () => {
-            if (qrObjectUrlRef.current) {
-                URL.revokeObjectURL(qrObjectUrlRef.current);
-            }
-        };
-    }, []);
-
-    // Ngay khi phát hiện VNPAY đã xác nhận "paid" (qua polling hoặc bấm nút kiểm
-    // tra trạng thái thủ công), điều hướng sang trang "Thanh toán thành công".
-    // Đợi 900ms để người dùng kịp thấy dòng "✅ VNPAY đã xác nhận..." trước khi chuyển trang.
+    // Dịch chuyển đến trang success khi payment đổi trạng thái sang paid
     useEffect(() => {
         if (paymentResult?.paymentStatus === "paid") {
             const timer = setTimeout(() => {
@@ -416,319 +330,441 @@ function PaymentPage() {
             }, 900);
             return () => clearTimeout(timer);
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [paymentResult?.paymentStatus]);
+    }, [paymentResult?.paymentStatus, bookingDetail]);
+
+    // Revoke object URL tránh rò rỉ bộ nhớ
+    useEffect(() => {
+        return () => {
+            if (qrObjectUrlRef.current) {
+                URL.revokeObjectURL(qrObjectUrlRef.current);
+            }
+        };
+    }, []);
 
     const timerMinutes = String(Math.floor(timeLeft / 60)).padStart(2, "0");
     const timerSeconds = String(timeLeft % 60).padStart(2, "0");
 
     const orderCode = paymentId ? `PAY${paymentId}` : "—";
-    const isPaid = paymentResult?.paymentStatus === "paid";
-    const originalAmount = Number(paymentResult?.originalAmount || bookingDetail?.totalAmount || 0);
-    const discountAmount = Number(paymentResult?.discountAmount || 0);
-    const finalAmountVnd = Number(paymentResult?.finalAmount || bookingDetail?.totalAmount || 0);
+    const isPaid = paymentResult?.paymentStatus === "paid" || bookingDetail?.paymentStatus?.toLowerCase() === "paid";
+    
+    // Price breakdown
+    const serviceTotal = Number(bookingDetail?.totalAmount || 0);
+    const isSuvOrTruck = bookingDetail?.vehicleType?.toLowerCase() === "suv" || bookingDetail?.vehicleType?.toLowerCase() === "truck";
+    const surcharge = isSuvOrTruck ? 50000 : 0;
+    const subtotal = serviceTotal + surcharge;
+    const tax = Math.round(subtotal * 0.08);
 
-    // Phương thức thực tế đã dùng — ưu tiên payment đã tạo trên server (paymentResult),
-    // fallback về lựa chọn hiện tại trên UI khi chưa tạo payment.
-    const effectiveMethod =
-        paymentResult?.paymentMethod === "paypal" || selectedMethod === "paypal" ? "paypal" : "vnpay";
+    const originalAmount = Number(paymentResult?.originalAmount || (subtotal + tax));
+    
+    // Giảm giá online 5% nếu chọn VNPAY/PayPal
+    const isOnline = selectedMethod === "vnpay" || selectedMethod === "paypal";
+    const tempOnlineDiscount = isOnline ? Math.round(subtotal * 0.05) : 0;
 
-    const firstService = bookingDetail?.details?.[0] ||
-        bookingDetail?.bookingDetail?.[0] ||
-        null;
+    const onlineDiscount = paymentResult ? Number(paymentResult.onlineDiscount || 0) : tempOnlineDiscount;
+    const voucherDiscount = Number(paymentResult?.voucherDiscount || 0);
+    const promoDiscount = Number(paymentResult?.promoDiscount || 0);
+    const tierDiscount = Number(paymentResult?.tierDiscount || 0);
 
-    // Chỉ chặn thanh toán khi booking đã hủy / khách không đến.
-    // Mọi trạng thái khác (pending/confirmed/in_progress/completed) đều cho phép thanh toán.
-    const isBookingUnpayable =
-        bookingDetail && (bookingDetail.status === "cancelled" || bookingDetail.status === "no_show");
+    const finalAmountToShow = paymentResult 
+        ? Number(paymentResult.finalAmount || 0) 
+        : Math.max(0, originalAmount - onlineDiscount - voucherDiscount - promoDiscount - tierDiscount);
+
+    const effectiveMethod = paymentResult?.paymentMethod === "paypal" || selectedMethod === "paypal" ? "paypal" : "vnpay";
+    const firstService = bookingDetail?.details?.[0] || bookingDetail?.bookingDetail?.[0] || null;
+    const isBookingUnpayable = bookingDetail && (bookingDetail.status === "cancelled" || bookingDetail.status === "no_show");
 
     return (
-        <>
-            <div className="payment-page">
-                <div className="payment-page-inner">
-                    <h1>Thanh Toán</h1>
-                    <p className="payment-page-subtitle">Vui lòng hoàn tất thông tin thanh toán cho dịch vụ của bạn.</p>
+        <div className="payment-page">
+            <div className="payment-page-inner">
+                {/* Thanh tiến trình 3 bước Stripe-style */}
+                <div className="payment-progress-steps">
+                    <div className="step-item completed">
+                        <span className="step-num">✓</span>
+                        <span className="step-label">Đặt lịch</span>
+                    </div>
+                    <div className="step-line completed"></div>
+                    <div className="step-item active">
+                        <span className="step-num">2</span>
+                        <span className="step-label">Thanh toán</span>
+                    </div>
+                    <div className="step-line"></div>
+                    <div className="step-item">
+                        <span className="step-num">3</span>
+                        <span className="step-label">Hoàn tất</span>
+                    </div>
+                </div>
 
-                    <div className="payment-layout">
-                        <div className="payment-left">
-                            <div className="booking-card">
-                                <h3 className="section-subtitle">📅 Thông tin đặt lịch</h3>
-                                <label>Booking ID</label>
-                                <input value={bookingId ? `#${bookingId}` : ""} readOnly />
+                <div className="payment-page-header">
+                    <h1>Xác nhận &amp; Thanh toán</h1>
+                    <p className="payment-page-subtitle">
+                        Mã đặt lịch: <strong>{bookingDetail?.bookingCode || `#${bookingId}`}</strong>
+                    </p>
+                </div>
+
+                <div className="payment-layout">
+                    {/* Cột trái: Phương thức thanh toán & QR Code */}
+                    <div className="payment-left">
+                        <div className="payment-method-card">
+                            <div className="method-card-header">
+                                <h3 className="section-subtitle">
+                                    <span className="material-symbols-outlined">account_balance_wallet</span>
+                                    Chọn phương thức thanh toán
+                                </h3>
                             </div>
 
-                            <div className="payment-method-card">
-                                <div className="method-card-header">
-                                    <h3 className="section-subtitle">💳 Phương thức thanh toán</h3>
-                                    <span className="method-secure-tag">🔒 Bảo mật &amp; Mã hoá</span>
+                            <div className="payment-method-grid">
+                                <div
+                                    className={`method-card ${selectedMethod === "vnpay" ? "active" : ""} ${isPaid ? "disabled" : ""}`}
+                                    onClick={() => { if (!isPaid) setSelectedMethod("vnpay"); }}
+                                >
+                                    <span className="method-icon-img vnpay-logo" />
+                                    <span>VNPAY QR</span>
                                 </div>
+                                <div
+                                    className={`method-card ${selectedMethod === "paypal" ? "active" : ""} ${isPaid ? "disabled" : ""}`}
+                                    onClick={() => { if (!isPaid) setSelectedMethod("paypal"); }}
+                                >
+                                    <span className="method-icon-img paypal-logo" />
+                                    <span>PayPal</span>
+                                </div>
+                                <div className="method-card disabled" title="Sắp ra mắt">
+                                    <span className="material-symbols-outlined method-icon">payments</span>
+                                    <span>Ví điện tử</span>
+                                </div>
+                            </div>
 
-                                <div className="payment-method-grid">
-                                    <div
-                                        className={`method-card ${selectedMethod === "vnpay" ? "active" : ""} ${isPaid ? "disabled" : ""}`}
-                                        title={isPaid ? "Đã thanh toán thành công — không thể đổi phương thức" : ""}
-                                        onClick={() => {
-                                            if (!isPaid) setSelectedMethod("vnpay");
-                                        }}
-                                    >
-                                        <span className="method-icon">▦</span>
-                                        <span>VNPAY</span>
-                                    </div>
-                                    <div
-                                        className={`method-card ${selectedMethod === "paypal" ? "active" : ""} ${isPaid ? "disabled" : ""}`}
-                                        title={isPaid ? "Đã thanh toán thành công — không thể đổi phương thức" : ""}
-                                        onClick={() => {
-                                            if (!isPaid) setSelectedMethod("paypal");
-                                        }}
-                                    >
-                                        <span className="method-icon">🅿️</span>
-                                        <span>PayPal</span>
-                                    </div>
-                                    <div className="method-card disabled" title="Sắp ra mắt">
-                                        <span className="method-icon">👛</span>
-                                        <span>Ví điện tử</span>
+                            {selectedMethod === "paypal" ? (
+                                <div className="method-summary-box">
+                                    <span className="method-summary-icon">🅿️</span>
+                                    <div>
+                                        <strong>Thanh toán qua cổng PayPal quốc tế</strong>
+                                        <p>Hỗ trợ tất cả thẻ tín dụng Visa/Mastercard và số dư PayPal. Số tiền được quy đổi sang USD tự động.</p>
                                     </div>
                                 </div>
+                            ) : (
+                                <div className="method-summary-box">
+                                    <span className="method-summary-icon">🏦</span>
+                                    <div>
+                                        <strong>Thanh toán qua cổng VNPAY nội địa</strong>
+                                        <p>Quét mã nhanh bằng ứng dụng Mobile Banking ngân hàng hoặc ví điện tử cực kỳ tiện lợi.</p>
+                                    </div>
+                                </div>
+                            )}
 
-                                {selectedMethod === "paypal" ? (
-                                    <div className="method-summary-box">
-                                        <span className="method-summary-icon">🅿️</span>
-                                        <div>
-                                            <strong>Thanh toán qua PayPal</strong>
-                                            <p>Hỗ trợ thẻ Visa/Mastercard quốc tế và số dư PayPal. Số tiền sẽ được quy đổi sang USD.</p>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div className="method-summary-box">
-                                        <span className="method-summary-icon">▦</span>
-                                        <div>
-                                            <strong>Thanh toán qua VNPAY</strong>
-                                            <p>Hỗ trợ tất cả ứng dụng ngân hàng tại Việt Nam</p>
-                                        </div>
-                                    </div>
-                                )}
+                            {isBookingUnpayable && (
+                                <div className="method-alert error">
+                                    Lịch hẹn này đã bị hủy hoặc đánh dấu vắng mặt. Không thể thực hiện thanh toán.
+                                </div>
+                            )}
 
-                                {isBookingUnpayable && (
-                                    <div className="method-alert">
-                                        Booking đang ở trạng thái "<strong>{bookingDetail.status}</strong>" nên không thể thanh toán.
-                                    </div>
-                                )}
-                                {selectedMethod === "vnpay" && bookingDetail && !isBookingUnpayable && !paymentId && !qrLoading && (
-                                    <p className="method-hint">Đang chuẩn bị mã QR thanh toán...</p>
-                                )}
-                                {selectedMethod === "vnpay" && qrLoading && <p className="method-hint">Đang tạo mã QR...</p>}
-                                {selectedMethod === "paypal" && !isBookingUnpayable && (
-                                    <p className="method-hint">
-                                        Bấm "Thanh toán qua PayPal" bên dưới — bạn sẽ được chuyển sang trang PayPal
-                                        để đăng nhập và xác nhận thanh toán.
+                            {selectedMethod === "vnpay" && bookingDetail && !isBookingUnpayable && !paymentId && !qrLoading && !errorMessage && (
+                                <div className="qr-skeleton-loader">
+                                    <div className="spinner" />
+                                    <p>Đang chuẩn bị mã QR thanh toán...</p>
+                                </div>
+                            )}
+                            
+                            {selectedMethod === "vnpay" && qrLoading && (
+                                <div className="qr-skeleton-loader">
+                                    <div className="spinner" />
+                                    <p>Đang tạo mã QR bảo mật...</p>
+                                </div>
+                            )}
+
+                            {selectedMethod === "paypal" && !isBookingUnpayable && (
+                                <div className="paypal-cta-box">
+                                    <p className="paypal-hint">
+                                        Vui lòng nhấn nút <strong>"Thanh toán qua PayPal"</strong> ở cột tóm tắt bên phải. Hệ thống sẽ mở cổng PayPal chính thức để hoàn tất giao dịch an toàn.
                                     </p>
-                                )}
+                                </div>
+                            )}
 
-                                {selectedMethod === "vnpay" && paymentId && qrImageUrl && (
-                                    <div className="qr-panel">
-                                        <div className="qr-panel-header">
-                                            <span>Quét mã QR bằng App VNPAY / Mobile Banking</span>
-                                            {!isPaid && timeLeft > 0 && (
-                                                <span className="qr-countdown">
-                                                    Hết hạn sau <strong>{timerMinutes}:{timerSeconds}</strong>
-                                                </span>
-                                            )}
-                                            {!isPaid && timeLeft <= 0 && (
-                                                <span className="qr-countdown">Đã hết hạn</span>
-                                            )}
-                                        </div>
-
-                                        <div className="qr-panel-body">
-                                            <div className="qr-frame">
-                                                <img src={qrImageUrl} alt="Mã QR thanh toán VNPAY" />
-                                            </div>
-                                            <div className="qr-info">
-                                                <div className="qr-info-row">
-                                                    <span>Số tiền</span>
-                                                    <strong>{finalAmountVnd.toLocaleString()}đ</strong>
-                                                </div>
-                                                <div className="qr-info-row">
-                                                    <span>Mã giao dịch (vnp_TxnRef)</span>
-                                                    <strong>{orderCode}</strong>
-                                                </div>
-                                                <div className="qr-info-row">
-                                                    <span>Nhà cung cấp</span>
-                                                    <strong>{STORE_NAME} · VNPAY</strong>
-                                                </div>
-
-                                                {!isPaid ? (
-                                                    timeLeft > 0 ? (
-                                                        <button
-                                                            type="button"
-                                                            className="qr-confirm-btn"
-                                                            onClick={async () => {
-                                                                setIsCheckingStatus(true);
-                                                                await handleGetPayment(false);
-                                                                setIsCheckingStatus(false);
-                                                            }}
-                                                            disabled={isCheckingStatus}
-                                                        >
-                                                            {isCheckingStatus ? "Đang kiểm tra..." : "Tôi đã thanh toán — Kiểm tra trạng thái"}
-                                                        </button>
-                                                    ) : (
-                                                        <button
-                                                            type="button"
-                                                            className="qr-confirm-btn"
-                                                            onClick={handleCreatePayment}
-                                                            disabled={isLoading}
-                                                        >
-                                                            {isLoading ? "Đang tạo lại..." : "Tạo lại mã QR"}
-                                                        </button>
-                                                    )
-                                                ) : (
-                                                    <p className="status-paid">✅ VNPAY đã xác nhận thanh toán thành công.</p>
-                                                )}
-                                            </div>
-                                        </div>
-
-                                        {!isPaid && (
-                                            <p className="qr-caution">
-                                                ⚠️ Trang sẽ tự động kiểm tra trạng thái mỗi 5 giây sau khi VNPAY xác nhận
-                                                giao dịch (qua vnpay-ipn). Vui lòng không tắt trình duyệt cho đến khi
-                                                thanh toán hoàn tất. Nếu đã thanh toán nhưng chưa thấy cập nhật, bấm{" "}
-                                                <button
-                                                    type="button"
-                                                    className="link-btn"
-                                                    onClick={() => handleGetPayment(false)}
-                                                >
-                                                    tại đây
-                                                </button>.
-                                            </p>
+                            {selectedMethod === "vnpay" && paymentId && qrImageUrl && (
+                                <div className="qr-panel">
+                                    <div className="qr-panel-header">
+                                        <span className="qr-guide-text">Quét mã QR để hoàn tất</span>
+                                        {!isPaid && timeLeft > 0 && (
+                                            <span className="qr-countdown">
+                                                Hết hiệu lực sau: <strong>{timerMinutes}:{timerSeconds}</strong>
+                                            </span>
+                                        )}
+                                        {!isPaid && timeLeft <= 0 && (
+                                            <span className="qr-countdown expired">Mã QR đã hết hạn</span>
                                         )}
                                     </div>
-                                )}
-                            </div>
 
-                            {errorMessage && (
-                                <p className="error-message">{errorMessage}</p>
+                                    <div className="qr-panel-body">
+                                        <div className="qr-frame">
+                                            <img src={qrImageUrl} alt="Mã QR thanh toán VNPAY" />
+                                            {isPaid && (
+                                                <div className="qr-overlay paid">
+                                                    <span className="material-symbols-outlined check-icon">check_circle</span>
+                                                    <span>ĐÃ THANH TOÁN</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="qr-info">
+                                            <div className="qr-info-row">
+                                                <span>Số tiền cần trả</span>
+                                                <strong className="qr-amount-text">{finalAmountToShow.toLocaleString()}đ</strong>
+                                            </div>
+                                            <div className="qr-info-row">
+                                                <span>Nội dung (TxnRef)</span>
+                                                <strong>{orderCode}</strong>
+                                            </div>
+                                            <div className="qr-info-row">
+                                                <span>Đối tác</span>
+                                                <strong>{STORE_NAME} · VNPAY</strong>
+                                            </div>
+
+                                            {!isPaid ? (
+                                                timeLeft > 0 ? (
+                                                    <button
+                                                        type="button"
+                                                        className="qr-confirm-btn"
+                                                        onClick={async () => {
+                                                            setIsCheckingStatus(true);
+                                                            await handleGetPayment(false);
+                                                            setIsCheckingStatus(false);
+                                                        }}
+                                                        disabled={isCheckingStatus}
+                                                    >
+                                                        {isCheckingStatus ? (
+                                                            <>
+                                                                <span className="spinner-inline" />
+                                                                Đang xác minh...
+                                                            </>
+                                                        ) : (
+                                                            "Tôi đã chuyển khoản - Kiểm tra ngay"
+                                                        )}
+                                                    </button>
+                                                ) : (
+                                                    <button
+                                                        type="button"
+                                                        className="qr-confirm-btn expired"
+                                                        onClick={() => handleCreatePayment()}
+                                                        disabled={isLoading}
+                                                    >
+                                                        {isLoading ? "Đang tạo lại..." : "Tạo mã QR mới"}
+                                                    </button>
+                                                )
+                                            ) : (
+                                                <p className="status-paid-badge">
+                                                    <span className="material-symbols-outlined">verified</span>
+                                                    VNPAY đã ghi nhận thanh toán.
+                                                </p>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {!isPaid && (
+                                        <p className="qr-caution">
+                                            ⚠️ Hệ thống sẽ tự động cập nhật trạng thái sau mỗi 5 giây sau khi nhận được tín hiệu từ ngân hàng. Vui lòng không đóng trang này.
+                                        </p>
+                                    )}
+                                </div>
                             )}
                         </div>
 
-                        <div className="payment-right">
+                        {errorMessage && (
+                            <div className="method-alert error">{errorMessage}</div>
+                        )}
+                        
+                        {/* Trust Signals & Security badging */}
+                        <div className="payment-trust-signals">
+                            <span className="material-symbols-outlined trust-icon">lock</span>
+                            <span>Mọi kết nối đều được bảo mật SSL 256-bit &amp; Tuân thủ tiêu chuẩn PCI-DSS của VNPAY/PayPal</span>
+                        </div>
+                    </div>
+
+                    {/* Cột phải: Tóm tắt dịch vụ & Voucher Selection */}
+                    <div className="payment-right">
+                        <div className="summary-card">
                             <div className="summary-header">
-                                <h2>Tóm Tắt Đặt Chỗ</h2>
-                                <span className="summary-header-icon" aria-hidden="true">🚘</span>
+                                <h2>Tóm tắt đơn hàng</h2>
+                                <span className="material-symbols-outlined header-icon">receipt_long</span>
                             </div>
 
-                            <div className="summary-item">
-                                <span>Dịch vụ</span>
-                                <strong>{firstService?.serviceName || "-"}</strong>
-                            </div>
-                            <div className="summary-item">
-                                <span>Ngày</span>
-                                <strong>{bookingDetail?.slotDate || bookingDetail?.bookingDate || "-"}</strong>
-                            </div>
-                            <div className="summary-item">
-                                <span>Giờ</span>
-                                <strong className="summary-time">
-                                    {bookingDetail?.startTime && bookingDetail?.endTime
-                                        ? `${new Date(bookingDetail.startTime).toLocaleTimeString("vi-VN", {
-                                            hour: "2-digit",
-                                            minute: "2-digit",
-                                        })} - ${new Date(bookingDetail.endTime).toLocaleTimeString("vi-VN", {
-                                            hour: "2-digit",
-                                            minute: "2-digit",
-                                        })}`
-                                        : "-"}
-                                </strong>
-                            </div>
-                            <div className="summary-item">
-                                <span>Xe</span>
-                                <span className="vehicle-chip">
-                                    {bookingDetail?.licensePlate || "-"}
-                                </span>
-                            </div>
-                            <div className="summary-item">
-                                <span>Booking ID</span>
-                                <span>{bookingId || "-"}</span>
-                            </div>
-                            <div className="summary-item">
-                                <span>Phương thức</span>
-                                <span>{effectiveMethod === "paypal" ? "🅿️ PayPal" : "🏦 VNPAY QR"}</span>
-                            </div>
-                            <div className="summary-item no-border">
-                                <span>Trạng thái</span>
-                                <span className={`status-badge ${isPaid ? "status-badge--paid" : "status-badge--pending"}`}>
-                                    {(paymentResult?.paymentStatus || "pending").toUpperCase()}
-                                </span>
-                            </div>
-
-                            <div className="reward-box">
-                                <label>
-                                    Ưu đãi &amp; điểm thưởng <span className="optional-tag">(không bắt buộc)</span>
-                                </label>
-                                <div className="reward-input-grid">
-                                    <input
-                                        type="text"
-                                        placeholder="Mã khuyến mãi"
-                                        value={promotionId}
-                                        onChange={(e) => setPromotionId(e.target.value)}
-                                    />
-                                    <input
-                                        type="text"
-                                        placeholder="Mã/điểm thưởng"
-                                        value={rewardId}
-                                        onChange={(e) => setRewardId(e.target.value)}
-                                    />
+                            <div className="summary-booking-details">
+                                <div className="summary-detail-row">
+                                    <span className="detail-label">Dịch vụ</span>
+                                    <strong className="detail-value">{firstService?.serviceName || "—"}</strong>
                                 </div>
-                                <p className="reward-point-text">
-                                    Bạn có <strong>{bookingDetail?.customerPoints || 0} điểm</strong> khả dụng — để trống nếu không sử dụng ưu đãi.
+                                <div className="summary-detail-row">
+                                    <span className="detail-label">Lịch hẹn</span>
+                                    <span className="detail-value">
+                                        📅 {bookingDetail?.slotDate || bookingDetail?.bookingDate || "—"}{" "}
+                                        {bookingDetail?.startTime && (
+                                            <>
+                                                · ⏰ {new Date(bookingDetail.startTime).toLocaleTimeString("vi-VN", {
+                                                    hour: "2-digit",
+                                                    minute: "2-digit",
+                                                })}
+                                            </>
+                                        )}
+                                    </span>
+                                </div>
+                                <div className="summary-detail-row">
+                                    <span className="detail-label">Xe của bạn</span>
+                                    <span className="vehicle-badge-pill">
+                                        <span className="material-symbols-outlined">directions_car</span>
+                                        {bookingDetail?.vehicleNickname 
+                                            ? `${bookingDetail.vehicleNickname} (${bookingDetail.licensePlate})`
+                                            : bookingDetail?.licensePlate || "—"}
+                                    </span>
+                                </div>
+                                <div className="summary-detail-row">
+                                    <span className="detail-label">Chi nhánh</span>
+                                    <span className="detail-value">{bookingDetail?.branchName || "AutoWash Pro"}</span>
+                                </div>
+                            </div>
+
+                            {/* Voucher & Rewards list dạng card radio Shadcn-ui */}
+                            <div className="payment-voucher-section">
+                                <div className="voucher-section-title">
+                                    <span className="material-symbols-outlined">confirmation_number</span>
+                                    Voucher &amp; Ưu đãi
+                                    <span className="badge-optional">Không bắt buộc</span>
+                                </div>
+
+                                {paymentVouchers.length === 0 ? (
+                                    <p className="voucher-empty-text">Bạn hiện chưa có voucher nào khả dụng.</p>
+                                ) : (
+                                    <div className="payment-voucher-list">
+                                        {paymentVouchers.map(v => {
+                                            const isSelected = voucherCode === v.voucherCode;
+                                            return (
+                                                <label 
+                                                    key={v.customerRewardId} 
+                                                    className={`payment-voucher-card ${isSelected ? "selected" : ""} ${isPaid ? "disabled" : ""}`}
+                                                >
+                                                    <input
+                                                        type="radio"
+                                                        name="payment-voucher-option"
+                                                        checked={isSelected}
+                                                        disabled={isPaid}
+                                                        onChange={() => {
+                                                            setVoucherCode(v.voucherCode);
+                                                            setRewardId(String(v.rewardId));
+                                                        }}
+                                                    />
+                                                    <div className="voucher-radio-circle" />
+                                                    <div className="voucher-card-info">
+                                                        <div className="voucher-card-title-row">
+                                                            <span className="voucher-name">{v.rewardName || "Ưu đãi thăng hạng"}</span>
+                                                            <span className="voucher-discount-badge">
+                                                                -{Number(v.discountValue || 0).toLocaleString()}đ
+                                                            </span>
+                                                        </div>
+                                                        <span className="voucher-code-text">{v.voucherCode}</span>
+                                                    </div>
+                                                </label>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                                
+                                {voucherCode && !isPaid && (
+                                    <button 
+                                        type="button"
+                                        className="voucher-clear-btn" 
+                                        onClick={() => {
+                                            setVoucherCode("");
+                                            setRewardId("");
+                                        }}
+                                    >
+                                        ✕ Hủy áp dụng voucher
+                                    </button>
+                                )}
+
+                                <p className="points-status-text">
+                                    <span className="material-symbols-outlined">stars</span>
+                                    Bạn có <strong>{bookingDetail?.customerPoints || 0} điểm</strong> tích lũy khả dụng
                                 </p>
                             </div>
 
-                            <div className="summary-total-box">
-                                <div className="summary-item">
-                                    <span>Tạm tính</span>
-                                    <span>{originalAmount.toLocaleString()}đ</span>
+                            {/* Stripe-like Price Breakdown chi tiết */}
+                            <div className="payment-price-breakdown">
+                                <div className="breakdown-row">
+                                    <span>Tạm tính dịch vụ</span>
+                                    <span>{serviceTotal.toLocaleString()}đ</span>
                                 </div>
-                                <div className="summary-item discount">
-                                    <span>Giảm giá</span>
-                                    <span>-{discountAmount.toLocaleString()}đ</span>
+                                {surcharge > 0 && (
+                                    <div className="breakdown-row surcharge">
+                                        <span>Phụ phí xe cỡ lớn (SUV/Truck)</span>
+                                        <span>+{surcharge.toLocaleString()}đ</span>
+                                    </div>
+                                )}
+                                <div className="breakdown-row tax">
+                                    <span>Thuế GTGT (VAT 8%)</span>
+                                    <span>{tax.toLocaleString()}đ</span>
                                 </div>
-                                <div className="summary-final">
-                                    <span>Tổng cộng</span>
-                                    <span>{finalAmountVnd.toLocaleString()}đ</span>
+
+                                <div className="breakdown-divider" />
+
+                                {onlineDiscount > 0 && (
+                                    <div className="breakdown-row discount-applied">
+                                        <span>Giảm giá thanh toán online (5%)</span>
+                                        <span className="discount-minus">-{onlineDiscount.toLocaleString()}đ</span>
+                                    </div>
+                                )}
+                                
+                                {promoDiscount > 0 && (
+                                    <div className="breakdown-row discount-applied">
+                                        <span>Khuyến mãi hệ thống ({paymentResult?.promotionName || "Ưu đãi"})</span>
+                                        <span className="discount-minus">-{promoDiscount.toLocaleString()}đ</span>
+                                    </div>
+                                )}
+
+                                {voucherDiscount > 0 && (
+                                    <div className="breakdown-row discount-applied">
+                                        <span>Chiết khấu Voucher ({voucherCode})</span>
+                                        <span className="discount-minus">-{voucherDiscount.toLocaleString()}đ</span>
+                                    </div>
+                                )}
+
+                                {tierDiscount > 0 && (
+                                    <div className="breakdown-row discount-applied">
+                                        <span>Chiết khấu hạng thành viên</span>
+                                        <span className="discount-minus">-{tierDiscount.toLocaleString()}đ</span>
+                                    </div>
+                                )}
+
+                                <div className="breakdown-divider" />
+
+                                <div className="breakdown-final-row">
+                                    <span>Tổng thanh toán</span>
+                                    <span className="final-price">{finalAmountToShow.toLocaleString()}đ</span>
                                 </div>
                             </div>
 
-                            <button
-                                className="pay-now-button"
-                                onClick={effectiveMethod === "paypal" ? handlePayPalPay : handleCreatePayment}
-                                disabled={isLoading || isBookingUnpayable || (effectiveMethod === "vnpay" && isPaid)}
-                            >
-                                <span>
-                                    {isLoading
-                                        ? "Đang xử lý..."
-                                        : isBookingUnpayable
-                                            ? "Booking không thể thanh toán"
-                                            : effectiveMethod === "paypal"
-                                                ? (paymentId ? "Tiếp tục với PayPal" : "Thanh Toán Qua PayPal")
-                                                : (paymentId ? "Tạo lại mã QR" : "Xác Nhận & Hoàn Tất")}
-                                </span>
-                                {!isLoading && !isBookingUnpayable && (
-                                    <span className="pay-now-arrow" aria-hidden="true">→</span>
-                                )}
-                            </button>
-
-                            {paymentResult && (
-                                <div className="payment-result-card">
-                                    <h3>Payment Created</h3>
-                                    <p>Payment ID: {paymentResult.paymentId}</p>
-                                    <p>Booking ID: {paymentResult.bookingId}</p>
-                                    <p>Status: {paymentResult.paymentStatus}</p>
-                                    <p>Final Amount: {paymentResult.finalAmount}</p>
-                                </div>
+                            {/* PayPal Action Button nếu chọn PayPal */}
+                            {selectedMethod === "paypal" && (
+                                <button
+                                    type="button"
+                                    className="paypal-pay-btn"
+                                    onClick={handlePayPalPay}
+                                    disabled={isLoading || isBookingUnpayable || isPaid}
+                                >
+                                    {isLoading ? (
+                                        <>
+                                            <span className="spinner-inline" />
+                                            Đang chuyển hướng PayPal...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <span>Thanh toán bằng PayPal</span>
+                                            <span className="pay-arrow">→</span>
+                                        </>
+                                    )}
+                                </button>
                             )}
                         </div>
                     </div>
                 </div>
             </div>
-        </>
+        </div>
     );
 }
+
 export default PaymentPage;

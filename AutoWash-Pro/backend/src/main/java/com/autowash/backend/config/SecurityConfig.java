@@ -2,6 +2,7 @@ package com.autowash.backend.config;
 
 import com.autowash.backend.security.CustomUserDetailsService;
 import com.autowash.backend.security.JwtAuthenticationFilter;
+import com.autowash.backend.security.LoginRateLimitFilter;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -20,7 +21,6 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 import java.util.Map;
-import com.autowash.backend.security.LoginRateLimitFilter;
 
 @Configuration
 @EnableWebSecurity
@@ -31,9 +31,11 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final LoginRateLimitFilter loginRateLimitFilter;
 
-    public SecurityConfig(CustomUserDetailsService userDetailsService,
+    public SecurityConfig(
+            CustomUserDetailsService userDetailsService,
             JwtAuthenticationFilter jwtAuthenticationFilter,
-            LoginRateLimitFilter loginRateLimitFilter) {
+            LoginRateLimitFilter loginRateLimitFilter
+    ) {
         this.userDetailsService = userDetailsService;
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
         this.loginRateLimitFilter = loginRateLimitFilter;
@@ -46,99 +48,150 @@ public class SecurityConfig {
 
     @Bean
     public DaoAuthenticationProvider authenticationProvider() {
-        DaoAuthenticationProvider provider = new DaoAuthenticationProvider(userDetailsService);
+        DaoAuthenticationProvider provider =
+                new DaoAuthenticationProvider(userDetailsService);
+
         provider.setPasswordEncoder(passwordEncoder());
         return provider;
     }
 
     @Bean
     public AuthenticationManager authenticationManager(
-            AuthenticationConfiguration authenticationConfiguration) throws Exception {
+            AuthenticationConfiguration authenticationConfiguration
+    ) throws Exception {
         return authenticationConfiguration.getAuthenticationManager();
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http)
+            throws Exception {
+
         http
-                // Bật CORS (cấu hình chi tiết nằm ở CorsConfig.java)
+                // Cho phép request từ frontend theo CorsConfig.
                 .cors(org.springframework.security.config.Customizer.withDefaults())
 
-                // Tắt CSRF vì dùng JWT stateless — không có session cookie cần bảo vệ
+                // Backend sử dụng JWT, không dùng session CSRF.
                 .csrf(AbstractHttpConfigurer::disable)
 
-                // Không lưu session phía server; mỗi request phải tự mang token
+                // Không lưu session ở server.
                 .sessionManagement(session ->
-                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                        session.sessionCreationPolicy(
+                                SessionCreationPolicy.STATELESS
+                        )
+                )
 
-                // Trả JSON thay vì redirect khi xác thực thất bại
-                .exceptionHandling(ex -> ex
-                        .authenticationEntryPoint((request, response, authException) -> {
-                            // 401 — chưa đăng nhập hoặc token hết hạn / không hợp lệ
-                            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-                            response.getWriter().write("{\"status\": 401, \"message\": \"Bạn chưa đăng nhập\"}");
-                        })
-                        .accessDeniedHandler((request, response, accessDeniedException) -> {
-                            // 403 — đã đăng nhập nhưng không đủ quyền
-                            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-                            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-                            response.getWriter()
-                                    .write("{\"status\": 403, \"message\": \"Bạn không có quyền truy cập\"}");
-                        }))
+                // Xử lý lỗi chưa đăng nhập và không đủ quyền.
+                .exceptionHandling(exception -> exception
+
+                        .authenticationEntryPoint(
+                                (request, response, authException) -> {
+                                    response.setStatus(
+                                            HttpServletResponse.SC_UNAUTHORIZED
+                                    );
+                                    response.setContentType(
+                                            MediaType.APPLICATION_JSON_VALUE
+                                    );
+                                    response.setCharacterEncoding("UTF-8");
+                                    response.getWriter().write(
+                                            """
+                                            {
+                                              "status": 401,
+                                              "message": "Bạn chưa đăng nhập"
+                                            }
+                                            """
+                                    );
+                                }
+                        )
+
+                        .accessDeniedHandler(
+                                (request, response, accessDeniedException) -> {
+                                    response.setStatus(
+                                            HttpServletResponse.SC_FORBIDDEN
+                                    );
+                                    response.setContentType(
+                                            MediaType.APPLICATION_JSON_VALUE
+                                    );
+                                    response.setCharacterEncoding("UTF-8");
+                                    response.getWriter().write(
+                                            """
+                                            {
+                                              "status": 403,
+                                              "message": "Bạn không có quyền truy cập"
+                                            }
+                                            """
+                                    );
+                                }
+                        )
+                )
 
                 .authorizeHttpRequests(auth -> auth
 
-                        // ─── Public endpoints (không cần đăng nhập) ───────────────────────
-                        // Chỉ các endpoint xác thực mới được truy cập tự do.
-                        // /api/v1/support/chat KHÔNG nằm ở đây — yêu cầu phải đăng nhập.
-                        // Frontend tự động gắn token qua axiosClient request interceptor.
+                        // =====================================================
+                        // PUBLIC
+                        // =====================================================
                         .requestMatchers(
-                                "/api/v1/auth/login",                      // Đăng nhập bằng email/password
-                                "/api/v1/auth/register",                   // Đăng ký tài khoản mới
-                                "/api/v1/auth/send-otp",                   // Gửi mã OTP xác minh email
-                                "/api/v1/auth/verify-otp",                 // Xác minh mã OTP
-                                "/api/v1/auth/google",                     // Đăng nhập bằng Google OAuth2
-                                "/api/v1/auth/refresh",                    // Lấy access token mới từ refresh token
-                                "/api/v1/auth/forgot-password/request",    // Gửi OTP quên mật khẩu
-                                "/api/v1/auth/forgot-password/reset",      // Đặt lại mật khẩu mới
-                                "/swagger-ui/**",                          // Swagger UI (chỉ dùng khi dev/test)
-                                "/v3/api-docs/**",                         // OpenAPI spec (chỉ dùng khi dev/test)
+                                "/api/v1/auth/login",
+                                "/api/v1/auth/register",
+                                "/api/v1/auth/send-otp",
+                                "/api/v1/auth/verify-otp",
+                                "/api/v1/auth/google",
+                                "/api/v1/auth/refresh",
+                                "/api/v1/auth/forgot-password/request",
+                                "/api/v1/auth/forgot-password/reset",
 
-                                // VNPAY gọi callback trực tiếp (server-to-server hoặc redirect trình duyệt),
-                                // KHÔNG mang theo JWT của user nên phải để public, nếu không sẽ luôn bị 401.
                                 "/api/v1/payments/vnpay-return",
                                 "/api/v1/payments/vnpay-ipn",
-                                // PAYPAL gọi redirect trình duyệt về đây sau khi khách approve/hủy thanh toán,
-                                // cũng KHÔNG mang theo JWT của user nên phải để public như VNPAY.
                                 "/api/v1/payments/paypal-return",
                                 "/api/v1/payments/paypal-cancel",
+
                                 "/api/v1/notifications/stream",
                                 "/api/v1/branches",
                                 "/api/v1/service-packages/active",
+
+                                "/swagger-ui/**",
+                                "/v3/api-docs/**",
                                 "/actuator/health"
                         ).permitAll()
 
-                        // ─── Admin only ────────────────────────────────────────────────────
-                        // Chỉ tài khoản có ROLE_ADMIN mới truy cập được /api/v1/admin/**
-                        .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
+                        // =====================================================
+                        // ADMIN
+                        // =====================================================
+                        .requestMatchers("/api/v1/admin/**")
+                        .hasRole("ADMIN")
 
-                        // ─── Staff + Admin ─────────────────────────────────────────────────
-                        // Nhân viên và quản trị viên có thể truy cập /api/v1/staff/**
-                        .requestMatchers("/api/v1/staff/**").hasAnyRole("STAFF", "ADMIN")
+                        // =====================================================
+                        // EMPLOYEE
+                        // =====================================================
+                        .requestMatchers("/api/v1/employee/**")
+                        .hasRole("EMPLOYEE")
 
-                        // ─── Mọi endpoint còn lại — bắt buộc đăng nhập ───────────────────
-                        // Bao gồm: /api/v1/support/chat, /api/v1/notifications/**, v.v.
-                        // Request phải kèm header: Authorization: Bearer <accessToken>
-                        // axiosClient.js xử lý việc này tự động qua request interceptor,
-                        // và tự refresh token khi nhận 401 qua response interceptor.
-                        .anyRequest().authenticated()
+                        /*
+                         * Khóa hoàn toàn endpoint STAFF cũ.
+                         * Tránh trường hợp còn controller cũ chưa được phát hiện.
+                         */
+                        .requestMatchers("/api/v1/staff/**")
+                        .denyAll()
+
+                        // =====================================================
+                        // OTHER AUTHENTICATED ENDPOINTS
+                        // =====================================================
+                        .anyRequest()
+                        .authenticated()
                 )
 
                 .authenticationProvider(authenticationProvider())
-                // Chạy JWT filter trước UsernamePasswordAuthenticationFilter
-                // để Spring Security nhận diện user từ token trước khi kiểm tra quyền
-                .addFilterBefore(loginRateLimitFilter, UsernamePasswordAuthenticationFilter.class)
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+
+                // Filter giới hạn số lần đăng nhập.
+                .addFilterBefore(
+                        loginRateLimitFilter,
+                        UsernamePasswordAuthenticationFilter.class
+                )
+
+                // Filter đọc và xác thực JWT.
+                .addFilterBefore(
+                        jwtAuthenticationFilter,
+                        UsernamePasswordAuthenticationFilter.class
+                );
 
         return http.build();
     }

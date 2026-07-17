@@ -1,5 +1,9 @@
 package com.autowash.backend.reward.service.impl;
 
+import com.autowash.backend.common.exception.BusinessException;
+import com.autowash.backend.customer.entity.Customer;
+import com.autowash.backend.loyaltytier.entity.LoyaltyTier;
+import com.autowash.backend.loyaltytier.repository.LoyaltyTierRepository;
 import com.autowash.backend.loyaltytransaction.entity.LoyaltyTransaction;
 import com.autowash.backend.loyaltytransaction.repository.LoyaltyTransactionRepository;
 import com.autowash.backend.reward.dto.RedeemRewardRequestDTO;
@@ -10,6 +14,8 @@ import com.autowash.backend.reward.entity.Reward;
 import com.autowash.backend.reward.mapper.RewardMapper;
 import com.autowash.backend.reward.repository.RewardRepository;
 import com.autowash.backend.reward.service.RewardService;
+import com.autowash.backend.customerreward.service.CustomerRewardService;
+import com.autowash.backend.customerreward.dto.CustomerRewardResponseDTO;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -38,6 +44,9 @@ public class RewardServiceImpl implements RewardService {
     private final LoyaltyTransactionRepository loyaltyTransactionRepository;
     private final com.autowash.backend.customer.repository.CustomerRepository customerRepository;
     private final com.autowash.backend.user.repository.UserRepository userRepository;
+    private final LoyaltyTierRepository loyaltyTierRepository;
+    private final CustomerRewardService customerRewardService;
+    private final com.autowash.backend.customerreward.repository.CustomerRewardRepository customerRewardRepository;
 
     /**
      * {@inheritDoc}
@@ -111,6 +120,7 @@ public class RewardServiceImpl implements RewardService {
         validateCustomerOwner(customerId, userId);
 
         Integer currentPoints = getCurrentPoints(customerId);
+        Integer customerTierLevel = getCustomerTierLevel(customerId);
 
         Reward.RewardStatus activeStatus = parseEnumIgnoreCase(Reward.RewardStatus.class, "active");
         Reward.RewardVehicleType requestedVehicleType =
@@ -121,6 +131,12 @@ public class RewardServiceImpl implements RewardService {
                 .filter(reward -> reward.getStatus().equals(activeStatus))
                 .filter(reward -> reward.getRequiredPoints() <= currentPoints)
                 .filter(reward -> isVehicleMatched(reward.getVehicleType(), requestedVehicleType))
+                .filter(reward -> reward.getRequiredTierLevel() == null
+                        || (customerTierLevel != null
+                        && customerTierLevel >= reward.getRequiredTierLevel()))
+                // Quà thăng hạng (welcome reward) chỉ được nhận/đổi tối đa 1 lần
+                .filter(reward -> !reward.isWelcomeReward()
+                        || !customerRewardRepository.existsByCustomer_CustomerIdAndReward_RewardId(customerId, reward.getRewardId()))
                 .map(rewardMapper::toResponse)
                 .toList();
     }
@@ -144,49 +160,21 @@ public class RewardServiceImpl implements RewardService {
 
         Reward reward = findOrThrow(rewardId);
 
-        Reward.RewardStatus activeStatus = parseEnumIgnoreCase(Reward.RewardStatus.class, "active");
-
-        if (!reward.getStatus().equals(activeStatus)) {
-            throw new IllegalArgumentException("Reward hiện không còn hoạt động");
-        }
-
-        Reward.RewardVehicleType requestedVehicleType =
-                parseEnumIgnoreCase(Reward.RewardVehicleType.class, dto.vehicleType());
-
-        if (!isVehicleMatched(reward.getVehicleType(), requestedVehicleType)) {
-            throw new IllegalArgumentException("Reward không áp dụng cho loại xe này");
-        }
-
-        Integer balanceBefore = getCurrentPoints(dto.customerId());
-        Integer requiredPoints = reward.getRequiredPoints();
-
-        if (balanceBefore < requiredPoints) {
-            throw new IllegalArgumentException("Không đủ điểm để đổi reward này");
-        }
-
-        Integer balanceAfter = balanceBefore - requiredPoints;
-
-        LoyaltyTransaction transaction = new LoyaltyTransaction();
-        transaction.setCustomerId(dto.customerId());
-        transaction.setPaymentId(null);
-        transaction.setTransactionType("redeem");
-        transaction.setPoints(-requiredPoints);
-        transaction.setBalanceBefore(balanceBefore);
-        transaction.setBalanceAfter(balanceAfter);
-        transaction.setExpiredAt(null);
-        transaction.setCreatedAt(LocalDateTime.now());
-        transaction.setNote("Redeemed reward: " + reward.getRewardName());
-
-        loyaltyTransactionRepository.save(transaction);
+        // Ủy quyền gọi sang CustomerRewardService để trừ điểm và phát voucher
+        CustomerRewardResponseDTO crResponse = customerRewardService.redeemReward(
+                dto.customerId(),
+                rewardId,
+                userId
+        );
 
         return new RedeemRewardResponseDTO(
                 "Redeem reward successfully",
                 dto.customerId(),
-                reward.getRewardId(),
+                rewardId,
                 reward.getRewardName(),
-                requiredPoints,
-                balanceBefore,
-                balanceAfter
+                reward.getRequiredPoints(),
+                crResponse.getRemainingPoints() + reward.getRequiredPoints(), // balanceBefore
+                crResponse.getRemainingPoints() // balanceAfter
         );
     }
 
@@ -213,6 +201,14 @@ public class RewardServiceImpl implements RewardService {
                 .orElse(0);
     }
 
+    private Integer getCustomerTierLevel(Integer customerId) {
+        return customerRepository.findById(customerId)
+                .map(Customer::getTierId)
+                .flatMap(tierId -> loyaltyTierRepository.findById(tierId))
+                .map(LoyaltyTier::getPriorityLevel)
+                .orElse(null);
+    }
+
     private boolean isVehicleMatched(Reward.RewardVehicleType rewardVehicleType,
                                      Reward.RewardVehicleType requestedVehicleType) {
         boolean exactMatch = rewardVehicleType.equals(requestedVehicleType);
@@ -233,7 +229,7 @@ public class RewardServiceImpl implements RewardService {
                 .orElseThrow(() -> new IllegalArgumentException(
                         "Giá trị không hợp lệ: " + value
                 ));
-        }
+    }
 
     private void validateCustomerOwner(Integer customerId, Integer userId) {
         if (userId == null) {

@@ -11,8 +11,10 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.util.UriComponentsBuilder;
+import org.springframework.beans.factory.annotation.Value;
 
 import java.net.URI;
 import java.util.Enumeration;
@@ -28,8 +30,10 @@ public class PaymentController {
     private final PaymentService paymentService;
     private final VNPayService vnPayService;
 
-    private static final String FRONTEND_BASE_URL = "http://localhost:5173";
+    @Value("${app.frontend-base-url:http://localhost:5173}")
+    private String frontendBaseUrl;
 
+    @PreAuthorize("hasRole('CUSTOMER')")
     @PostMapping
     public ResponseEntity<PaymentResponseDTO> create(
             @Valid @RequestBody PaymentCreateRequestDTO request) {
@@ -38,6 +42,7 @@ public class PaymentController {
                 .body(paymentService.createPayment(request));
     }
 
+    @PreAuthorize("hasRole('CUSTOMER')")
     @PatchMapping("/{id}/status")
     public ResponseEntity<PaymentResponseDTO> updateStatus(
             @PathVariable Integer id,
@@ -45,26 +50,30 @@ public class PaymentController {
         return ResponseEntity.ok(paymentService.updateStatus(id, request));
     }
 
+    @PreAuthorize("isAuthenticated()")
     @GetMapping("/{id}")
     public ResponseEntity<PaymentResponseDTO> getById(@PathVariable Integer id) {
         return ResponseEntity.ok(paymentService.getById(id));
     }
 
+    @PreAuthorize("hasAnyRole('EMPLOYEE','ADMIN')")
     @GetMapping("/booking/{bookingId}")
     public ResponseEntity<PaymentResponseDTO> getByBookingId(
             @PathVariable Integer bookingId) {
         return ResponseEntity.ok(paymentService.getByBookingId(bookingId));
     }
 
+    @PreAuthorize("hasAnyRole('EMPLOYEE','ADMIN')")
     @GetMapping
     public ResponseEntity<List<PaymentResponseDTO>> getAll(
             @RequestParam(required = false) PaymentStatus status) {
         return ResponseEntity.ok(paymentService.getByStatus(status));
     }
 
+    @PreAuthorize("hasRole('CUSTOMER')")
     @GetMapping("/{id}/vnpay-qr")
     public ResponseEntity<byte[]> getVnpayQrCode(HttpServletRequest request,
-                                                 @PathVariable Integer id) throws Exception {
+                                                  @PathVariable Integer id) throws Exception {
         PaymentResponseDTO payment = paymentService.getById(id);
 
         String txnRef = "PAY" + payment.getPaymentId();
@@ -156,6 +165,7 @@ public class PaymentController {
      * Tạo PayPal Order cho payment {id} — gọi khi khách chọn phương thức PayPal.
      * Trả về orderId + approvalUrl để frontend redirect (window.location.href = approvalUrl).
      */
+    @PreAuthorize("hasRole('CUSTOMER')")
     @PostMapping("/{id}/paypal-order")
     public ResponseEntity<Map<String, String>> createPaypalOrder(@PathVariable Integer id) {
         return ResponseEntity.ok(paymentService.createPaypalOrder(id));
@@ -199,14 +209,14 @@ public class PaymentController {
     }
 
     private String successUrl(Integer paymentId) {
-        return UriComponentsBuilder.fromUriString(FRONTEND_BASE_URL + "/customer/payment")
+        return UriComponentsBuilder.fromUriString(frontendBaseUrl + "/customer/payment/success")
                 .queryParam("paymentId", paymentId)
                 .toUriString();
     }
 
     private String failureUrl(Integer bookingId, String reason) {
         UriComponentsBuilder builder = UriComponentsBuilder
-                .fromUriString(FRONTEND_BASE_URL + "/customer/payment")
+                .fromUriString(frontendBaseUrl + "/customer/payment")
                 .queryParam("paymentFailed", "1")
                 .queryParam("reason", reason);
         if (bookingId != null) {

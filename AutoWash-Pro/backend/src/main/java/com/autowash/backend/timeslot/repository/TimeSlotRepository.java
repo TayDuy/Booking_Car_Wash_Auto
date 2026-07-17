@@ -27,6 +27,7 @@ public interface TimeSlotRepository extends JpaRepository<TimeSlot, Integer> {
             WHERE b.branchId = :branchId
               AND ts.slotDate = :date
               AND ts.status   = :status
+              AND wb.status   = 'available'
             ORDER BY ts.startTime
             """)
     List<TimeSlot> findByBranchAndDateAndStatus(
@@ -50,6 +51,7 @@ public interface TimeSlotRepository extends JpaRepository<TimeSlot, Integer> {
             JOIN FETCH ts.washBay wb
             WHERE b.branchId = :branchId
               AND ts.slotDate = :date
+              AND wb.status <> 'maintenance'
             ORDER BY ts.startTime
             """)
     List<TimeSlot> findByBranchAndDate(

@@ -5,6 +5,7 @@ import bookingApi from "../../../api/bookingApi";
 const STATUS_MAP = {
   pending:     { label: "Chờ xử lý",    badge: "badge-pending" },
   confirmed:   { label: "Đã xác nhận",   badge: "badge-confirmed" },
+  checked_in:  { label: "Đã check-in",  badge: "badge-checked_in" },
   in_progress: { label: "Đang thực hiện", badge: "badge-in_progress" },
   completed:   { label: "Hoàn thành",    badge: "badge-completed" },
   cancelled:   { label: "Đã hủy",       badge: "badge-cancelled" },
@@ -43,11 +44,6 @@ function BookingDetailPage() {
       })
       .finally(() => setLoading(false));
   }, [bookingId]);
-
-  const handleReBook = () => {
-    if (!booking) return;
-    navigate("/customer/booking");
-  };
 
   if (loading) {
     return (
@@ -166,46 +162,76 @@ function BookingDetailPage() {
             </>
           )}
 
-          {booking.status === "pending" && (
-            <div style={{ marginTop: "24px", paddingTop: "20px", borderTop: "1px solid var(--color-border, #eee)" }}>
-              <button
-                onClick={() => navigate(`/customer/payment?bookingId=${booking.bookingId}`)}
-                style={{
-                  padding: "10px 24px", borderRadius: "8px", border: "none",
-                  background: "var(--color-primary, #003d9b)", color: "#fff",
-                  fontWeight: 600, cursor: "pointer", fontSize: "14px",
-                  marginRight: "12px",
-                }}
-              >
-                Tiến hành thanh toán
-              </button>
-              <button
-                onClick={() => navigate(`/customer/booking`)}
-                style={{
-                  padding: "10px 24px", borderRadius: "8px", border: "1px solid var(--color-primary, #003d9b)",
-                  background: "transparent", color: "var(--color-primary, #003d9b)",
-                  fontWeight: 600, cursor: "pointer", fontSize: "14px",
-                }}
-              >
-                Đặt lại
-              </button>
-            </div>
-          )}
+          {(() => {
+            const isPaid = booking.status === "completed" || booking.paymentStatus?.toLowerCase() === "paid";
+            const isTerminal = booking.status === "cancelled" || booking.status === "no_show";
+            const canPay = !isPaid && !isTerminal;
 
-          {booking.status !== "pending" && (
-            <div style={{ marginTop: "24px", paddingTop: "20px", borderTop: "1px solid var(--color-border, #eee)" }}>
-              <button
-                onClick={handleReBook}
-                style={{
-                  padding: "10px 24px", borderRadius: "8px", border: "1px solid var(--color-primary, #003d9b)",
-                  background: "transparent", color: "var(--color-primary, #003d9b)",
-                  fontWeight: 600, cursor: "pointer", fontSize: "14px",
-                }}
-              >
-                Đặt lại dịch vụ này
-              </button>
-            </div>
-          )}
+            if (isPaid) {
+              const payMethod = booking.paymentMethod === "bank_transfer" ? "Chuyển khoản (VNPAY)" : booking.paymentMethod === "paypal" ? "PayPal" : "Tại tiệm";
+              return (
+                <div style={{ marginTop: "24px", paddingTop: "20px", borderTop: "1px solid var(--color-border, #eee)" }}>
+                  <div style={{ background: "#f8fafc", borderRadius: "12px", padding: "20px", marginBottom: "16px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+                      <span style={{ fontSize: "14px", fontWeight: 600, color: "#334155" }}>Thông tin thanh toán</span>
+                      <span style={{
+                        display: "inline-flex", alignItems: "center", gap: "6px",
+                        padding: "4px 12px", borderRadius: "20px",
+                        background: "#e8f5e9", color: "#2e7d32",
+                        fontWeight: 600, fontSize: "13px",
+                      }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                        Đã thanh toán
+                      </span>
+                    </div>
+
+                    {booking.originalAmount && (
+                      <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", fontSize: "14px", color: "#64748b" }}>
+                        <span>Tạm tính</span>
+                        <span>{fmt.format(booking.originalAmount)}</span>
+                      </div>
+                    )}
+                    {booking.discountAmount > 0 && (
+                      <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", fontSize: "14px", color: "#16a34a" }}>
+                        <span>Giảm giá</span>
+                        <span>-{fmt.format(booking.discountAmount)}</span>
+                      </div>
+                    )}
+                    <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 0 0", fontSize: "16px", fontWeight: 700, borderTop: "1px solid #e2e8f0", marginTop: "4px" }}>
+                      <span>Thành tiền</span>
+                      <span style={{ color: "#003d9b" }}>{fmt.format(booking.finalAmount || booking.totalAmount || 0)}</span>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0 0", fontSize: "12px", color: "#94a3b8" }}>
+                      <span>Phương thức</span>
+                      <span>{payMethod}{booking.vnpayBankCode ? ` (${booking.vnpayBankCode})` : ""}</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            }
+
+            if (canPay) {
+              return (
+                <div style={{ marginTop: "24px", paddingTop: "20px", borderTop: "1px solid var(--color-border, #eee)" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px", padding: "6px 0", fontSize: "14px", color: "#64748b" }}>
+                    <span>Tạm tính</span>
+                    <span style={{ fontWeight: 600, color: "#334155" }}>{fmt.format(booking.totalAmount || 0)}</span>
+                  </div>
+                  <button onClick={() => navigate(`/customer/payment?bookingId=${booking.bookingId}`)} style={{
+                    padding: "10px 24px", borderRadius: "8px", border: "none",
+                    background: "var(--color-primary, #003d9b)", color: "#fff",
+                    fontWeight: 600, cursor: "pointer", fontSize: "14px", width: "100%",
+                  }}>
+                    Tiến hành thanh toán
+                  </button>
+                </div>
+              );
+            }
+
+            return null;
+          })()}
         </div>
       </div>
     </div>

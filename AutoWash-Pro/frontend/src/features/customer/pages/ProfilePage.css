@@ -304,12 +304,12 @@ a { text-decoration: none; }
 }
 
 .card-title {
-  font-size: 24px;
-  font-weight: 600;
+  font-size: 18px;
+  font-weight: 700;
   color: var(--on-surface);
   display: flex;
   align-items: center;
-  gap: var(--spacing-sm);
+  gap: 8px;
   margin: 0;
 }
 
@@ -549,6 +549,8 @@ a { text-decoration: none; }
 
 .table-wrapper {
   overflow-x: auto;
+  max-height: 420px;
+  overflow-y: auto;
 }
 
 .history-table {
@@ -1090,8 +1092,892 @@ a { text-decoration: none; }
 
 /* Full Width Footer overlapping the sidebar bottom */
 .profile-page-wrapper .global-footer-bar {
-  margin-left: -256px;
-  padding-left: calc(256px + var(--spacing-desktop));
+  margin-left: 0;
+  padding-left: 0;
   position: relative;
-  z-index: 50; /* Render on top of fixed sidebar */
+  z-index: 50;
+}
+
+/* GitHub-style Horizontal Navigation Tabs */
+.github-profile-nav-container {
+  background-color: var(--surface-container-lowest);
+  border-bottom: 1px solid rgba(195, 198, 214, 0.2);
+  margin-top: -24px;
+  margin-bottom: 32px;
+  width: 100vw;
+  position: relative;
+  left: 50%;
+  right: 50%;
+  margin-left: -50vw;
+  margin-right: -50vw;
+}
+
+.github-profile-nav {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 32px;
+  display: flex;
+  gap: 20px;
+  overflow-x: auto;
+}
+
+.github-nav-tab {
+  background: transparent;
+  border: none;
+  padding: 16px 8px 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--on-surface-variant);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s;
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+.github-nav-tab:hover {
+  color: var(--on-surface);
+  border-bottom-color: rgba(195, 198, 214, 0.4);
+}
+
+.github-nav-tab.active {
+  color: var(--on-surface);
+  font-weight: 600;
+  border-bottom-color: var(--primary);
+}
+
+.github-nav-tab .nav-icon {
+  font-size: 18px;
+}
+
+.github-tab-counter {
+  background-color: rgba(195, 198, 214, 0.2);
+  color: var(--on-surface-variant);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 999px;
+  min-width: 16px;
+  text-align: center;
+}
+
+.github-nav-tab.active .github-tab-counter {
+  background-color: rgba(0, 82, 204, 0.1);
+  color: var(--primary);
+}
+
+/* Two-column layout grid */
+.github-profile-grid {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 32px;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 32px 48px;
+  align-items: start;
+}
+
+@media (max-width: 992px) {
+  .github-profile-grid {
+    grid-template-columns: 1fr;
+    gap: 24px;
+    padding-bottom: 32px;
+  }
+}
+
+/* Left Column: Sidebar */
+.github-profile-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.github-avatar-wrapper {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 1px solid rgba(195, 198, 214, 0.25);
+  background-color: var(--surface-container-low);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+}
+
+@media (max-width: 992px) {
+  .github-avatar-wrapper {
+    width: 120px;
+    height: 120px;
+    margin: 0 auto;
+  }
+}
+
+.github-profile-avatar {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.github-user-names {
+  margin-top: 4px;
+}
+
+@media (max-width: 992px) {
+  .github-user-names {
+    text-align: center;
+  }
+}
+
+.github-display-name {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--on-surface);
+  margin: 0;
+  letter-spacing: -0.5px;
+}
+
+.github-username {
+  font-size: 15px;
+  color: var(--on-surface-variant);
+  margin: 2px 0 0;
+}
+
+.github-btn-action {
+  width: 100%;
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: 1px solid rgba(195, 198, 214, 0.4);
+  background-color: var(--surface-container-low);
+  color: var(--on-surface);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: center;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+.github-btn-action:hover {
+  background-color: var(--surface-container-high);
+}
+
+.github-btn-action.save {
+  background-color: var(--primary);
+  color: #ffffff;
+  border-color: var(--primary);
+}
+
+.github-btn-action.save:hover {
+  filter: brightness(0.95);
+}
+
+.github-btn-action.cancel {
+  background-color: transparent;
+  border-color: transparent;
+  color: #ba1a1a;
+}
+
+.github-profile-details {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(195, 198, 214, 0.15);
+}
+
+.github-profile-details .detail-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--on-surface-variant);
+}
+
+.github-profile-details .detail-item span.material-symbols-outlined {
+  font-size: 18px;
+  color: var(--on-surface-variant);
+}
+
+/* Edit profile form inside sidebar */
+.github-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
+.edit-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.edit-form-group label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--on-surface-variant);
+}
+
+.edit-form-group input,
+.edit-form-group select {
+  width: 100%;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(195, 198, 214, 0.4);
+  font-size: 14px;
+  background: var(--surface-container-lowest);
+  color: var(--on-surface);
+  box-sizing: border-box;
+  font-family: inherit;
+}
+
+.edit-form-group input:focus,
+.edit-form-group select:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+/* Right Column: Tab Content */
+.github-profile-content {
+  min-width: 0;
+}
+
+.overview-tab-content {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+/* GitHub style Commit Graph (Car Wash Frequency) */
+.contribution-graph-card {
+  border: 1px solid rgba(195, 198, 214, 0.2);
+  border-radius: 6px;
+  padding: 18px;
+  background-color: var(--surface-container-lowest);
+}
+
+.contribution-graph-card .graph-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--on-surface);
+  margin: 0 0 12px;
+}
+
+.contribution-graph-card .graph-wrapper {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.contribution-graph-card .days-label {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  font-size: 10px;
+  color: var(--on-surface-variant);
+  padding: 4px 0;
+  height: 82px;
+  width: 24px;
+}
+
+.contribution-graph-card .graph-grid {
+  display: grid;
+  grid-template-rows: repeat(7, 10px);
+  grid-auto-flow: column;
+  gap: 2px;
+}
+
+.contribution-graph-card .graph-cell {
+  width: 10px;
+  height: 10px;
+  background-color: #ebedf0;
+  border-radius: 1.5px;
+}
+
+.contribution-graph-card .graph-cell.washed {
+  background-color: #2ea44f;
+  box-shadow: 0 0 4px rgba(46, 164, 79, 0.3);
+}
+
+.contribution-graph-card .graph-legend {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--on-surface-variant);
+  margin-top: 8px;
+}
+
+.contribution-graph-card .legend-cells {
+  display: flex;
+  gap: 2px;
+}
+
+/* Pinned Repos (Vehicles) Grid */
+.pinned-section .section-title,
+.activity-section .section-title {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--on-surface);
+  margin: 0 0 12px;
+}
+
+.pinned-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+@media (max-width: 768px) {
+  .pinned-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.pinned-repo-card {
+  border: 1px solid rgba(195, 198, 214, 0.2);
+  border-radius: 6px;
+  padding: 16px;
+  background-color: var(--surface-container-lowest);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 130px;
+  box-sizing: border-box;
+}
+
+.pinned-repo-card .repo-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pinned-repo-card .repo-icon {
+  font-size: 16px;
+  color: var(--on-surface-variant);
+}
+
+.pinned-repo-card .repo-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #0969da;
+  margin: 0;
+  cursor: pointer;
+}
+
+.pinned-repo-card .repo-name:hover {
+  text-decoration: underline;
+}
+
+.pinned-repo-card .repo-visibility {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--on-surface-variant);
+  border: 1px solid rgba(195, 198, 214, 0.4);
+  padding: 1px 6px;
+  border-radius: 999px;
+  margin-left: auto;
+}
+
+.pinned-repo-card .repo-description {
+  margin: 8px 0;
+}
+
+.pinned-repo-card .repo-footer {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 12px;
+  color: var(--on-surface-variant);
+}
+
+.pinned-repo-card .repo-language {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pinned-repo-card .language-color {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.github-blankslate {
+  grid-column: span 2;
+  border: 1px dashed rgba(195, 198, 214, 0.4);
+  padding: 32px;
+  text-align: center;
+  border-radius: 6px;
+  color: var(--on-surface-variant);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.github-blankslate h4 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+/* Activity timeline activity list */
+.timeline-activity {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding-left: 16px;
+  border-left: 2px solid rgba(195, 198, 214, 0.15);
+  margin-left: 10px;
+}
+
+.timeline-activity-item {
+  display: flex;
+  gap: 16px;
+  position: relative;
+}
+
+.timeline-activity-item .timeline-badge-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background-color: var(--surface-container-high);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  left: -31px;
+  top: -2px;
+  border: 2px solid var(--surface-container-lowest);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.timeline-activity-item .timeline-badge-icon span {
+  font-size: 16px;
+  color: var(--on-surface-variant);
+}
+
+.timeline-activity-item .timeline-details {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 14px;
+  color: var(--on-surface);
+}
+
+.timeline-activity-item .timeline-details p {
+  margin: 0;
+  line-height: 1.4;
+}
+
+.timeline-activity-item .timeline-date {
+  font-size: 12px;
+  color: var(--on-surface-variant);
+}
+
+/* Vietnam License Plate Styling */
+.vietnam-license-plate {
+  background-color: #ffffff;
+  border: 2px solid #22252a;
+  border-radius: 6px;
+  padding: 3px 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-weight: 800;
+  font-size: 14px;
+  color: #1e293b;
+  box-shadow: inset 0 0 2px rgba(0,0,0,0.1), 0 2px 4px rgba(0,0,0,0.06);
+  position: relative;
+  box-sizing: border-box;
+  width: fit-content;
+  border-top-width: 3px;
+  border-bottom-width: 3px;
+}
+
+.plate-rivet {
+  width: 4px;
+  height: 4px;
+  background-color: #94a3b8;
+  border-radius: 50%;
+  box-shadow: 0 0.5px 1px rgba(0,0,0,0.2);
+}
+
+.plate-text {
+  letter-spacing: 0.5px;
+  text-shadow: 0.5px 0.5px 0px rgba(0,0,0,0.1);
+}
+
+/* Sidebar loyalty pass cards */
+.sidebar-loyalty-quick {
+  position: relative;
+  border-radius: 12px;
+  padding: 16px;
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+  border: 1px solid transparent;
+  overflow: hidden;
+}
+
+.sidebar-loyalty-quick.tier-bg-1 {
+  background: linear-gradient(135deg, #efe5dd 0%, #dcd0c7 100%);
+  color: #8c5b36;
+  border-color: rgba(140, 91, 54, 0.15);
+}
+
+.sidebar-loyalty-quick.tier-bg-2 {
+  background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+  color: #475569;
+  border-color: rgba(71, 85, 105, 0.15);
+}
+
+.sidebar-loyalty-quick.tier-bg-3 {
+  background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+  color: #b45309;
+  border-color: rgba(180, 83, 9, 0.15);
+}
+
+.sidebar-loyalty-quick.tier-bg-4 {
+  background: linear-gradient(135deg, #fdf4ff 0%, #fae8ff 100%);
+  color: #a21caf;
+  border-color: rgba(162, 28, 175, 0.15);
+}
+
+.quick-barcode-icon {
+  opacity: 0.25;
+}
+
+/* Premium Wallet Card Design */
+.loyalty-wallet-card {
+  position: relative;
+  border-radius: 20px;
+  padding: 32px;
+  color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  overflow: hidden;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.wallet-card-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(circle at 80% 20%, rgba(255, 255, 255, 0.12) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+/* Tier Specific Wallet Passes */
+.tier-card-1 {
+  background: linear-gradient(135deg, #7f5539 0%, #462b16 100%);
+}
+
+.tier-card-2 {
+  background: linear-gradient(135deg, #64748b 0%, #334155 100%);
+}
+
+.tier-card-3 {
+  background: linear-gradient(135deg, #d97706 0%, #78350f 100%);
+}
+
+.tier-card-4 {
+  background: linear-gradient(135deg, #a21caf 0%, #4a044e 100%);
+}
+
+.wallet-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  padding-bottom: 16px;
+}
+
+.wallet-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  font-size: 14px;
+}
+
+.wallet-tier-label {
+  font-weight: 900;
+  font-size: 14px;
+  letter-spacing: 1.5px;
+  background: rgba(255, 255, 255, 0.15);
+  padding: 4px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.wallet-card-body {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 20px;
+}
+
+@media (max-width: 576px) {
+  .wallet-card-body {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+}
+
+.wallet-user-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.wallet-user-name {
+  font-size: 22px;
+  font-weight: 800;
+  margin: 0;
+  letter-spacing: -0.5px;
+}
+
+.wallet-member-id {
+  font-size: 12px;
+  opacity: 0.75;
+  font-family: monospace;
+  margin: 0;
+}
+
+/* Real-looking Barcode in HTML */
+.wallet-barcode-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  background: #ffffff;
+  padding: 8px 12px;
+  border-radius: 8px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  width: fit-content;
+}
+
+.wallet-barcode {
+  display: flex;
+  align-items: stretch;
+  height: 32px;
+  gap: 2.5px;
+  padding: 0 4px;
+}
+
+.wallet-barcode .bar {
+  background-color: #111827;
+  height: 100%;
+}
+
+.wallet-barcode .bar.thick {
+  width: 4px;
+}
+
+.wallet-barcode .bar.mid {
+  width: 2px;
+}
+
+.wallet-barcode .bar.thin {
+  width: 1px;
+}
+
+.barcode-caption {
+  font-size: 8px;
+  color: #64748b;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  font-family: monospace;
+}
+
+.wallet-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  padding-top: 16px;
+  gap: 20px;
+}
+
+@media (max-width: 576px) {
+  .wallet-card-footer {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+}
+
+.wallet-points-status {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.wallet-points-status .points-label {
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+.wallet-points-status .points-value {
+  font-size: 24px;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.wallet-progress-wrap {
+  flex-grow: 1;
+  max-width: 280px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+@media (max-width: 576px) {
+  .wallet-progress-wrap {
+    max-width: 100%;
+    width: 100%;
+  }
+}
+
+.wallet-progress-wrap .progress-track {
+  background-color: rgba(255, 255, 255, 0.2);
+  height: 8px;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.wallet-progress-wrap .progress-fill {
+  background: linear-gradient(90deg, #38bdf8 0%, #60a5fa 100%);
+  height: 100%;
+  border-radius: 999px;
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.4);
+}
+
+.wallet-progress-wrap .points-hint {
+  font-size: 11px;
+  opacity: 0.85;
+  margin: 0;
+  font-style: normal;
+}
+
+/* shadcn-ui Card Component Styles */
+.shadcn-card {
+  border-radius: 8px;
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  background-color: #ffffff;
+  color: #0f172a;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.shadcn-card-header {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.shadcn-card-title {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.015em;
+  color: #0f172a;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+
+.shadcn-card-description {
+  font-size: 13.5px;
+  color: #64748b;
+  margin: 0;
+  font-weight: 400;
+}
+
+.shadcn-card-content {
+  padding: 0 24px 24px 24px;
+}
+
+.shadcn-card-footer {
+  padding: 16px 24px;
+  display: flex;
+  align-items: center;
+  border-top: 1px solid rgba(226, 232, 240, 0.8);
+  background-color: #f8fafc;
+}
+
+/* Side-by-side loyalty column layout */
+.loyalty-columns-layout {
+  display: grid;
+  grid-template-columns: 340px 1fr;
+  gap: 24px;
+  align-items: stretch;
+}
+
+@media (max-width: 900px) {
+  .loyalty-columns-layout {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+}
+
+.loyalty-card-col {
+  display: flex;
+  flex-direction: column;
+}
+
+.loyalty-perks-col {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+/* Tier Glowing Borders for Profile Avatar */
+.github-avatar-wrapper.tier-border-1 {
+  border: 4px solid #8c5b36;
+  box-shadow: 0 0 15px rgba(140, 91, 54, 0.3);
+}
+
+.github-avatar-wrapper.tier-border-2 {
+  border: 4px solid #475569;
+  box-shadow: 0 0 15px rgba(71, 85, 105, 0.3);
+}
+
+.github-avatar-wrapper.tier-border-3 {
+  border: 4px solid #b45309;
+  box-shadow: 0 0 15px rgba(180, 83, 9, 0.3);
+}
+
+.github-avatar-wrapper.tier-border-4 {
+  border: 4px solid #a21caf;
+  box-shadow: 0 0 15px rgba(162, 28, 175, 0.3);
+}
+
+/* General improvements */
+.shadcn-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.shadcn-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
 }

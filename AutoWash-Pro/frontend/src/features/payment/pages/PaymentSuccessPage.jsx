@@ -2,9 +2,8 @@ import "./PaymentSuccessPage.css";
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { CheckCircle2, Copy, Home, ListChecks, MapPin } from "lucide-react";
-import { BACKEND_ROOT_URL } from "../../../api/axiosClient";
+import axiosClient from "../../../api/axiosClient";
 
-const API_BASE = BACKEND_ROOT_URL;
 const STORE_NAME = "AutoWash Pro";
 
 // Trang này CHỈ hiển thị kết quả thanh toán đã thành công (đọc lại), không tạo
@@ -36,12 +35,10 @@ function PaymentSuccessPage() {
         let cancelled = false;
         async function loadPayment() {
             try {
-                const res = await fetch(`${API_BASE}/api/v1/payments/${paymentIdFromQuery}`, {
-                    headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-                });
-                const result = await res.json();
+                const res = await axiosClient.get(`/payments/${paymentIdFromQuery}`);
+                const result = res.data?.data || res.data;
                 if (cancelled) return;
-                if (res.ok) setPaymentResult(result);
+                setPaymentResult(result);
             } catch (error) {
                 console.log("Cannot load payment result", error);
             } finally {
@@ -64,11 +61,9 @@ function PaymentSuccessPage() {
         let cancelled = false;
         async function loadBooking() {
             try {
-                const res = await fetch(`${API_BASE}/api/v1/bookings/${bookingId}`, {
-                    headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-                });
-                const result = await res.json();
-                if (!cancelled && res.ok) setBookingDetail(result);
+                const res = await axiosClient.get(`/bookings/${bookingId}`);
+                const result = res.data?.data || res.data;
+                if (!cancelled) setBookingDetail(result);
             } catch (error) {
                 console.log("Cannot load booking detail", error);
             } finally {
@@ -90,11 +85,9 @@ function PaymentSuccessPage() {
         let cancelled = false;
         async function loadVehicles() {
             try {
-                const res = await fetch(`${API_BASE}/api/v1/vehicles`, {
-                    headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-                });
-                const result = await res.json();
-                if (!cancelled && res.ok && Array.isArray(result)) setVehicles(result);
+                const res = await axiosClient.get("/vehicles");
+                const result = res.data?.data || res.data;
+                if (!cancelled && Array.isArray(result)) setVehicles(result);
             } catch (error) {
                 console.log("Cannot load vehicle list", error);
             }
@@ -129,7 +122,7 @@ function PaymentSuccessPage() {
         bookingDetail?.vehicleType ||
         "-";
 
-    const finalAmountVnd = Number(paymentResult?.finalAmount || bookingDetail?.totalAmount || 0);
+    const finalAmountVnd = Number(paymentResult?.finalAmount || 0);
     const orderCode = paymentId ? `PAY${paymentId}` : "—";
 
     function handleCopyCode() {

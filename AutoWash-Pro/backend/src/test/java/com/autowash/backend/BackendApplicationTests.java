@@ -405,6 +405,23 @@ class BackendApplicationTests {
             org.junit.jupiter.api.Assertions.fail(e.getMessage());
         }
     }
+    @Test
+    void testAddActiveSilverPromotion() {
+        System.out.println("=== START TEST PRINT REWARDS ===");
+        try {
+            java.util.List<java.util.Map<String, Object>> list = jdbcTemplate.queryForList("SELECT * FROM reward");
+            for (java.util.Map<String, Object> r : list) {
+                System.out.println("Reward: id=" + r.get("reward_id") + 
+                                   ", name=" + r.get("reward_name") + 
+                                   ", requiredPoints=" + r.get("required_points") + 
+                                   ", requiredTierLevel=" + r.get("required_tier_level") + 
+                                   ", status=" + r.get("status"));
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        System.out.println("=== END TEST PRINT REWARDS ===");
+    }
 
     @Autowired
     private com.autowash.backend.branch.service.BranchService branchService;

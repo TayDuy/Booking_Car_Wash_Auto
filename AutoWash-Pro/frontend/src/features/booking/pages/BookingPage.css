@@ -1310,3 +1310,244 @@
 .services-packages-row {
     grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
 }
+
+/* ====================================================================
+   ƯU ĐÃI CỦA BẠN (SIDEBAR PROMO SECTION)
+   ==================================================================== */
+.sidebar-promo-section {
+    margin-top: 16px;
+}
+
+.sidebar-promo-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 12px 16px;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    background: #ffffff;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--primary-color);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.sidebar-promo-toggle:hover {
+    background: var(--bg-main);
+    border-color: var(--accent-color);
+}
+
+.sidebar-promo-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--accent-color);
+    color: #ffffff;
+    font-size: 10px;
+    font-weight: 700;
+    margin-left: 6px;
+}
+
+.sidebar-promo-body {
+    margin-top: 8px;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    background: #ffffff;
+    padding: 16px;
+    max-height: 280px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0, 0, 0, 0.15) transparent;
+}
+
+.sidebar-promo-body::-webkit-scrollbar {
+    width: 6px;
+}
+
+.sidebar-promo-body::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.sidebar-promo-body::-webkit-scrollbar-thumb {
+    background-color: rgba(0, 0, 0, 0.15);
+    border-radius: 20px;
+    border: 1px solid transparent;
+}
+
+.sidebar-promo-body::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(0, 0, 0, 0.25);
+}
+
+.sidebar-promo-clear {
+    display: block;
+    width: 100%;
+    padding: 4px 0;
+    border: none;
+    background: transparent;
+    font-size: 12px;
+    color: var(--text-muted);
+    cursor: pointer;
+    text-align: left;
+    margin-bottom: 8px;
+    transition: color 0.2s;
+}
+
+.sidebar-promo-clear:hover {
+    color: var(--color-danger);
+}
+
+.sidebar-promo-group {
+    margin-bottom: 8px;
+}
+
+.sidebar-promo-group:last-of-type {
+    margin-bottom: 0;
+}
+
+.sidebar-promo-group-label {
+    display: block;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+}
+
+.sidebar-promo-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px 14px;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    background: #ffffff;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-bottom: 8px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.sidebar-promo-item:hover {
+    border-color: #cbd5e1;
+    background: #fafafa;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.sidebar-promo-item.selected {
+    border-color: var(--accent-color);
+    background: #f0f7ff;
+    box-shadow: 0 0 0 1px var(--accent-color), 0 4px 6px -1px rgba(37, 99, 235, 0.1);
+}
+
+.sidebar-promo-item input[type="radio"] {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    border: 1.5px solid #cbd5e1;
+    border-radius: 50%;
+    outline: none;
+    margin-top: 2px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    background: #ffffff;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.sidebar-promo-item input[type="radio"]::before {
+    content: "";
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: var(--accent-color);
+    transform: scale(0);
+    transition: transform 0.2s ease;
+}
+
+.sidebar-promo-item input[type="radio"]:checked {
+    border-color: var(--accent-color);
+}
+
+.sidebar-promo-item input[type="radio"]:checked::before {
+    transform: scale(1);
+}
+
+.sidebar-promo-item-content {
+    min-width: 0;
+    flex: 1;
+}
+
+.sidebar-promo-item-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.sidebar-promo-item-title {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: #0f172a;
+}
+
+.sidebar-promo-item-badge {
+    flex-shrink: 0;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 6px;
+    background: #eff6ff;
+    color: #1e40af;
+    border: 1px solid #bfdbfe;
+}
+
+.sidebar-promo-item-badge--green {
+    background: #f0fdf4;
+    color: #166534;
+    border: 1px solid #bbf7d0;
+}
+
+.sidebar-promo-item-desc {
+    display: inline-block;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 10.5px;
+    color: #64748b;
+    background: #f8fafc;
+    border: 1px dashed #e2e8f0;
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin-top: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.sidebar-promo-divider {
+    height: 1px;
+    background: var(--border-color);
+    margin: 12px 0;
+}
+
+.sidebar-promo-empty {
+    text-align: center;
+    padding: 12px 0;
+    font-size: 13px;
+    color: var(--text-muted);
+}
+
+.sidebar-promo-hint {
+    text-align: center;
+    font-size: 11px;
+    color: var(--text-muted);
+    margin: 12px 0 0 0;
+    padding-top: 8px;
+    border-top: 1px solid var(--border-color);
+}

@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo } from "react";
 import { useNavigate, useLocation, Link, useSearchParams } from "react-router-dom";
 import { LayoutGrid, Droplets, Armchair, Sparkles, Wrench, Gem, Clock, Shield, Zap, Diamond, ChevronDown, ChevronUp } from "lucide-react";
 import { getActiveServices } from "../../../api/servicePackageService";
-import useAuth from "../../../hooks/useAuth";
+
 import PublicHeader from "../../../components/layout/PublicHeader";
 import PublicFooter from "../../../components/layout/PublicFooter";
 import "./ServicesPage.css";
@@ -67,8 +67,6 @@ function SkeletonCard() {
 export default function ServicesPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const auth = useAuth();
-  const user = auth?.user;
   const isCustomerScope = location.pathname.startsWith("/customer");
 
   const [searchParams, setSearchParams] = useSearchParams();
@@ -159,9 +157,15 @@ export default function ServicesPage() {
     return Number(price ?? 0).toLocaleString("vi-VN") + "đ";
   };
 
-  const handleBooking = () => {
-    if (user) navigate("/customer/booking");
-    else navigate("/auth/login?redirect=/customer/booking");
+  const handleBooking = (serviceId) => {
+    const basePath = serviceId ? `/customer/booking?serviceId=${serviceId}` : "/customer/booking";
+    const token = localStorage.getItem("token");
+    const role = (localStorage.getItem("role") || "").toUpperCase();
+    if (token && (role === "CUSTOMER" || role === "USER")) {
+      navigate(basePath);
+    } else {
+      navigate(`/auth/login?redirect=${encodeURIComponent(basePath)}`);
+    }
   };
 
   const ServiceIcon = getIcon;
@@ -243,7 +247,7 @@ export default function ServicesPage() {
                         <span className="card-price">{formatPrice(svc.basePrice)}</span>
                         <span className="card-duration"><Clock size={12} strokeWidth={2} /> {svc.durationMinutes} phút</span>
                       </div>
-                      <button className="card-book-btn" onClick={handleBooking}>
+                      <button className="card-book-btn" onClick={() => handleBooking(svc.serviceId || svc.id)}>
                         Đặt ngay
                       </button>
                     </div>

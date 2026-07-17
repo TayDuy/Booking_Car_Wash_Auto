@@ -127,6 +127,7 @@ public class PromotionController {
      * @param req thông tin đơn hàng và promotion muốn áp dụng
      * @return HTTP 200 kèm kết quả: applicable, discountAmount, finalAmount
      */
+    @PreAuthorize("hasRole('CUSTOMER')")
     @PostMapping("/apply")
     public ResponseEntity<PromotionApplyResponseDTO> applyPromotion(
             @Valid @RequestBody PromotionApplyRequestDTO req) {
