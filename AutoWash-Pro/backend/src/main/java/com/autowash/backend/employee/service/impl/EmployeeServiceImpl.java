@@ -29,6 +29,8 @@ import com.autowash.backend.vehicle.repository.VehicleRepository;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -102,6 +104,32 @@ public class EmployeeServiceImpl implements EmployeeService {
         );
 
         return mapQueueResponses(bookings);
+    }
+
+    @Override
+    public Page<EmployeeQueueBookingResponseDTO> getMyBranchQueue(
+            Integer userId,
+            LocalDate date,
+            BookingStatus status,
+            Pageable pageable
+    ) {
+        Employee employee = getCurrentActiveEmployee(userId);
+        Branch branch = requireBranch(employee);
+
+        LocalDate selectedDate = date != null
+                ? date
+                : LocalDate.now();
+
+        List<BookingStatus> statuses = resolveQueueStatuses(status);
+
+        Page<Booking> bookingPage = bookingRepository.findEmployeeQueue(
+                branch.getBranchId(),
+                selectedDate,
+                statuses,
+                pageable
+        );
+
+        return bookingPage.map(this::mapBookingResponse);
     }
 
     // =========================================================
