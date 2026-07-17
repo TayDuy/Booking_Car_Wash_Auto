@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import bookingApi from '../../../api/bookingApi';
 import { getCustomerId } from '../../../api/authService';
-import SiteHeader from '../../../components/layout/SiteHeader';
 import './BookingHistory.css';
 
 // ── Status config ────────────────────────────────────────────
@@ -156,8 +155,6 @@ export default function BookingHistory() {
   // ══════════════════════════════════════════════════════════════
   return (
     <div className="bh-page">
-      <SiteHeader />
-
       <div className="bh-container">
 
           {/* ── Page Header ──────────────────────────────────── */}
