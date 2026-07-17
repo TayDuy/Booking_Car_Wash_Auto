@@ -206,16 +206,21 @@ public class EmployeeController {
      *
      * Gán Employee hiện tại vào assignedStaff
      * và chuyển wash bay sang occupied.
+     *
+     * @param bayId (tùy chọn) Chuyển booking sang wash bay khác
+     *              khi bay hiện tại đang occupied.
      */
     @PatchMapping("/bookings/{bookingId}/start-wash")
     public ResponseEntity<EmployeeQueueBookingResponseDTO> startWash(
             @AuthenticationPrincipal CustomUserDetails userDetails,
-            @PathVariable Integer bookingId
+            @PathVariable Integer bookingId,
+            @RequestParam(required = false) Integer bayId
     ) {
         return ResponseEntity.ok(
                 employeeService.startWash(
                         userDetails.getId(),
-                        bookingId
+                        bookingId,
+                        bayId
                 )
         );
     }
