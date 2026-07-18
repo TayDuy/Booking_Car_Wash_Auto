@@ -63,6 +63,25 @@ public interface CustomerRepository
     );
 
     // =========================================================
+    // ADMIN LIST (JOIN FETCH — tránh N+1)
+    // =========================================================
+
+    /**
+     * Admin - danh sách toàn bộ customer kèm User (JOIN FETCH).
+     *
+     * Tránh N+1: nếu chỉ dùng findAll() rồi map sang DTO có đọc
+     * customer.getUser().xxx(), vì User là @OneToOne(LAZY) nên Hibernate
+     * sẽ bắn thêm 1 query SELECT riêng cho MỖI customer (N+1 query) khi
+     * load trang "Quản lý khách hàng". Dùng JOIN FETCH gộp lại thành 1 query.
+     */
+    @Query("""
+            SELECT c FROM Customer c
+            LEFT JOIN FETCH c.user
+            ORDER BY c.customerId DESC
+            """)
+    List<Customer> findAllWithUser();
+
+    // =========================================================
     // PESSIMISTIC LOCK
     // =========================================================
 

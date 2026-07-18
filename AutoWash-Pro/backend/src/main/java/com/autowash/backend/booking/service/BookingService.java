@@ -7,6 +7,7 @@ import com.autowash.backend.booking.dto.BookingResponseDTO;
 import com.autowash.backend.booking.dto.BookingSummaryResponseDTO;
 import com.autowash.backend.booking.dto.BookingUpdateRequestDTO;
 import com.autowash.backend.booking.dto.AssignableStaffResponseDTO;
+import com.autowash.backend.booking.enums.BookingSortOption;
 
 import java.util.List;
 
@@ -59,8 +60,10 @@ public interface BookingService {
 
     /**
      * Admin lấy toàn bộ booking.
+     *
+     * @param sortOption NEWEST (mặc định) hoặc PRIORITY.
      */
-    List<BookingSummaryResponseDTO> getAllBookings();
+    List<BookingSummaryResponseDTO> getAllBookings(BookingSortOption sortOption);
 
     /**
      * Customer lấy danh sách booking của mình.

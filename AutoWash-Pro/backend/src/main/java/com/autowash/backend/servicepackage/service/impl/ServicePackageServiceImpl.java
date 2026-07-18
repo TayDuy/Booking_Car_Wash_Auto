@@ -1,5 +1,6 @@
 package com.autowash.backend.servicepackage.service.impl;
 
+import com.autowash.backend.config.CacheConfig;
 import com.autowash.backend.servicepackage.dto.ServicePackageDetailResponseDTO;
 import com.autowash.backend.servicepackage.dto.ServicePackageRequestDTO;
 import com.autowash.backend.servicepackage.dto.ServicePackageResponseDTO;
@@ -9,6 +10,8 @@ import com.autowash.backend.servicepackage.repository.ServicePackageRepository;
 import com.autowash.backend.servicepackage.service.ServicePackageService;
 import com.autowash.backend.serviceprice.service.ServicePriceService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,6 +33,7 @@ public class ServicePackageServiceImpl implements ServicePackageService {
     private final ServicePriceService priceService;
 
     @Override
+    @Cacheable(cacheNames = CacheConfig.SERVICES_CACHE, key = "'active'")
     public List<ServicePackageResponseDTO> getAllActive() {
         return repository.findByIsActiveTrue()
                 .stream()
@@ -38,6 +42,7 @@ public class ServicePackageServiceImpl implements ServicePackageService {
     }
 
     @Override
+    @Cacheable(cacheNames = CacheConfig.SERVICES_CACHE, key = "'all'")
     public List<ServicePackageResponseDTO> getAll() {
         return repository.findAll()
                 .stream()
@@ -46,6 +51,7 @@ public class ServicePackageServiceImpl implements ServicePackageService {
     }
 
     @Override
+    @Cacheable(cacheNames = CacheConfig.SERVICES_CACHE, key = "#id")
     public ServicePackageResponseDTO getById(Integer id) {
         ServicePackage entity = findOrThrow(id);
         return mapper.toResponse(entity);
@@ -70,6 +76,7 @@ public class ServicePackageServiceImpl implements ServicePackageService {
 
     @Override
     @Transactional
+    @CacheEvict(cacheNames = CacheConfig.SERVICES_CACHE, allEntries = true)
     public ServicePackageResponseDTO create(ServicePackageRequestDTO request) {
         // Kiểm tra trùng tên trước khi insert
         if (repository.existsByServiceName(request.getServiceName())) {
@@ -83,6 +90,7 @@ public class ServicePackageServiceImpl implements ServicePackageService {
 
     @Override
     @Transactional
+    @CacheEvict(cacheNames = CacheConfig.SERVICES_CACHE, allEntries = true)
     public ServicePackageResponseDTO update(Integer id, ServicePackageRequestDTO request) {
         ServicePackage entity = findOrThrow(id);
 
@@ -101,6 +109,7 @@ public class ServicePackageServiceImpl implements ServicePackageService {
 
     @Override
     @Transactional
+    @CacheEvict(cacheNames = CacheConfig.SERVICES_CACHE, allEntries = true)
     public void deactivate(Integer id) {
         ServicePackage entity = findOrThrow(id);
         entity.setIsActive(false);

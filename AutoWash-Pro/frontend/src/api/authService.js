@@ -22,10 +22,7 @@ export async function register(username, password, email, fullName, phone) {
 }
 
 export async function sendOtp(email) {
-  const response = await axiosClient.post("/auth/send-otp", {
-    email,
-  });
-
+  const response = await axiosClient.post("/auth/send-otp", { email });
   return response.data;
 }
 
@@ -35,15 +32,11 @@ export async function verifyOtp(email, otp, purpose = "GENERAL") {
     otp,
     purpose,
   });
-
   return response.data;
 }
 
 export async function loginWithGoogle(supabaseToken) {
-  const response = await axiosClient.post("/auth/google", {
-    supabaseToken,
-  });
-
+  const response = await axiosClient.post("/auth/google", { supabaseToken });
   return response.data.data;
 }
 
@@ -82,12 +75,12 @@ export async function resetForgotPassword(email, otp, newPassword) {
 }
 
 export function saveAuth(result) {
+  // refreshToken KHÔNG còn nằm trong result nữa - backend đã set nó vào
+  // HttpOnly cookie (JS không đọc được, không cần và không nên lưu ở đây).
   const accessToken = result?.accessToken || "";
-  const refreshToken = result?.refreshToken || "";
   const user = result?.user || {};
 
   localStorage.setItem("token", accessToken);
-  localStorage.setItem("refreshToken", refreshToken);
 
   localStorage.setItem("username", user?.username || "");
   localStorage.setItem("fullName", user?.fullName || "");
@@ -97,8 +90,9 @@ export function saveAuth(result) {
 }
 
 export function logout() {
+  // Cookie refreshToken được xóa ở server (xem logoutFromServer -> POST /auth/logout).
+  // Ở đây chỉ dọn dữ liệu phía client.
   localStorage.removeItem("token");
-  localStorage.removeItem("refreshToken");
   localStorage.removeItem("username");
   localStorage.removeItem("fullName");
   localStorage.removeItem("role");
