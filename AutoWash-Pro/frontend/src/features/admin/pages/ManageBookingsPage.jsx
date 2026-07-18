@@ -227,7 +227,6 @@ export default function ManageBookingsPage() {
       }
     } catch (error) {
       console.error("Load bookings failed:", error);
-      setBookings([]);
     } finally {
       setLoading(false);
     }
@@ -965,7 +964,6 @@ export default function ManageBookingsPage() {
                           </td>
 
                           <td>
-                            <td>
                               <div className="action-group">
                                 <button
                                     type="button"
@@ -1051,7 +1049,6 @@ export default function ManageBookingsPage() {
                                 )}
                               </div>
                             </td>
-                          </td>
                         </tr>
                     ))}
                     </tbody>
