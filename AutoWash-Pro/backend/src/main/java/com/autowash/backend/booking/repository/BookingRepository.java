@@ -23,6 +23,24 @@ public interface BookingRepository extends JpaRepository<Booking, Integer> {
 
     List<Booking> findByCustomer_CustomerIdOrderByBookingDateDesc(Integer customerId);
 
+    /**
+     * Admin - danh sách toàn bộ booking, sắp xếp mới đặt trước (mặc định).
+     */
+    @Query("""
+        SELECT b FROM Booking b
+        LEFT JOIN FETCH b.customer
+        LEFT JOIN FETCH b.vehicle
+        LEFT JOIN FETCH b.branch
+        LEFT JOIN FETCH b.slot
+        ORDER BY b.bookingDate DESC
+        """)
+    List<Booking> findAllWithAssociationsOrderByNewest();
+
+    /**
+     * Admin - danh sách toàn bộ booking, sắp xếp theo thứ hạng khách hàng
+     * (priorityScore: Platinum > Gold > Silver > Member), cùng hạng thì
+     * ai đặt trước xếp trước (FIFO).
+     */
     @Query("""
         SELECT b FROM Booking b
         LEFT JOIN FETCH b.customer
@@ -31,7 +49,7 @@ public interface BookingRepository extends JpaRepository<Booking, Integer> {
         LEFT JOIN FETCH b.slot
         ORDER BY b.priorityScore DESC, b.bookingDate ASC
         """)
-    List<Booking> findAllWithAssociations();
+    List<Booking> findAllWithAssociationsOrderByPriority();
 
     @Query("""
             SELECT DISTINCT b FROM Booking b

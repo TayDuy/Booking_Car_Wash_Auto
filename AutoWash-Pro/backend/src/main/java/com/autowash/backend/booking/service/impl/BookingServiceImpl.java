@@ -3,6 +3,7 @@ package com.autowash.backend.booking.service.impl;
 import com.autowash.backend.booking.dto.*;
 import com.autowash.backend.booking.entity.Booking;
 import com.autowash.backend.booking.enums.BookingStatus;
+import com.autowash.backend.booking.enums.BookingSortOption;
 import com.autowash.backend.booking.entity.BookingDetail;
 import com.autowash.backend.booking.mapper.BookingMapper;
 import com.autowash.backend.booking.repository.BookingDetailRepository;
@@ -330,8 +331,11 @@ public class BookingServiceImpl implements BookingService {
     /** Lấy danh sách tóm tắt tất cả booking. */
     @Override
     @Transactional(readOnly = true)
-    public List<BookingSummaryResponseDTO> getAllBookings() {
-        List<Booking> bookings = bookingRepository.findAllWithAssociations();
+    public List<BookingSummaryResponseDTO> getAllBookings(BookingSortOption sortOption) {
+        BookingSortOption effectiveSort = sortOption != null ? sortOption : BookingSortOption.NEWEST;
+        List<Booking> bookings = effectiveSort == BookingSortOption.PRIORITY
+                ? bookingRepository.findAllWithAssociationsOrderByPriority()
+                : bookingRepository.findAllWithAssociationsOrderByNewest();
         return mapToSummaryResponses(bookings);
     }
 
@@ -358,12 +362,24 @@ public class BookingServiceImpl implements BookingService {
             return Collections.emptyList();
         }
         List<Integer> bookingIds = bookings.stream().map(Booking::getBookingId).toList();
+
         List<BookingDetail> details = bookingDetailRepository.findByBooking_BookingIdIn(bookingIds);
         Map<Integer, List<BookingDetail>> detailsMap = details.stream()
                 .collect(Collectors.groupingBy(d -> d.getBooking().getBookingId()));
 
+        // Batch-fetch payment thay vì để booking.getPayment() lazy-load từng
+        // booking một (N+1 query) — nguyên nhân chính khiến trang danh sách
+        // booking load chậm khi số lượng booking lớn.
+        List<Payment> payments = paymentRepository.findByBooking_BookingIdIn(bookingIds);
+        Map<Integer, Payment> paymentMap = payments.stream()
+                .collect(Collectors.toMap(p -> p.getBooking().getBookingId(), p -> p, (a, b) -> a));
+
         return bookings.stream()
-                .map(b -> bookingMapper.toSummaryResponse(b, detailsMap.getOrDefault(b.getBookingId(), Collections.emptyList())))
+                .map(b -> bookingMapper.toSummaryResponse(
+                        b,
+                        detailsMap.getOrDefault(b.getBookingId(), Collections.emptyList()),
+                        paymentMap.get(b.getBookingId())
+                ))
                 .collect(Collectors.toList());
     }
 

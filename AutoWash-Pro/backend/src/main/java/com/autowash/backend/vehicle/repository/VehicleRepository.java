@@ -3,6 +3,7 @@ package com.autowash.backend.vehicle.repository;
 import com.autowash.backend.vehicle.entity.Vehicle;
 import com.autowash.backend.vehicle.entity.Vehicle.VehicleType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -10,6 +11,20 @@ import java.util.Optional;
 
 @Repository
 public interface VehicleRepository extends JpaRepository<Vehicle, Integer> {
+
+    /**
+     * Admin - danh sách toàn bộ vehicle kèm Customer (JOIN FETCH).
+     *
+     * Tránh N+1: findAll() rồi map sang DTO đọc vehicle.getCustomer()
+     * (lazy @ManyToOne) sẽ bắn thêm 1 query cho MỖI xe. JOIN FETCH gộp
+     * lại thành 1 query duy nhất.
+     */
+    @Query("""
+            SELECT v FROM Vehicle v
+            LEFT JOIN FETCH v.customer
+            ORDER BY v.vehicleId DESC
+            """)
+    List<Vehicle> findAllWithCustomer();
 
     Optional<Vehicle> findByLicensePlate(String licensePlate);
 
