@@ -50,11 +50,17 @@ const memoryLock = async (_name, _acquireTimeout, fn) => {
 // 🔧 KẾT THÚC PHẦN FIX
 // ============================================================
 
+// 🔧 FIX: Tắt detectSessionInUrl vì LoginPage.jsx tự xử lý callback thủ công
+// (exchangeCodeForSession / setSession). Để true sẽ khiến supabase-js tự
+// parse VÀ XÓA hash khỏi URL ngay khi client khởi tạo, đua (race) với
+// useEffect trong LoginPage.jsx đọc window.location.hash - dẫn tới
+// LoginPage đọc hash rỗng, im lặng return, không gọi backend /auth/google,
+// trang "treo" ở màn hình login mà không có lỗi hay log gì cả.
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     auth: {
         persistSession: true,
         autoRefreshToken: true,
-        detectSessionInUrl: true,
+        detectSessionInUrl: false,
         lock: memoryLock,
     },
 });
