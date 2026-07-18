@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { login, loginWithGoogle, saveAuth } from "../../../api/authService";
 import { supabase } from "../../../api/supabaseClient";
@@ -176,51 +176,58 @@ function LoginPage() {
     }
   };
 
+  const googleCallbackHandledRef = useRef(false);
+
   useEffect(() => {
-  const handleGoogleCallback = async () => {
-    const searchParams = new URLSearchParams(window.location.search);
-    const hasGoogleCode = searchParams.has("code");
-    const hasAccessTokenInHash = window.location.hash.includes("access_token");
+    const handleGoogleCallback = async () => {
+      const searchParams = new URLSearchParams(window.location.search);
+      const hasGoogleCode = searchParams.has("code");
+      const hasAccessTokenInHash = window.location.hash.includes("access_token");
 
-    if (!hasGoogleCode && !hasAccessTokenInHash) {
-      return;
-    }
-
-    try {
-      setLoading(true);
-      setErrorMessage("");
-      setSuccessMessage("Đang xác thực tài khoản Google...");
-
-      const { data, error } = await supabase.auth.getSession();
-
-      if (error) {
-        throw error;
-      }
-
-      const supabaseToken = data?.session?.access_token;
-
-      if (!supabaseToken) {
-        setErrorMessage("Không lấy được Google token. Vui lòng thử lại.");
-        setSuccessMessage("");
+      if (!hasGoogleCode && !hasAccessTokenInHash) {
         return;
       }
 
-      const result = await loginWithGoogle(supabaseToken);
+      if (googleCallbackHandledRef.current) {
+        return;
+      }
+      googleCallbackHandledRef.current = true;
 
-      handleLoginSuccess(result);
+      try {
+        setLoading(true);
+        setErrorMessage("");
+        setSuccessMessage("Đang xác thực tài khoản Google...");
 
-      window.history.replaceState({}, document.title, "/auth/login");
-    } catch (error) {
-      console.error("Google callback error:", error);
-      setErrorMessage("Đăng nhập Google thất bại. Vui lòng thử lại.");
-      setSuccessMessage("");
-    } finally {
-      setLoading(false);
-    }
-  };
+        const { data, error } = await supabase.auth.getSession();
 
-  handleGoogleCallback();
-}, []);
+        if (error) {
+          throw error;
+        }
+
+        const supabaseToken = data?.session?.access_token;
+
+        if (!supabaseToken) {
+          setErrorMessage("Không lấy được Google token. Vui lòng thử lại.");
+          setSuccessMessage("");
+          return;
+        }
+
+        const result = await loginWithGoogle(supabaseToken);
+
+        handleLoginSuccess(result);
+
+        window.history.replaceState({}, document.title, "/auth/login");
+      } catch (error) {
+        console.error("Google callback error:", error);
+        setErrorMessage("Đăng nhập Google thất bại. Vui lòng thử lại.");
+        setSuccessMessage("");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    handleGoogleCallback();
+  }, []);
 
   return (
     <div className="login-page">

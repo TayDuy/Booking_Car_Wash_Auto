@@ -11,6 +11,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import static com.autowash.backend.notification.entity.Notification.NotificationChannel.email;
+
 /**
  * Bean riêng để tạo user Google mới trong TRANSACTION ĐỘC LẬP (REQUIRES_NEW).
  *
@@ -77,13 +79,24 @@ public class GoogleUserCreatorService {
             return user;
 
         } catch (org.springframework.dao.DataIntegrityViolationException e) {
-            // Transaction phụ này rollback ngay tại đây, không ảnh hưởng transaction chính.
-            // Trường hợp thường gặp: 2 request chạy song song cùng tạo user cho 1 email.
-            log.warn("Trung lap email khi tao user Google (co the do request dong thoi): {}", email);
-            return userRepository.findByEmail(email)
-                    .orElseThrow(() -> new BusinessException(
-                            "Loi dong thoi khi dang nhap Google, vui long thu lai",
-                            HttpStatus.CONFLICT));
+        log.warn("Trung lap email khi tao user Google (co the do request dong thoi): {}", email);
+
+        for (int attempt = 0; attempt < 3; attempt++) {
+            java.util.Optional<User> existing = userRepository.findByEmailIgnoreCase(email);
+            if (existing.isPresent()) {
+                return existing.get();
+            }
+            try {
+                Thread.sleep(50);
+            } catch (InterruptedException ie) {
+                Thread.currentThread().interrupt();
+                break;
+            }
         }
+
+        throw new BusinessException(
+                "Loi dong thoi khi dang nhap Google, vui long thu lai",
+                HttpStatus.CONFLICT);
+    }
     }
 }
