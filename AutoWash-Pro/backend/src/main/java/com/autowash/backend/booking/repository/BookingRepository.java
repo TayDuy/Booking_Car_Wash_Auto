@@ -121,6 +121,34 @@ public interface BookingRepository extends JpaRepository<Booking, Integer> {
             @Param("branchId") Integer branchId,
             @Param("slotDate") LocalDate slotDate,
             @Param("statuses") List<BookingStatus> statuses);
+    @Query(
+            value = """
+        SELECT DISTINCT b FROM Booking b
+        LEFT JOIN FETCH b.customer
+        LEFT JOIN FETCH b.vehicle
+        LEFT JOIN FETCH b.branch
+        LEFT JOIN FETCH b.slot s
+        LEFT JOIN FETCH s.washBay
+        LEFT JOIN FETCH b.assignedStaff
+        WHERE b.branch.branchId = :branchId
+          AND s.slotDate = :slotDate
+          AND b.status IN :statuses
+        ORDER BY b.priorityScore DESC, b.bookingDate ASC
+        """,
+            countQuery = """
+        SELECT COUNT(b) FROM Booking b
+        JOIN b.slot s
+        WHERE b.branch.branchId = :branchId
+          AND s.slotDate = :slotDate
+          AND b.status IN :statuses
+        """
+    )
+    Page<Booking> findEmployeeQueue(
+            @Param("branchId") Integer branchId,
+            @Param("slotDate") LocalDate slotDate,
+            @Param("statuses") List<BookingStatus> statuses,
+            Pageable pageable
+    );
 
     @Query("""
             SELECT DISTINCT b FROM Booking b

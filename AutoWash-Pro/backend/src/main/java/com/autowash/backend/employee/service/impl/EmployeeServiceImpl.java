@@ -30,6 +30,8 @@ import com.autowash.backend.washbay.repository.WashBayRepository;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -104,6 +106,32 @@ public class EmployeeServiceImpl implements EmployeeService {
         );
 
         return mapQueueResponses(bookings);
+    }
+
+    @Override
+    public Page<EmployeeQueueBookingResponseDTO> getMyBranchQueue(
+            Integer userId,
+            LocalDate date,
+            BookingStatus status,
+            Pageable pageable
+    ) {
+        Employee employee = getCurrentActiveEmployee(userId);
+        Branch branch = requireBranch(employee);
+
+        LocalDate selectedDate = date != null
+                ? date
+                : LocalDate.now();
+
+        List<BookingStatus> statuses = resolveQueueStatuses(status);
+
+        Page<Booking> bookingPage = bookingRepository.findEmployeeQueue(
+                branch.getBranchId(),
+                selectedDate,
+                statuses,
+                pageable
+        );
+
+        return bookingPage.map(this::mapBookingResponse);
     }
 
     // =========================================================
@@ -733,12 +761,12 @@ public class EmployeeServiceImpl implements EmployeeService {
                  "sedan",
                  "4_seats",
                  "4-seats",
-                 "4 seats" -> Vehicle.VehicleType.car;
+                 "4 seats" -> Vehicle.VehicleType.FOUR_SEATS;
 
             case "suv",
                  "7_seats",
                  "7-seats",
-                 "7 seats" -> Vehicle.VehicleType.suv;
+                 "7 seats" -> Vehicle.VehicleType.SEVEN_SEATS;
 
             default -> throw new BusinessException(
                     "Loại xe không hợp lệ: " + vehicleType,

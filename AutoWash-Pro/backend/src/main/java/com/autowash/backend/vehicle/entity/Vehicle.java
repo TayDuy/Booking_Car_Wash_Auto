@@ -10,10 +10,6 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
 
-/**
- * Xe ô tô của khách hàng — mỗi booking gắn với một xe cụ thể.
- * Loại xe (VehicleType) ảnh hưởng đến thời lượng và giá dịch vụ.
- */
 @Entity
 @Table(name = "vehicle")
 @EntityListeners(AuditingEntityListener.class)
@@ -54,7 +50,7 @@ public class Vehicle {
     private String model;
 
     @NotNull(message = "Loại xe không được null")
-    @Enumerated(EnumType.STRING)
+    @Convert(converter = VehicleTypeConverter.class)
     @Column(name = "vehicle_type", nullable = false, length = 20)
     private VehicleType vehicleType;
 
@@ -63,7 +59,7 @@ public class Vehicle {
     private String color;
 
     @Size(max = 50)
-    @Column(name = "nickname", length =  50)
+    @Column(name = "nickname", length = 50)
     private String nickname;
 
     @Column(name = "is_active", nullable = false)
@@ -79,8 +75,29 @@ public class Vehicle {
     private LocalDateTime updatedAt;
 
     public enum VehicleType {
-        car,
-        suv,
-        truck
+        FOUR_SEATS("4 chỗ"),
+        SEVEN_SEATS("7 chỗ");
+
+        private final String value;
+
+        VehicleType(String value) {
+            this.value = value;
+        }
+
+        @com.fasterxml.jackson.annotation.JsonValue
+        public String getValue() {
+            return value;
+        }
+
+        @com.fasterxml.jackson.annotation.JsonCreator
+        public static VehicleType fromValue(String raw) {
+            if (raw == null) return null;
+            String v = raw.trim().toLowerCase();
+            return switch (v) {
+                case "car", "sedan", "4 chỗ", "4_seats", "4-seats", "four_seats" -> FOUR_SEATS;
+                case "suv", "truck", "7 chỗ", "7_seats", "7-seats", "seven_seats" -> SEVEN_SEATS;
+                default -> throw new IllegalArgumentException("Không hỗ trợ loại xe: " + raw);
+            };
+        }
     }
 }

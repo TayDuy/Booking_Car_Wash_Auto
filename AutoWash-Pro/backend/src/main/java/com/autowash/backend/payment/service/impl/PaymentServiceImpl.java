@@ -128,8 +128,7 @@ public class PaymentServiceImpl implements PaymentService {
 
         BigDecimal surcharge = BigDecimal.ZERO;
         Vehicle vehicle = booking.getVehicle();
-        if (vehicle != null && (vehicle.getVehicleType() == Vehicle.VehicleType.suv
-                || vehicle.getVehicleType() == Vehicle.VehicleType.truck)) {
+        if (vehicle != null && vehicle.getVehicleType() == Vehicle.VehicleType.SEVEN_SEATS) {
             surcharge = BigDecimal.valueOf(50000);
         }
 
@@ -196,11 +195,16 @@ public class PaymentServiceImpl implements PaymentService {
                     if (usedCount >= p.getUsageLimit()) continue;
                 }
 
+                // Chỉ truyền đúng Promotion.VehicleType vào isApplicable() khi loại xe của
+                // booking thực sự khớp với vehicleType mà promotion này yêu cầu (xem
+                // vehicleTypeMatches()). Nếu promotion không giới hạn loại xe (vehicleType == null)
+                // thì pVehicleType để null cũng không ảnh hưởng gì.
                 Promotion.VehicleType pVehicleType = null;
-                if (booking.getVehicle() != null) {
-                    try {
-                        pVehicleType = Promotion.VehicleType.valueOf(booking.getVehicle().getVehicleType().name().toLowerCase());
-                    } catch (Exception ignored) {}
+                Vehicle bookingVehicle = booking.getVehicle();
+                if (bookingVehicle != null && bookingVehicle.getVehicleType() != null
+                        && p.getVehicleType() != null
+                        && vehicleTypeMatches(p.getVehicleType(), bookingVehicle.getVehicleType())) {
+                    pVehicleType = p.getVehicleType();
                 }
 
                 if (p.isApplicable(customer.getTierId(), pVehicleType, subtotal)) {
@@ -736,8 +740,8 @@ public class PaymentServiceImpl implements PaymentService {
 
         if (promotion.getVehicleType() != null) {
             Vehicle vehicle = booking.getVehicle();
-            if (vehicle == null
-                    || !promotion.getVehicleType().name().equalsIgnoreCase(vehicle.getVehicleType().name())) {
+            if (vehicle == null || vehicle.getVehicleType() == null
+                    || !vehicleTypeMatches(promotion.getVehicleType(), vehicle.getVehicleType())) {
                 throw new BusinessException("Khuyến mãi không áp dụng cho loại xe này");
             }
         }
@@ -769,6 +773,21 @@ public class PaymentServiceImpl implements PaymentService {
                 .build());
 
         return discountAmount;
+    }
+
+    /**
+     * So khớp Vehicle.VehicleType (chỉ còn FOUR_SEATS / SEVEN_SEATS) với
+     * Promotion.VehicleType (sedan / suv / truck / minivan — enum cũ, chi tiết hơn).
+     * Vì Vehicle giờ chỉ phân biệt 4 chỗ – 7 chỗ nên gộp nhóm:
+     *   sedan                    ↔ FOUR_SEATS
+     *   suv, truck, minivan      ↔ SEVEN_SEATS
+     */
+    private boolean vehicleTypeMatches(Promotion.VehicleType promoType, Vehicle.VehicleType vehicleType) {
+        if (promoType == null || vehicleType == null) return false;
+        return switch (promoType) {
+            case sedan -> vehicleType == Vehicle.VehicleType.FOUR_SEATS;
+            case suv, truck, minivan -> vehicleType == Vehicle.VehicleType.SEVEN_SEATS;
+        };
     }
 
     // ── PRIVATE — tích điểm loyalty (FR-7) ──────────────────────────────────

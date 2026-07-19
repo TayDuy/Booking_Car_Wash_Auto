@@ -33,7 +33,7 @@ public class RewardMapper {
                 // Fallback về default nếu client không gửi vehicleType
                 .vehicleType(dto.getVehicleType() != null
                         ? dto.getVehicleType()
-                        : Reward.RewardVehicleType.car)
+                        : Reward.RewardVehicleType.BOTH)
                 // Fallback về default nếu client không gửi status
                 .status(dto.getStatus() != null
                         ? dto.getStatus()
