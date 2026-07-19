@@ -8,6 +8,7 @@ import {
     deleteBranch,
 } from "../../../api/branchService";
 import "./ManageBranchesPage.css";
+import { useAppDialog } from "../../../contexts/DialogContext.jsx";
 
 const emptyForm = {
     branchName: "",
@@ -18,6 +19,8 @@ const emptyForm = {
 };
 
 export default function ManageBranchesPage() {
+    const { confirmAction, showMessage } = useAppDialog();
+
     const [branches, setBranches] = useState([]);
     const [loading, setLoading] = useState(true);
     const [keyword, setKeyword] = useState("");
@@ -112,33 +115,65 @@ export default function ManageBranchesPage() {
         e.preventDefault();
 
         if (!formData.branchName.trim()) {
-            alert("Vui lòng nhập tên chi nhánh.");
+            await showMessage({
+                title: "Thiếu dữ liệu",
+                message: "Vui lòng nhập tên chi nhánh.",
+                variant: "warning",
+            });
             return;
         }
 
         if (!formData.address.trim()) {
-            alert("Vui lòng nhập địa chỉ chi nhánh.");
+            await showMessage({
+                title: "Thiếu dữ liệu",
+                message: "Vui lòng nhập địa chỉ chi nhánh.",
+                variant: "warning",
+            });
             return;
         }
 
-        try {
-            if (editingBranch) {
-                const branchId = editingBranch.branchId || editingBranch.id;
+        const isEditing = Boolean(editingBranch);
 
-                await updateBranch(branchId, formData);
-                alert("Cập nhật chi nhánh thành công.");
+        try {
+            if (isEditing) {
+                const branchId =
+                    editingBranch.branchId ||
+                    editingBranch.id;
+
+                await updateBranch(
+                    branchId,
+                    formData
+                );
             } else {
                 await createBranch(formData);
-                alert("Thêm chi nhánh thành công.");
             }
 
             setShowForm(false);
             setEditingBranch(null);
             setFormData(emptyForm);
-            loadBranches();
+
+            await loadBranches();
+
+            await showMessage({
+                title: "Thành công",
+                message: isEditing
+                    ? "Cập nhật chi nhánh thành công."
+                    : "Thêm chi nhánh thành công.",
+                variant: "success",
+            });
         } catch (error) {
-            console.error("Save branch failed:", error);
-            alert(error.response?.data?.message || "Lưu chi nhánh thất bại.");
+            console.error(
+                "Save branch failed:",
+                error
+            );
+
+            await showMessage({
+                title: "Lưu thất bại",
+                message:
+                    error.response?.data?.message ||
+                    "Lưu chi nhánh thất bại.",
+                variant: "error",
+            });
         }
     }
 
@@ -146,26 +181,51 @@ export default function ManageBranchesPage() {
         const branchId = branch.branchId || branch.id;
 
         if (!branchId) {
-            alert("Không tìm thấy branchId.");
+            await showMessage({
+                title: "Thiếu dữ liệu",
+                message: "Không tìm thấy branchId.",
+                variant: "error",
+            });
             return;
         }
 
         const currentStatus = String(branch.status || "").toLowerCase();
         const nextStatus = currentStatus === "active" ? "inactive" : "active";
 
-        const ok = window.confirm(
-            `Bạn có chắc muốn đổi trạng thái chi nhánh này sang ${nextStatus}?`
-        );
+        const nextStatusText =
+            nextStatus === "active" ? "Hoạt động" : "Tạm dừng";
+
+        const ok = await confirmAction({
+            title: "Đổi trạng thái chi nhánh",
+            message: `Bạn có chắc muốn chuyển chi nhánh "${branch.branchName || branch.name || ""
+                }" sang trạng thái ${nextStatusText}?`,
+            confirmText: "Đổi trạng thái",
+            cancelText: "Quay lại",
+            variant: nextStatus === "inactive" ? "warning" : "success",
+        });
 
         if (!ok) return;
 
         try {
             await changeBranchStatus(branchId, nextStatus);
-            alert("Đổi trạng thái chi nhánh thành công.");
-            loadBranches();
+
+            await showMessage({
+                title: "Thành công",
+                message: "Đổi trạng thái chi nhánh thành công.",
+                variant: "success",
+            });
+
+            await loadBranches();
         } catch (error) {
             console.error("Change branch status failed:", error);
-            alert(error.response?.data?.message || "Đổi trạng thái thất bại.");
+
+            await showMessage({
+                title: "Thất bại",
+                message:
+                    error.response?.data?.message ||
+                    "Đổi trạng thái chi nhánh thất bại.",
+                variant: "error",
+            });
         }
     }
 
@@ -173,20 +233,45 @@ export default function ManageBranchesPage() {
         const branchId = branch.branchId || branch.id;
 
         if (!branchId) {
-            alert("Không tìm thấy branchId.");
+            await showMessage({
+                title: "Thiếu dữ liệu",
+                message: "Không tìm thấy branchId.",
+                variant: "error",
+            });
             return;
         }
 
-        const ok = window.confirm("Bạn có chắc muốn xóa mềm chi nhánh này không?");
+        const ok = await confirmAction({
+            title: "Xóa chi nhánh",
+            message: `Bạn có chắc muốn xóa chi nhánh "${branch.branchName || branch.name || ""
+                }" không? Chi nhánh sẽ được chuyển sang trạng thái không hoạt động.`,
+            confirmText: "Xóa chi nhánh",
+            cancelText: "Quay lại",
+            variant: "danger",
+        });
+
         if (!ok) return;
 
         try {
             await deleteBranch(branchId);
-            alert("Xóa chi nhánh thành công.");
-            loadBranches();
+
+            await showMessage({
+                title: "Thành công",
+                message: "Xóa chi nhánh thành công.",
+                variant: "success",
+            });
+
+            await loadBranches();
         } catch (error) {
             console.error("Delete branch failed:", error);
-            alert(error.response?.data?.message || "Xóa chi nhánh thất bại.");
+
+            await showMessage({
+                title: "Xóa thất bại",
+                message:
+                    error.response?.data?.message ||
+                    "Xóa chi nhánh thất bại.",
+                variant: "error",
+            });
         }
     }
 

@@ -26,6 +26,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.domain.Sort;
 
 import java.time.LocalDateTime;
 import java.util.Arrays;
@@ -154,7 +155,20 @@ public class CustomerRewardServiceImpl implements CustomerRewardService {
                 .map(item -> customerRewardMapper.toResponse(item, null))
                 .toList();
     }
-
+    @Override
+    @Transactional(readOnly = true)
+    public List<CustomerRewardResponseDTO> getAllCustomerRewards() {
+        return customerRewardRepository
+                .findAll(
+                        Sort.by(
+                                Sort.Direction.DESC,
+                                "redeemedAt"
+                        )
+                )
+                .stream()
+                .map(item -> customerRewardMapper.toResponse(item, null))
+                .toList();
+    }
     /**
      * Dùng voucher cho một booking.
      * Repository nên khóa bản ghi theo voucherCode bằng PESSIMISTIC_WRITE

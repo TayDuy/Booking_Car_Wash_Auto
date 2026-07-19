@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAppDialog } from "../../../contexts/DialogContext.jsx";
 import {
   AlertTriangle,
   Bell,
@@ -39,8 +40,8 @@ function normalizeNotification(notification) {
     typeof rawRead === "boolean"
       ? rawRead
       : ["read", "true", "1"].includes(
-          normalizeValue(rawRead)
-        );
+        normalizeValue(rawRead)
+      );
 
   return {
     ...notification,
@@ -171,6 +172,7 @@ function getNotificationStyle(type) {
 }
 
 export default function AdminNotificationPage() {
+  const { showMessage } = useAppDialog();
   const navigate = useNavigate();
 
   const [notifications, setNotifications] = useState([]);
@@ -257,10 +259,13 @@ export default function AdminNotificationPage() {
 
       setNotifications([]);
 
-      alert(
-        error.response?.data?.message ||
-          "Không tải được danh sách thông báo."
-      );
+      await showMessage({
+        title: "Tải thông báo thất bại",
+        message:
+          error.response?.data?.message ||
+          "Không tải được danh sách thông báo.",
+        variant: "error",
+      });
     } finally {
       setLoading(false);
     }
@@ -315,9 +320,9 @@ export default function AdminNotificationPage() {
         previousNotifications.map((item) =>
           item.id === notification.id
             ? {
-                ...item,
-                isRead: true,
-              }
+              ...item,
+              isRead: true,
+            }
             : item
         )
       );
@@ -333,10 +338,13 @@ export default function AdminNotificationPage() {
         error
       );
 
-      alert(
-        error.response?.data?.message ||
-          "Không thể đánh dấu thông báo đã đọc."
-      );
+      await showMessage({
+        title: "Cập nhật thông báo thất bại",
+        message:
+          error.response?.data?.message ||
+          "Không thể đánh dấu thông báo đã đọc.",
+        variant: "error",
+      });
     }
   }
 
@@ -368,10 +376,13 @@ export default function AdminNotificationPage() {
         error
       );
 
-      alert(
-        error.response?.data?.message ||
-          "Không thể đánh dấu tất cả đã đọc."
-      );
+      await showMessage({
+        title: "Cập nhật thông báo thất bại",
+        message:
+          error.response?.data?.message ||
+          "Không thể đánh dấu tất cả đã đọc.",
+        variant: "error",
+      });
     } finally {
       setMarkingAll(false);
     }
@@ -438,11 +449,10 @@ export default function AdminNotificationPage() {
 
             {markingAll
               ? "Đang xử lý..."
-              : `Đánh dấu đã đọc${
-                  unreadCount > 0
-                    ? ` (${unreadCount})`
-                    : ""
-                }`}
+              : `Đánh dấu đã đọc${unreadCount > 0
+                ? ` (${unreadCount})`
+                : ""
+              }`}
           </button>
         </div>
       </div>
@@ -533,11 +543,10 @@ export default function AdminNotificationPage() {
                       notification.id ||
                       `${notification.createdAt}-${index}`
                     }
-                    className={`notification-item ${
-                      notification.isRead
-                        ? "read"
-                        : "unread"
-                    }`}
+                    className={`notification-item ${notification.isRead
+                      ? "read"
+                      : "unread"
+                      }`}
                     onClick={() =>
                       handleOpenNotification(
                         notification

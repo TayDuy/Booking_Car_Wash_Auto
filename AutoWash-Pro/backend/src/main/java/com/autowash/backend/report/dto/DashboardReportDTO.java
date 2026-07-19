@@ -11,7 +11,11 @@ public class DashboardReportDTO {
     private long totalBookings;
     private long completedBookings;
     private long pendingBookings;
+    private long confirmedBookings;
+    private long checkedInBookings;
+    private long inProgressBookings;
     private long cancelledBookings;
+    private long noShowBookings;
 
     private long totalCustomers;
     private long totalBranches;

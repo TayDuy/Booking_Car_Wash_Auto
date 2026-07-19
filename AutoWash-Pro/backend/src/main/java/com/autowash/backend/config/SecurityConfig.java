@@ -162,6 +162,9 @@ public class SecurityConfig {
                         // =====================================================
                         .requestMatchers("/api/v1/employee/**")
                         .hasRole("EMPLOYEE")
+                        // Cho phép ADMIN / EMPLOYEE tạo khách hàng
+                        .requestMatchers("/api/v1/staff/customers")
+                        .hasAnyRole("EMPLOYEE", "ADMIN")
 
                         /*
                          * Khóa hoàn toàn endpoint STAFF cũ.

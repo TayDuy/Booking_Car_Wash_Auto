@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Eye, Pencil, Plus, Search, Trash2 } from "lucide-react";
 import promotionApi from "../../../api/promotionApi";
+import { useAppDialog } from "../../../contexts/DialogContext.jsx";
 import "./ManagePromotionsPage.css";
 
 const emptyForm = {
@@ -16,6 +17,7 @@ const emptyForm = {
 };
 
 export default function ManagePromotionsPage() {
+  const { confirmAction, showMessage } = useAppDialog();
   const [promotions, setPromotions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [keyword, setKeyword] = useState("");
@@ -124,22 +126,38 @@ export default function ManagePromotionsPage() {
     e.preventDefault();
 
     if (!formData.promotionName.trim()) {
-      alert("Vui lòng nhập tên khuyến mãi.");
+      await showMessage({
+        title: "Thiếu dữ liệu",
+        message: "Vui lòng nhập tên khuyến mãi.",
+        variant: "warning",
+      });
       return;
     }
 
     if (!formData.discountValue || Number(formData.discountValue) <= 0) {
-      alert("Vui lòng nhập giá trị giảm hợp lệ.");
+      await showMessage({
+        title: "Dữ liệu không hợp lệ",
+        message: "Vui lòng nhập giá trị giảm hợp lệ.",
+        variant: "warning",
+      });
       return;
     }
 
     if (!formData.startDate || !formData.endDate) {
-      alert("Vui lòng chọn ngày bắt đầu và ngày kết thúc.");
+      await showMessage({
+        title: "Thiếu dữ liệu",
+        message: "Vui lòng chọn ngày bắt đầu và ngày kết thúc.",
+        variant: "warning",
+      });
       return;
     }
 
     if (new Date(formData.endDate) < new Date(formData.startDate)) {
-      alert("Ngày kết thúc phải sau ngày bắt đầu.");
+      await showMessage({
+        title: "Ngày không hợp lệ",
+        message: "Ngày kết thúc phải sau ngày bắt đầu.",
+        variant: "warning",
+      });
       return;
     }
 
@@ -151,43 +169,79 @@ export default function ManagePromotionsPage() {
     };
 
     try {
-      if (editingPromotion) {
-        const promotionId = editingPromotion.promotionId || editingPromotion.id;
+      const isEditing = Boolean(editingPromotion);
 
+      if (isEditing) {
+        const promotionId = editingPromotion.promotionId || editingPromotion.id;
         await promotionApi.update(promotionId, payload);
-        alert("Cập nhật khuyến mãi thành công.");
       } else {
         await promotionApi.create(payload);
-        alert("Tạo khuyến mãi thành công.");
       }
 
       setShowForm(false);
       setEditingPromotion(null);
       setFormData(emptyForm);
-      loadPromotions();
+      await loadPromotions();
+
+      await showMessage({
+        title: "Thành công",
+        message: isEditing
+          ? "Cập nhật khuyến mãi thành công."
+          : "Tạo khuyến mãi thành công.",
+        variant: "success",
+      });
     } catch (error) {
       console.error("Save promotion failed:", error);
-      alert(error.response?.data?.message || "Lưu khuyến mãi thất bại.");
+
+      await showMessage({
+        title: "Lưu khuyến mãi thất bại",
+        message:
+          error.response?.data?.message || "Lưu khuyến mãi thất bại.",
+        variant: "error",
+      });
     }
   }
   async function handleDelete(promotion) {
     const promotionId = promotion.promotionId || promotion.id;
 
     if (!promotionId) {
-      alert("Không tìm thấy promotionId.");
+      await showMessage({
+        title: "Thiếu dữ liệu",
+        message: "Không tìm thấy promotionId.",
+        variant: "error",
+      });
       return;
     }
 
-    const ok = window.confirm("Bạn có chắc muốn vô hiệu hóa khuyến mãi này không?");
+    const ok = await confirmAction({
+      title: "Vô hiệu hóa khuyến mãi",
+      message: "Bạn có chắc muốn vô hiệu hóa khuyến mãi này không?",
+      confirmText: "Xác nhận",
+      cancelText: "Hủy",
+      variant: "danger",
+    });
+
     if (!ok) return;
 
     try {
       await promotionApi.delete(promotionId);
-      alert("Vô hiệu hóa khuyến mãi thành công.");
-      loadPromotions();
+      await loadPromotions();
+
+      await showMessage({
+        title: "Thành công",
+        message: "Vô hiệu hóa khuyến mãi thành công.",
+        variant: "success",
+      });
     } catch (error) {
       console.error("Delete promotion failed:", error);
-      alert(error.response?.data?.message || "Vô hiệu hóa khuyến mãi thất bại.");
+
+      await showMessage({
+        title: "Vô hiệu hóa khuyến mãi thất bại",
+        message:
+          error.response?.data?.message ||
+          "Vô hiệu hóa khuyến mãi thất bại.",
+        variant: "error",
+      });
     }
   }
 

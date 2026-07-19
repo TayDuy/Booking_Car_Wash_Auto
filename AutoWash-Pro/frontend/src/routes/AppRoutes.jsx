@@ -47,6 +47,9 @@ import RoleManagementPage from "../features/admin/pages/RoleManagementPage";
 import SystemSettingsPage from "../features/admin/pages/SystemSettingsPage";
 import ManageOrdersPage from "../features/admin/pages/ManageOrdersPage";
 import PaymentHistoryPage from "../features/admin/pages/PaymentHistoryPage";
+import ManageRewardsPage from "../features/admin/pages/ManageRewardsPage";
+import ManageLoyaltyPointsPage from "../features/admin/pages/ManageLoyaltyPointsPage";
+import ManageCustomerRewardsPage from "../features/admin/pages/ManageCustomerRewardsPage";
 
 import EmployeeDashboardPage from "../features/employee/pages/EmployeeDashboardPage";
 import EmployeeQueuePage from "../features/employee/pages/EmployeeQueuePage";
@@ -133,6 +136,15 @@ function AppRoutes() {
         <Route path="settings" element={<SystemSettingsPage />} />
         <Route path="orders" element={<ManageOrdersPage />} />
         <Route path="payments" element={<PaymentHistoryPage />} />
+        <Route
+          path="loyalty-points"
+          element={<ManageLoyaltyPointsPage />}
+        />
+        <Route path="rewards" element={<ManageRewardsPage />} />
+        <Route
+          path="customer-rewards"
+          element={<ManageCustomerRewardsPage />}
+        />
       </Route>
 
       {/* Employee */}

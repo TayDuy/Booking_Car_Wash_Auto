@@ -1,64 +1,408 @@
 import React, { useEffect, useState } from "react";
-import { BarChart3, CalendarCheck, DollarSign, Users } from "lucide-react";
+import {
+  BarChart3,
+  CalendarCheck,
+  DollarSign,
+  Download,
+  Filter,
+  RotateCcw,
+  Users,
+} from "lucide-react";
 import reportApi from "../../../api/reportApi";
+import * as XLSX from "xlsx";
+import { useAppDialog } from "../../../contexts/DialogContext.jsx";
 import "./ReportsPage.css";
 
 export default function ReportsPage() {
+  const { showMessage } = useAppDialog();
+
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
+
+  const [appliedFromDate, setAppliedFromDate] = useState("");
+  const [appliedToDate, setAppliedToDate] = useState("");
   const [reportData, setReportData] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadReports();
+    loadReports("", "");
   }, []);
 
-  async function loadReports() {
-  setLoading(true);
+  async function loadReports(
+    selectedFromDate = appliedFromDate,
+    selectedToDate = appliedToDate
+  ) {
+    setLoading(true);
 
-  try {
-    const response = await reportApi.dashboard();
-    setReportData(response.data);
-  } catch (error) {
-    console.error("Load reports failed:", error);
-    setReportData(null);
-  } finally {
-    setLoading(false);
+    try {
+      const response = await reportApi.dashboard(
+        selectedFromDate,
+        selectedToDate
+      );
+
+      setReportData(
+        response.data?.data ||
+        response.data
+      );
+    } catch (error) {
+      console.error(
+        "Load reports failed:",
+        error
+      );
+
+      setReportData(null);
+
+      await showMessage({
+        title: "Tải báo cáo thất bại",
+        message:
+          error.response?.data?.message ||
+          "Không tải được dữ liệu báo cáo.",
+        variant: "error",
+      });
+    } finally {
+      setLoading(false);
+    }
   }
-}
 
   function money(value) {
     return Number(value || 0).toLocaleString("vi-VN") + " đ";
   }
 
-  
+
   const data = reportData || {
-  totalBookings: 0,
-  completedBookings: 0,
-  pendingBookings: 0,
-  cancelledBookings: 0,
-  totalCustomers: 0,
-  totalBranches: 0,
-  totalServices: 0,
-  revenue: 0,
-};
+    totalBookings: 0,
+    completedBookings: 0,
+    pendingBookings: 0,
+    confirmedBookings: 0,
+    checkedInBookings: 0,
+    inProgressBookings: 0,
+    cancelledBookings: 0,
+    noShowBookings: 0,
+    totalCustomers: 0,
+    totalBranches: 0,
+    totalServices: 0,
+    revenue: 0,
+  };
 
-const statusRows = [
-  { label: "Hoàn thành", value: data.completedBookings },
-  { label: "Đang chờ", value: data.pendingBookings },
-  { label: "Đã hủy", value: data.cancelledBookings },
-];
+  const statusRows = [
+    {
+      label: "Đang chờ xác nhận",
+      value: data.pendingBookings,
+    },
+    {
+      label: "Đã xác nhận",
+      value: data.confirmedBookings,
+    },
+    {
+      label: "Đã check-in",
+      value: data.checkedInBookings,
+    },
+    {
+      label: "Đang thực hiện",
+      value: data.inProgressBookings,
+    },
+    {
+      label: "Hoàn thành",
+      value: data.completedBookings,
+    },
+    {
+      label: "Đã hủy",
+      value: data.cancelledBookings,
+    },
+    {
+      label: "Không đến",
+      value: data.noShowBookings,
+    },
+  ];
 
-const maxStatus = Math.max(...statusRows.map((x) => x.value), 1);
+  const maxStatus = Math.max(...statusRows.map((x) => x.value), 1);
+  async function handleApplyFilter() {
+    if (!fromDate && !toDate) {
+      setAppliedFromDate("");
+      setAppliedToDate("");
+      await loadReports("", "");
+      return;
+    }
+
+    if (!fromDate || !toDate) {
+      await showMessage({
+        title: "Thiếu khoảng thời gian",
+        message:
+          "Vui lòng chọn đầy đủ ngày bắt đầu và ngày kết thúc.",
+        variant: "warning",
+      });
+      return;
+    }
+
+    if (fromDate > toDate) {
+      await showMessage({
+        title: "Khoảng thời gian không hợp lệ",
+        message:
+          "Ngày bắt đầu không được sau ngày kết thúc.",
+        variant: "warning",
+      });
+      return;
+    }
+
+    setAppliedFromDate(fromDate);
+    setAppliedToDate(toDate);
+
+    await loadReports(fromDate, toDate);
+  }
+
+  async function handleResetFilter() {
+    setFromDate("");
+    setToDate("");
+    setAppliedFromDate("");
+    setAppliedToDate("");
+
+    await loadReports("", "");
+  }
+  async function handleExportReport() {
+    try {
+      const periodText =
+        appliedFromDate && appliedToDate
+          ? `${appliedFromDate} đến ${appliedToDate}`
+          : "Toàn thời gian";
+
+      const overviewRows = [
+        ["BÁO CÁO TỔNG QUAN WASHFLOW PRO"],
+        ["Khoảng thời gian", periodText],
+        [
+          "Ngày xuất",
+          new Date().toLocaleString("vi-VN"),
+        ],
+        [],
+        ["Chỉ số", "Giá trị"],
+        ["Tổng đặt lịch", Number(data.totalBookings || 0)],
+        [
+          "Đang chờ xác nhận",
+          Number(data.pendingBookings || 0),
+        ],
+        [
+          "Đã xác nhận",
+          Number(data.confirmedBookings || 0),
+        ],
+        [
+          "Đã check-in",
+          Number(data.checkedInBookings || 0),
+        ],
+        [
+          "Đang thực hiện",
+          Number(data.inProgressBookings || 0),
+        ],
+        [
+          "Hoàn thành",
+          Number(data.completedBookings || 0),
+        ],
+        [
+          "Đã hủy",
+          Number(data.cancelledBookings || 0),
+        ],
+        [
+          "Không đến",
+          Number(data.noShowBookings || 0),
+        ],
+        ["Khách hàng", Number(data.totalCustomers || 0)],
+        ["Chi nhánh", Number(data.totalBranches || 0)],
+        ["Dịch vụ", Number(data.totalServices || 0)],
+        ["Doanh thu", Number(data.revenue || 0)],
+      ];
+
+      const bookingStatusRows = [
+        ["TRẠNG THÁI ĐẶT LỊCH"],
+        ["Khoảng thời gian", periodText],
+        [],
+        ["Trạng thái", "Số lượng"],
+        [
+          "Đang chờ xác nhận",
+          Number(data.pendingBookings || 0),
+        ],
+        [
+          "Đã xác nhận",
+          Number(data.confirmedBookings || 0),
+        ],
+        [
+          "Đã check-in",
+          Number(data.checkedInBookings || 0),
+        ],
+        [
+          "Đang thực hiện",
+          Number(data.inProgressBookings || 0),
+        ],
+        [
+          "Hoàn thành",
+          Number(data.completedBookings || 0),
+        ],
+        [
+          "Đã hủy",
+          Number(data.cancelledBookings || 0),
+        ],
+        [
+          "Không đến",
+          Number(data.noShowBookings || 0),
+        ],
+      ];
+
+      const overviewSheet =
+        XLSX.utils.aoa_to_sheet(overviewRows);
+
+      const bookingStatusSheet =
+        XLSX.utils.aoa_to_sheet(
+          bookingStatusRows
+        );
+
+      overviewSheet["!cols"] = [
+        { wch: 30 },
+        { wch: 24 },
+      ];
+
+      bookingStatusSheet["!cols"] = [
+        { wch: 24 },
+        { wch: 16 },
+      ];
+
+      const workbook =
+        XLSX.utils.book_new();
+
+      XLSX.utils.book_append_sheet(
+        workbook,
+        overviewSheet,
+        "Tổng quan"
+      );
+
+      XLSX.utils.book_append_sheet(
+        workbook,
+        bookingStatusSheet,
+        "Trạng thái booking"
+      );
+
+      const fileDate =
+        new Date()
+          .toISOString()
+          .slice(0, 10);
+
+      const rangeSuffix =
+        appliedFromDate && appliedToDate
+          ? `_${appliedFromDate}_${appliedToDate}`
+          : "";
+
+      XLSX.writeFile(
+        workbook,
+        `bao-cao-washflow${rangeSuffix}_${fileDate}.xlsx`
+      );
+    } catch (error) {
+      console.error(
+        "Export report failed:",
+        error
+      );
+
+      await showMessage({
+        title: "Xuất báo cáo thất bại",
+        message:
+          "Không thể tạo file báo cáo Excel.",
+        variant: "error",
+      });
+    }
+  }
   return (
     <div className="reports-page">
       <div className="manage-header">
         <div>
           <h1>Báo cáo</h1>
-          <p>Tổng hợp số liệu đặt lịch, khách hàng, chi nhánh và dịch vụ.</p>
+          <p>
+            Tổng hợp số liệu đặt lịch, khách hàng,
+            chi nhánh và dịch vụ.
+          </p>
         </div>
 
-        <button className="refresh-btn" onClick={loadReports}>
-          Làm mới
-        </button>
+        <div className="report-header-actions">
+          <button
+            type="button"
+            className="report-export-btn"
+            onClick={handleExportReport}
+            disabled={loading}
+          >
+            <Download size={18} />
+            Xuất Excel
+          </button>
+
+          <button
+            type="button"
+            className="refresh-btn"
+            onClick={() =>
+              loadReports(
+                appliedFromDate,
+                appliedToDate
+              )
+            }
+            disabled={loading}
+          >
+            Làm mới
+          </button>
+        </div>
+      </div>
+
+      <div className="report-filter-card">
+        <div className="report-filter-heading">
+          <div>
+            <Filter size={20} />
+            <strong>Bộ lọc thời gian</strong>
+          </div>
+
+          {appliedFromDate && appliedToDate && (
+            <span>
+              Đang xem: {appliedFromDate} đến{" "}
+              {appliedToDate}
+            </span>
+          )}
+        </div>
+
+        <div className="report-filter-controls">
+          <label className="report-date-field">
+            <span>Từ ngày</span>
+            <input
+              type="date"
+              value={fromDate}
+              max={toDate || undefined}
+              onChange={(event) =>
+                setFromDate(event.target.value)
+              }
+            />
+          </label>
+
+          <label className="report-date-field">
+            <span>Đến ngày</span>
+            <input
+              type="date"
+              value={toDate}
+              min={fromDate || undefined}
+              onChange={(event) =>
+                setToDate(event.target.value)
+              }
+            />
+          </label>
+
+          <button
+            type="button"
+            className="report-apply-btn"
+            onClick={handleApplyFilter}
+            disabled={loading}
+          >
+            <Filter size={17} />
+            Áp dụng
+          </button>
+
+          <button
+            type="button"
+            className="report-reset-btn"
+            onClick={handleResetFilter}
+            disabled={loading}
+          >
+            <RotateCcw size={17} />
+            Xóa lọc
+          </button>
+        </div>
       </div>
 
       {loading ? (
@@ -145,14 +489,12 @@ const maxStatus = Math.max(...statusRows.map((x) => x.value), 1);
                   <span>Dịch vụ</span>
                   <strong>{data.totalServices}</strong>
                 </div>
-                <div>
-                  <span>Booking pending</span>
-                  <strong>{data.pendingBookings}</strong>
-                </div>
-                <div>
-                  <span>Booking cancelled</span>
-                  <strong>{data.cancelledBookings}</strong>
-                </div>
+                {statusRows.map((row) => (
+                  <div key={`summary-${row.label}`}>
+                    <span>{row.label}</span>
+                    <strong>{row.value}</strong>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
