@@ -1,0 +1,659 @@
+.cbp-page {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.cbp-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.cbp-header h1 {
+    margin: 0;
+    font-size: 26px;
+    color: #111827;
+}
+
+.cbp-header p {
+    margin: 6px 0 0;
+    color: #64748b;
+    max-width: 560px;
+}
+
+.cbp-header-actions {
+    display: flex;
+    gap: 12px;
+    flex-shrink: 0;
+}
+
+.cbp-btn-ghost,
+.cbp-btn-primary {
+    height: 44px;
+    padding: 0 18px;
+    border: none;
+    border-radius: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+}
+
+.cbp-btn-ghost {
+    background: #e7ecfb;
+    color: #003d9b;
+}
+
+.cbp-btn-ghost:hover {
+    background: #dbe3f9;
+}
+
+.cbp-btn-primary {
+    background: #003d9b;
+    color: white;
+}
+
+.cbp-btn-primary:hover {
+    background: #0052cc;
+}
+
+.cbp-btn-primary:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.cbp-spin {
+    animation: cbp-spin 0.8s linear infinite;
+}
+
+@keyframes cbp-spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.cbp-alert {
+    margin-bottom: 16px;
+    padding: 12px 16px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.cbp-alert-success {
+    background: #dcfce7;
+    color: #15803d;
+}
+
+.cbp-alert-error {
+    background: #fee2e2;
+    color: #b91c1c;
+}
+
+.cbp-card {
+    padding: 8px 28px 28px;
+    border: 1px solid #e5e7eb;
+    border-radius: 18px;
+    background: white;
+    box-shadow: 0 14px 40px rgba(16, 24, 40, 0.05);
+}
+
+.cbp-section {
+    padding: 22px 0 6px;
+}
+
+.cbp-divider {
+    border: none;
+    border-top: 1px solid #eef2f7;
+    margin: 0;
+}
+
+.cbp-section-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 18px;
+}
+
+.cbp-section-title-row {
+    justify-content: space-between;
+    flex-wrap: wrap;
+}
+
+.cbp-section-title-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.cbp-section-title h2 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 700;
+    color: #191c1e;
+}
+
+.cbp-icon-badge {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: #eaf2ff;
+    color: #0052cc;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.cbp-required {
+    color: #ba1a1a;
+}
+
+.cbp-section-title-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.cbp-link-btn {
+    border: none;
+    background: transparent;
+    color: #0052cc;
+    font-weight: 700;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    padding: 6px 4px;
+}
+
+.cbp-link-btn:hover {
+    text-decoration: underline;
+}
+
+.cbp-chip-btn {
+    height: 36px;
+    padding: 0 14px;
+    border: none;
+    border-radius: 10px;
+    background: #eaf0ff;
+    color: #0052cc;
+    font-weight: 700;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+}
+
+.cbp-chip-btn:hover {
+    background: #dbe6ff;
+}
+
+/* ---------- Chi nhánh & ghi chú ---------- */
+
+.cbp-field-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.cbp-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.cbp-field label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #334155;
+}
+
+.cbp-field select,
+.cbp-field input {
+    height: 46px;
+    padding: 0 14px;
+    border: 1px solid #d7dce4;
+    border-radius: 12px;
+    background: white;
+    font-size: 14px;
+    color: #191c1e;
+    outline: none;
+}
+
+.cbp-field select:focus,
+.cbp-field input:focus {
+    border-color: #0c56d0;
+    box-shadow: 0 0 0 3px rgba(12, 86, 208, 0.15);
+}
+
+/* ---------- Thiết lập ngày ---------- */
+
+.cbp-date-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 14px;
+}
+
+.cbp-date-card {
+    height: 112px;
+    border: 1px solid #d7dce4;
+    border-radius: 14px;
+    background: white;
+    color: #191c1e;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.cbp-date-card:hover {
+    border-color: #0c56d0;
+    background: #f8f9fb;
+}
+
+.cbp-date-card.selected {
+    background: #003d9b;
+    border-color: #003d9b;
+    color: white;
+}
+
+.cbp-date-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    opacity: 0.75;
+}
+
+.cbp-date-day {
+    font-size: 26px;
+    font-weight: 800;
+    line-height: 1.1;
+}
+
+.cbp-date-month {
+    font-size: 12px;
+    opacity: 0.8;
+}
+
+.cbp-date-custom {
+    border-style: dashed;
+    color: #64748b;
+}
+
+.cbp-date-custom.selected {
+    border-style: solid;
+}
+
+.cbp-date-custom-label {
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.cbp-date-input {
+    border: none;
+    outline: none;
+    background: transparent;
+    font-size: 14px;
+    font-weight: 700;
+    color: #191c1e;
+    width: 100%;
+    text-align: center;
+}
+
+/* ---------- Khung giờ làm việc ---------- */
+
+.cbp-slots-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 12px;
+}
+
+.cbp-slots-empty {
+    grid-column: 1 / -1;
+    min-height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #64748b;
+    font-size: 14px;
+    border: 1px dashed #d7dce4;
+    border-radius: 12px;
+}
+
+.cbp-slot-chip {
+    padding: 14px 10px;
+    border: 1px solid #d7dce4;
+    border-radius: 14px;
+    background: white;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.cbp-slot-chip:hover {
+    border-color: #0c56d0;
+    background: #f8f9fb;
+}
+
+.cbp-slot-time {
+    font-size: 16px;
+    font-weight: 800;
+    color: #191c1e;
+}
+
+.cbp-slot-remaining {
+    font-size: 11px;
+    font-weight: 600;
+    color: #15803d;
+}
+
+.cbp-slot-chip.full {
+    background: #f3f4f6;
+    border-style: dashed;
+}
+
+.cbp-slot-chip.full .cbp-slot-remaining {
+    color: #94a3b8;
+}
+
+.cbp-hint {
+    margin: 10px 2px 0;
+    font-size: 12px;
+    color: #64748b;
+}
+
+.cbp-new-slot-form {
+    margin-top: 22px;
+    padding: 18px;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    background: #f8fafc;
+}
+
+.cbp-new-slot-title {
+    margin: 0 0 12px;
+    font-size: 13px;
+    font-weight: 700;
+    color: #334155;
+}
+
+.cbp-new-slot-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+}
+
+@media (max-width: 900px) {
+    .cbp-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .cbp-field-grid,
+    .cbp-new-slot-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .cbp-date-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+
+    .cbp-slots-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+@media (max-width: 560px) {
+    .cbp-field-grid,
+    .cbp-new-slot-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .cbp-date-grid,
+    .cbp-slots-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+/* ============================================================
+ * BỔ SUNG cho CreateBookingPage.css
+ * Dán các class dưới đây vào cuối file CreateBookingPage.css
+ * hiện có (không thay class nào đã có sẵn).
+ * ============================================================ */
+
+/* Nút viền (outline) dùng cho "Lưu thành mẫu thiết lập" */
+.cbp-btn-outline {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    border-radius: 8px;
+    border: 1px solid #93c5fd;
+    background: #eff6ff;
+    color: #1d4ed8;
+    font-weight: 500;
+    font-size: 14px;
+    cursor: pointer;
+}
+.cbp-btn-outline:hover {
+    background: #dbeafe;
+}
+
+/* Nút icon nhỏ (ví dụ: tải lại mẫu) */
+.cbp-btn-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    background: #fff;
+    color: #475569;
+    cursor: pointer;
+}
+.cbp-btn-icon:hover {
+    background: #f8fafc;
+}
+
+/* Hàng chọn mẫu thiết lập */
+.cbp-template-row {
+    display: flex;
+    gap: 8px;
+}
+.cbp-template-select {
+    flex: 1;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    background: #f8fafc;
+    font-size: 14px;
+}
+
+/* Phím tắt chọn ngày nhanh */
+.cbp-quick-date-btns {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 6px;
+}
+.cbp-quick-date-btn {
+    padding: 6px 14px;
+    border-radius: 999px;
+    border: 1px solid #bfdbfe;
+    background: #eff6ff;
+    color: #1d4ed8;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+}
+.cbp-quick-date-btn:hover {
+    background: #dbeafe;
+}
+
+/* Hàng thêm ngày cụ thể */
+.cbp-date-add-row {
+    display: flex;
+    gap: 10px;
+    margin-top: 6px;
+}
+.cbp-date-input-inline {
+    flex: 1;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    background: #f8fafc;
+    font-size: 14px;
+}
+
+/* Danh sách chip ngày đã chọn */
+.cbp-date-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 12px;
+    padding: 14px;
+    border: 1px dashed #e2e8f0;
+    border-radius: 10px;
+    min-height: 52px;
+}
+.cbp-date-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px 6px 14px;
+    border-radius: 999px;
+    background: #dbeafe;
+    color: #1d4ed8;
+    font-weight: 600;
+    font-size: 14px;
+}
+.cbp-date-chip-remove {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: none;
+    background: #ef4444;
+    color: #fff;
+    cursor: pointer;
+}
+
+/* Tabs Nhập hàng loạt / Nhập lẻ */
+.cbp-tabs {
+    display: flex;
+    gap: 20px;
+    border-bottom: 1px solid #e2e8f0;
+    margin: 18px 0 16px;
+}
+.cbp-tab {
+    padding: 10px 2px;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: #64748b;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+}
+.cbp-tab-active {
+    color: #1d4ed8;
+    border-bottom-color: #1d4ed8;
+}
+
+/* Grid nhập hàng loạt */
+.cbp-bulk-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+}
+.cbp-bulk-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 14px;
+}
+
+.cbp-btn-danger {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 16px;
+    border-radius: 8px;
+    border: none;
+    background: #dc2626;
+    color: #fff;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+}
+.cbp-btn-danger:hover {
+    background: #b91c1c;
+}
+
+/* Chip khung giờ đang chờ tạo */
+.cbp-draft-slots-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 10px;
+}
+.cbp-draft-slot-chip {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    min-width: 100px;
+    padding: 12px 16px;
+    border-radius: 10px;
+    border: 1.5px solid #1d4ed8;
+    background: #fff;
+}
+.cbp-draft-slot-time {
+    font-size: 18px;
+    font-weight: 700;
+    color: #1d4ed8;
+}
+.cbp-draft-slot-capacity {
+    font-size: 12px;
+    color: #64748b;
+}
+.cbp-draft-slot-bay {
+    font-size: 11px;
+    color: #94a3b8;
+}
+.cbp-draft-slot-remove {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: 2px solid #fff;
+    background: #ef4444;
+    color: #fff;
+    cursor: pointer;
+}
+
+@media (max-width: 768px) {
+    .cbp-bulk-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+}

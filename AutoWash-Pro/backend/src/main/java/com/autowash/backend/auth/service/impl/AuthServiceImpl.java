@@ -32,7 +32,6 @@ import org.springframework.web.client.RestTemplate;
 import com.autowash.backend.mail.service.MailService;
 
 import java.util.Map;
-import java.util.Optional;
 
 @Service
 public class AuthServiceImpl implements AuthService {
@@ -46,6 +45,7 @@ public class AuthServiceImpl implements AuthService {
     private final LoyaltyTierRepository loyaltyTierRepository;
     private final RefreshTokenService refreshTokenService;
     private final MailService mailService;
+    private final GoogleUserCreatorService googleUserCreatorService;
 
     private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(AuthServiceImpl.class);
     private static final java.security.SecureRandom secureRandom = new java.security.SecureRandom();
@@ -65,7 +65,8 @@ public class AuthServiceImpl implements AuthService {
                            OtpService otpService,
                            LoyaltyTierRepository loyaltyTierRepository,
                            RefreshTokenService refreshTokenService,
-                           MailService mailService) {
+                           MailService mailService,
+                           GoogleUserCreatorService googleUserCreatorService) {
         this.authenticationManager = authenticationManager;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
@@ -75,6 +76,7 @@ public class AuthServiceImpl implements AuthService {
         this.loyaltyTierRepository = loyaltyTierRepository;
         this.refreshTokenService = refreshTokenService;
         this.mailService = mailService;
+        this.googleUserCreatorService = googleUserCreatorService;
     }
 
     @Override
@@ -207,10 +209,22 @@ public class AuthServiceImpl implements AuthService {
         SecurityContextHolder.clearContext();
     }
 
+    // QUAN TRỌNG: RestTemplate mặc định KHÔNG có timeout -> nếu Supabase
+    // chậm/nghẽn mạng, request sẽ chờ VÔ THỜI HẠN, kéo theo cả request phía
+    // frontend (/auth/google) treo mãi không bao giờ trả lời.
+    // Factory này set connectTimeout/readTimeout 5s để luôn có phản hồi.
+    private RestTemplate buildSupabaseRestTemplate() {
+        org.springframework.http.client.SimpleClientHttpRequestFactory factory =
+                new org.springframework.http.client.SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(5000);
+        factory.setReadTimeout(5000);
+        return new RestTemplate(factory);
+    }
+
     @Override
     @Transactional
     public LoginResponseDTO loginWithGoogle(String supabaseToken) {
-        RestTemplate restTemplate = new RestTemplate();
+        RestTemplate restTemplate = buildSupabaseRestTemplate();
         HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth(supabaseToken);
         headers.set("apikey", supabaseAnonKey);
@@ -226,6 +240,10 @@ public class AuthServiceImpl implements AuthService {
                     Map.class
             );
             body = supabaseResponse.getBody();
+        } catch (org.springframework.web.client.ResourceAccessException e) {
+            // Timeout hoặc không kết nối được tới Supabase (mạng chậm/nghẽn, DNS...)
+            log.error("Khong ket noi duoc Supabase de xac thuc Google: {}", e.getMessage());
+            throw new BusinessException("Khong the ket noi Supabase de dang nhap Google. Vui long thu lai.", HttpStatus.GATEWAY_TIMEOUT);
         } catch (Exception e) {
             throw new BusinessException("Token Google khong hop le hoac da bi chinh sua", HttpStatus.UNAUTHORIZED);
         }
@@ -242,30 +260,12 @@ public class AuthServiceImpl implements AuthService {
 
         User user = userRepository.findByEmail(email).orElse(null);
         if (user == null) {
-            try {
-                String randomUsername = "gg_" + java.util.UUID.randomUUID().toString().substring(0, 8);
-
-                user = User.builder()
-                        .username(randomUsername)
-                        .email(email)
-                        .password(passwordEncoder.encode(java.util.UUID.randomUUID().toString()))
-                        .role("customer")
-                        .status("active")
-                        .build();
-                user = userRepository.save(user);
-
-                Customer customer = Customer.builder()
-                        .user(user)
-                        .fullName(fullName)
-                        .tierId(1)
-                        .build();
-                customerRepository.save(customer);
-            } catch (org.springframework.dao.DataIntegrityViolationException e) {
-                user = userRepository.findByEmail(email)
-                        .orElseThrow(() -> new BusinessException(
-                                "Loi dong thoi khi dang nhap Google, vui long thu lai",
-                                HttpStatus.CONFLICT));
-            }
+            // Gọi qua bean riêng (không phải this) để Spring AOP proxy hoạt động đúng.
+            // Nếu gọi this.findOrCreateGoogleUser(), @Transactional(REQUIRES_NEW) bị bypass
+            // → cả 2 method chạy chung 1 transaction → khi có DataIntegrityViolationException
+            // (2 request đồng thời tạo cùng 1 email), transaction chính bị abort
+            // → mọi query sau đó fail → server 500 → frontend treo.
+            user = googleUserCreatorService.findOrCreateGoogleUser(email, fullName);
         }
 
         String token = jwtTokenProvider.generateToken(email, user.getId(), user.getPassword());
@@ -345,6 +345,7 @@ public class AuthServiceImpl implements AuthService {
             mailService.sendPasswordChangedEmail(user.getEmail(), user.getUsername());
         }
     }
+
 
     private LoginResponseDTO buildLoginResponse(String token, User user) {
         String fullName = "Unknown";

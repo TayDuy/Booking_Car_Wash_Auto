@@ -631,6 +631,26 @@
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
 }
 
+.vehicle-type-segmented-control.segmented-locked {
+    background: #f8fafc;
+    opacity: 0.85;
+}
+
+.segment-btn.segment-disabled {
+    cursor: not-allowed;
+}
+
+.segment-btn.segment-disabled:hover {
+    background: transparent;
+}
+
+.vehicle-type-locked-hint {
+    display: block;
+    margin-top: 6px;
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
 .full-width-field {
     margin-top: 12px;
 }

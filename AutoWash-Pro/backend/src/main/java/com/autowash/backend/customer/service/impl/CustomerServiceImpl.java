@@ -66,7 +66,10 @@ public class CustomerServiceImpl implements CustomerService {
     @Override
     @Transactional(readOnly = true)
     public List<CustomerProfileResponse> getAllCustomers() {
-        return customerRepository.findAll()
+        // findAllWithUser() dùng JOIN FETCH nên chỉ tốn 1 query thay vì
+        // 1 (findAll) + N (mỗi customer lazy-load user riêng khi mapToResponse
+        // đọc customer.getUser()...).
+        return customerRepository.findAllWithUser()
                 .stream()
                 .map(this::mapToResponse)
                 .toList();
@@ -138,20 +141,20 @@ public class CustomerServiceImpl implements CustomerService {
     }
 
     private CustomerProfileResponse mapToResponse(Customer customer) {
-    return CustomerProfileResponse.builder()
-            .customerId(customer.getCustomerId())
-            .username(customer.getUser() != null ? customer.getUser().getUsername() : null)
-            .email(customer.getUser() != null ? customer.getUser().getEmail() : null)
-            .phone(customer.getUser() != null ? customer.getUser().getPhone() : null)
-            .fullName(customer.getFullName())
-            .dateOfBirth(customer.getDateOfBirth())
-            .gender(translateGenderToVietnamese(customer.getGender()))
-            .totalPoints(customer.getTotalPoints())
-            .totalVisits(customer.getTotalVisits())
-            .totalSpending(customer.getTotalSpending())
-            .tierId(customer.getTierId())
-            .joinedAt(customer.getJoinedAt())
-            .build();
+        return CustomerProfileResponse.builder()
+                .customerId(customer.getCustomerId())
+                .username(customer.getUser() != null ? customer.getUser().getUsername() : null)
+                .email(customer.getUser() != null ? customer.getUser().getEmail() : null)
+                .phone(customer.getUser() != null ? customer.getUser().getPhone() : null)
+                .fullName(customer.getFullName())
+                .dateOfBirth(customer.getDateOfBirth())
+                .gender(translateGenderToVietnamese(customer.getGender()))
+                .totalPoints(customer.getTotalPoints())
+                .totalVisits(customer.getTotalVisits())
+                .totalSpending(customer.getTotalSpending())
+                .tierId(customer.getTierId())
+                .joinedAt(customer.getJoinedAt())
+                .build();
     }
     private String translateGenderToEnglish(String gender) {
         if (gender == null) return null;

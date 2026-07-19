@@ -1,11 +1,12 @@
 import axiosClient from './axiosClient'
+import { getCustomerId } from './authService'
 
 const bookingApi = {
   // =========================================================
   // CUSTOMER
   // =========================================================
 
-  myBookings: (customerId, limit) => {
+  myBookings: (customerId = getCustomerId(), limit) => {
     const path = customerId ? `/${customerId}` : '';
     const params = limit ? { limit } : {};
     return axiosClient.get(`/bookings/my${path}`, { params });

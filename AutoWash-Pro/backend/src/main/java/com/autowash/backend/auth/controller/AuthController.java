@@ -11,8 +11,10 @@ import com.autowash.backend.user.entity.User;
 import com.autowash.backend.user.repository.UserRepository;
 import com.autowash.backend.auth.service.SseTicketService;
 import com.autowash.backend.security.CustomUserDetails;
+import com.autowash.backend.security.CookieUtil;
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -30,44 +32,63 @@ public class AuthController {
     private final JwtTokenProvider tokenProvider;
     private final SseTicketService sseTicketService;
     private final UserRepository userRepository;
+    private final CookieUtil cookieUtil;
+
+    // Thời hạn sống của refreshToken (giây) - khớp với thời hạn tạo trong RefreshTokenServiceImpl (7 ngày)
+    private static final long REFRESH_TOKEN_MAX_AGE_SECONDS = 7 * 24 * 60 * 60;
 
     public AuthController(AuthService authService,
                           OtpService otpService,
                           RefreshTokenService refreshTokenService,
                           JwtTokenProvider tokenProvider,
                           SseTicketService sseTicketService,
-                          UserRepository userRepository) {
+                          UserRepository userRepository,
+                          CookieUtil cookieUtil) {
         this.authService = authService;
         this.otpService = otpService;
         this.refreshTokenService = refreshTokenService;
         this.tokenProvider = tokenProvider;
         this.sseTicketService = sseTicketService;
         this.userRepository = userRepository;
+        this.cookieUtil = cookieUtil;
+    }
+
+    /**
+     * Đưa refreshToken vào HttpOnly cookie và xóa khỏi response body,
+     * để JS phía client không bao giờ đọc được refreshToken (chống XSS đánh cắp token dài hạn).
+     */
+    private LoginResponseDTO withRefreshTokenAsCookie(LoginResponseDTO response, HttpServletResponse httpResponse) {
+        if (response != null && StringUtils.hasText(response.getRefreshToken())) {
+            cookieUtil.setRefreshTokenCookie(httpResponse, response.getRefreshToken(), REFRESH_TOKEN_MAX_AGE_SECONDS);
+            response.setRefreshToken(null); // không trả về body nữa
+        }
+        return response;
     }
 
     /**
      * POST /api/v1/auth/login
-     * Body: { "email": "...", "password": "..." }
-     * Response: { status, message, data: { accessToken, tokenType, userId, email, fullName, role } }
+     * refreshToken được set vào HttpOnly cookie, không nằm trong response body.
      */
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<LoginResponseDTO>> login(
-            @Valid @RequestBody LoginRequestDTO request) {
+            @Valid @RequestBody LoginRequestDTO request,
+            HttpServletResponse httpResponse) {
 
         LoginResponseDTO response = authService.login(request);
+        response = withRefreshTokenAsCookie(response, httpResponse);
         return ResponseEntity.ok(ApiResponse.success("Đăng nhập thành công", response));
     }
 
     /**
      * POST /api/v1/auth/register
-     * Body: { "email", "password", "fullName", "phone" }
-     * Response 201: { status, message, data: { accessToken, ... } }
      */
     @PostMapping("/register")
     public ResponseEntity<ApiResponse<LoginResponseDTO>> register(
-            @Valid @RequestBody RegisterRequestDTO request) {
+            @Valid @RequestBody RegisterRequestDTO request,
+            HttpServletResponse httpResponse) {
 
         LoginResponseDTO response = authService.register(request);
+        response = withRefreshTokenAsCookie(response, httpResponse);
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(ApiResponse.created(response));
@@ -75,14 +96,12 @@ public class AuthController {
 
     /**
      * POST /api/v1/auth/logout
-     * Header: Authorization: Bearer <token>
-     *
-     * Với JWT stateless, client chỉ cần xóa token phía local.
-     * Server-side: clear SecurityContext (+ blacklist nếu cần).
+     * Xóa refreshToken trong DB + xóa cookie refreshToken.
      */
     @PostMapping("/logout")
     public ResponseEntity<ApiResponse<Void>> logout(
-            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+            @RequestHeader(value = "Authorization", required = false) String authHeader,
+            HttpServletResponse httpResponse) {
 
         String token = null;
         if (StringUtils.hasText(authHeader) && authHeader.startsWith("Bearer ")) {
@@ -90,12 +109,12 @@ public class AuthController {
         }
 
         authService.logout(token);
+        cookieUtil.clearRefreshTokenCookie(httpResponse);
         return ResponseEntity.ok(ApiResponse.success("Đăng xuất thành công", null));
     }
 
     /**
-     * GET /api/v1/auth/me  — kiểm tra token còn hợp lệ không
-     * Yêu cầu: đã xác thực (token hợp lệ)
+     * GET /api/v1/auth/me
      */
     @GetMapping("/me")
     public ResponseEntity<ApiResponse<String>> getCurrentUser(
@@ -106,10 +125,6 @@ public class AuthController {
                 ApiResponse.success("Token hợp lệ", userDetails.getUsername()));
     }
 
-    /**
-     * POST /api/v1/auth/send-otp
-     * Body: { "email": "user@example.com" }
-     */
     @PostMapping("/send-otp")
     public ResponseEntity<ApiResponse<Void>> sendOtp(@Valid @RequestBody OtpRequestDTO request,
                                                      HttpServletRequest httpRequest){
@@ -117,10 +132,6 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.success("Mã OTP đã được gửi", null));
     }
 
-    /**
-     * POST /api/v1/auth/verify-otp
-     * Body: { "email": "user@example.com", "otp": "123456" }
-     */
     @PostMapping("/verify-otp")
     public ResponseEntity<ApiResponse<Void>> verifyOtp(@Valid@RequestBody OtpVerifyDTO request){
         String purpose = request.getPurpose();
@@ -131,11 +142,22 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.success("Xác minh OTP thành công", null));
     }
 
+    /**
+     * POST /api/v1/auth/refresh
+     * Không cần body: refreshToken được trình duyệt tự gửi kèm qua HttpOnly cookie.
+     * Frontend PHẢI gọi với { withCredentials: true } thì cookie mới được gửi.
+     */
     @PostMapping("/refresh")
     public ResponseEntity<ApiResponse<TokenRefreshResponseDTO>> refreshJwtToken(
-        @Valid @RequestBody TokenRefreshRequestDTO request
+            @CookieValue(name = CookieUtil.REFRESH_TOKEN_COOKIE_NAME, required = false) String requestRefreshToken,
+            HttpServletResponse httpResponse
     ){
-        String requestRefreshToken = request.getRefreshToken();
+        if (!StringUtils.hasText(requestRefreshToken)) {
+            throw new com.autowash.backend.common.exception.BusinessException(
+                    "Không tìm thấy refresh token, vui lòng đăng nhập lại",
+                    HttpStatus.UNAUTHORIZED
+            );
+        }
 
         RefreshToken refreshToken = refreshTokenService.findByToken(requestRefreshToken);
 
@@ -143,13 +165,16 @@ public class AuthController {
 
         User user = refreshToken.getUser();
 
+        // Rotate: token cũ bị vô hiệu hóa, token mới được set lại vào cookie
         RefreshToken rotatedToken = refreshTokenService.createRefreshToken(user.getId());
 
         String token = tokenProvider.generateToken(user.getEmail(), user.getId(), user.getPassword());
 
+        cookieUtil.setRefreshTokenCookie(httpResponse, rotatedToken.getToken(), REFRESH_TOKEN_MAX_AGE_SECONDS);
+
         TokenRefreshResponseDTO responseDTO = TokenRefreshResponseDTO.builder()
                 .accessToken(token)
-                .refreshToken(rotatedToken.getToken())
+                .refreshToken(null) // không trả về body nữa, đã nằm trong HttpOnly cookie
                 .build();
 
         return ResponseEntity.ok(ApiResponse.success("Refresh token thành công", responseDTO));
@@ -157,14 +182,14 @@ public class AuthController {
 
     /**
      * POST /api/v1/auth/google
-     * Xử lý đăng nhập bằng Google (Frontend gửi Supabase Token lên)
      */
     @PostMapping("/google")
     public ResponseEntity<ApiResponse<LoginResponseDTO>> googleLogin(
-            @Valid @RequestBody GoogleLoginRequestDTO request
+            @Valid @RequestBody GoogleLoginRequestDTO request,
+            HttpServletResponse httpResponse
     ){
-        //gọi hàm loginWithGoogle bên AuthService
         LoginResponseDTO response = authService.loginWithGoogle(request.getSupabaseToken());
+        response = withRefreshTokenAsCookie(response, httpResponse);
 
         return ResponseEntity.ok(ApiResponse.success("Đăng nhập Google thành công!!!",response));
     }

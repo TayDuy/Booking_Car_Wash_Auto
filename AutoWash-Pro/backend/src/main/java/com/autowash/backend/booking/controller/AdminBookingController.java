@@ -13,6 +13,7 @@ import org.springframework.http.HttpStatus;
 import com.autowash.backend.booking.dto.BookingCreateRequestDTO;
 import com.autowash.backend.booking.dto.BookingCreateResponseDTO;
 import com.autowash.backend.booking.dto.AssignableStaffResponseDTO;
+import com.autowash.backend.booking.enums.BookingSortOption;
 
 import java.util.List;
 
@@ -28,11 +29,17 @@ public class AdminBookingController {
      * Admin lấy toàn bộ booking.
      *
      * GET /api/v1/admin/bookings
+     * GET /api/v1/admin/bookings?sortBy=newest   (mặc định)
+     * GET /api/v1/admin/bookings?sortBy=priority
      */
     @GetMapping
-    public ResponseEntity<List<BookingSummaryResponseDTO>> getAllBookings() {
+    public ResponseEntity<List<BookingSummaryResponseDTO>> getAllBookings(
+            @RequestParam(required = false) String sortBy
+    ) {
         return ResponseEntity.ok(
-                bookingService.getAllBookings()
+                bookingService.getAllBookings(
+                        BookingSortOption.fromParam(sortBy)
+                )
         );
     }
 

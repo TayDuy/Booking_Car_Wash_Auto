@@ -6,12 +6,10 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
 
-@Repository
 public interface CustomerRepository
         extends JpaRepository<Customer, Integer> {
 
@@ -25,6 +23,11 @@ public interface CustomerRepository
 
     List<Customer> findByBrandId(Integer brandId);
 
+    /**
+     * Tìm các customer thuộc một trong các tier chỉ định, và tài khoản đang active.
+     * Dùng cho tính năng gửi thông báo hàng loạt theo hạng thành viên
+     * (ví dụ: "Silver trở lên").
+     */
     List<Customer> findByTierIdInAndUser_Status(List<Integer> tierIds, String status);
 
     // =========================================================
@@ -58,6 +61,25 @@ public interface CustomerRepository
     List<Customer> findTop20ByFullNameContainingIgnoreCaseOrderByCustomerIdDesc(
             String fullName
     );
+
+    // =========================================================
+    // ADMIN LIST (JOIN FETCH — tránh N+1)
+    // =========================================================
+
+    /**
+     * Admin - danh sách toàn bộ customer kèm User (JOIN FETCH).
+     *
+     * Tránh N+1: nếu chỉ dùng findAll() rồi map sang DTO có đọc
+     * customer.getUser().xxx(), vì User là @OneToOne(LAZY) nên Hibernate
+     * sẽ bắn thêm 1 query SELECT riêng cho MỖI customer (N+1 query) khi
+     * load trang "Quản lý khách hàng". Dùng JOIN FETCH gộp lại thành 1 query.
+     */
+    @Query("""
+            SELECT c FROM Customer c
+            LEFT JOIN FETCH c.user
+            ORDER BY c.customerId DESC
+            """)
+    List<Customer> findAllWithUser();
 
     // =========================================================
     // PESSIMISTIC LOCK

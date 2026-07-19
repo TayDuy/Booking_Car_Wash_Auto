@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<project version="4">
-  <component name="ProjectModuleManager">
-    <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/Booking_Car_Wash_Auto.iml" filepath="$PROJECT_DIR$/.idea/Booking_Car_Wash_Auto.iml" />
-      <module fileurl="file://$PROJECT_DIR$/AutoWash-Pro/backend/backend.iml" filepath="$PROJECT_DIR$/AutoWash-Pro/backend/backend.iml" />
-    </modules>
-  </component>
-</project>

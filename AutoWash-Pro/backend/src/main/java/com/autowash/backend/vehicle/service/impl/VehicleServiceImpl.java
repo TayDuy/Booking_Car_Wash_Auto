@@ -27,6 +27,7 @@ public class VehicleServiceImpl implements VehicleService {
     private final BookingRepository bookingRepository;
 
     @Override
+    @Transactional(readOnly = true)
     public List<VehicleResponse> getMyVehicles(Integer userId) {
         Customer customer = customerRepository.findByUser_Id(userId)
                 .orElseThrow(() -> new BusinessException("Không tìm thấy khách hàng", HttpStatus.NOT_FOUND));
@@ -35,13 +36,17 @@ public class VehicleServiceImpl implements VehicleService {
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }
-    
+
     @Override
+    @Transactional(readOnly = true)
     public List<VehicleResponse> getAllVehicles() {
-        return vehicleRespository.findAll()
-            .stream()
-            .map(this::mapToResponse)
-            .toList();
+        // findAllWithCustomer() dùng JOIN FETCH nên chỉ tốn 1 query thay vì
+        // 1 (findAll) + N (mỗi xe lazy-load customer riêng khi mapToResponse
+        // đọc vehicle.getCustomer()...).
+        return vehicleRespository.findAllWithCustomer()
+                .stream()
+                .map(this::mapToResponse)
+                .toList();
     }
 
     private Customer resolveCustomer(Integer userId, Integer customerId) {
@@ -64,6 +69,7 @@ public class VehicleServiceImpl implements VehicleService {
     }
 
     @Override
+    @Transactional
     public VehicleResponse addVehicle(Integer userId, VehicleRequest request) {
         Customer customer = resolveCustomer(userId, request.getCustomerId());
         String normalizedPlate = request.getLicensePlate().trim().toUpperCase();

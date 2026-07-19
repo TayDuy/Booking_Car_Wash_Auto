@@ -25,7 +25,7 @@ public class LoyaltyTransaction {
     @Column(name = "payment_id")
     private Long paymentId;
 
-    @Column(name = "transaction_type", nullable = false, length = 15)
+    @Column(name = "transaction_type", nullable = false, length = 20)
     private String transactionType;
 
     @Column(name = "points", nullable = false)
@@ -40,14 +40,16 @@ public class LoyaltyTransaction {
     @Column(name = "expired_at")
     private LocalDateTime expiredAt;
 
-    @Column(name = "created_at", nullable = false)
+    @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    @Column(name = "note")
+    @Column(name = "note", length = 255)
     private String note;
 
     @PrePersist
     protected void onCreate() {
-        this.createdAt = LocalDateTime.now();
+        if (this.createdAt == null) {
+            this.createdAt = LocalDateTime.now();
+        }
     }
 }

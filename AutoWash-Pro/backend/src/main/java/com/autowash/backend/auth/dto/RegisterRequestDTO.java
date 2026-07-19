@@ -29,9 +29,9 @@ public class RegisterRequestDTO {
     @Size(min = 2, max = 100, message = "Họ và tên phải từ 2 đến 100 ký tự")
     private String fullName;
 
+    // Sau (đúng chuẩn VN):
     @NotBlank(message = "Số điện thoại không được để trống")
-    @Pattern(regexp = "^(0|\\+84)[0-9]{9,10}$",
+    @Pattern(regexp = "^0(3[2-9]|5[25689]|7[06-9]|8[1-9]|9[0-9])[0-9]{7}$",
             message = "Số điện thoại không đúng định dạng (VD: 0912345678)")
     private String phone;
-
     }
