@@ -12,13 +12,15 @@ import com.autowash.backend.employee.dto.EmployeeBookingCreateRequestDTO;
 import com.autowash.backend.employee.entity.Employee;
 import com.autowash.backend.employee.mapper.EmployeeMapper;
 import com.autowash.backend.employee.repository.EmployeeRepository;
+import com.autowash.backend.payment.repository.PaymentRepository;
+import com.autowash.backend.payment.service.PaymentService;
+import com.autowash.backend.payment.service.VNPayService;
 import com.autowash.backend.servicepackage.entity.ServicePackage;
 import com.autowash.backend.servicepackage.repository.ServicePackageRepository;
 import com.autowash.backend.timeslot.entity.TimeSlot;
 import com.autowash.backend.timeslot.repository.TimeSlotRepository;
 import com.autowash.backend.vehicle.entity.Vehicle;
 import com.autowash.backend.vehicle.repository.VehicleRepository;
-import com.autowash.backend.washbay.entity.WashBay;
 import com.autowash.backend.washbay.repository.WashBayRepository;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -53,6 +55,9 @@ class EmployeeServiceImplTest {
     @Mock private TimeSlotRepository timeSlotRepository;
     @Mock private ServicePackageRepository servicePackageRepository;
     @Mock private WashBayRepository washBayRepository;
+    @Mock private PaymentRepository paymentRepository;
+    @Mock private PaymentService paymentService;
+    @Mock private VNPayService vnPayService;
 
     @Captor private ArgumentCaptor<Vehicle> vehicleCaptor;
 
@@ -69,7 +74,7 @@ class EmployeeServiceImplTest {
                 employeeRepository, bookingRepository, bookingDetailRepository,
                 employeeMapper, customerRepository, vehicleRepository,
                 timeSlotRepository, servicePackageRepository,
-                washBayRepository
+                washBayRepository, paymentRepository, paymentService, vnPayService
         );
 
         lenient().when(vehicleRepository.save(any(Vehicle.class)))
@@ -107,7 +112,7 @@ class EmployeeServiceImplTest {
                 .licensePlate("30A-12345")
                 .brand("Toyota")
                 .model("Vios")
-                .vehicleType(Vehicle.VehicleType.car)
+                .vehicleType(Vehicle.VehicleType.FOUR_SEATS)
                 .isActive(true)
                 .build();
     }
@@ -155,7 +160,7 @@ class EmployeeServiceImplTest {
             Vehicle saved = vehicleCaptor.getValue();
             assertEquals("51A-99999", saved.getLicensePlate());
             assertEquals(guestCustomer.getCustomerId(), saved.getCustomer().getCustomerId());
-            assertEquals(Vehicle.VehicleType.car, saved.getVehicleType());
+            assertEquals(Vehicle.VehicleType.FOUR_SEATS, saved.getVehicleType());
             assertTrue(saved.getIsActive());
         }
 
@@ -176,7 +181,7 @@ class EmployeeServiceImplTest {
                     .licensePlate("30A-12345")
                     .brand("Toyota")
                     .model("Vios")
-                    .vehicleType(Vehicle.VehicleType.car)
+                    .vehicleType(Vehicle.VehicleType.FOUR_SEATS)
                     .isActive(true)
                     .build();
 

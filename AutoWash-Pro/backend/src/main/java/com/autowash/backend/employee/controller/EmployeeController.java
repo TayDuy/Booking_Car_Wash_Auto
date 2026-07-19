@@ -5,8 +5,10 @@ import com.autowash.backend.employee.dto.EmployeeBookingCreateRequestDTO;
 import com.autowash.backend.employee.dto.EmployeeProfileResponseDTO;
 import com.autowash.backend.employee.dto.EmployeeQueueBookingResponseDTO;
 import com.autowash.backend.employee.service.EmployeeService;
+import com.autowash.backend.payment.dto.PaymentResponseDTO;
 import com.autowash.backend.security.CustomUserDetails;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -15,6 +17,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -263,5 +266,76 @@ public class EmployeeController {
                         bookingId
                 )
         );
+    }
+
+    // =========================================================
+    // PAYMENT — thanh toán tại trạm
+    // =========================================================
+
+    /**
+     * PATCH /api/v1/employee/bookings/{bookingId}/collect-cash-payment
+     *
+     * Thu tiền mặt tại quầy cho booking đã completed.
+     * Tạo payment (cash) và chuyển ngay sang paid, cộng điểm loyalty
+     * cho khách (kể cả khách vãng lai).
+     */
+    @PatchMapping("/bookings/{bookingId}/collect-cash-payment")
+    public ResponseEntity<EmployeeQueueBookingResponseDTO> collectCashPayment(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable Integer bookingId
+    ) {
+        return ResponseEntity.ok(
+                employeeService.collectCashPayment(
+                        userDetails.getId(),
+                        bookingId
+                )
+        );
+    }
+
+    /**
+     * POST /api/v1/employee/bookings/{bookingId}/online-payment
+     *
+     * Tạo (hoặc lấy lại) yêu cầu thanh toán online (VNPay) cho booking
+     * đã completed. Trả về finalAmount + paymentId để frontend hiển thị
+     * trước khi lấy mã QR.
+     */
+    @PostMapping("/bookings/{bookingId}/online-payment")
+    public ResponseEntity<PaymentResponseDTO> createOnlinePayment(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable Integer bookingId
+    ) {
+        return ResponseEntity.ok(
+                employeeService.ensureOnlinePayment(
+                        userDetails.getId(),
+                        bookingId
+                )
+        );
+    }
+
+    /**
+     * GET /api/v1/employee/bookings/{bookingId}/online-payment/vnpay-qr
+     *
+     * Sinh ảnh QR (PNG) để khách vãng lai quét bằng app ngân hàng/VNPay
+     * ngay tại quầy — không cần khách đăng nhập tài khoản.
+     * Sau khi khách thanh toán xong, VNPay tự động gọi
+     * /api/v1/payments/vnpay-ipn (không đổi) để cập nhật trạng thái;
+     * frontend nên poll GET /api/v1/payments/booking/{bookingId} để biết
+     * khi nào chuyển sang paid.
+     */
+    @GetMapping("/bookings/{bookingId}/online-payment/vnpay-qr")
+    public ResponseEntity<byte[]> getOnlinePaymentQr(
+            HttpServletRequest request,
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable Integer bookingId
+    ) throws Exception {
+        byte[] qrImage = employeeService.generateOnlinePaymentQr(
+                userDetails.getId(),
+                bookingId,
+                request
+        );
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.IMAGE_PNG)
+                .body(qrImage);
     }
 }
