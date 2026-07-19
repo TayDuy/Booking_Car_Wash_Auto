@@ -809,9 +809,9 @@ public class BookingServiceImpl implements BookingService {
     // Sửa lại đúng — dùng Vehicle.VehicleType không phải Promotion.VehicleType
     private Vehicle.VehicleType resolveVehicleType(String vehicleType) {
         return switch (vehicleType) {
-            case "4_seats" -> Vehicle.VehicleType.car;
-            case "7_seats" -> Vehicle.VehicleType.suv;
-            default -> Vehicle.VehicleType.car;
+            case "4_seats" -> Vehicle.VehicleType.FOUR_SEATS;
+            case "7_seats" -> Vehicle.VehicleType.SEVEN_SEATS;
+            default -> Vehicle.VehicleType.FOUR_SEATS;
         };
     }
 

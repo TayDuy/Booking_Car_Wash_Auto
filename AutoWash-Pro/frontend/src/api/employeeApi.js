@@ -2,6 +2,28 @@ import axiosClient from "./axiosClient";
 
 const EMPLOYEE_BASE_PATH = "/employee";
 
+function buildQueueParams({
+  date,
+  status,
+  page = 0,
+  size = 9,
+} = {}) {
+  const normalizedPage = Number.isInteger(Number(page))
+    ? Math.max(Number(page), 0)
+    : 0;
+
+  const normalizedSize = Number.isInteger(Number(size))
+    ? Math.min(Math.max(Number(size), 1), 100)
+    : 9;
+
+  return {
+    date: date?.trim() || undefined,
+    status: status?.trim() || undefined,
+    page: normalizedPage,
+    size: normalizedSize,
+  };
+}
+
 const employeeApi = {
   /**
    * Lấy hồ sơ Employee đang đăng nhập.

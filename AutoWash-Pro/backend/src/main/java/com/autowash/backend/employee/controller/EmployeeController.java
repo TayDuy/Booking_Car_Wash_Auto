@@ -8,22 +8,25 @@ import com.autowash.backend.employee.service.EmployeeService;
 import com.autowash.backend.security.CustomUserDetails;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.*;
-
-import lombok.RequiredArgsConstructor;
-import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/employee")
 @RequiredArgsConstructor
+@Validated
 @PreAuthorize("hasRole('EMPLOYEE')")
 public class EmployeeController {
 
@@ -57,9 +60,10 @@ public class EmployeeController {
      * /queue?date=2026-07-13
      * /queue?status=confirmed
      * /queue?date=2026-07-13&status=checked_in
+     * /queue?date=2026-07-13&status=confirmed&page=0&size=9
      */
     @GetMapping("/queue")
-    public ResponseEntity<List<EmployeeQueueBookingResponseDTO>> getMyBranchQueue(
+    public ResponseEntity<Page<EmployeeQueueBookingResponseDTO>> getMyBranchQueue(
             @AuthenticationPrincipal CustomUserDetails userDetails,
 
             @RequestParam(required = false)
@@ -67,13 +71,25 @@ public class EmployeeController {
             LocalDate date,
 
             @RequestParam(required = false)
-            BookingStatus status
+            BookingStatus status,
+
+            @RequestParam(defaultValue = "0")
+            @Min(value = 0, message = "page không được nhỏ hơn 0")
+            int page,
+
+            @RequestParam(defaultValue = "9")
+            @Min(value = 1, message = "size phải lớn hơn 0")
+            @Max(value = 100, message = "size không được vượt quá 100")
+            int size
     ) {
+        PageRequest pageable = PageRequest.of(page, size);
+
         return ResponseEntity.ok(
                 employeeService.getMyBranchQueue(
                         userDetails.getId(),
                         date,
-                        status
+                        status,
+                        pageable
                 )
         );
     }

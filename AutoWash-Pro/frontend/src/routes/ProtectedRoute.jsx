@@ -1,41 +1,91 @@
-import { useEffect } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 import useAuth from "../hooks/useAuth";
+
+function normalizeRole(role) {
+  const roleValue =
+    typeof role === "object" && role !== null
+      ? role.authority ?? role.name ?? role.role
+      : role;
+
+  return String(roleValue ?? "")
+    .trim()
+    .toUpperCase()
+    .replace(/^ROLE_/, "");
+}
+
+function getUserRoles(auth) {
+  const authRoles = auth?.user?.roles;
+  const storedRoles = localStorage.getItem("roles");
+
+  let parsedStoredRoles = [];
+
+  if (storedRoles) {
+    try {
+      const parsedValue = JSON.parse(storedRoles);
+      parsedStoredRoles = Array.isArray(parsedValue)
+        ? parsedValue
+        : [parsedValue];
+    } catch {
+      parsedStoredRoles = storedRoles.split(",");
+    }
+  }
+
+  const possibleRoles = [
+    ...(Array.isArray(authRoles) ? authRoles : []),
+    auth?.user?.role,
+    localStorage.getItem("role"),
+    ...parsedStoredRoles,
+  ];
+
+  return [...new Set(possibleRoles.map(normalizeRole).filter(Boolean))];
+}
 
 function ProtectedRoute({ children, allowedRoles }) {
   const auth = useAuth();
   const location = useLocation();
-  const navigate = useNavigate();
 
-  useEffect(() => {
-    const token = auth?.token || localStorage.getItem("token");
-    const userRole = auth?.user?.role || localStorage.getItem("role");
+  const token =
+    auth?.token ||
+    localStorage.getItem("token") ||
+    localStorage.getItem("accessToken");
 
-    if (!token) {
-      const redirectParam = encodeURIComponent(location.pathname + location.search);
-      navigate(`/auth/login?redirect=${redirectParam}`, { replace: true });
-      return;
-    }
+  const authLoading = Boolean(auth?.loading || auth?.isLoading);
 
-    if (allowedRoles?.length) {
-      const userRoleUpper = String(userRole || "").toUpperCase();
-      const hasRole = allowedRoles.some(r => r.toUpperCase() === userRoleUpper);
-      if (!hasRole) {
-        navigate("/unauthorized", { replace: true });
-        return;
-      }
-    }
-  }, []);
+  if (authLoading) {
+    return (
+      <div role="status" aria-live="polite">
+        Đang kiểm tra quyền truy cập...
+      </div>
+    );
+  }
 
-  const token = auth?.token || localStorage.getItem("token");
-  const userRole = auth?.user?.role || localStorage.getItem("role");
+  if (!token) {
+    const redirectTarget = `${location.pathname}${location.search}`;
 
-  if (!token) return null;
+    return (
+      <Navigate
+        to={`/auth/login?redirect=${encodeURIComponent(redirectTarget)}`}
+        replace
+      />
+    );
+  }
 
   if (allowedRoles?.length) {
-    const userRoleUpper = String(userRole || "").toUpperCase();
-    const hasRole = allowedRoles.some(r => r.toUpperCase() === userRoleUpper);
-    if (!hasRole) return null;
+    const userRoles = getUserRoles(auth);
+    const normalizedAllowedRoles = allowedRoles.map(normalizeRole);
+    const hasAllowedRole = normalizedAllowedRoles.some((role) =>
+      userRoles.includes(role)
+    );
+
+    if (!hasAllowedRole) {
+      return (
+        <Navigate
+          to="/unauthorized"
+          replace
+          state={{ from: location.pathname }}
+        />
+      );
+    }
   }
 
   return children;

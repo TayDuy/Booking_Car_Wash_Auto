@@ -8,12 +8,15 @@ import {
   UserRound,
   X,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   NavLink,
   Outlet,
   useLocation,
+  useNavigate,
 } from "react-router-dom";
+
+import employeeApi from "../api/employeeApi";
 
 import "./EmployeeLayout.css";
 
@@ -39,17 +42,57 @@ const PAGE_TITLES = {
   "/employee/dashboard": "Dashboard nhân viên",
   "/employee/queue": "Hàng đợi rửa xe",
   "/employee/bookings/new": "Tạo booking tại quầy",
+  "/employee/payment": "Thanh toán booking",
+  "/employee/payment/success": "Thanh toán thành công",
 };
 
 function getStoredUser() {
+  let storedUser = {};
+
+  try {
+    storedUser = JSON.parse(localStorage.getItem("user") || "{}") || {};
+  } catch {
+    storedUser = {};
+  }
+
   return {
-    username: localStorage.getItem("username") || "",
+    username:
+      storedUser.username || localStorage.getItem("username") || "",
     fullName:
+      storedUser.fullName ||
       localStorage.getItem("fullName") ||
       localStorage.getItem("username") ||
       "Nhân viên",
-    role: localStorage.getItem("role") || "EMPLOYEE",
+    role:
+      storedUser.role || localStorage.getItem("role") || "EMPLOYEE",
+    branchName:
+      storedUser.branchName || localStorage.getItem("branchName") || "",
   };
+}
+
+function unwrapResponse(response) {
+  return response?.data?.data ?? response?.data ?? response;
+}
+
+function normalizeEmployee(profile, fallbackUser) {
+  return {
+    username: profile?.username || fallbackUser.username,
+    fullName: profile?.fullName || fallbackUser.fullName,
+    role: profile?.role || fallbackUser.role,
+    branchName:
+      profile?.branchName ||
+      profile?.branch?.branchName ||
+      profile?.branch?.name ||
+      fallbackUser.branchName,
+  };
+}
+
+function getPageTitle(pathname) {
+  return PAGE_TITLES[pathname] ||
+    Object.entries(PAGE_TITLES).find(
+      ([path]) => pathname.startsWith(`${path}/`)
+    )?.[1] ||
+    "Employee Portal";
 }
 
 function clearAuthenticationStorage() {
@@ -62,6 +105,10 @@ function clearAuthenticationStorage() {
     "role",
     "userId",
     "customerId",
+    "employeeId",
+    "branchId",
+    "branchName",
+    "permissions",
     "user",
   ].forEach((key) => {
     localStorage.removeItem(key);
@@ -70,12 +117,53 @@ function clearAuthenticationStorage() {
 
 function EmployeeLayout() {
   const location = useLocation();
+  const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [user, setUser] = useState(getStoredUser);
 
-  const user = getStoredUser();
+  const pageTitle = getPageTitle(location.pathname);
 
-  const pageTitle =
-    PAGE_TITLES[location.pathname] || "Employee Portal";
+  useEffect(() => {
+    let active = true;
+
+    employeeApi
+      .getProfile()
+      .then((response) => {
+        if (!active) {
+          return;
+        }
+
+        setUser((currentUser) =>
+          normalizeEmployee(unwrapResponse(response), currentUser)
+        );
+      })
+      .catch(() => {
+        // Giữ thông tin trong localStorage nếu profile tạm thời không tải được.
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (!sidebarOpen) {
+      return undefined;
+    }
+
+    const handleEscape = (event) => {
+      if (event.key === "Escape") {
+        setSidebarOpen(false);
+      }
+    };
+
+    window.addEventListener("keydown", handleEscape);
+    return () => window.removeEventListener("keydown", handleEscape);
+  }, [sidebarOpen]);
 
   const closeSidebar = () => {
     setSidebarOpen(false);
@@ -83,7 +171,7 @@ function EmployeeLayout() {
 
   const handleLogout = () => {
     clearAuthenticationStorage();
-    window.location.replace("/auth/login");
+    navigate("/auth/login", { replace: true });
   };
 
   return (
@@ -98,6 +186,7 @@ function EmployeeLayout() {
       )}
 
       <aside
+        id="employee-navigation"
         className={[
           "employee-sidebar",
           sidebarOpen ? "is-open" : "",
@@ -184,6 +273,8 @@ function EmployeeLayout() {
               className="employee-topbar__menu"
               onClick={() => setSidebarOpen(true)}
               aria-label="Mở menu"
+              aria-controls="employee-navigation"
+              aria-expanded={sidebarOpen}
             >
               <Menu size={22} aria-hidden="true" />
             </button>
@@ -197,7 +288,9 @@ function EmployeeLayout() {
           <div className="employee-topbar__account">
             <div>
               <strong>{user.fullName}</strong>
-              <span>{user.role}</span>
+              <span>
+                {user.branchName || "Chưa phân chi nhánh"} · {user.role}
+              </span>
             </div>
 
             <div className="employee-topbar__avatar">
