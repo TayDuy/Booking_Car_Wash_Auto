@@ -427,3 +427,57 @@ html[data-theme="dark"]
     flex-wrap: wrap;
   }
 }
+
+.action-dialog-modal {
+  width: 460px;
+  max-width: calc(100vw - 32px);
+}
+
+.dialog-message {
+  margin: 0;
+  color: #334155;
+  font-size: 15px;
+  line-height: 1.65;
+}
+
+.modal-actions {
+  padding: 20px 24px;
+  border-top: 1px solid #e5e7eb;
+
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.secondary-btn {
+  height: 42px;
+  padding: 0 16px;
+
+  border: 1px solid #d7dce4;
+  border-radius: 12px;
+
+  background: white;
+  color: #334155;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.secondary-btn:disabled,
+.refresh-btn:disabled,
+.danger-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.danger-btn {
+  height: 42px;
+  padding: 0 16px;
+
+  border: none;
+  border-radius: 12px;
+
+  background: #dc2626;
+  color: white;
+  font-weight: 700;
+  cursor: pointer;
+}

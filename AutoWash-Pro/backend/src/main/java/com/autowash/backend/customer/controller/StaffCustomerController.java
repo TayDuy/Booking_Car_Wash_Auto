@@ -39,7 +39,7 @@ public class StaffCustomerController {
      * /api/v1/staff/customers
      */
     @PostMapping
-    @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
+    @PreAuthorize("hasAnyRole('EMPLOYEE','ADMIN')")
     public ResponseEntity<AdminCreateCustomerResponseDTO> createCustomer(
             @Valid @RequestBody AdminCreateCustomerRequestDTO request
     ) {

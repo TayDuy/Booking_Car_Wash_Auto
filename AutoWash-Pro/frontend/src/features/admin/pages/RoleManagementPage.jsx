@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { RefreshCw, Search } from "lucide-react";
 import userApi from "../../../api/userApi";
+import { useAppDialog } from "../../../contexts/DialogContext.jsx";
 import "./RoleManagementPage.css";
 
 function getPaginationItems(currentPage, totalPages) {
@@ -41,6 +42,7 @@ function getPaginationItems(currentPage, totalPages) {
 }
 
 export default function RoleManagementPage() {
+    const { confirmAction, showMessage } = useAppDialog();
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
 
@@ -77,10 +79,13 @@ export default function RoleManagementPage() {
 
             setUsers([]);
 
-            alert(
-                error.response?.data?.message ||
-                "Không tải được danh sách user."
-            );
+            await showMessage({
+                title: "Tải dữ liệu thất bại",
+                message:
+                    error.response?.data?.message ||
+                    "Không tải được danh sách người dùng.",
+                variant: "error",
+            });
         } finally {
             setLoading(false);
         }
@@ -172,45 +177,126 @@ export default function RoleManagementPage() {
     );
 
     async function changeRole(user, role) {
-        const oldRole = String(user.role || "").toLowerCase();
+        const oldRole = String(
+            user.role || ""
+        ).toLowerCase();
 
-        if (oldRole === role) return;
+        const nextRole = String(
+            role || ""
+        ).toLowerCase();
 
-        const ok = window.confirm(
-            `Bạn có chắc muốn đổi quyền tài khoản "${user.username}" từ ${oldRole} sang ${role}?`
-        );
+        if (oldRole === nextRole) return;
+
+        const username =
+            user.username ||
+            user.email ||
+            `#${user.id}`;
+
+        const ok = await confirmAction({
+            title: "Đổi quyền tài khoản",
+            message:
+                `Bạn có chắc muốn đổi quyền tài khoản "${username}" ` +
+                `từ ${oldRole.toUpperCase()} sang ${nextRole.toUpperCase()} không?`,
+            confirmText: "Đổi quyền",
+            cancelText: "Hủy",
+            variant: "warning",
+        });
 
         if (!ok) return;
 
         try {
-            await userApi.updateRole(user.id, role);
-            alert("Đổi quyền thành công.");
+            await userApi.updateRole(
+                user.id,
+                nextRole
+            );
+
             await loadUsers();
+
+            await showMessage({
+                title: "Thành công",
+                message: `Đã đổi quyền tài khoản "${username}" thành ${nextRole.toUpperCase()}.`,
+                variant: "success",
+            });
         } catch (err) {
-            console.error(err);
-            alert(err.response?.data?.message || "Đổi quyền thất bại.");
+            console.error(
+                "Update user role failed:",
+                err
+            );
+
+            await showMessage({
+                title: "Đổi quyền thất bại",
+                message:
+                    err.response?.data?.message ||
+                    "Đổi quyền tài khoản thất bại.",
+                variant: "error",
+            });
         }
     }
 
     async function changeStatus(user) {
-        const currentStatus = String(user.status || "").toLowerCase();
-        const nextStatus = currentStatus === "active" ? "inactive" : "active";
+        const currentStatus = String(
+            user.status || ""
+        ).toLowerCase();
 
-        const ok = window.confirm(
-            nextStatus === "inactive"
-                ? `Bạn có chắc muốn khóa tài khoản "${user.username}" không?`
-                : `Bạn có chắc muốn mở khóa tài khoản "${user.username}" không?`
-        );
+        const nextStatus =
+            currentStatus === "active"
+                ? "inactive"
+                : "active";
+
+        const username =
+            user.username ||
+            user.email ||
+            `#${user.id}`;
+
+        const isLocking =
+            nextStatus === "inactive";
+
+        const ok = await confirmAction({
+            title: isLocking
+                ? "Khóa tài khoản"
+                : "Mở khóa tài khoản",
+            message: isLocking
+                ? `Bạn có chắc muốn khóa tài khoản "${username}" không?`
+                : `Bạn có chắc muốn mở khóa tài khoản "${username}" không?`,
+            confirmText: isLocking
+                ? "Khóa tài khoản"
+                : "Mở khóa",
+            cancelText: "Hủy",
+            variant: isLocking
+                ? "danger"
+                : "primary",
+        });
 
         if (!ok) return;
 
         try {
-            await userApi.updateStatus(user.id, nextStatus);
-            alert("Cập nhật trạng thái thành công.");
+            await userApi.updateStatus(
+                user.id,
+                nextStatus
+            );
+
             await loadUsers();
+
+            await showMessage({
+                title: "Thành công",
+                message: isLocking
+                    ? `Đã khóa tài khoản "${username}".`
+                    : `Đã mở khóa tài khoản "${username}".`,
+                variant: "success",
+            });
         } catch (err) {
-            console.error(err);
-            alert(err.response?.data?.message || "Cập nhật trạng thái thất bại.");
+            console.error(
+                "Update user status failed:",
+                err
+            );
+
+            await showMessage({
+                title: "Cập nhật trạng thái thất bại",
+                message:
+                    err.response?.data?.message ||
+                    "Cập nhật trạng thái tài khoản thất bại.",
+                variant: "error",
+            });
         }
     }
 

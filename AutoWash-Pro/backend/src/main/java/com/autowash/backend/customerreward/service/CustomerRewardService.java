@@ -19,4 +19,5 @@ public interface CustomerRewardService {
     );
 
     CustomerRewardResponseDTO useReward(String voucherCode, Integer bookingId, Integer userId);
+    List<CustomerRewardResponseDTO> getAllCustomerRewards();
 }

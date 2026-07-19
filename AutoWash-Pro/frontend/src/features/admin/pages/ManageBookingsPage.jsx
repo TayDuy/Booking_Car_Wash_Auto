@@ -149,6 +149,10 @@ export default function ManageBookingsPage() {
   const [assignableStaff, setAssignableStaff] = useState([]);
   const [staffLoading, setStaffLoading] = useState(false);
 
+  const [confirmDialog, setConfirmDialog] = useState(null);
+  const [messageDialog, setMessageDialog] = useState(null);
+  const [actionLoading, setActionLoading] = useState(false);
+
   useEffect(() => {
     loadBookings();
   }, []);
@@ -207,7 +211,43 @@ export default function ManageBookingsPage() {
     createForm.branchId,
     createForm.bookingDate,
   ]);
+  function showMessageDialog(title, message) {
+    setMessageDialog({ title, message });
+  }
 
+  function openConfirmDialog({
+    title,
+    message,
+    confirmText = "Xác nhận",
+    confirmVariant = "primary",
+    onConfirm,
+  }) {
+    setConfirmDialog({
+      title,
+      message,
+      confirmText,
+      confirmVariant,
+      onConfirm,
+    });
+  }
+
+  function closeConfirmDialog() {
+    if (actionLoading) return;
+    setConfirmDialog(null);
+  }
+
+  async function handleConfirmDialog() {
+    if (!confirmDialog?.onConfirm || actionLoading) return;
+
+    setActionLoading(true);
+
+    try {
+      await confirmDialog.onConfirm();
+      setConfirmDialog(null);
+    } finally {
+      setActionLoading(false);
+    }
+  }
   async function loadBookings() {
     setLoading(true);
 
@@ -313,29 +353,30 @@ export default function ManageBookingsPage() {
     const bookingId = booking.bookingId || booking.id;
 
     if (!bookingId) {
-      alert("Không tìm thấy bookingId.");
+      showMessageDialog("Thiếu dữ liệu", "Không tìm thấy bookingId.");
       return;
     }
 
-    const confirmCancel = window.confirm(
-      "Bạn có chắc muốn hủy đơn đặt lịch này không?"
-    );
+    openConfirmDialog({
+      title: "Hủy booking",
+      message: `Bạn có chắc muốn hủy đơn đặt lịch ${booking.bookingCode || ""} không?`,
+      confirmText: "Hủy booking",
+      confirmVariant: "danger",
+      onConfirm: async () => {
+        try {
+          await bookingApi.adminCancel(bookingId);
+          showMessageDialog("Thành công", "Hủy booking thành công.");
+          await loadBookings();
+        } catch (error) {
+          console.error("Cancel booking failed:", error);
 
-    if (!confirmCancel) return;
-
-    try {
-      await bookingApi.adminCancel(bookingId);
-
-      alert("Hủy booking thành công.");
-      await loadBookings();
-    } catch (error) {
-      console.error("Cancel booking failed:", error);
-
-      alert(
-        error.response?.data?.message ||
-        "Hủy booking thất bại."
-      );
-    }
+          showMessageDialog(
+            "Thất bại",
+            error.response?.data?.message || "Hủy booking thất bại."
+          );
+        }
+      },
+    });
   }
 
   function getStatusClass(status) {
@@ -380,7 +421,7 @@ export default function ManageBookingsPage() {
       setSelectedBooking(response.data?.data || response.data);
     } catch (error) {
       console.error("Load booking detail failed:", error);
-      alert("Không tải được chi tiết booking.");
+      showMessageDialog("Thất bại", "Không tải được chi tiết booking.");
     } finally {
       setDetailLoading(false);
     }
@@ -390,117 +431,120 @@ export default function ManageBookingsPage() {
     const bookingId = booking.bookingId || booking.id;
 
     if (!bookingId) {
-      alert("Không tìm thấy bookingId.");
+      showMessageDialog("Thiếu dữ liệu", "Không tìm thấy bookingId.");
       return;
     }
 
-    const ok = window.confirm(
-      "Bạn có chắc muốn xác nhận booking này không?"
-    );
+    openConfirmDialog({
+      title: "Xác nhận booking",
+      message: `Bạn có chắc muốn xác nhận booking ${booking.bookingCode || ""} không?`,
+      confirmText: "Xác nhận",
+      confirmVariant: "primary",
+      onConfirm: async () => {
+        try {
+          await bookingApi.adminConfirm(bookingId);
+          showMessageDialog("Thành công", "Xác nhận booking thành công.");
+          await loadBookings();
+        } catch (error) {
+          console.error("Confirm booking failed:", error);
 
-    if (!ok) return;
-
-    try {
-      await bookingApi.adminConfirm(bookingId);
-
-      alert("Xác nhận booking thành công.");
-      await loadBookings();
-    } catch (error) {
-      console.error("Confirm booking failed:", error);
-
-      alert(
-        error.response?.data?.message ||
-        "Xác nhận booking thất bại."
-      );
-    }
+          showMessageDialog(
+            "Thất bại",
+            error.response?.data?.message || "Xác nhận booking thất bại."
+          );
+        }
+      },
+    });
   }
   async function handleCheckInBooking(booking) {
     const bookingId = booking.bookingId || booking.id;
 
     if (!bookingId) {
-      alert("Không tìm thấy bookingId.");
+      showMessageDialog("Thiếu dữ liệu", "Không tìm thấy bookingId.");
       return;
     }
 
-    const ok = window.confirm(
-      "Bạn có chắc khách hàng đã đến và muốn check-in booking này không?"
-    );
+    openConfirmDialog({
+      title: "Check-in booking",
+      message: `Bạn xác nhận khách hàng đã đến và muốn check-in booking ${booking.bookingCode || ""} chứ?`,
+      confirmText: "Check-in",
+      confirmVariant: "primary",
+      onConfirm: async () => {
+        try {
+          await bookingApi.adminCheckIn(bookingId);
+          showMessageDialog("Thành công", "Check-in booking thành công.");
+          await loadBookings();
+        } catch (error) {
+          console.error("Check-in booking failed:", error);
 
-    if (!ok) return;
-
-    try {
-      await bookingApi.adminCheckIn(bookingId);
-
-      alert("Check-in booking thành công.");
-      await loadBookings();
-    } catch (error) {
-      console.error("Check-in booking failed:", error);
-
-      alert(
-        error.response?.data?.message ||
-        "Check-in booking thất bại."
-      );
-    }
+          showMessageDialog(
+            "Thất bại",
+            error.response?.data?.message || "Check-in booking thất bại."
+          );
+        }
+      },
+    });
   }
 
   async function handleStartWashBooking(booking) {
     const bookingId = booking.bookingId || booking.id;
 
     if (!bookingId) {
-      alert("Không tìm thấy bookingId.");
+      showMessageDialog("Thiếu dữ liệu", "Không tìm thấy bookingId.");
       return;
     }
 
-    const ok = window.confirm(
-      "Bạn có chắc muốn bắt đầu thực hiện dịch vụ cho booking này không?"
-    );
+    openConfirmDialog({
+      title: "Bắt đầu thực hiện",
+      message: `Bạn có chắc muốn bắt đầu thực hiện dịch vụ cho booking ${booking.bookingCode || ""} không?`,
+      confirmText: "Bắt đầu",
+      confirmVariant: "primary",
+      onConfirm: async () => {
+        try {
+          await bookingApi.adminStartWash(bookingId);
+          showMessageDialog("Thành công", "Đã bắt đầu thực hiện dịch vụ.");
+          await loadBookings();
+        } catch (error) {
+          console.error("Start wash booking failed:", error);
 
-    if (!ok) return;
-
-    try {
-      await bookingApi.adminStartWash(bookingId);
-
-      alert("Đã bắt đầu thực hiện dịch vụ.");
-      await loadBookings();
-    } catch (error) {
-      console.error("Start wash booking failed:", error);
-
-      alert(
-        error.response?.data?.message ||
-        "Không thể bắt đầu thực hiện dịch vụ."
-      );
-    }
+          showMessageDialog(
+            "Thất bại",
+            error.response?.data?.message || "Không thể bắt đầu thực hiện dịch vụ."
+          );
+        }
+      },
+    });
   }
 
   async function handleCompleteBooking(booking) {
     const bookingId = booking.bookingId || booking.id;
 
     if (!bookingId) {
-      alert("Không tìm thấy bookingId.");
+      showMessageDialog("Thiếu dữ liệu", "Không tìm thấy bookingId.");
       return;
     }
 
-    const ok = window.confirm(
-      "Bạn có chắc muốn hoàn thành booking này không?"
-    );
+    openConfirmDialog({
+      title: "Hoàn thành booking",
+      message: `Bạn có chắc muốn hoàn thành booking ${booking.bookingCode || ""} không?`,
+      confirmText: "Hoàn thành",
+      confirmVariant: "primary",
+      onConfirm: async () => {
+        try {
+          await bookingApi.adminComplete(bookingId);
+          showMessageDialog("Thành công", "Hoàn thành booking thành công.");
+          await loadBookings();
+        } catch (error) {
+          console.error("Complete booking failed:", error);
 
-    if (!ok) return;
-
-    try {
-      await bookingApi.adminComplete(bookingId);
-
-      alert("Hoàn thành booking thành công.");
-      await loadBookings();
-    } catch (error) {
-      console.error("Complete booking failed:", error);
-
-      alert(
-        error.response?.data?.message ||
-        "Hoàn thành booking thất bại."
-      );
-    }
+          showMessageDialog(
+            "Thất bại",
+            error.response?.data?.message || "Hoàn thành booking thất bại."
+          );
+        }
+      },
+    });
   }
-
   async function loadCreateOptions() {
     setCreateOptionsLoading(true);
 
@@ -698,7 +742,7 @@ export default function ManageBookingsPage() {
           Number(item.quantity) < 1
       )
     ) {
-      alert("Vui lòng nhập đầy đủ các trường bắt buộc.");
+      showMessageDialog("Thiếu dữ liệu", "Vui lòng nhập đầy đủ các trường bắt buộc.");
       return;
     }
 
@@ -721,13 +765,16 @@ export default function ManageBookingsPage() {
     setCreating(true);
     try {
       await bookingApi.adminCreate(payload);
-      alert("Tạo booking thành công.");
+      showMessageDialog("Thành công", "Tạo booking thành công.");
       setShowCreateModal(false);
       setCurrentPage(1);
       await loadBookings();
     } catch (error) {
       console.error("Create booking failed:", error);
-      alert(error.response?.data?.message || "Tạo booking thất bại.");
+      showMessageDialog(
+        "Thất bại",
+        error.response?.data?.message || "Tạo booking thất bại."
+      );
     } finally {
       setCreating(false);
     }
@@ -812,12 +859,15 @@ export default function ManageBookingsPage() {
     setUpdating(true);
     try {
       await bookingApi.adminUpdate(bookingId, payload);
-      alert("Cập nhật booking thành công.");
+      showMessageDialog("Thành công", "Cập nhật booking thành công.");
       setEditingBooking(null);
       await loadBookings();
     } catch (error) {
       console.error("Update booking failed:", error);
-      alert(error.response?.data?.message || "Cập nhật booking thất bại.");
+      showMessageDialog(
+        "Thất bại",
+        error.response?.data?.message || "Cập nhật booking thất bại."
+      );
     } finally {
       setUpdating(false);
     }
@@ -1603,6 +1653,79 @@ export default function ManageBookingsPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {confirmDialog && (
+        <div className="modal-backdrop">
+          <div className="booking-detail-modal action-dialog-modal">
+            <div className="modal-header">
+              <h2>{confirmDialog.title}</h2>
+              <button
+                type="button"
+                onClick={closeConfirmDialog}
+                disabled={actionLoading}
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="detail-content">
+              <p className="dialog-message">{confirmDialog.message}</p>
+            </div>
+
+            <div className="modal-actions">
+              <button
+                type="button"
+                className="secondary-btn"
+                onClick={closeConfirmDialog}
+                disabled={actionLoading}
+              >
+                Hủy
+              </button>
+
+              <button
+                type="button"
+                className={
+                  confirmDialog.confirmVariant === "danger"
+                    ? "danger-btn"
+                    : "refresh-btn"
+                }
+                onClick={handleConfirmDialog}
+                disabled={actionLoading}
+              >
+                {actionLoading ? "Đang xử lý..." : confirmDialog.confirmText}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {messageDialog && (
+        <div className="modal-backdrop">
+          <div className="booking-detail-modal action-dialog-modal">
+            <div className="modal-header">
+              <h2>{messageDialog.title}</h2>
+              <button
+                type="button"
+                onClick={() => setMessageDialog(null)}
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="detail-content">
+              <p className="dialog-message">{messageDialog.message}</p>
+            </div>
+
+            <div className="modal-actions">
+              <button
+                type="button"
+                className="refresh-btn"
+                onClick={() => setMessageDialog(null)}
+              >
+                OK
+              </button>
+            </div>
           </div>
         </div>
       )}

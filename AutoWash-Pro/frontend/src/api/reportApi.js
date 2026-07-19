@@ -1,7 +1,13 @@
 import axiosClient from "./axiosClient";
 
 const reportApi = {
-  dashboard: () => axiosClient.get("/reports/dashboard"),
+  dashboard: (fromDate, toDate) =>
+    axiosClient.get("/reports/dashboard", {
+      params: {
+        ...(fromDate ? { fromDate } : {}),
+        ...(toDate ? { toDate } : {}),
+      },
+    }),
 };
 
 export default reportApi;
