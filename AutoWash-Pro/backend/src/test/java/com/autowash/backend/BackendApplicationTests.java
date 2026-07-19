@@ -30,8 +30,8 @@ class BackendApplicationTests {
     void testQueryGenderValues() {
         try {
             java.util.List<String> genders = jdbcTemplate.queryForList(
-                "SELECT DISTINCT gender FROM customer",
-                String.class
+                    "SELECT DISTINCT gender FROM customer",
+                    String.class
             );
             System.out.println("=== UNIQUE GENDERS IN DATABASE: " + genders);
         } catch (Exception e) {
@@ -65,7 +65,7 @@ class BackendApplicationTests {
     @Test
     void testSaveKhacGenderFails() {
         System.out.println("=== START SAVE KHAC GENDER FAILS TEST ===");
-        
+
         com.autowash.backend.customer.entity.Customer customer = customerRepository.findAll().stream()
                 .findFirst()
                 .orElseThrow(() -> new IllegalStateException("No customer found"));
@@ -84,7 +84,7 @@ class BackendApplicationTests {
     @org.springframework.transaction.annotation.Transactional
     void testSaveKhacGenderSucceeds() {
         System.out.println("=== START SAVE KHAC GENDER SUCCEEDS TEST ===");
-        
+
         com.autowash.backend.customer.entity.Customer customer = customerRepository.findAll().stream()
                 .findFirst()
                 .orElseThrow(() -> new IllegalStateException("No customer found"));
@@ -122,15 +122,15 @@ class BackendApplicationTests {
     @Test
     void testSaveSuvVehicle() {
         System.out.println("=== START SUV VEHICLE SAVE TEST ===");
-        
+
         try {
             System.out.println("=== ALTERING CONSTRAINT IN TEST ===");
             jdbcTemplate.execute("ALTER TABLE vehicle DROP CONSTRAINT IF EXISTS vehicle_vehicle_type_check");
-            jdbcTemplate.execute("ALTER TABLE vehicle ADD CONSTRAINT vehicle_vehicle_type_check CHECK (vehicle_type::text = ANY (ARRAY['car'::text, 'suv'::text, 'truck'::text, 'motorbike'::text]))");
-            
+            jdbcTemplate.execute("ALTER TABLE vehicle ADD CONSTRAINT vehicle_vehicle_type_check CHECK (vehicle_type::text = ANY (ARRAY['4 chỗ'::text, '7 chỗ'::text]))");
+
             String constraintDef = jdbcTemplate.queryForObject(
-                "SELECT pg_get_constraintdef(oid) FROM pg_constraint WHERE conname = 'vehicle_vehicle_type_check'",
-                String.class
+                    "SELECT pg_get_constraintdef(oid) FROM pg_constraint WHERE conname = 'vehicle_vehicle_type_check'",
+                    String.class
             );
             System.out.println("=== CURRENT CONSTRAINT DEFINITION: " + constraintDef);
         } catch (Exception e) {
@@ -142,7 +142,7 @@ class BackendApplicationTests {
                 .orElseThrow(() -> new IllegalStateException("No customer found in the database"));
 
         String testLicensePlate = "SUV" + (System.currentTimeMillis() % 10000000);
-        
+
         // Clean up if somehow it already exists
         vehicleRepository.findByLicensePlate(testLicensePlate).ifPresent(v -> {
             vehicleRepository.delete(v);
@@ -153,7 +153,7 @@ class BackendApplicationTests {
                 .licensePlate(testLicensePlate)
                 .brand("Ford")
                 .model("Everest")
-                .vehicleType(com.autowash.backend.vehicle.entity.Vehicle.VehicleType.suv)
+                .vehicleType(com.autowash.backend.vehicle.entity.Vehicle.VehicleType.SEVEN_SEATS)
                 .color("Vàng")
                 .nickname("Test SUV")
                 .isActive(true)
@@ -161,7 +161,7 @@ class BackendApplicationTests {
 
         com.autowash.backend.vehicle.entity.Vehicle savedVehicle = vehicleRepository.save(vehicle);
         org.junit.jupiter.api.Assertions.assertNotNull(savedVehicle.getVehicleId());
-        org.junit.jupiter.api.Assertions.assertEquals(com.autowash.backend.vehicle.entity.Vehicle.VehicleType.suv, savedVehicle.getVehicleType());
+        org.junit.jupiter.api.Assertions.assertEquals(com.autowash.backend.vehicle.entity.Vehicle.VehicleType.SEVEN_SEATS, savedVehicle.getVehicleType());
 
         // Clean up
         vehicleRepository.delete(savedVehicle);
@@ -176,11 +176,11 @@ class BackendApplicationTests {
         jakarta.validation.Validator validator = factory.getValidator();
 
         java.util.List<String> validPlates = java.util.List.of(
-            "51A-999.99",
-            "51a-99999",
-            "30A-1234",
-            "51B-123.4",
-            "51b-123.45"
+                "51A-999.99",
+                "51a-99999",
+                "30A-1234",
+                "51B-123.4",
+                "51b-123.45"
         );
 
         for (String plate : validPlates) {
@@ -188,7 +188,7 @@ class BackendApplicationTests {
             request.setLicensePlate(plate);
             request.setBrand("Ford");
             request.setModel("Everest");
-            request.setVehicleType(com.autowash.backend.vehicle.entity.Vehicle.VehicleType.suv);
+            request.setVehicleType(com.autowash.backend.vehicle.entity.Vehicle.VehicleType.SEVEN_SEATS);
 
             java.util.Set<jakarta.validation.ConstraintViolation<com.autowash.backend.vehicle.dto.VehicleRequest>> violations = validator.validate(request);
             org.junit.jupiter.api.Assertions.assertTrue(violations.isEmpty(), "Plate " + plate + " should be valid but has violations: " + violations);
@@ -199,20 +199,20 @@ class BackendApplicationTests {
     @org.springframework.transaction.annotation.Transactional
     void testSaveVariousLicensePlates() {
         System.out.println("=== START TEST SAVE VARIOUS LICENSE PLATES ===");
-        
+
         com.autowash.backend.customer.entity.Customer customer = customerRepository.findAll().stream()
                 .findFirst()
                 .orElseThrow(() -> new IllegalStateException("No customer found"));
 
         java.util.List<String> plates = java.util.List.of(
-            "51A-999.99",
-            "51a-99999",
-            " 51A-99999 "
+                "51A-999.99",
+                "51a-99999",
+                " 51A-99999 "
         );
 
         for (String rawPlate : plates) {
             String normalizedPlate = rawPlate.trim().toUpperCase();
-            
+
             // Clean up if somehow it already exists
             vehicleRepository.findByLicensePlate(normalizedPlate).ifPresent(v -> {
                 vehicleRepository.delete(v);
@@ -224,7 +224,7 @@ class BackendApplicationTests {
                     .licensePlate(normalizedPlate)
                     .brand("Ford")
                     .model("Everest")
-                    .vehicleType(com.autowash.backend.vehicle.entity.Vehicle.VehicleType.suv)
+                    .vehicleType(com.autowash.backend.vehicle.entity.Vehicle.VehicleType.SEVEN_SEATS)
                     .color("Vàng")
                     .nickname("Test Plate " + normalizedPlate)
                     .isActive(true)
@@ -237,7 +237,7 @@ class BackendApplicationTests {
             // Clean up
             vehicleRepository.delete(savedVehicle);
         }
-        
+
         System.out.println("=== TEST SAVE VARIOUS LICENSE PLATES SUCCESS ===");
     }
 
@@ -245,7 +245,7 @@ class BackendApplicationTests {
     void testAuthDirectly() {
         System.out.println("=== START PASSWORD UPDATE ===");
         String encoded = passwordEncoder.encode("123456");
-        
+
         userRepository.findByUsernameOrEmail("admin.minh", "minh.admin@autowash.vn").ifPresent(user -> {
             user.setPassword(encoded);
             userRepository.save(user);
@@ -307,18 +307,18 @@ class BackendApplicationTests {
         try {
             // Lay 1 user
             User user = userRepository.findAll().stream().findFirst().orElseThrow();
-            
+
             // Tao refresh token
             com.autowash.backend.auth.entity.RefreshToken rt = refreshTokenService.createRefreshToken(user.getId());
             System.out.println("=== REFRESH TOKEN CREATED ===");
             System.out.println("Token: " + rt.getToken());
             System.out.println("Expiry Date: " + rt.getExpriryDate());
-            
+
             // Thu verify
             com.autowash.backend.auth.entity.RefreshToken verified = refreshTokenService.verifyExpiration(rt);
             System.out.println("=== REFRESH TOKEN VERIFIED ===");
             System.out.println("Verified Expiry: " + verified.getExpriryDate());
-            
+
             // Thu find
             com.autowash.backend.auth.entity.RefreshToken found = refreshTokenService.findByToken(rt.getToken());
             System.out.println("=== REFRESH TOKEN FOUND ===");
@@ -382,7 +382,7 @@ class BackendApplicationTests {
                     for (int hour = 8; hour <= 17; hour++) {
                         java.time.LocalTime startTime = java.time.LocalTime.of(hour, 0);
                         java.time.LocalTime endTime = startTime.plusMinutes(45);
-                        
+
                         com.autowash.backend.timeslot.entity.TimeSlot slot = com.autowash.backend.timeslot.entity.TimeSlot.builder()
                                 .branch(branch)
                                 .washBay(washBay)
@@ -411,11 +411,11 @@ class BackendApplicationTests {
         try {
             java.util.List<java.util.Map<String, Object>> list = jdbcTemplate.queryForList("SELECT * FROM reward");
             for (java.util.Map<String, Object> r : list) {
-                System.out.println("Reward: id=" + r.get("reward_id") + 
-                                   ", name=" + r.get("reward_name") + 
-                                   ", requiredPoints=" + r.get("required_points") + 
-                                   ", requiredTierLevel=" + r.get("required_tier_level") + 
-                                   ", status=" + r.get("status"));
+                System.out.println("Reward: id=" + r.get("reward_id") +
+                        ", name=" + r.get("reward_name") +
+                        ", requiredPoints=" + r.get("required_points") +
+                        ", requiredTierLevel=" + r.get("required_tier_level") +
+                        ", status=" + r.get("status"));
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -440,5 +440,3 @@ class BackendApplicationTests {
         }
     }
 }
-
-
