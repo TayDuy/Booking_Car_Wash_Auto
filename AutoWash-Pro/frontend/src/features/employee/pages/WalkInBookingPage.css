@@ -152,6 +152,12 @@
   color: #dc2626;
 }
 
+.walk-in-booking-form label > small {
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 .walk-in-booking-form input,
 .walk-in-booking-form select,
 .walk-in-booking-form textarea {
@@ -181,6 +187,15 @@
 .walk-in-booking-form textarea:focus {
   border-color: #2563eb;
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.walk-in-booking-form input[name="initialPassword"] {
+  background: #f8fafc;
+  border-color: #bfdbfe;
+}
+
+.walk-in-booking-form input[name="initialPassword"]:focus {
+  background: #ffffff;
 }
 
 .walk-in-booking-form input:disabled,

@@ -3,102 +3,93 @@ import axiosClient from "./axiosClient";
 const EMPLOYEE_BASE_PATH = "/employee";
 
 const employeeApi = {
-  /**
-   * Lấy hồ sơ Employee đang đăng nhập.
-   * GET /api/v1/employee/profile
-   */
-  getProfile: () => {
-    return axiosClient.get(`${EMPLOYEE_BASE_PATH}/profile`);
-  },
+  /** GET /api/v1/employee/profile */
+  getProfile: () =>
+      axiosClient.get(`${EMPLOYEE_BASE_PATH}/profile`),
 
   /**
-   * Lấy hàng đợi của chi nhánh Employee.
-   *
-   * Không truyền status:
-   * pending, confirmed, checked_in, in_progress.
-   *
    * GET /api/v1/employee/queue
+   * Không truyền status sẽ lấy các trạng thái đang vận hành.
    */
-  getQueue: ({ date, status } = {}) => {
-    return axiosClient.get(`${EMPLOYEE_BASE_PATH}/queue`, {
-      params: {
-        date: date || undefined,
-        status: status || undefined,
-      },
-    });
-  },
+  getQueue: ({ date, status } = {}) =>
+      axiosClient.get(`${EMPLOYEE_BASE_PATH}/queue`, {
+        params: {
+          date: date || undefined,
+          status: status || undefined,
+        },
+      }),
 
-  /**
-   * Xem booking theo ID.
-   * GET /api/v1/employee/bookings/{bookingId}
-   */
-  getBookingById: (bookingId) => {
-    return axiosClient.get(
-      `${EMPLOYEE_BASE_PATH}/bookings/${bookingId}`
-    );
-  },
+  /** GET /api/v1/employee/bookings/{bookingId} */
+  getBookingById: (bookingId) =>
+      axiosClient.get(
+          `${EMPLOYEE_BASE_PATH}/bookings/${bookingId}`
+      ),
 
-  /**
-   * Tìm booking bằng mã.
-   * GET /api/v1/employee/bookings/search
-   */
-  searchBookingByCode: (bookingCode) => {
-    return axiosClient.get(
-      `${EMPLOYEE_BASE_PATH}/bookings/search`,
-      {
+  /** GET /api/v1/employee/bookings/search?bookingCode=... */
+  searchBookingByCode: (bookingCode) =>
+      axiosClient.get(`${EMPLOYEE_BASE_PATH}/bookings/search`, {
         params: {
           bookingCode: bookingCode?.trim(),
         },
-      }
-    );
-  },
+      }),
 
   /**
-   * Employee tạo booking cho khách tại quầy.
    * POST /api/v1/employee/bookings
+   *
+   * BE không lưu Payment. Việc xóa paymentMethod tại đây giúp
+   * những component FE cũ chưa cập nhật vẫn không gửi field thừa.
    */
-  createWalkInBooking: (payload) => {
+  createWalkInBooking: (payload = {}) => {
+    const requestPayload = { ...payload };
+    delete requestPayload.paymentMethod;
+
     return axiosClient.post(
-      `${EMPLOYEE_BASE_PATH}/bookings`,
-      payload
+        `${EMPLOYEE_BASE_PATH}/bookings`,
+        requestPayload
     );
   },
 
-  /**
-   * pending → confirmed
-   */
-  confirmBooking: (bookingId) => {
-    return axiosClient.patch(
-      `${EMPLOYEE_BASE_PATH}/bookings/${bookingId}/confirm`
-    );
-  },
+  /** pending -> confirmed */
+  confirmBooking: (bookingId) =>
+      axiosClient.patch(
+          `${EMPLOYEE_BASE_PATH}/bookings/${bookingId}/confirm`
+      ),
+
+  /** confirmed -> checked_in */
+  checkInBooking: (bookingId) =>
+      axiosClient.patch(
+          `${EMPLOYEE_BASE_PATH}/bookings/${bookingId}/check-in`
+      ),
+
+  /** confirmed -> no_show */
+  markNoShow: (bookingId) =>
+      axiosClient.patch(
+          `${EMPLOYEE_BASE_PATH}/bookings/${bookingId}/no-show`
+      ),
 
   /**
-   * confirmed → checked_in
+   * checked_in -> in_progress
+   * bayId không bắt buộc; bỏ trống để dùng wash bay của slot.
    */
-  checkInBooking: (bookingId) => {
-    return axiosClient.patch(
-      `${EMPLOYEE_BASE_PATH}/bookings/${bookingId}/check-in`
-    );
-  },
+  startWash: (bookingId, bayId) =>
+      axiosClient.patch(
+          `${EMPLOYEE_BASE_PATH}/bookings/${bookingId}/start-wash`,
+          null,
+          {
+            params: {
+              bayId: bayId || undefined,
+            },
+          }
+      ),
 
   /**
-   * checked_in → in_progress
+   * in_progress -> completed
+   * Employee chỉ gọi sau khi đã kiểm tra khách thanh toán tại quầy.
    */
-  startWash: (bookingId) => {
-    return axiosClient.patch(
-      `${EMPLOYEE_BASE_PATH}/bookings/${bookingId}/start-wash`
-    );
-  },
-
-  /**
-   * in_progress → completed
-   */
-  completeBooking: (bookingId) => {
-    return axiosClient.patch(
-      `${EMPLOYEE_BASE_PATH}/bookings/${bookingId}/complete`
-    );
-  },
+  completeBooking: (bookingId) =>
+      axiosClient.patch(
+          `${EMPLOYEE_BASE_PATH}/bookings/${bookingId}/complete`
+      ),
 };
 
 export default employeeApi;

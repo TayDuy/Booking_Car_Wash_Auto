@@ -122,6 +122,8 @@
 
 .employee-detail-summary > div {
   display: flex;
+  min-width: 0;
+  flex: 1;
   flex-direction: column;
   gap: 7px;
 }
@@ -139,33 +141,6 @@
 .employee-detail-summary strong {
   color: #0f172a;
   font-size: 1.18rem;
-}
-
-.employee-detail-payment {
-  font-size: 0.85rem !important;
-  padding: 3px 12px;
-  border-radius: 10px;
-  font-weight: 600;
-}
-
-.employee-detail-payment.payment-badge-unpaid {
-  background: rgba(239, 68, 68, 0.1);
-  color: #dc2626;
-}
-
-.employee-detail-payment.payment-badge-paid {
-  background: rgba(16, 185, 129, 0.1);
-  color: #047857;
-}
-
-.employee-detail-payment.payment-badge-failed {
-  background: rgba(239, 68, 68, 0.1);
-  color: #b91c1c;
-}
-
-.employee-detail-payment.payment-badge-cancelled {
-  background: rgba(107, 114, 128, 0.1);
-  color: #6b7280;
 }
 
 .employee-detail-grid {
@@ -248,5 +223,6 @@
 
   .employee-detail-summary {
     align-items: flex-start;
+    gap: 12px;
   }
 }

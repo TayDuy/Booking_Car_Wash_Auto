@@ -27,12 +27,18 @@ import com.autowash.backend.timeslot.repository.TimeSlotRepository;
 import com.autowash.backend.vehicle.entity.Vehicle;
 import com.autowash.backend.vehicle.repository.VehicleRepository;
 import com.autowash.backend.washbay.repository.WashBayRepository;
+import com.autowash.backend.user.entity.User;
+import com.autowash.backend.user.repository.UserRepository;
+import com.autowash.backend.loyaltytransaction.dto.LoyaltyTransactionResponseDTO;
+import com.autowash.backend.loyaltytransaction.service.LoyaltyTransactionService;
+import com.autowash.backend.loyaltytier.service.LoyaltyTierEvaluationService;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -53,6 +59,8 @@ import java.util.UUID;
 @Transactional(readOnly = true)
 public class EmployeeServiceImpl implements EmployeeService {
 
+    private static final long NO_SHOW_GRACE_MINUTES = 15L;
+
     private final EmployeeRepository employeeRepository;
     private final BookingRepository bookingRepository;
     private final BookingDetailRepository bookingDetailRepository;
@@ -63,6 +71,10 @@ public class EmployeeServiceImpl implements EmployeeService {
     private final TimeSlotRepository timeSlotRepository;
     private final ServicePackageRepository servicePackageRepository;
     private final WashBayRepository washBayRepository;
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final LoyaltyTransactionService loyaltyTransactionService;
+    private final LoyaltyTierEvaluationService loyaltyTierEvaluationService;
 
     // =========================================================
     // PROFILE
@@ -174,7 +186,7 @@ public class EmployeeServiceImpl implements EmployeeService {
          * - Khách đã có customerId.
          * - Khách vãng lai chưa có tài khoản.
          */
-        Customer customer = resolveBookingCustomer(request);
+        Customer customer = resolveBookingCustomer(request, branch);
 
         /*
          * Tái sử dụng xe cũ của Customer nếu trùng biển số.
@@ -289,6 +301,7 @@ public class EmployeeServiceImpl implements EmployeeService {
     ) {
         Employee employee = getCurrentActiveEmployee(userId);
         Branch branch = requireOperationalBranch(employee);
+        requireQueueManager(employee);
 
         Booking booking = getBranchBooking(
                 bookingId,
@@ -351,6 +364,104 @@ public class EmployeeServiceImpl implements EmployeeService {
 
         log.info(
                 "[Employee] Employee #{} check-in booking #{} ({})",
+                employee.getEmployeeId(),
+                savedBooking.getBookingId(),
+                savedBooking.getBookingCode()
+        );
+
+        return mapBookingResponse(savedBooking);
+    }
+
+// =========================================================
+// NO-SHOW
+// confirmed -> no_show
+// =========================================================
+
+    /**
+     * Đánh dấu khách không đến sau 15 phút kể từ giờ bắt đầu.
+     *
+     * Booking no-show:
+     * - Không cộng điểm.
+     * - Không tăng lượt sử dụng.
+     * - Không tạo Payment.
+     * - Trả lại sức chứa cho TimeSlot.
+     */
+    @Override
+    @Transactional
+    public EmployeeQueueBookingResponseDTO markNoShow(
+            Integer userId,
+            Integer bookingId
+    ) {
+        Employee employee = getCurrentActiveEmployee(userId);
+        Branch branch = requireOperationalBranch(employee);
+
+        /*
+         * Chỉ supervisor hoặc manager được phép
+         * đánh dấu khách không đến.
+         */
+        requireQueueManager(employee);
+
+        Booking booking = getBranchBooking(
+                bookingId,
+                branch.getBranchId()
+        );
+
+        /*
+         * Chỉ booking confirmed mới có thể chuyển no_show.
+         */
+        if (!booking.canMarkNoShow()) {
+            throw invalidTransition(
+                    booking,
+                    "đánh dấu không đến",
+                    BookingStatus.confirmed
+            );
+        }
+
+        TimeSlot slot = booking.getSlot();
+
+        if (slot == null
+                || slot.getSlotDate() == null
+                || slot.getStartTime() == null) {
+            throw new BusinessException(
+                    "Booking chưa có đầy đủ thông tin khung giờ",
+                    HttpStatus.CONFLICT
+            );
+        }
+
+        LocalDateTime slotStart = LocalDateTime.of(
+                slot.getSlotDate(),
+                slot.getStartTime()
+        );
+
+        LocalDateTime noShowAllowedAt = slotStart.plusMinutes(
+                NO_SHOW_GRACE_MINUTES
+        );
+
+        /*
+         * Không được đánh dấu no-show quá sớm.
+         */
+        if (LocalDateTime.now().isBefore(noShowAllowedAt)) {
+            throw new BusinessException(
+                    "Chỉ được đánh dấu no-show sau "
+                            + NO_SHOW_GRACE_MINUTES
+                            + " phút kể từ giờ hẹn",
+                    HttpStatus.CONFLICT
+            );
+        }
+
+        booking.setStatus(BookingStatus.no_show);
+
+        /*
+         * Booking không còn chiếm sức chứa của slot.
+         * decrementBookings() cũng tự mở lại slot nếu trước đó đã full.
+         */
+        slot.decrementBookings();
+
+        Booking savedBooking = bookingRepository.save(booking);
+        timeSlotRepository.save(slot);
+
+        log.info(
+                "[Employee] Employee #{} đánh dấu booking #{} ({}) là no_show",
                 employee.getEmployeeId(),
                 savedBooking.getBookingId(),
                 savedBooking.getBookingCode()
@@ -510,17 +621,19 @@ public class EmployeeServiceImpl implements EmployeeService {
 
         booking.setStatus(BookingStatus.completed);
         booking.setCompleteAt(LocalDateTime.now());
-
         washBay.setStatus(BayStatus.available);
 
-        /*
-         * Không cộng điểm loyalty tại đây.
-         * Điểm chỉ được cộng khi payment chuyển sang paid.
-         */
         Booking savedBooking = bookingRepository.save(booking);
+        washBayRepository.save(washBay);
+
+        /*
+         * Employee chỉ bấm complete sau khi đã xác nhận khách thanh toán
+         * tại quầy. Không tạo Payment và không lưu phương thức thanh toán.
+         */
+        grantLoyaltyForCompletedBooking(savedBooking);
 
         log.info(
-                "[Employee] Employee #{} hoàn thành booking #{}; wash bay #{} chuyển về available",
+                "[Employee] Employee #{} hoàn thành booking #{}; wash bay #{} đã được giải phóng và loyalty đã được cập nhật",
                 employee.getEmployeeId(),
                 savedBooking.getBookingId(),
                 washBay.getBayId()
@@ -534,7 +647,8 @@ public class EmployeeServiceImpl implements EmployeeService {
 // =========================================================
 
     private Customer resolveBookingCustomer(
-            EmployeeBookingCreateRequestDTO request
+            EmployeeBookingCreateRequestDTO request,
+            Branch branch
     ) {
         /*
          * Khách đã tồn tại trong hệ thống.
@@ -551,12 +665,10 @@ public class EmployeeServiceImpl implements EmployeeService {
                     );
         }
 
-        /*
-         * Khách vãng lai.
-         */
-        if (!request.hasGuestInformation()) {
+        /* Khách vãng lai phải đủ dữ liệu để tạo tài khoản đăng nhập. */
+        if (!request.hasCompleteAccountInformation()) {
             throw new BusinessException(
-                    "Khách vãng lai phải có họ tên và số điện thoại",
+                    "Khách vãng lai phải có họ tên, số điện thoại và mật khẩu ban đầu",
                     HttpStatus.BAD_REQUEST
             );
         }
@@ -569,38 +681,75 @@ public class EmployeeServiceImpl implements EmployeeService {
                 request.getGuestEmail()
         );
 
-        /*
-         * Chỉ tái sử dụng hồ sơ guest khi cả tên và số điện thoại
-         * đều trùng, tránh gán nhầm những người dùng chung số điện thoại.
-         */
-        return customerRepository
-                .findFirstByUserIsNullAndPhoneAndFullNameIgnoreCaseOrderByCustomerIdDesc(
-                        guestPhone,
-                        guestName
-                )
-                .map(existingGuest -> {
-                    existingGuest.setFullName(guestName);
-                    existingGuest.setPhone(guestPhone);
+        User user = userRepository.findByPhone(guestPhone).orElse(null);
 
-                    if (guestEmail != null) {
-                        existingGuest.setEmail(guestEmail);
-                    }
+        if (user != null) {
+            Customer existingCustomer = customerRepository
+                    .findByUser_Id(user.getId())
+                    .orElse(null);
 
-                    return customerRepository.save(existingGuest);
-                })
-                .orElseGet(() ->
-                        customerRepository.save(
-                                Customer.builder()
-                                        .user(null)
-                                        .fullName(guestName)
-                                        .phone(guestPhone)
-                                        .email(guestEmail)
-                                        .totalPoints(0)
-                                        .totalVisits(0)
-                                        .totalSpending(BigDecimal.ZERO)
-                                        .build()
-                        )
-                );
+            if (existingCustomer != null) {
+                return existingCustomer;
+            }
+
+            return customerRepository.save(
+                    Customer.builder()
+                            .user(user)
+                            .fullName(guestName)
+                            .phone(guestPhone)
+                            .email(guestEmail)
+                            .brandId(branch.getBranchId())
+                            .tierId(1)
+                            .totalPoints(0)
+                            .totalVisits(0)
+                            .totalSpending(BigDecimal.ZERO)
+                            .build()
+            );
+        }
+
+        if (guestEmail != null
+                && userRepository.existsByEmailIgnoreCase(guestEmail)) {
+            throw new BusinessException(
+                    "Email đã được sử dụng bởi một tài khoản khác",
+                    HttpStatus.CONFLICT
+            );
+        }
+
+        String username = guestPhone;
+        if (userRepository.existsByUsernameIgnoreCase(username)) {
+            throw new BusinessException(
+                    "Tên đăng nhập được tạo từ số điện thoại đã tồn tại",
+                    HttpStatus.CONFLICT
+            );
+        }
+
+        User savedUser = userRepository.save(
+                User.builder()
+                        .username(username)
+                        .email(guestEmail)
+                        .phone(guestPhone)
+                        .password(passwordEncoder.encode(
+                                request.getInitialPassword()
+                        ))
+                        .role("customer")
+                        .status("active")
+                        .failedAttempts(0)
+                        .build()
+        );
+
+        return customerRepository.save(
+                Customer.builder()
+                        .user(savedUser)
+                        .fullName(guestName)
+                        .phone(guestPhone)
+                        .email(guestEmail)
+                        .brandId(branch.getBranchId())
+                        .tierId(1)
+                        .totalPoints(0)
+                        .totalVisits(0)
+                        .totalSpending(BigDecimal.ZERO)
+                        .build()
+        );
     }
 
     private Vehicle resolveBookingVehicle(
@@ -616,14 +765,19 @@ public class EmployeeServiceImpl implements EmployeeService {
         return vehicleRepository
                 .findByLicensePlate(normalizedPlate)
                 .map(existingVehicle -> {
-                    if (!existingVehicle.getCustomer().getCustomerId().equals(customer.getCustomerId())) {
-                        existingVehicle.setCustomer(customer);
+                    if (existingVehicle.getCustomer() == null
+                            || !existingVehicle.getCustomer().getCustomerId()
+                            .equals(customer.getCustomerId())) {
+                        throw new BusinessException(
+                                "Biển số xe đã thuộc tài khoản khách hàng khác",
+                                HttpStatus.CONFLICT
+                        );
                     }
 
                     existingVehicle.setIsActive(true);
                     existingVehicle.setVehicleType(requestedType);
 
-                    String brand = trimToNull(request.getBrand());
+                    String brand = requireVehicleBrand(request.getBrand());
                     String model = trimToNull(request.getModel());
 
                     if (brand != null) {
@@ -641,7 +795,7 @@ public class EmployeeServiceImpl implements EmployeeService {
                                 Vehicle.builder()
                                         .customer(customer)
                                         .licensePlate(normalizedPlate)
-                                        .brand(trimToNull(request.getBrand()))
+                                        .brand(requireVehicleBrand(request.getBrand()))
                                         .model(trimToNull(request.getModel()))
                                         .vehicleType(requestedType)
                                         .isActive(true)
@@ -685,6 +839,14 @@ public class EmployeeServiceImpl implements EmployeeService {
                                             item.getServiceId()
                                     )
                             );
+
+            if (!Boolean.TRUE.equals(servicePackage.getIsActive())) {
+                throw new BusinessException(
+                        "Dịch vụ hiện không hoạt động: "
+                                + servicePackage.getServiceName(),
+                        HttpStatus.CONFLICT
+                );
+            }
 
             BigDecimal unitPrice = servicePackage.getBasePrice();
 
@@ -806,9 +968,30 @@ public class EmployeeServiceImpl implements EmployeeService {
             );
         }
 
-        return phone
+        String normalized = phone
                 .trim()
                 .replaceAll("\\s+", "");
+
+        if (normalized.startsWith("0")
+                && (normalized.length() == 10
+                || normalized.length() == 11)) {
+            return "+84" + normalized.substring(1);
+        }
+
+        return normalized;
+    }
+
+    private String requireVehicleBrand(String brand) {
+        String normalizedBrand = trimToNull(brand);
+
+        if (normalizedBrand == null) {
+            throw new BusinessException(
+                    "Hãng xe không được để trống",
+                    HttpStatus.BAD_REQUEST
+            );
+        }
+
+        return normalizedBrand;
     }
 
     private String normalizeEmail(String email) {
@@ -827,6 +1010,84 @@ public class EmployeeServiceImpl implements EmployeeService {
         }
 
         return value.trim();
+    }
+
+    /**
+     * Cập nhật loyalty đúng một lần khi Employee hoàn thành booking.
+     * Toàn bộ thao tác chạy trong cùng transaction với completeWash().
+     */
+    private void grantLoyaltyForCompletedBooking(Booking booking) {
+        if (Boolean.TRUE.equals(booking.getLoyaltyPointGranted())) {
+            return;
+        }
+
+        if (booking.getCustomer() == null
+                || booking.getCustomer().getCustomerId() == null) {
+            throw new BusinessException(
+                    "Booking chưa liên kết với khách hàng",
+                    HttpStatus.CONFLICT
+            );
+        }
+
+        List<BookingDetail> details =
+                bookingDetailRepository.findByBooking(booking);
+
+        BigDecimal bookingAmount = details.stream()
+                .map(BookingDetail::getSubTotal)
+                .filter(amount -> amount != null)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        if (bookingAmount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new BusinessException(
+                    "Tổng tiền booking phải lớn hơn 0 để hoàn thành",
+                    HttpStatus.CONFLICT
+            );
+        }
+
+        Customer customer = customerRepository
+                .findByIdForUpdate(booking.getCustomer().getCustomerId())
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Customer",
+                        "id",
+                        booking.getCustomer().getCustomerId()
+                ));
+
+        LoyaltyTransactionResponseDTO loyaltyTransaction =
+                loyaltyTransactionService.earnPointsFromCompleteBooking(
+                        booking,
+                        bookingAmount
+                );
+
+        int earnedPoints = loyaltyTransaction.getPoints() != null
+                ? loyaltyTransaction.getPoints()
+                : 0;
+
+        customer.setTotalPoints(
+                safeInteger(customer.getTotalPoints()) + earnedPoints
+        );
+        customer.setTotalVisits(
+                safeInteger(customer.getTotalVisits()) + 1
+        );
+        customer.setTotalSpending(
+                safeAmount(customer.getTotalSpending()).add(bookingAmount)
+        );
+
+        customerRepository.save(customer);
+
+        booking.setLoyaltyPointGranted(true);
+        bookingRepository.save(booking);
+
+        loyaltyTierEvaluationService.evaluateCustomerTierByCustomerId(
+                customer.getCustomerId()
+        );
+    }
+
+    private int safeInteger(Integer value) {
+        return value != null ? value : 0;
+    }
+
+    private BigDecimal safeAmount(BigDecimal value) {
+        return value != null ? value : BigDecimal.ZERO;
     }
 
     // =========================================================

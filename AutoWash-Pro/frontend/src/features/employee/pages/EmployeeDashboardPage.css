@@ -126,7 +126,7 @@
 
 .employee-dashboard-summary {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 16px;
 }
 
@@ -175,6 +175,16 @@
   background: #e0f2fe;
 }
 
+.employee-dashboard-summary__icon.completed {
+  color: #047857;
+  background: #d1fae5;
+}
+
+.employee-dashboard-summary__icon.no-show {
+  color: #b91c1c;
+  background: #fee2e2;
+}
+
 .employee-dashboard-summary__card span,
 .employee-dashboard-summary__card small {
   display: block;
@@ -210,8 +220,8 @@
   border-radius: 14px;
   text-decoration: none;
   transition:
-    transform 0.2s ease,
-    box-shadow 0.2s ease;
+          transform 0.2s ease,
+          box-shadow 0.2s ease;
 }
 
 .employee-dashboard-action:hover {
@@ -280,7 +290,7 @@
   display: grid;
   grid-template-columns:
     90px minmax(160px, 1fr) minmax(190px, 1.3fr)
-    minmax(90px, 0.6fr) auto auto;
+    minmax(90px, 0.6fr) auto;
   align-items: center;
   gap: 16px;
   padding: 15px 4px;
@@ -360,32 +370,13 @@
   }
 }
 
-.dashboard-payment-badge {
-  font-size: 11px;
-  font-weight: 600;
-  padding: 3px 10px;
-  border-radius: 10px;
-  white-space: nowrap;
-  text-align: center;
-}
-
-.dashboard-payment-paid {
-  background: rgba(16, 185, 129, 0.1);
-  color: #047857;
-}
-
-.dashboard-payment-unpaid {
-  background: rgba(239, 68, 68, 0.1);
-  color: #dc2626;
-}
-
 @media (max-width: 1200px) {
   .employee-dashboard-summary {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .employee-dashboard-booking-row {
-    grid-template-columns: 80px 1fr 1fr auto auto;
+    grid-template-columns: 80px 1fr 1fr auto;
   }
 
   .employee-dashboard-booking-row__bay {
@@ -416,7 +407,7 @@
   }
 
   .employee-dashboard-booking-row {
-    grid-template-columns: 75px 1fr auto auto;
+    grid-template-columns: 75px 1fr auto;
   }
 
   .employee-dashboard-booking-row__service {
@@ -434,12 +425,7 @@
   }
 
   .employee-dashboard-booking-row
-    .employee-booking-status-badge {
-    grid-column: 2;
-    justify-self: start;
-  }
-
-  .dashboard-payment-badge {
+  .employee-booking-status-badge {
     grid-column: 2;
     justify-self: start;
   }

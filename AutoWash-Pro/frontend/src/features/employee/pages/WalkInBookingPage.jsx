@@ -21,6 +21,7 @@ const INITIAL_FORM = {
   guestName: "",
   guestPhone: "",
   guestEmail: "",
+  initialPassword: "",
   licensePlate: "",
   brand: "",
   model: "",
@@ -28,7 +29,6 @@ const INITIAL_FORM = {
   date: "",
   slotId: "",
   selectedServiceIds: [],
-  paymentMethod: "offline",
   note: "",
 };
 
@@ -44,10 +44,10 @@ function getErrorMessage(error) {
   }
 
   return (
-    error?.response?.data?.message ||
-    error?.response?.data?.error ||
-    error?.message ||
-    "Không thể tạo booking. Vui lòng thử lại."
+      error?.response?.data?.message ||
+      error?.response?.data?.error ||
+      error?.message ||
+      "Không thể tạo booking. Vui lòng thử lại."
   );
 }
 
@@ -113,10 +113,10 @@ function getSlotEndTime(slot) {
 
 function getSlotBayName(slot) {
   return (
-    slot?.bayName ||
-    slot?.washBayName ||
-    slot?.washBay?.bayName ||
-    "Chưa xác định bay"
+      slot?.bayName ||
+      slot?.washBayName ||
+      slot?.washBay?.bayName ||
+      "Chưa xác định bay"
   );
 }
 
@@ -128,7 +128,7 @@ function isSlotInFuture(slot, selectedDate) {
   }
 
   const slotDateTime = new Date(
-    `${selectedDate}T${String(startTime).slice(0, 8)}`
+      `${selectedDate}T${String(startTime).slice(0, 8)}`
   );
 
   if (Number.isNaN(slotDateTime.getTime())) {
@@ -195,25 +195,25 @@ function WalkInBookingPage() {
         setError("");
 
         const response = await getAvailableSlots(
-          profile.branchId,
-          form.date
+            profile.branchId,
+            form.date
         );
 
         const responseData = unwrapResponse(response);
 
         const availableSlots = Array.isArray(responseData)
-          ? responseData.filter((slot) =>
-              isSlotInFuture(slot, form.date)
+            ? responseData.filter((slot) =>
+                isSlotInFuture(slot, form.date)
             )
-          : [];
+            : [];
 
         setSlots(availableSlots);
 
         setForm((currentForm) => {
           const selectedSlotStillExists = availableSlots.some(
-            (slot) =>
-              String(getSlotId(slot)) ===
-              String(currentForm.slotId)
+              (slot) =>
+                  String(getSlotId(slot)) ===
+                  String(currentForm.slotId)
           );
 
           if (selectedSlotStillExists) {
@@ -238,17 +238,17 @@ function WalkInBookingPage() {
 
   const selectedServices = useMemo(() => {
     return services.filter((service) =>
-      form.selectedServiceIds.includes(
-        String(getServiceId(service))
-      )
+        form.selectedServiceIds.includes(
+            String(getServiceId(service))
+        )
     );
   }, [form.selectedServiceIds, services]);
 
   const totalAmount = useMemo(() => {
     return selectedServices.reduce(
-      (total, service) =>
-        total + Number(getServicePrice(service) || 0),
-      0
+        (total, service) =>
+            total + Number(getServicePrice(service) || 0),
+        0
     );
   }, [selectedServices]);
 
@@ -268,15 +268,15 @@ function WalkInBookingPage() {
 
     setForm((currentForm) => {
       const exists =
-        currentForm.selectedServiceIds.includes(normalizedId);
+          currentForm.selectedServiceIds.includes(normalizedId);
 
       return {
         ...currentForm,
         selectedServiceIds: exists
-          ? currentForm.selectedServiceIds.filter(
-              (id) => id !== normalizedId
+            ? currentForm.selectedServiceIds.filter(
+                (id) => id !== normalizedId
             )
-          : [
+            : [
               ...currentForm.selectedServiceIds,
               normalizedId,
             ],
@@ -300,16 +300,35 @@ function WalkInBookingPage() {
     }
 
     if (
-      form.guestEmail.trim() &&
-      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
-        form.guestEmail.trim()
-      )
+        form.guestEmail.trim() &&
+        !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
+            form.guestEmail.trim()
+        )
     ) {
       return "Email khách hàng không hợp lệ.";
     }
 
+    if (!form.initialPassword) {
+      return "Vui lòng nhập mật khẩu ban đầu cho tài khoản khách hàng.";
+    }
+
+    if (
+        form.initialPassword.length < 6 ||
+        form.initialPassword.length > 72
+    ) {
+      return "Mật khẩu ban đầu phải từ 6 đến 72 ký tự.";
+    }
+
     if (!form.licensePlate.trim()) {
       return "Vui lòng nhập biển số xe.";
+    }
+
+    if (!form.brand.trim()) {
+      return "Vui lòng nhập hãng xe.";
+    }
+
+    if (!["car", "suv"].includes(form.vehicleType)) {
+      return "Loại xe chỉ được là xe 4 chỗ hoặc xe 7 chỗ.";
     }
 
     if (!form.slotId) {
@@ -338,10 +357,11 @@ function WalkInBookingPage() {
       guestName: form.guestName.trim(),
       guestPhone: form.guestPhone.trim(),
       guestEmail: form.guestEmail.trim() || null,
+      initialPassword: form.initialPassword,
       licensePlate: form.licensePlate
-        .trim()
-        .toUpperCase(),
-      brand: form.brand.trim() || null,
+          .trim()
+          .toUpperCase(),
+      brand: form.brand.trim(),
       model: form.model.trim() || null,
       vehicleType: form.vehicleType,
       slotId: Number(form.slotId),
@@ -349,7 +369,6 @@ function WalkInBookingPage() {
         serviceId: Number(serviceId),
         quantity: 1,
       })),
-      paymentMethod: form.paymentMethod,
       note: form.note.trim() || null,
     };
 
@@ -359,7 +378,7 @@ function WalkInBookingPage() {
       setSuccessBooking(null);
 
       const response =
-        await employeeApi.createWalkInBooking(payload);
+          await employeeApi.createWalkInBooking(payload);
 
       const booking = unwrapResponse(response);
 
@@ -378,406 +397,420 @@ function WalkInBookingPage() {
 
   if (initialLoading) {
     return (
-      <section className="walk-in-booking-page">
-        <div className="walk-in-booking-page__loading">
-          <LoaderCircle
-            size={38}
-            className="is-spinning"
-            aria-hidden="true"
-          />
+        <section className="walk-in-booking-page">
+          <div className="walk-in-booking-page__loading">
+            <LoaderCircle
+                size={38}
+                className="is-spinning"
+                aria-hidden="true"
+            />
 
-          <p>Đang tải dữ liệu tạo booking...</p>
-        </div>
-      </section>
+            <p>Đang tải dữ liệu tạo booking...</p>
+          </div>
+        </section>
     );
   }
 
   return (
-    <section className="walk-in-booking-page">
-      <header className="walk-in-booking-page__header">
-        <div>
-          <p className="walk-in-booking-page__eyebrow">
-            Booking tại quầy
-          </p>
-
-          <h1>Tạo booking cho khách</h1>
-
-          <p>
-            Nhập thông tin khách đến trực tiếp tại chi nhánh.
-          </p>
-        </div>
-
-        <div className="walk-in-booking-page__branch">
-          <span>Chi nhánh đang làm việc</span>
-
-          <strong>
-            {profile?.branchName || "Chưa xác định"}
-          </strong>
-
-          <small>
-            {profile?.branchAddress || "Chưa có địa chỉ"}
-          </small>
-        </div>
-      </header>
-
-      {error && (
-        <div className="walk-in-booking-page__error" role="alert">
-          {error}
-        </div>
-      )}
-
-      {successBooking && (
-        <div
-          className="walk-in-booking-page__success"
-          role="status"
-        >
-          <CheckCircle2 size={24} aria-hidden="true" />
-
+      <section className="walk-in-booking-page">
+        <header className="walk-in-booking-page__header">
           <div>
-            <strong>Tạo booking thành công</strong>
+            <p className="walk-in-booking-page__eyebrow">
+              Booking tại quầy
+            </p>
 
-            <span>
-              Mã booking:{" "}
-              {successBooking.bookingCode ||
-                `#${successBooking.bookingId}`}
-            </span>
+            <h1>Tạo booking cho khách</h1>
+
+            <p>
+              Nhập thông tin khách đến trực tiếp tại chi nhánh.
+            </p>
           </div>
 
-          <button
-            type="button"
-            onClick={() => navigate("/employee/queue")}
-          >
-            Mở hàng đợi
-          </button>
-        </div>
-      )}
+          <div className="walk-in-booking-page__branch">
+            <span>Chi nhánh đang làm việc</span>
 
-      <form
-        className="walk-in-booking-form"
-        onSubmit={handleSubmit}
-      >
-        <section className="walk-in-booking-form__section">
-          <div className="walk-in-booking-form__section-title">
-            <UserRound size={21} aria-hidden="true" />
+            <strong>
+              {profile?.branchName || "Chưa xác định"}
+            </strong>
 
-            <div>
-              <h2>Thông tin khách hàng</h2>
-              <p>Thông tin liên hệ của khách tại quầy.</p>
+            <small>
+              {profile?.branchAddress || "Chưa có địa chỉ"}
+            </small>
+          </div>
+        </header>
+
+        {error && (
+            <div className="walk-in-booking-page__error" role="alert">
+              {error}
             </div>
-          </div>
+        )}
 
-          <div className="walk-in-booking-form__grid">
-            <label>
+        {successBooking && (
+            <div
+                className="walk-in-booking-page__success"
+                role="status"
+            >
+              <CheckCircle2 size={24} aria-hidden="true" />
+
+              <div>
+                <strong>Tạo booking thành công</strong>
+
+                <span>
+              Mã booking:{" "}
+                  {successBooking.bookingCode ||
+                      `#${successBooking.bookingId}`}
+            </span>
+              </div>
+
+              <button
+                  type="button"
+                  onClick={() => navigate("/employee/queue")}
+              >
+                Mở hàng đợi
+              </button>
+            </div>
+        )}
+
+        <form
+            className="walk-in-booking-form"
+            onSubmit={handleSubmit}
+        >
+          <section className="walk-in-booking-form__section">
+            <div className="walk-in-booking-form__section-title">
+              <UserRound size={21} aria-hidden="true" />
+
+              <div>
+                <h2>Thông tin khách hàng</h2>
+                <p>
+                  Thông tin liên hệ và tài khoản đăng nhập của khách.
+                </p>
+              </div>
+            </div>
+
+            <div className="walk-in-booking-form__grid">
+              <label>
               <span>
                 Họ và tên <b>*</b>
               </span>
 
-              <input
-                type="text"
-                name="guestName"
-                value={form.guestName}
-                onChange={handleChange}
-                placeholder="Nguyễn Văn A"
-                maxLength={100}
-              />
-            </label>
+                <input
+                    type="text"
+                    name="guestName"
+                    value={form.guestName}
+                    onChange={handleChange}
+                    placeholder="Nguyễn Văn A"
+                    maxLength={100}
+                />
+              </label>
 
-            <label>
+              <label>
               <span>
                 Số điện thoại <b>*</b>
               </span>
 
-              <input
-                type="tel"
-                name="guestPhone"
-                value={form.guestPhone}
-                onChange={handleChange}
-                placeholder="0912345678"
-                maxLength={10}
-              />
-            </label>
+                <input
+                    type="tel"
+                    name="guestPhone"
+                    value={form.guestPhone}
+                    onChange={handleChange}
+                    placeholder="0912345678"
+                    maxLength={10}
+                />
+              </label>
 
-            <label className="walk-in-booking-form__full">
-              <span>Email</span>
+              <label className="walk-in-booking-form__full">
+                <span>Email</span>
 
-              <input
-                type="email"
-                name="guestEmail"
-                value={form.guestEmail}
-                onChange={handleChange}
-                placeholder="customer@example.com"
-              />
-            </label>
-          </div>
-        </section>
+                <input
+                    type="email"
+                    name="guestEmail"
+                    value={form.guestEmail}
+                    onChange={handleChange}
+                    placeholder="customer@example.com"
+                />
+              </label>
 
-        <section className="walk-in-booking-form__section">
-          <div className="walk-in-booking-form__section-title">
-            <Car size={21} aria-hidden="true" />
+              <label className="walk-in-booking-form__full">
+              <span>
+                Mật khẩu ban đầu <b>*</b>
+              </span>
 
-            <div>
-              <h2>Thông tin xe</h2>
-              <p>Thông tin phương tiện cần sử dụng dịch vụ.</p>
+                <input
+                    type="password"
+                    name="initialPassword"
+                    value={form.initialPassword}
+                    onChange={handleChange}
+                    placeholder="Từ 6 ký tự"
+                    minLength={6}
+                    maxLength={72}
+                    autoComplete="new-password"
+                />
+
+                <small>
+                  Khách dùng số điện thoại và mật khẩu này để đăng nhập lần sau.
+                </small>
+              </label>
             </div>
-          </div>
+          </section>
 
-          <div className="walk-in-booking-form__grid">
-            <label>
+          <section className="walk-in-booking-form__section">
+            <div className="walk-in-booking-form__section-title">
+              <Car size={21} aria-hidden="true" />
+
+              <div>
+                <h2>Thông tin xe</h2>
+                <p>Thông tin phương tiện cần sử dụng dịch vụ.</p>
+              </div>
+            </div>
+
+            <div className="walk-in-booking-form__grid">
+              <label>
               <span>
                 Biển số xe <b>*</b>
               </span>
 
-              <input
-                type="text"
-                name="licensePlate"
-                value={form.licensePlate}
-                onChange={handleChange}
-                placeholder="51A-12345"
-                maxLength={20}
-              />
-            </label>
+                <input
+                    type="text"
+                    name="licensePlate"
+                    value={form.licensePlate}
+                    onChange={handleChange}
+                    placeholder="51A-12345"
+                    maxLength={20}
+                />
+              </label>
 
-            <label>
-              <span>Loại xe</span>
+              <label>
+              <span>
+                Loại xe <b>*</b>
+              </span>
 
-              <select
-                name="vehicleType"
-                value={form.vehicleType}
-                onChange={handleChange}
-              >
-                <option value="car">Ô tô</option>
-                <option value="motorcycle">Xe máy</option>
-              </select>
-            </label>
+                <select
+                    name="vehicleType"
+                    value={form.vehicleType}
+                    onChange={handleChange}
+                >
+                  <option value="car">Xe 4 chỗ</option>
+                  <option value="suv">Xe 7 chỗ</option>
+                </select>
+              </label>
 
-            <label>
-              <span>Hãng xe</span>
+              <label>
+              <span>
+                Hãng xe <b>*</b>
+              </span>
 
-              <input
-                type="text"
-                name="brand"
-                value={form.brand}
-                onChange={handleChange}
-                placeholder="Toyota"
-              />
-            </label>
+                <input
+                    type="text"
+                    name="brand"
+                    value={form.brand}
+                    onChange={handleChange}
+                    placeholder="Toyota"
+                    maxLength={50}
+                />
+              </label>
 
-            <label>
-              <span>Dòng xe</span>
+              <label>
+                <span>Dòng xe</span>
 
-              <input
-                type="text"
-                name="model"
-                value={form.model}
-                onChange={handleChange}
-                placeholder="Vios"
-              />
-            </label>
-          </div>
-        </section>
-
-        <section className="walk-in-booking-form__section">
-          <div className="walk-in-booking-form__section-title">
-            <CalendarDays size={21} aria-hidden="true" />
-
-            <div>
-              <h2>Ngày và khung giờ</h2>
-              <p>
-                Chỉ hiển thị các slot còn chỗ tại chi nhánh.
-              </p>
+                <input
+                    type="text"
+                    name="model"
+                    value={form.model}
+                    onChange={handleChange}
+                    placeholder="Vios"
+                />
+              </label>
             </div>
-          </div>
+          </section>
 
-          <div className="walk-in-booking-form__grid">
-            <label>
+          <section className="walk-in-booking-form__section">
+            <div className="walk-in-booking-form__section-title">
+              <CalendarDays size={21} aria-hidden="true" />
+
+              <div>
+                <h2>Ngày và khung giờ</h2>
+                <p>
+                  Chỉ hiển thị các slot còn chỗ tại chi nhánh.
+                </p>
+              </div>
+            </div>
+
+            <div className="walk-in-booking-form__grid">
+              <label>
               <span>
                 Ngày phục vụ <b>*</b>
               </span>
 
-              <input
-                type="date"
-                name="date"
-                value={form.date}
-                min={getTodayValue()}
-                onChange={handleChange}
-              />
-            </label>
+                <input
+                    type="date"
+                    name="date"
+                    value={form.date}
+                    min={getTodayValue()}
+                    onChange={handleChange}
+                />
+              </label>
 
-            <label>
+              <label>
               <span>
                 Khung giờ <b>*</b>
               </span>
 
-              <select
-                name="slotId"
-                value={form.slotId}
-                onChange={handleChange}
-                disabled={slotsLoading}
-              >
-                <option value="">
-                  {slotsLoading
-                    ? "Đang tải khung giờ..."
-                    : "Chọn khung giờ"}
-                </option>
-
-                {slots.map((slot) => (
-                  <option
-                    key={getSlotId(slot)}
-                    value={getSlotId(slot)}
-                  >
-                    {formatTime(getSlotStartTime(slot))}
-                    {" - "}
-                    {formatTime(getSlotEndTime(slot))}
-                    {" · "}
-                    {getSlotBayName(slot)}
+                <select
+                    name="slotId"
+                    value={form.slotId}
+                    onChange={handleChange}
+                    disabled={slotsLoading}
+                >
+                  <option value="">
+                    {slotsLoading
+                        ? "Đang tải khung giờ..."
+                        : "Chọn khung giờ"}
                   </option>
-                ))}
-              </select>
-            </label>
-          </div>
 
-          {!slotsLoading && slots.length === 0 && (
-            <p className="walk-in-booking-form__empty">
-              Không có khung giờ còn trống trong ngày đã chọn.
-            </p>
-          )}
-        </section>
-
-        <section className="walk-in-booking-form__section">
-          <div className="walk-in-booking-form__section-title">
-            <Wrench size={21} aria-hidden="true" />
-
-            <div>
-              <h2>Chọn dịch vụ</h2>
-              <p>Có thể chọn một hoặc nhiều dịch vụ.</p>
+                  {slots.map((slot) => (
+                      <option
+                          key={getSlotId(slot)}
+                          value={getSlotId(slot)}
+                      >
+                        {formatTime(getSlotStartTime(slot))}
+                        {" - "}
+                        {formatTime(getSlotEndTime(slot))}
+                        {" · "}
+                        {getSlotBayName(slot)}
+                      </option>
+                  ))}
+                </select>
+              </label>
             </div>
-          </div>
 
-          {services.length === 0 ? (
-            <p className="walk-in-booking-form__empty">
-              Hiện chưa có dịch vụ đang hoạt động.
-            </p>
-          ) : (
-            <div className="walk-in-service-grid">
-              {services.map((service) => {
-                const serviceId = getServiceId(service);
-                const checked =
-                  form.selectedServiceIds.includes(
-                    String(serviceId)
-                  );
-
-                return (
-                  <label
-                    key={serviceId}
-                    className={
-                      checked
-                        ? "walk-in-service-card is-selected"
-                        : "walk-in-service-card"
-                    }
-                  >
-                    <input
-                      type="checkbox"
-                      checked={checked}
-                      onChange={() =>
-                        handleServiceToggle(serviceId)
-                      }
-                    />
-
-                    <div>
-                      <strong>{getServiceName(service)}</strong>
-
-                      {getServiceDuration(service) && (
-                        <span>
-                          <Clock3 size={14} aria-hidden="true" />
-                          {getServiceDuration(service)} phút
-                        </span>
-                      )}
-
-                      <b>
-                        {formatCurrency(
-                          getServicePrice(service)
-                        )}
-                      </b>
-                    </div>
-                  </label>
-                );
-              })}
-            </div>
-          )}
-        </section>
-
-        <section className="walk-in-booking-form__section">
-          <div className="walk-in-booking-form__section-title">
-            <PlusCircle size={21} aria-hidden="true" />
-
-            <div>
-              <h2>Thông tin bổ sung</h2>
-              <p>Thanh toán và ghi chú cho booking.</p>
-            </div>
-          </div>
-
-          <div className="walk-in-booking-form__grid">
-            <label>
-              <span>Phương thức thanh toán</span>
-
-              <select
-                name="paymentMethod"
-                value={form.paymentMethod}
-                onChange={handleChange}
-              >
-                <option value="offline">
-                  Thanh toán tại quầy
-                </option>
-              </select>
-            </label>
-
-            <label className="walk-in-booking-form__full">
-              <span>Ghi chú</span>
-
-              <textarea
-                name="note"
-                value={form.note}
-                onChange={handleChange}
-                placeholder="Yêu cầu đặc biệt của khách..."
-                rows={4}
-              />
-            </label>
-          </div>
-        </section>
-
-        <footer className="walk-in-booking-form__footer">
-          <div>
-            <span>Tổng tiền dự kiến</span>
-            <strong>{formatCurrency(totalAmount)}</strong>
-          </div>
-
-          <button
-            type="submit"
-            disabled={
-              submitting ||
-              slotsLoading ||
-              services.length === 0
-            }
-          >
-            {submitting ? (
-              <>
-                <LoaderCircle
-                  size={18}
-                  className="is-spinning"
-                  aria-hidden="true"
-                />
-                Đang tạo booking...
-              </>
-            ) : (
-              <>
-                <PlusCircle size={18} aria-hidden="true" />
-                Tạo booking
-              </>
+            {!slotsLoading && slots.length === 0 && (
+                <p className="walk-in-booking-form__empty">
+                  Không có khung giờ còn trống trong ngày đã chọn.
+                </p>
             )}
-          </button>
-        </footer>
-      </form>
-    </section>
+          </section>
+
+          <section className="walk-in-booking-form__section">
+            <div className="walk-in-booking-form__section-title">
+              <Wrench size={21} aria-hidden="true" />
+
+              <div>
+                <h2>Chọn dịch vụ</h2>
+                <p>Có thể chọn một hoặc nhiều dịch vụ.</p>
+              </div>
+            </div>
+
+            {services.length === 0 ? (
+                <p className="walk-in-booking-form__empty">
+                  Hiện chưa có dịch vụ đang hoạt động.
+                </p>
+            ) : (
+                <div className="walk-in-service-grid">
+                  {services.map((service) => {
+                    const serviceId = getServiceId(service);
+                    const checked =
+                        form.selectedServiceIds.includes(
+                            String(serviceId)
+                        );
+
+                    return (
+                        <label
+                            key={serviceId}
+                            className={
+                              checked
+                                  ? "walk-in-service-card is-selected"
+                                  : "walk-in-service-card"
+                            }
+                        >
+                          <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() =>
+                                  handleServiceToggle(serviceId)
+                              }
+                          />
+
+                          <div>
+                            <strong>{getServiceName(service)}</strong>
+
+                            {getServiceDuration(service) && (
+                                <span>
+                          <Clock3 size={14} aria-hidden="true" />
+                                  {getServiceDuration(service)} phút
+                        </span>
+                            )}
+
+                            <b>
+                              {formatCurrency(
+                                  getServicePrice(service)
+                              )}
+                            </b>
+                          </div>
+                        </label>
+                    );
+                  })}
+                </div>
+            )}
+          </section>
+
+          <section className="walk-in-booking-form__section">
+            <div className="walk-in-booking-form__section-title">
+              <PlusCircle size={21} aria-hidden="true" />
+
+              <div>
+                <h2>Thông tin bổ sung</h2>
+                <p>Ghi chú thêm cho quá trình phục vụ.</p>
+              </div>
+            </div>
+
+            <div className="walk-in-booking-form__grid">
+              <label className="walk-in-booking-form__full">
+                <span>Ghi chú</span>
+
+                <textarea
+                    name="note"
+                    value={form.note}
+                    onChange={handleChange}
+                    placeholder="Yêu cầu đặc biệt của khách..."
+                    rows={4}
+                />
+              </label>
+            </div>
+          </section>
+
+          <footer className="walk-in-booking-form__footer">
+            <div>
+              <span>Tổng tiền dự kiến</span>
+              <strong>{formatCurrency(totalAmount)}</strong>
+            </div>
+
+            <button
+                type="submit"
+                disabled={
+                    submitting ||
+                    slotsLoading ||
+                    services.length === 0
+                }
+            >
+              {submitting ? (
+                  <>
+                    <LoaderCircle
+                        size={18}
+                        className="is-spinning"
+                        aria-hidden="true"
+                    />
+                    Đang tạo booking...
+                  </>
+              ) : (
+                  <>
+                    <PlusCircle size={18} aria-hidden="true" />
+                    Tạo booking
+                  </>
+              )}
+            </button>
+          </footer>
+        </form>
+      </section>
   );
 }
 

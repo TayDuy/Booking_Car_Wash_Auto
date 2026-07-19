@@ -197,6 +197,31 @@ public class EmployeeController {
     }
 
     // =========================================================
+    // NO-SHOW
+    // confirmed -> no_show
+    // =========================================================
+
+    /**
+     * PATCH /api/v1/employee/bookings/{bookingId}/no-show
+     *
+     * Đánh dấu khách không đến sau thời gian chờ cho phép.
+     * Service chịu trách nhiệm kiểm tra trạng thái, thời gian,
+     * chi nhánh và quyền supervisor/manager.
+     */
+    @PatchMapping("/bookings/{bookingId}/no-show")
+    public ResponseEntity<EmployeeQueueBookingResponseDTO> markNoShow(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable Integer bookingId
+    ) {
+        return ResponseEntity.ok(
+                employeeService.markNoShow(
+                        userDetails.getId(),
+                        bookingId
+                )
+        );
+    }
+
+    // =========================================================
     // START WASH
     // checked_in → in_progress
     // =========================================================
@@ -233,8 +258,9 @@ public class EmployeeController {
     /**
      * PATCH /api/v1/employee/bookings/{bookingId}/complete
      *
-     * Ghi completeAt và chuyển wash bay về available.
-     * Không cộng loyalty point tại đây.
+     * Employee chỉ gọi API sau khi đã xác nhận khách thanh toán tại quầy.
+     * Service ghi completeAt, giải phóng wash bay, cộng điểm đúng một lần
+     * và đánh giá lại hạng thành viên. Không tạo Payment.
      */
     @PatchMapping("/bookings/{bookingId}/complete")
     public ResponseEntity<EmployeeQueueBookingResponseDTO> completeWash(

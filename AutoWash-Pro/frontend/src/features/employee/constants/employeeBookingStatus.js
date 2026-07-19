@@ -45,7 +45,7 @@ export const EMPLOYEE_BOOKING_STATUS_META = Object.freeze({
     className: "status-in-progress",
     nextAction: {
       key: "complete",
-      label: "Hoàn thành",
+      label: "Đã thanh toán & hoàn thành",
     },
   },
 
@@ -65,7 +65,7 @@ export const EMPLOYEE_BOOKING_STATUS_META = Object.freeze({
 
   [EMPLOYEE_BOOKING_STATUS.NO_SHOW]: {
     value: EMPLOYEE_BOOKING_STATUS.NO_SHOW,
-    label: "Không đến",
+    label: "Khách không đến",
     className: "status-no-show",
     nextAction: null,
   },
@@ -96,39 +96,32 @@ export const EMPLOYEE_QUEUE_FILTER_OPTIONS = Object.freeze([
     value: EMPLOYEE_BOOKING_STATUS.COMPLETED,
     label: "Hoàn thành",
   },
+  {
+    value: EMPLOYEE_BOOKING_STATUS.NO_SHOW,
+    label: "Khách không đến",
+  },
+  {
+    value: EMPLOYEE_BOOKING_STATUS.CANCELLED,
+    label: "Đã hủy",
+  },
 ]);
-
-export const EMPLOYEE_PAYMENT_STATUS_MAP = Object.freeze({
-  unpaid:    { label: "Chưa thanh toán", badge: "payment-badge-unpaid" },
-  paid:      { label: "Đã thanh toán",   badge: "payment-badge-paid" },
-  failed:    { label: "Thanh toán lỗi",  badge: "payment-badge-failed" },
-  cancelled: { label: "Hủy thanh toán",  badge: "payment-badge-cancelled" },
-});
-
-export const EMPLOYEE_PAYMENT_METHOD_MAP = Object.freeze({
-  cash:         "Tiền mặt",
-  bank_transfer: "Chuyển khoản",
-  pos:          "Quẹt thẻ POS",
-  paypal:       "PayPal",
-  at_shop:      "Tại tiệm",
-});
 
 export function normalizeEmployeeBookingStatus(status) {
   return String(status ?? "")
-    .trim()
-    .toLowerCase();
+      .trim()
+      .toLowerCase();
 }
 
 export function getEmployeeBookingStatusMeta(status) {
   const normalizedStatus = normalizeEmployeeBookingStatus(status);
 
   return (
-    EMPLOYEE_BOOKING_STATUS_META[normalizedStatus] ?? {
-      value: normalizedStatus,
-      label: status || "Không xác định",
-      className: "status-unknown",
-      nextAction: null,
-    }
+      EMPLOYEE_BOOKING_STATUS_META[normalizedStatus] ?? {
+        value: normalizedStatus,
+        label: status || "Không xác định",
+        className: "status-unknown",
+        nextAction: null,
+      }
   );
 }
 

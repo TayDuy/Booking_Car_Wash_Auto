@@ -49,9 +49,9 @@
 }
 
 .employee-booking-status-badge.status-no-show {
-  color: #374151;
-  background-color: #f3f4f6;
-  border-color: #d1d5db;
+  color: #9a3412;
+  background-color: #ffedd5;
+  border-color: #fed7aa;
 }
 
 .employee-booking-status-badge.status-unknown {

@@ -18,6 +18,8 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 /**
  * Chuyển đổi dữ liệu Employee và Booking sang DTO dành cho trang Employee.
@@ -97,8 +99,6 @@ public class EmployeeMapper {
                 ? slot.getWashBay()
                 : null;
 
-        String customerPhone = resolveCustomerPhone(customer);
-
         return EmployeeQueueBookingResponseDTO.builder()
                 // Booking
                 .bookingId(booking.getBookingId())
@@ -122,7 +122,7 @@ public class EmployeeMapper {
                                 ? customer.getFullName()
                                 : null
                 )
-                .customerPhoneMasked(maskPhone(customerPhone))
+                .customerPhoneMasked(maskPhone(resolveCustomerPhone(customer)))
 
                 // Vehicle
                 .vehicleId(
@@ -222,7 +222,17 @@ public class EmployeeMapper {
             return null;
         }
 
-        return customer.resolvePhone();
+        if (customer.getPhone() != null && !customer.getPhone().isBlank()) {
+            return customer.getPhone().trim();
+        }
+
+        User user = customer.getUser();
+
+        if (user != null && user.getPhone() != null && !user.getPhone().isBlank()) {
+            return user.getPhone().trim();
+        }
+
+        return null;
     }
 
     /**
@@ -232,12 +242,14 @@ public class EmployeeMapper {
             List<BookingDetail> details
     ) {
         return details.stream()
-                .filter(detail -> detail != null)
+                .filter(Objects::nonNull)
                 .filter(detail -> detail.getService() != null)
                 .map(detail -> detail.getService().getServiceName())
-                .filter(name -> name != null && !name.isBlank())
+                .filter(Objects::nonNull)
+                .map(String::trim)
+                .filter(name -> !name.isEmpty())
                 .distinct()
-                .toList();
+                .collect(Collectors.toList());
     }
 
     /**
@@ -247,9 +259,9 @@ public class EmployeeMapper {
             List<BookingDetail> details
     ) {
         return details.stream()
-                .filter(detail -> detail != null)
+                .filter(Objects::nonNull)
                 .map(BookingDetail::getSubTotal)
-                .filter(amount -> amount != null)
+                .filter(Objects::nonNull)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 

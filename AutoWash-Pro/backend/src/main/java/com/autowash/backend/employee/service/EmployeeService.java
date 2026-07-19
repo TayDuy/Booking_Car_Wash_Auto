@@ -112,6 +112,28 @@ public interface EmployeeService {
     );
 
     // =========================================================
+    // NO-SHOW
+    // confirmed -> no_show
+    // =========================================================
+
+    /**
+     * Đánh dấu khách không đến đúng giờ.
+     *
+     * Điều kiện:
+     * - Booking đang ở trạng thái confirmed.
+     * - Đã quá thời gian chờ cho phép kể từ giờ bắt đầu của slot.
+     * - Booking thuộc chi nhánh của Employee.
+     * - Chỉ supervisor hoặc manager được thực hiện.
+     *
+     * Đồng thời giảm số booking hiện tại của slot để trả lại chỗ trống.
+     * Không cộng điểm, không tăng lượt sử dụng và không xử lý Payment.
+     */
+    EmployeeQueueBookingResponseDTO markNoShow(
+            Integer userId,
+            Integer bookingId
+    );
+
+    // =========================================================
     // START WASH
     // checked_in -> in_progress
     // =========================================================
@@ -140,8 +162,13 @@ public interface EmployeeService {
      * Đồng thời:
      * - Ghi completeAt.
      * - Trả WashBay về available.
+     * - Ghi nhận lượt sử dụng và tổng chi tiêu của Customer.
+     * - Cộng điểm loyalty đúng một lần.
+     * - Đánh giá lại hạng thành viên.
      *
-     * Không cộng điểm loyalty tại đây.
+     * Không xử lý Payment và không lưu phương thức thanh toán.
+     * Employee chỉ bấm hoàn thành sau khi đã kiểm tra khách
+     * thanh toán tại quầy.
      */
     EmployeeQueueBookingResponseDTO completeWash(
             Integer userId,
