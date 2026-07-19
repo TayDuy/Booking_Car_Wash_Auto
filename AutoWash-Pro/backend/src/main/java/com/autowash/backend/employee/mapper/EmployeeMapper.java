@@ -7,6 +7,7 @@ import com.autowash.backend.customer.entity.Customer;
 import com.autowash.backend.employee.dto.EmployeeProfileResponseDTO;
 import com.autowash.backend.employee.dto.EmployeeQueueBookingResponseDTO;
 import com.autowash.backend.employee.entity.Employee;
+import com.autowash.backend.payment.entity.Payment;
 import com.autowash.backend.timeslot.entity.TimeSlot;
 import com.autowash.backend.user.entity.User;
 import com.autowash.backend.vehicle.entity.Vehicle;
@@ -75,10 +76,27 @@ public class EmployeeMapper {
 
     /**
      * Chuyển một Booking thành DTO hàng chờ của Employee.
+     *
+     * Overload không kèm Payment — giữ lại để tương thích code cũ.
+     * Payment field trong DTO trả về sẽ là null.
      */
     public EmployeeQueueBookingResponseDTO toQueueResponse(
             Booking booking,
             List<BookingDetail> details
+    ) {
+        return toQueueResponse(booking, details, null);
+    }
+
+    /**
+     * Chuyển một Booking (kèm Payment nếu đã có) thành DTO hàng chờ của Employee.
+     *
+     * payment == null nghĩa là booking chưa từng tạo payment
+     * (chưa thu tiền mặt tại quầy, chưa tạo yêu cầu thanh toán online).
+     */
+    public EmployeeQueueBookingResponseDTO toQueueResponse(
+            Booking booking,
+            List<BookingDetail> details,
+            Payment payment
     ) {
         if (booking == null) {
             return null;
@@ -205,6 +223,23 @@ public class EmployeeMapper {
                 .assignedEmployeeName(
                         assignedEmployee != null
                                 ? assignedEmployee.getFullName()
+                                : null
+                )
+
+                // Payment
+                .paymentId(
+                        payment != null
+                                ? payment.getPaymentId()
+                                : null
+                )
+                .paymentStatus(
+                        payment != null && payment.getPaymentStatus() != null
+                                ? payment.getPaymentStatus().name()
+                                : null
+                )
+                .paymentMethod(
+                        payment != null && payment.getPaymentMethod() != null
+                                ? payment.getPaymentMethod().name()
                                 : null
                 )
                 .build();

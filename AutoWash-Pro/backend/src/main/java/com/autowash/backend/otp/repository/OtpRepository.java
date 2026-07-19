@@ -15,7 +15,7 @@ public interface OtpRepository extends JpaRepository<OtpVerification, Integer> {
 
     Optional<OtpVerification> findTopByEmailAndPurposeAndVerifiedFalseOrderByCreatedAtDesc(String email, String purpose);
 
-    Optional<OtpVerification> findTopByEmailAndPurposeAndVerifiedFalseAndExpiresAtAfterOrderByCreatedAtDesc(String email, String purpose, @Param("now") LocalDateTime now);
+    Optional<OtpVerification> findTopByEmailAndPurposeAndVerifiedFalseAndExpiresAtAfterOrderByCreatedAtDesc(String email, String purpose, LocalDateTime now);
 
     boolean existsByEmailAndVerifiedTrue(String email);
 

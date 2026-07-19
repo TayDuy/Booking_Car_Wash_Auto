@@ -14,6 +14,12 @@ import com.autowash.backend.employee.entity.Employee.StaffStatus;
 import com.autowash.backend.employee.mapper.EmployeeMapper;
 import com.autowash.backend.employee.repository.EmployeeRepository;
 import com.autowash.backend.employee.service.EmployeeService;
+import com.autowash.backend.payment.dto.PaymentCreateRequestDTO;
+import com.autowash.backend.payment.dto.PaymentResponseDTO;
+import com.autowash.backend.payment.entity.Payment;
+import com.autowash.backend.payment.repository.PaymentRepository;
+import com.autowash.backend.payment.service.PaymentService;
+import com.autowash.backend.payment.service.VNPayService;
 import com.autowash.backend.timeslot.entity.TimeSlot;
 import com.autowash.backend.washbay.entity.WashBay;
 import com.autowash.backend.washbay.entity.WashBay.BayStatus;
@@ -28,6 +34,7 @@ import com.autowash.backend.vehicle.entity.Vehicle;
 import com.autowash.backend.vehicle.repository.VehicleRepository;
 import com.autowash.backend.washbay.repository.WashBayRepository;
 
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -65,6 +72,10 @@ public class EmployeeServiceImpl implements EmployeeService {
     private final TimeSlotRepository timeSlotRepository;
     private final ServicePackageRepository servicePackageRepository;
     private final WashBayRepository washBayRepository;
+
+    private final PaymentRepository paymentRepository;
+    private final PaymentService paymentService;
+    private final VNPayService vnPayService;
 
     // =========================================================
     // PROFILE
@@ -555,6 +566,125 @@ public class EmployeeServiceImpl implements EmployeeService {
         );
 
         return mapBookingResponse(savedBooking);
+    }
+
+    // =========================================================
+    // PAYMENT — thanh toán tại trạm
+    // =========================================================
+
+    @Override
+    @Transactional
+    public EmployeeQueueBookingResponseDTO collectCashPayment(
+            Integer userId,
+            Integer bookingId
+    ) {
+        Employee employee = getCurrentActiveEmployee(userId);
+        Branch branch = requireOperationalBranch(employee);
+
+        Booking booking = getBranchBooking(
+                bookingId,
+                branch.getBranchId()
+        );
+
+        requireCompletedForPayment(booking);
+
+        PaymentResponseDTO payment = paymentService.createPayment(
+                PaymentCreateRequestDTO.builder()
+                        .bookingId(bookingId)
+                        .paymentMethod(Payment.PaymentMethod.cash)
+                        .build()
+        );
+
+        paymentService.processPayment(payment.getPaymentId());
+
+        log.info(
+                "[Employee] Employee #{} thu tiền mặt cho booking #{} ({}), paymentId={}",
+                employee.getEmployeeId(),
+                booking.getBookingId(),
+                booking.getBookingCode(),
+                payment.getPaymentId()
+        );
+
+        return mapBookingResponse(booking);
+    }
+
+    @Override
+    @Transactional
+    public PaymentResponseDTO ensureOnlinePayment(
+            Integer userId,
+            Integer bookingId
+    ) {
+        Employee employee = getCurrentActiveEmployee(userId);
+        Branch branch = requireOperationalBranch(employee);
+
+        Booking booking = getBranchBooking(
+                bookingId,
+                branch.getBranchId()
+        );
+
+        requireCompletedForPayment(booking);
+
+        /*
+         * paymentService.createPayment() tự upsert:
+         * - Nếu booking chưa có payment → tạo mới, unpaid.
+         * - Nếu đã có payment unpaid → tính lại số tiền, giữ nguyên paymentId.
+         * - Nếu đã paid → ném BusinessException(CONFLICT).
+         * Không cần khách có tài khoản đăng nhập, chỉ cần bookingId hợp lệ.
+         */
+        PaymentResponseDTO payment = paymentService.createPayment(
+                PaymentCreateRequestDTO.builder()
+                        .bookingId(bookingId)
+                        .paymentMethod(Payment.PaymentMethod.bank_transfer)
+                        .build()
+        );
+
+        log.info(
+                "[Employee] Employee #{} tạo yêu cầu thanh toán online cho booking #{} ({}), paymentId={}",
+                employee.getEmployeeId(),
+                booking.getBookingId(),
+                booking.getBookingCode(),
+                payment.getPaymentId()
+        );
+
+        return payment;
+    }
+
+    @Override
+    @Transactional
+    public byte[] generateOnlinePaymentQr(
+            Integer userId,
+            Integer bookingId,
+            HttpServletRequest request
+    ) throws Exception {
+        PaymentResponseDTO payment = ensureOnlinePayment(userId, bookingId);
+
+        String txnRef = "PAY" + payment.getPaymentId();
+        String orderInfo = "Thanh toan don hang #" + payment.getPaymentId();
+        long amount = payment.getFinalAmount().longValue();
+
+        String paymentUrl = vnPayService.createPaymentUrl(
+                request,
+                amount,
+                orderInfo,
+                txnRef
+        );
+
+        return vnPayService.generateQRCode(paymentUrl, 300, 300);
+    }
+
+    /**
+     * Chỉ cho phép thu tiền (mặt hoặc online) khi booking đã hoàn thành
+     * dịch vụ. Khớp với nghiệp vụ "thanh toán tại trạm" — thu tiền sau
+     * khi rửa xe xong, không thu trước.
+     */
+    private void requireCompletedForPayment(Booking booking) {
+        if (!BookingStatus.completed.equals(booking.getStatus())) {
+            throw new BusinessException(
+                    "Chỉ có thể thu tiền khi booking đã hoàn thành dịch vụ (completed). Trạng thái hiện tại: "
+                            + booking.getStatus(),
+                    HttpStatus.CONFLICT
+            );
+        }
     }
 
     // =========================================================
@@ -1068,9 +1198,14 @@ public class EmployeeServiceImpl implements EmployeeService {
         List<BookingDetail> details =
                 bookingDetailRepository.findByBooking(booking);
 
+        Payment payment = paymentRepository
+                .findByBooking_BookingId(booking.getBookingId())
+                .orElse(null);
+
         return employeeMapper.toQueueResponse(
                 booking,
-                details
+                details,
+                payment
         );
     }
 
@@ -1096,13 +1231,24 @@ public class EmployeeServiceImpl implements EmployeeService {
                                 detail -> detail.getBooking().getBookingId()
                         ));
 
+        List<Payment> payments =
+                paymentRepository.findByBooking_BookingIdIn(bookingIds);
+
+        Map<Integer, Payment> paymentByBooking =
+                payments.stream()
+                        .collect(Collectors.toMap(
+                                payment -> payment.getBooking().getBookingId(),
+                                payment -> payment
+                        ));
+
         return bookings.stream()
                 .map(booking -> employeeMapper.toQueueResponse(
                         booking,
                         detailsByBooking.getOrDefault(
                                 booking.getBookingId(),
                                 Collections.emptyList()
-                        )
+                        ),
+                        paymentByBooking.get(booking.getBookingId())
                 ))
                 .toList();
     }

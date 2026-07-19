@@ -106,4 +106,26 @@ public class EmployeeQueueBookingResponseDTO {
 
     private Integer assignedEmployeeId;
     private String assignedEmployeeName;
+
+    // =========================================================
+    // PAYMENT
+    // =========================================================
+
+    /**
+     * Null nếu booking chưa có payment nào được tạo
+     * (chưa thu tiền mặt tại quầy, chưa tạo yêu cầu thanh toán online).
+     */
+    private Integer paymentId;
+
+    /**
+     * unpaid / paid / failed / cancelled.
+     * Null nếu chưa có payment.
+     */
+    private String paymentStatus;
+
+    /**
+     * cash / bank_transfer / pos / paypal.
+     * Null nếu chưa có payment.
+     */
+    private String paymentMethod;
 }
