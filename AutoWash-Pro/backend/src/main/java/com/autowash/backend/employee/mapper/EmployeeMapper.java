@@ -135,12 +135,12 @@ public class EmployeeMapper {
                                 ? vehicle.getLicensePlate()
                                 : null
                 )
+                // sau
                 .vehicleType(
                         vehicle != null && vehicle.getVehicleType() != null
-                                ? vehicle.getVehicleType().name()
+                                ? vehicle.getVehicleType().getValue()
                                 : null
                 )
-
                 // Services
                 .serviceNames(resolveServiceNames(safeDetails))
                 .totalAmount(calculateTotalAmount(safeDetails))
