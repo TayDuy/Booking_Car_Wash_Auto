@@ -61,4 +61,42 @@ public interface MailService {
             String bookingCode,
             String reason
     );
+
+    /**
+     * Gửi email thông báo thăng hạng thành viên
+     */
+    void sendTierUpgradedEmail(
+            String toEmail,
+            String customerName,
+            String newTierName
+    );
+
+    /**
+     * Gửi email thông báo hạ hạng thành viên
+     */
+    void sendTierDowngradedEmail(
+            String toEmail,
+            String customerName,
+            String newTierName
+    );
+
+    /**
+     * Gửi email xác nhận đổi điểm thưởng lấy phần thưởng
+     */
+    void sendPointsRedeemedEmail(
+            String toEmail,
+            String customerName,
+            String rewardName,
+            Integer pointsUsed
+    );
+
+    /**
+     * Gửi email thông báo khuyến mãi/voucher mới
+     */
+    void sendNewPromotionEmail(
+            String toEmail,
+            String customerName,
+            String promotionName,
+            String promotionDescription
+    );
 }

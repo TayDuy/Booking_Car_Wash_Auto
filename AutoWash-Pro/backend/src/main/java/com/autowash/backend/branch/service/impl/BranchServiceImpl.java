@@ -7,9 +7,12 @@ import com.autowash.backend.branch.entity.Branch.BranchStatus;
 import com.autowash.backend.branch.mapper.BranchMapper;
 import com.autowash.backend.branch.repository.BranchRepository;
 import com.autowash.backend.branch.service.BranchService;
+import com.autowash.backend.config.CacheConfig;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -50,6 +53,7 @@ public class BranchServiceImpl implements BranchService {
      * Nếu có status → gọi derived query để WHERE lọc ở DB, không load thừa.
      */
     @Override
+    @Cacheable(cacheNames = CacheConfig.BRANCHES_CACHE, key = "#status != null ? #status.name() : 'all'")
     public List<BranchResponseDTO> findAll(BranchStatus status) {
         List<Branch> branches = (status != null)
                 ? branchRepository.findByStatus(status)   // Lọc theo status ở DB level
@@ -63,6 +67,7 @@ public class BranchServiceImpl implements BranchService {
 
     /** {@inheritDoc} */
     @Override
+    @Cacheable(cacheNames = CacheConfig.BRANCHES_CACHE, key = "#branchId")
     public BranchResponseDTO findById(Integer branchId) {
         // getOrThrow tập trung xử lý EntityNotFoundException, tránh lặp code
         return branchMapper.toResponse(getOrThrow(branchId));
@@ -83,6 +88,7 @@ public class BranchServiceImpl implements BranchService {
      */
     @Override
     @Transactional  // readOnly=false – kích hoạt dirty-checking để flush INSERT
+    @CacheEvict(cacheNames = CacheConfig.BRANCHES_CACHE, allEntries = true)
     public BranchResponseDTO create(BranchRequestDTO request) {
         // Guard: tên chi nhánh phải unique trong toàn hệ thống
         if (branchRepository.existsByBranchName(request.getBranchName())) {
@@ -119,6 +125,7 @@ public class BranchServiceImpl implements BranchService {
      */
     @Override
     @Transactional  // readOnly=false để Hibernate flush UPDATE
+    @CacheEvict(cacheNames = CacheConfig.BRANCHES_CACHE, allEntries = true)
     public BranchResponseDTO update(Integer branchId, BranchRequestDTO request) {
         Branch branch = getOrThrow(branchId);
 
@@ -144,6 +151,7 @@ public class BranchServiceImpl implements BranchService {
      */
     @Override
     @Transactional
+    @CacheEvict(cacheNames = CacheConfig.BRANCHES_CACHE, allEntries = true)
     public BranchResponseDTO changeStatus(Integer branchId, BranchStatus newStatus) {
         Branch branch = getOrThrow(branchId);
         BranchStatus oldStatus = branch.getStatus();  // Lưu lại để log
@@ -164,6 +172,7 @@ public class BranchServiceImpl implements BranchService {
      */
     @Override
     @Transactional
+    @CacheEvict(cacheNames = CacheConfig.BRANCHES_CACHE, allEntries = true)
     public void softDelete(Integer branchId) {
         Branch branch = getOrThrow(branchId);
         branch.setStatus(BranchStatus.inactive);  // Đánh dấu không hoạt động, không xóa row

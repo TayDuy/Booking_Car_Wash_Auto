@@ -13,13 +13,15 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.http.converter.HttpMessageNotReadableException;
-import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.http.converter.HttpMessageNotWritableException;
+import org.springframework.web.context.request.async.AsyncRequestNotUsableException;
 
-import java.util.Arrays;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.Map;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import java.util.Arrays;
 import java.util.stream.Collectors;
+import java.util.LinkedHashMap;
 
 /**
  * Xử lý tập trung tất cả exception trong toàn bộ ứng dụng.
@@ -172,20 +174,6 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error(400, "Dữ liệu đầu vào không hợp lệ hoặc thiếu body"));
     }
 
-    /**
-     * Fallback — xử lý mọi exception chưa được catch ở các handler trên.
-     *
-     * <p>Dùng {@code log.error()} thay vì {@code printStackTrace()} để:
-     * <ul>
-     *   <li>Ghi log có cấu trúc (timestamp, thread, level) theo log framework</li>
-     *   <li>Có thể ship log lên hệ thống tập trung (ELK, Datadog, ...)</li>
-     * </ul>
-     * </p>
-     *
-     * <p>Không trả {@code ex.getMessage()} ra client để tránh lộ
-     * thông tin nội bộ (tên class, SQL, đường dẫn file, ...).</p>
-     */
-
     @ExceptionHandler(org.springframework.orm.ObjectOptimisticLockingFailureException.class)
     public ResponseEntity<ApiResponse<Void>> handleOptimisticLock(
             org.springframework.orm.ObjectOptimisticLockingFailureException ex) {
@@ -201,12 +189,83 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
     public ResponseEntity<ApiResponse<Void>> handleDataIntegrityViolationException(
             org.springframework.dao.DataIntegrityViolationException ex) {
-        log.warn("DataIntegrityViolationException: {}", ex.getMessage());
+        Throwable root = org.springframework.core.NestedExceptionUtils.getMostSpecificCause(ex);
+        log.warn("DataIntegrityViolationException: {} | rootCause: {}", ex.getMessage(), root.getMessage(), ex);
         return ResponseEntity
                 .status(HttpStatus.CONFLICT)
                 .body(ApiResponse.error(409, "Dữ liệu bị trùng lặp hoặc vi phạm ràng buộc cơ sở dữ liệu"));
     }
 
+    /**
+     * FIX: Nhiều service (VD: TimeSlotServiceImpl.create()/update()) ném
+     * IllegalArgumentException cho lỗi validate nghiệp vụ — ví dụ
+     * "Bay này đã có slot tại khung giờ đó", "Bay không thuộc chi nhánh này",
+     * "Giờ kết thúc phải sau giờ bắt đầu". Trước đây KHÔNG có handler riêng
+     * cho loại exception này nên nó rơi xuống handleGenericException(),
+     * bị log ở mức ERROR kèm full stacktrace (~150 dòng) và trả HTTP 500,
+     * dù bản chất đây là lỗi CLIENT gửi request không hợp lệ — đáng lẽ
+     * phải là 400 Bad Request và chỉ cần log WARN 1 dòng.
+     */
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ApiResponse<Void>> handleIllegalArgumentException(IllegalArgumentException ex) {
+        log.warn("IllegalArgumentException: {}", ex.getMessage());
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(400, ex.getMessage()));
+    }
+
+    /**
+     * FIX: TimeSlotServiceImpl.delete() ném IllegalStateException khi slot
+     * đã có booking không thể xóa (VD: "Không thể xóa slot đã có 3 booking").
+     * Đây là lỗi xung đột trạng thái — request hợp lệ về cú pháp nhưng
+     * conflict với trạng thái hiện tại của resource — nên trả 409 Conflict,
+     * không phải 500. Cùng nguyên nhân thiếu handler như IllegalArgumentException.
+     */
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<ApiResponse<Void>> handleIllegalStateException(IllegalStateException ex) {
+        log.warn("IllegalStateException: {}", ex.getMessage());
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(ApiResponse.error(409, ex.getMessage()));
+    }
+
+    /**
+     * Xử lý lỗi vi phạm bean validation ở tầng ENTITY khi save()/persist()
+     * (khác với MethodArgumentNotValidException — lỗi ở tầng DTO/@Valid
+     * trước khi vào service). Xảy ra khi entity có field @NotNull/@Min/@Max
+     * bị vi phạm mà không được chặn từ DTO validation — ví dụ mapper tạo
+     * entity qua constructor no-args + setter (MapStruct) khiến field có
+     * @Builder.Default (status, currentBookings...) bị null vì Lombok chỉ
+     * áp dụng default value khi khởi tạo qua builder().build().
+     * Không có handler này thì lỗi cũng rơi vào 500 generic và message gốc
+     * (rất hữu ích để biết chính xác field nào vi phạm) bị che mất.
+     */
+    @ExceptionHandler(jakarta.validation.ConstraintViolationException.class)
+    public ResponseEntity<ApiResponse<Map<String, String>>> handleConstraintViolationException(
+            jakarta.validation.ConstraintViolationException ex) {
+        Map<String, String> errors = new HashMap<>();
+        ex.getConstraintViolations().forEach(violation ->
+                errors.put(violation.getPropertyPath().toString(), violation.getMessage()));
+
+        log.warn("ConstraintViolationException: {}", errors);
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(400, "Dữ liệu không hợp lệ", errors));
+    }
+
+    /**
+     * Fallback — xử lý mọi exception chưa được catch ở các handler trên.
+     *
+     * <p>Dùng {@code log.error()} thay vì {@code printStackTrace()} để:
+     * <ul>
+     *   <li>Ghi log có cấu trúc (timestamp, thread, level) theo log framework</li>
+     *   <li>Có thể ship log lên hệ thống tập trung (ELK, Datadog, ...)</li>
+     * </ul>
+     * </p>
+     *
+     * <p>Không trả {@code ex.getMessage()} ra client để tránh lộ
+     * thông tin nội bộ (tên class, SQL, đường dẫn file, ...).</p>
+     */
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<Map<String, Object>> handleMethodArgumentTypeMismatch(
             MethodArgumentTypeMismatchException ex

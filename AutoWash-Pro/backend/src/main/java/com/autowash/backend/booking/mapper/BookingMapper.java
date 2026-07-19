@@ -85,7 +85,7 @@ public class BookingMapper {
                 .customerName(booking.getCustomer().getFullName())
                 .customerPhone(
                         booking.getCustomer().getUser() != null
-                        ? booking.getCustomer().getUser().getPhone() : null
+                                ? booking.getCustomer().getUser().getPhone() : null
                 )
                 // Vehicle
                 .vehicleId(booking.getVehicle().getVehicleId())
@@ -116,8 +116,7 @@ public class BookingMapper {
                 .build();
     }
 
-    public BookingSummaryResponseDTO toSummaryResponse(Booking booking, List<BookingDetail> details) {
-        Payment payment = booking.getPayment();
+    public BookingSummaryResponseDTO toSummaryResponse(Booking booking, List<BookingDetail> details, Payment payment) {
         String pStatus = payment != null ? payment.getPaymentStatus().name() : "unpaid";
         String pMethod = payment != null ? payment.getPaymentMethod().name() : "cash";
 

@@ -403,8 +403,8 @@ html[data-theme="dark"] .page-size-control select {
 }
 
 html[data-theme="dark"]
-  .pagination-controls
-  button.active {
+.pagination-controls
+button.active {
   border-color: #2672d9;
   background: #2672d9;
   color: #ffffff;
@@ -428,56 +428,124 @@ html[data-theme="dark"]
   }
 }
 
-.action-dialog-modal {
-  width: 460px;
+/* =========================================================
+   🔧 FIX: modal tạo/sửa booking (.booking-form-modal) bị thiếu
+   toàn bộ CSS (width/background/border-radius/box-shadow), khiến
+   modal trong suốt, không có kích thước cố định, làm nội dung
+   trang phía sau (sidebar, tiêu đề...) hiện xuyên qua và đè chữ
+   lên các trường form. Bổ sung style theo đúng pattern đã dùng ở
+   ManageVehiclesPage.css để đồng bộ giao diện toàn hệ thống.
+   ========================================================= */
+
+.booking-form-modal {
+  width: 720px;
   max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 64px);
+
+  background: white;
+  border-radius: 18px;
+  box-shadow: 0 30px 80px rgba(15, 23, 42, 0.3);
+
+  overflow-y: auto;
 }
 
-.dialog-message {
-  margin: 0;
-  color: #334155;
-  font-size: 15px;
-  line-height: 1.65;
+.booking-edit-modal {
+  width: 780px;
+}
+
+.booking-admin-form {
+  padding: 24px;
+}
+
+.booking-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.booking-admin-form .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.booking-admin-form .form-group.full {
+  grid-column: 1 / -1;
+}
+
+.booking-admin-form label {
+  color: #344054;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.booking-admin-form input,
+.booking-admin-form select,
+.booking-admin-form textarea {
+  min-height: 44px;
+
+  padding: 10px 12px;
+
+  border: 1px solid #d7dce4;
+  border-radius: 10px;
+
+  outline: none;
+  background: white;
+
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.booking-admin-form textarea {
+  resize: vertical;
+}
+
+.booking-admin-form input:focus,
+.booking-admin-form select:focus,
+.booking-admin-form textarea:focus {
+  border-color: #0052cc;
+  box-shadow: 0 0 0 4px rgba(0, 82, 204, 0.14);
+}
+
+.booking-admin-form input:disabled,
+.booking-admin-form select:disabled {
+  background: #f8fafc;
+  color: #94a3b8;
+  cursor: not-allowed;
 }
 
 .modal-actions {
-  padding: 20px 24px;
-  border-top: 1px solid #e5e7eb;
-
   display: flex;
   justify-content: flex-end;
   gap: 12px;
+
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid #e5e7eb;
 }
 
 .secondary-btn {
   height: 42px;
-  padding: 0 16px;
+  padding: 0 18px;
 
   border: 1px solid #d7dce4;
-  border-radius: 12px;
+  border-radius: 10px;
 
-  background: white;
+  background: #f1f5f9;
   color: #334155;
+
   font-weight: 700;
   cursor: pointer;
 }
 
 .secondary-btn:disabled,
-.refresh-btn:disabled,
-.danger-btn:disabled {
-  opacity: 0.7;
+.booking-admin-form button[type="submit"]:disabled {
+  opacity: 0.6;
   cursor: not-allowed;
 }
 
-.danger-btn {
-  height: 42px;
-  padding: 0 16px;
-
-  border: none;
-  border-radius: 12px;
-
-  background: #dc2626;
-  color: white;
-  font-weight: 700;
-  cursor: pointer;
+@media (max-width: 760px) {
+  .booking-form-grid {
+    grid-template-columns: 1fr;
+  }
 }

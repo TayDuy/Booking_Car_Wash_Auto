@@ -3,6 +3,7 @@ package com.autowash.backend.booking.service.impl;
 import com.autowash.backend.booking.dto.*;
 import com.autowash.backend.booking.entity.Booking;
 import com.autowash.backend.booking.enums.BookingStatus;
+import com.autowash.backend.booking.enums.BookingSortOption;
 import com.autowash.backend.booking.entity.BookingDetail;
 import com.autowash.backend.booking.mapper.BookingMapper;
 import com.autowash.backend.booking.repository.BookingDetailRepository;
@@ -16,6 +17,9 @@ import com.autowash.backend.customer.entity.Customer;
 import com.autowash.backend.customer.repository.CustomerRepository;
 import com.autowash.backend.employee.entity.Employee;
 import com.autowash.backend.employee.repository.EmployeeRepository;
+import com.autowash.backend.notification.dto.NotificationCreateDTO;
+import com.autowash.backend.notification.entity.Notification;
+import com.autowash.backend.notification.service.NotificationService;
 import com.autowash.backend.promotion.entity.Promotion;
 import com.autowash.backend.servicepackage.entity.ServicePackage;
 import com.autowash.backend.servicepackage.repository.ServicePackageRepository;
@@ -29,9 +33,6 @@ import com.autowash.backend.customerreward.repository.CustomerRewardRepository;
 import com.autowash.backend.payment.entity.Payment;
 import com.autowash.backend.payment.repository.PaymentRepository;
 import com.autowash.backend.promotion.repository.PromotionUseRepository;
-import com.autowash.backend.notification.dto.NotificationCreateDTO;
-import com.autowash.backend.notification.entity.Notification;
-import com.autowash.backend.notification.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -66,6 +67,7 @@ public class BookingServiceImpl implements BookingService {
     private final CustomerRewardRepository customerRewardRepository;
     private final PaymentRepository paymentRepository;
     private final PromotionUseRepository promotionUseRepository;
+
 
     // ── CREATE ──────────────────────────────────────────────────────────────
 
@@ -260,7 +262,6 @@ public class BookingServiceImpl implements BookingService {
             log.error("Lỗi khi tạo thông báo in-app cho booking {}: {}",
                     savedBooking.getBookingId(), e.getMessage(), e);
         }
-
         return bookingMapper.toCreateResponse(savedBooking, details, request.getPaymentMethod());
     }
     // ── READ ─────────────────────────────────────────────────────────────────
@@ -330,8 +331,11 @@ public class BookingServiceImpl implements BookingService {
     /** Lấy danh sách tóm tắt tất cả booking. */
     @Override
     @Transactional(readOnly = true)
-    public List<BookingSummaryResponseDTO> getAllBookings() {
-        List<Booking> bookings = bookingRepository.findAllWithAssociations();
+    public List<BookingSummaryResponseDTO> getAllBookings(BookingSortOption sortOption) {
+        BookingSortOption effectiveSort = sortOption != null ? sortOption : BookingSortOption.NEWEST;
+        List<Booking> bookings = effectiveSort == BookingSortOption.PRIORITY
+                ? bookingRepository.findAllWithAssociationsOrderByPriority()
+                : bookingRepository.findAllWithAssociationsOrderByNewest();
         return mapToSummaryResponses(bookings);
     }
 
@@ -358,12 +362,24 @@ public class BookingServiceImpl implements BookingService {
             return Collections.emptyList();
         }
         List<Integer> bookingIds = bookings.stream().map(Booking::getBookingId).toList();
+
         List<BookingDetail> details = bookingDetailRepository.findByBooking_BookingIdIn(bookingIds);
         Map<Integer, List<BookingDetail>> detailsMap = details.stream()
                 .collect(Collectors.groupingBy(d -> d.getBooking().getBookingId()));
 
+        // Batch-fetch payment thay vì để booking.getPayment() lazy-load từng
+        // booking một (N+1 query) — nguyên nhân chính khiến trang danh sách
+        // booking load chậm khi số lượng booking lớn.
+        List<Payment> payments = paymentRepository.findByBooking_BookingIdIn(bookingIds);
+        Map<Integer, Payment> paymentMap = payments.stream()
+                .collect(Collectors.toMap(p -> p.getBooking().getBookingId(), p -> p, (a, b) -> a));
+
         return bookings.stream()
-                .map(b -> bookingMapper.toSummaryResponse(b, detailsMap.getOrDefault(b.getBookingId(), Collections.emptyList())))
+                .map(b -> bookingMapper.toSummaryResponse(
+                        b,
+                        detailsMap.getOrDefault(b.getBookingId(), Collections.emptyList()),
+                        paymentMap.get(b.getBookingId())
+                ))
                 .collect(Collectors.toList());
     }
 
@@ -457,9 +473,9 @@ public class BookingServiceImpl implements BookingService {
 
         if (
                 assignedStaff.getBranch() == null ||
-                booking.getBranch() == null ||
-                !assignedStaff.getBranch().getBranchId()
-                        .equals(booking.getBranch().getBranchId())
+                        booking.getBranch() == null ||
+                        !assignedStaff.getBranch().getBranchId()
+                                .equals(booking.getBranch().getBranchId())
         ) {
             throw new BusinessException(
                     "Nhân viên được phân công không thuộc chi nhánh của booking",
@@ -480,9 +496,9 @@ public class BookingServiceImpl implements BookingService {
 
         if (
                 washBay.getBranch() == null ||
-                booking.getBranch() == null ||
-                !washBay.getBranch().getBranchId()
-                        .equals(booking.getBranch().getBranchId())
+                        booking.getBranch() == null ||
+                        !washBay.getBranch().getBranchId()
+                                .equals(booking.getBranch().getBranchId())
         ) {
             throw new BusinessException(
                     "Khu vực rửa xe không thuộc chi nhánh của booking",
@@ -637,7 +653,7 @@ public class BookingServiceImpl implements BookingService {
                                 booking.getCustomer().getCustomerId()
                         );
                         promotionUseRepository.flush();
-                        log.info("[Booking] Giải phóng promotion #{} cho khách hàng #{} do hủy lịch #{}", 
+                        log.info("[Booking] Giải phóng promotion #{} cho khách hàng #{} do hủy lịch #{}",
                                 payment.getPromotion().getPromotionId(), booking.getCustomer().getCustomerId(), booking.getBookingId());
                     } catch (Exception e) {
                         log.error("Lỗi khi giải phóng Promotion khi hủy lịch: ", e);
@@ -657,6 +673,43 @@ public class BookingServiceImpl implements BookingService {
         notifyBookingCancelled(saved);
 
         return bookingMapper.toResponse(saved, bookingDetailRepository.findByBooking(saved));
+    }
+
+    /** Gửi email + tạo thông báo in-app khi một booking bị hủy. */
+    private void notifyBookingCancelled(Booking booking) {
+        Customer customer = booking.getCustomer();
+
+        try {
+            if (customer.getUser() != null) {
+                notificationService.create(NotificationCreateDTO.builder()
+                        .userId(customer.getUser().getId())
+                        .type(Notification.NotificationType.BOOKING_CANCELLED)
+                        .title("Đặt lịch đã bị hủy")
+                        .body(String.format("Lịch rửa xe #%s đã bị hủy.", booking.getBookingCode()))
+                        .referenceId(booking.getBookingId())
+                        .referenceType("booking")
+                        .channel(Notification.NotificationChannel.in_app)
+                        .build());
+            }
+        } catch (Exception e) {
+            log.error("Lỗi khi tạo thông báo in-app cho việc hủy booking {}: {}",
+                    booking.getBookingId(), e.getMessage(), e);
+        }
+
+        try {
+            String toEmail = customer.getUser() != null ? customer.getUser().getEmail() : null;
+            if (toEmail != null) {
+                mailService.sendBookingCancelledEmail(
+                        toEmail,
+                        customer.getFullName(),
+                        booking.getBookingCode(),
+                        booking.getNote()
+                );
+            }
+        } catch (Exception e) {
+            log.error("Lỗi khi kích hoạt gửi email hủy booking {}: {}",
+                    booking.getBookingId(), e.getMessage(), e);
+        }
     }
 
     /**
@@ -762,44 +815,8 @@ public class BookingServiceImpl implements BookingService {
         };
     }
 
-    private void notifyBookingCancelled(Booking booking) {
-        Customer customer = booking.getCustomer();
-
-        try {
-            if (customer.getUser() != null) {
-                notificationService.create(NotificationCreateDTO.builder()
-                        .userId(customer.getUser().getId())
-                        .type(Notification.NotificationType.BOOKING_CANCELLED)
-                        .title("Đặt lịch đã bị hủy")
-                        .body(String.format("Lịch rửa xe #%s đã bị hủy.", booking.getBookingCode()))
-                        .referenceId(booking.getBookingId())
-                        .referenceType("booking")
-                        .channel(Notification.NotificationChannel.in_app)
-                        .build());
-            }
-        } catch (Exception e) {
-            log.error("Lỗi khi tạo thông báo in-app cho việc hủy booking {}: {}",
-                    booking.getBookingId(), e.getMessage(), e);
-        }
-
-        try {
-            String toEmail = customer.getUser() != null ? customer.getUser().getEmail() : null;
-            if (toEmail != null) {
-                mailService.sendBookingCancelledEmail(
-                        toEmail,
-                        customer.getFullName(),
-                        booking.getBookingCode(),
-                        booking.getNote()
-                );
-            }
-        } catch (Exception e) {
-            log.error("Lỗi khi kích hoạt gửi email hủy booking {}: {}",
-                    booking.getBookingId(), e.getMessage(), e);
-        }
-    }
-
     private void sendConfirmationEmail(Customer customer, Booking booking, Branch branch,
-                                        TimeSlot slot, List<BookingDetail> details) {
+                                       TimeSlot slot, List<BookingDetail> details) {
         try {
             String toEmail = customer.getUser() != null ? customer.getUser().getEmail() : null;
             if (toEmail == null) return;

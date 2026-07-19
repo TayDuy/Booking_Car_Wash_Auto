@@ -33,6 +33,12 @@ public interface PaymentRepository extends JpaRepository<Payment, Integer> {
     Optional<Payment> findByBooking_BookingId(Integer bookingId);
 
     /**
+     * Batch fetch payment theo nhiều bookingId — dùng để tránh N+1 khi map
+     * danh sách booking (Manage Bookings, Booking History...).
+     */
+    List<Payment> findByBooking_BookingIdIn(List<Integer> bookingIds);
+
+    /**
      * Kiểm tra booking đã có payment chưa — tránh tạo duplicate.
      * Dùng trước khi tạo payment mới.
      */

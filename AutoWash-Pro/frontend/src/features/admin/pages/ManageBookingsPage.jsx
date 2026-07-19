@@ -56,8 +56,8 @@ function getLocalToday() {
   const timezoneOffset = now.getTimezoneOffset() * 60 * 1000;
 
   return new Date(now.getTime() - timezoneOffset)
-    .toISOString()
-    .slice(0, 10);
+      .toISOString()
+      .slice(0, 10);
 }
 
 function mapVehicleTypeToBookingType(vehicleType) {
@@ -83,8 +83,8 @@ function formatTime(value) {
 function getPaginationItems(currentPage, totalPages) {
   if (totalPages <= 7) {
     return Array.from(
-      { length: totalPages },
-      (_, index) => index + 1
+        { length: totalPages },
+        (_, index) => index + 1
     );
   }
 
@@ -92,8 +92,8 @@ function getPaginationItems(currentPage, totalPages) {
 
   const startPage = Math.max(2, currentPage - 1);
   const endPage = Math.min(
-    totalPages - 1,
-    currentPage + 1
+      totalPages - 1,
+      currentPage + 1
   );
 
   if (startPage > 2) {
@@ -101,9 +101,9 @@ function getPaginationItems(currentPage, totalPages) {
   }
 
   for (
-    let page = startPage;
-    page <= endPage;
-    page += 1
+      let page = startPage;
+      page <= endPage;
+      page += 1
   ) {
     items.push(page);
   }
@@ -122,6 +122,7 @@ export default function ManageBookingsPage() {
   const [loading, setLoading] = useState(true);
   const [keyword, setKeyword] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [sortBy, setSortBy] = useState("newest");
 
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -149,19 +150,15 @@ export default function ManageBookingsPage() {
   const [assignableStaff, setAssignableStaff] = useState([]);
   const [staffLoading, setStaffLoading] = useState(false);
 
-  const [confirmDialog, setConfirmDialog] = useState(null);
-  const [messageDialog, setMessageDialog] = useState(null);
-  const [actionLoading, setActionLoading] = useState(false);
-
   useEffect(() => {
     loadBookings();
-  }, []);
+  }, [sortBy]);
 
   useEffect(() => {
     if (
-      !showCreateModal ||
-      !createForm.branchId ||
-      !createForm.bookingDate
+        !showCreateModal ||
+        !createForm.branchId ||
+        !createForm.bookingDate
     ) {
       setAvailableSlots([]);
       return;
@@ -174,8 +171,8 @@ export default function ManageBookingsPage() {
 
       try {
         const response = await getAvailableSlots(
-          Number(createForm.branchId),
-          createForm.bookingDate
+            Number(createForm.branchId),
+            createForm.bookingDate
         );
 
         const slotList = unwrapList(response);
@@ -211,48 +208,12 @@ export default function ManageBookingsPage() {
     createForm.branchId,
     createForm.bookingDate,
   ]);
-  function showMessageDialog(title, message) {
-    setMessageDialog({ title, message });
-  }
 
-  function openConfirmDialog({
-    title,
-    message,
-    confirmText = "Xác nhận",
-    confirmVariant = "primary",
-    onConfirm,
-  }) {
-    setConfirmDialog({
-      title,
-      message,
-      confirmText,
-      confirmVariant,
-      onConfirm,
-    });
-  }
-
-  function closeConfirmDialog() {
-    if (actionLoading) return;
-    setConfirmDialog(null);
-  }
-
-  async function handleConfirmDialog() {
-    if (!confirmDialog?.onConfirm || actionLoading) return;
-
-    setActionLoading(true);
-
-    try {
-      await confirmDialog.onConfirm();
-      setConfirmDialog(null);
-    } finally {
-      setActionLoading(false);
-    }
-  }
   async function loadBookings() {
     setLoading(true);
 
     try {
-      const response = await bookingApi.adminList();
+      const response = await bookingApi.adminList({ sortBy });
       console.log("ADMIN BOOKINGS:", response.data);
 
       const result = response.data?.data || response.data || [];
@@ -266,7 +227,6 @@ export default function ManageBookingsPage() {
       }
     } catch (error) {
       console.error("Load bookings failed:", error);
-      setBookings([]);
     } finally {
       setLoading(false);
     }
@@ -283,13 +243,13 @@ export default function ManageBookingsPage() {
         booking.serviceName,
         booking.status,
       ]
-        .join(" ")
-        .toLowerCase();
+          .join(" ")
+          .toLowerCase();
 
       const matchKeyword = text.includes(keyword.toLowerCase());
 
       const matchStatus =
-        statusFilter === "all" || booking.status === statusFilter;
+          statusFilter === "all" || booking.status === statusFilter;
 
       return matchKeyword && matchStatus;
     });
@@ -297,11 +257,11 @@ export default function ManageBookingsPage() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [keyword, statusFilter, pageSize]);
+  }, [keyword, statusFilter, sortBy, pageSize]);
 
   const totalPages = Math.max(
-    1,
-    Math.ceil(filteredBookings.length / pageSize)
+      1,
+      Math.ceil(filteredBookings.length / pageSize)
   );
 
   useEffect(() => {
@@ -318,18 +278,18 @@ export default function ManageBookingsPage() {
   }, [filteredBookings, currentPage, pageSize]);
 
   const paginationItems = useMemo(
-    () => getPaginationItems(currentPage, totalPages),
-    [currentPage, totalPages]
+      () => getPaginationItems(currentPage, totalPages),
+      [currentPage, totalPages]
   );
 
   const firstVisibleItem =
-    filteredBookings.length === 0
-      ? 0
-      : (currentPage - 1) * pageSize + 1;
+      filteredBookings.length === 0
+          ? 0
+          : (currentPage - 1) * pageSize + 1;
 
   const lastVisibleItem = Math.min(
-    currentPage * pageSize,
-    filteredBookings.length
+      currentPage * pageSize,
+      filteredBookings.length
   );
 
   const selectedCustomerVehicles = useMemo(() => {
@@ -339,11 +299,11 @@ export default function ManageBookingsPage() {
 
     return vehicles.filter((vehicle) => {
       const sameCustomer =
-        Number(vehicle.customerId) === Number(createForm.customerId);
+          Number(vehicle.customerId) === Number(createForm.customerId);
 
       const isActive =
-        vehicle.isActive !== false &&
-        vehicle.active !== false;
+          vehicle.isActive !== false &&
+          vehicle.active !== false;
 
       return sameCustomer && isActive;
     });
@@ -353,52 +313,51 @@ export default function ManageBookingsPage() {
     const bookingId = booking.bookingId || booking.id;
 
     if (!bookingId) {
-      showMessageDialog("Thiếu dữ liệu", "Không tìm thấy bookingId.");
+      alert("Không tìm thấy bookingId.");
       return;
     }
 
-    openConfirmDialog({
-      title: "Hủy booking",
-      message: `Bạn có chắc muốn hủy đơn đặt lịch ${booking.bookingCode || ""} không?`,
-      confirmText: "Hủy booking",
-      confirmVariant: "danger",
-      onConfirm: async () => {
-        try {
-          await bookingApi.adminCancel(bookingId);
-          showMessageDialog("Thành công", "Hủy booking thành công.");
-          await loadBookings();
-        } catch (error) {
-          console.error("Cancel booking failed:", error);
+    const confirmCancel = window.confirm(
+        "Bạn có chắc muốn hủy đơn đặt lịch này không?"
+    );
 
-          showMessageDialog(
-            "Thất bại",
-            error.response?.data?.message || "Hủy booking thất bại."
-          );
-        }
-      },
-    });
+    if (!confirmCancel) return;
+
+    try {
+      await bookingApi.adminCancel(bookingId);
+
+      alert("Hủy booking thành công.");
+      await loadBookings();
+    } catch (error) {
+      console.error("Cancel booking failed:", error);
+
+      alert(
+          error.response?.data?.message ||
+          "Hủy booking thất bại."
+      );
+    }
   }
 
   function getStatusClass(status) {
     const normalizedStatus = String(status || "").toLowerCase();
 
     if (
-      normalizedStatus === "confirmed" ||
-      normalizedStatus === "completed"
+        normalizedStatus === "confirmed" ||
+        normalizedStatus === "completed"
     ) {
       return "success";
     }
 
     if (
-      normalizedStatus === "cancelled" ||
-      normalizedStatus === "no_show"
+        normalizedStatus === "cancelled" ||
+        normalizedStatus === "no_show"
     ) {
       return "danger";
     }
 
     if (
-      normalizedStatus === "checked_in" ||
-      normalizedStatus === "in_progress"
+        normalizedStatus === "checked_in" ||
+        normalizedStatus === "in_progress"
     ) {
       return "info";
     }
@@ -421,7 +380,7 @@ export default function ManageBookingsPage() {
       setSelectedBooking(response.data?.data || response.data);
     } catch (error) {
       console.error("Load booking detail failed:", error);
-      showMessageDialog("Thất bại", "Không tải được chi tiết booking.");
+      alert("Không tải được chi tiết booking.");
     } finally {
       setDetailLoading(false);
     }
@@ -431,120 +390,117 @@ export default function ManageBookingsPage() {
     const bookingId = booking.bookingId || booking.id;
 
     if (!bookingId) {
-      showMessageDialog("Thiếu dữ liệu", "Không tìm thấy bookingId.");
+      alert("Không tìm thấy bookingId.");
       return;
     }
 
-    openConfirmDialog({
-      title: "Xác nhận booking",
-      message: `Bạn có chắc muốn xác nhận booking ${booking.bookingCode || ""} không?`,
-      confirmText: "Xác nhận",
-      confirmVariant: "primary",
-      onConfirm: async () => {
-        try {
-          await bookingApi.adminConfirm(bookingId);
-          showMessageDialog("Thành công", "Xác nhận booking thành công.");
-          await loadBookings();
-        } catch (error) {
-          console.error("Confirm booking failed:", error);
+    const ok = window.confirm(
+        "Bạn có chắc muốn xác nhận booking này không?"
+    );
 
-          showMessageDialog(
-            "Thất bại",
-            error.response?.data?.message || "Xác nhận booking thất bại."
-          );
-        }
-      },
-    });
+    if (!ok) return;
+
+    try {
+      await bookingApi.adminConfirm(bookingId);
+
+      alert("Xác nhận booking thành công.");
+      await loadBookings();
+    } catch (error) {
+      console.error("Confirm booking failed:", error);
+
+      alert(
+          error.response?.data?.message ||
+          "Xác nhận booking thất bại."
+      );
+    }
   }
   async function handleCheckInBooking(booking) {
     const bookingId = booking.bookingId || booking.id;
 
     if (!bookingId) {
-      showMessageDialog("Thiếu dữ liệu", "Không tìm thấy bookingId.");
+      alert("Không tìm thấy bookingId.");
       return;
     }
 
-    openConfirmDialog({
-      title: "Check-in booking",
-      message: `Bạn xác nhận khách hàng đã đến và muốn check-in booking ${booking.bookingCode || ""} chứ?`,
-      confirmText: "Check-in",
-      confirmVariant: "primary",
-      onConfirm: async () => {
-        try {
-          await bookingApi.adminCheckIn(bookingId);
-          showMessageDialog("Thành công", "Check-in booking thành công.");
-          await loadBookings();
-        } catch (error) {
-          console.error("Check-in booking failed:", error);
+    const ok = window.confirm(
+        "Bạn có chắc khách hàng đã đến và muốn check-in booking này không?"
+    );
 
-          showMessageDialog(
-            "Thất bại",
-            error.response?.data?.message || "Check-in booking thất bại."
-          );
-        }
-      },
-    });
+    if (!ok) return;
+
+    try {
+      await bookingApi.adminCheckIn(bookingId);
+
+      alert("Check-in booking thành công.");
+      await loadBookings();
+    } catch (error) {
+      console.error("Check-in booking failed:", error);
+
+      alert(
+          error.response?.data?.message ||
+          "Check-in booking thất bại."
+      );
+    }
   }
 
   async function handleStartWashBooking(booking) {
     const bookingId = booking.bookingId || booking.id;
 
     if (!bookingId) {
-      showMessageDialog("Thiếu dữ liệu", "Không tìm thấy bookingId.");
+      alert("Không tìm thấy bookingId.");
       return;
     }
 
-    openConfirmDialog({
-      title: "Bắt đầu thực hiện",
-      message: `Bạn có chắc muốn bắt đầu thực hiện dịch vụ cho booking ${booking.bookingCode || ""} không?`,
-      confirmText: "Bắt đầu",
-      confirmVariant: "primary",
-      onConfirm: async () => {
-        try {
-          await bookingApi.adminStartWash(bookingId);
-          showMessageDialog("Thành công", "Đã bắt đầu thực hiện dịch vụ.");
-          await loadBookings();
-        } catch (error) {
-          console.error("Start wash booking failed:", error);
+    const ok = window.confirm(
+        "Bạn có chắc muốn bắt đầu thực hiện dịch vụ cho booking này không?"
+    );
 
-          showMessageDialog(
-            "Thất bại",
-            error.response?.data?.message || "Không thể bắt đầu thực hiện dịch vụ."
-          );
-        }
-      },
-    });
+    if (!ok) return;
+
+    try {
+      await bookingApi.adminStartWash(bookingId);
+
+      alert("Đã bắt đầu thực hiện dịch vụ.");
+      await loadBookings();
+    } catch (error) {
+      console.error("Start wash booking failed:", error);
+
+      alert(
+          error.response?.data?.message ||
+          "Không thể bắt đầu thực hiện dịch vụ."
+      );
+    }
   }
 
   async function handleCompleteBooking(booking) {
     const bookingId = booking.bookingId || booking.id;
 
     if (!bookingId) {
-      showMessageDialog("Thiếu dữ liệu", "Không tìm thấy bookingId.");
+      alert("Không tìm thấy bookingId.");
       return;
     }
 
-    openConfirmDialog({
-      title: "Hoàn thành booking",
-      message: `Bạn có chắc muốn hoàn thành booking ${booking.bookingCode || ""} không?`,
-      confirmText: "Hoàn thành",
-      confirmVariant: "primary",
-      onConfirm: async () => {
-        try {
-          await bookingApi.adminComplete(bookingId);
-          showMessageDialog("Thành công", "Hoàn thành booking thành công.");
-          await loadBookings();
-        } catch (error) {
-          console.error("Complete booking failed:", error);
+    const ok = window.confirm(
+        "Bạn có chắc muốn hoàn thành booking này không?"
+    );
 
-          showMessageDialog(
-            "Thất bại",
-            error.response?.data?.message || "Hoàn thành booking thất bại."
-          );
-        }
-      },
-    });
+    if (!ok) return;
+
+    try {
+      await bookingApi.adminComplete(bookingId);
+
+      alert("Hoàn thành booking thành công.");
+      await loadBookings();
+    } catch (error) {
+      console.error("Complete booking failed:", error);
+
+      alert(
+          error.response?.data?.message ||
+          "Hoàn thành booking thất bại."
+      );
+    }
   }
+
   async function loadCreateOptions() {
     setCreateOptionsLoading(true);
 
@@ -568,19 +524,19 @@ export default function ManageBookingsPage() {
 
       setCustomers(customerList);
       setBranches(
-        branchList.filter(
-          (branch) =>
-            branch.acceptingBookings !== false &&
-            String(branch.status || "").toLowerCase() === "active"
-        )
+          branchList.filter(
+              (branch) =>
+                  branch.acceptingBookings !== false &&
+                  String(branch.status || "").toLowerCase() === "active"
+          )
       );
       setVehicles(vehicleList);
       setServicePackages(
-        serviceList.filter(
-          (service) =>
-            service.isActive !== false &&
-            service.active !== false
-        )
+          serviceList.filter(
+              (service) =>
+                  service.isActive !== false &&
+                  service.active !== false
+          )
       );
 
       console.log("CREATE BOOKING OPTIONS:", {
@@ -593,8 +549,8 @@ export default function ManageBookingsPage() {
       console.error("Load create booking options failed:", error);
 
       alert(
-        error.response?.data?.message ||
-        "Không tải được dữ liệu để tạo booking."
+          error.response?.data?.message ||
+          "Không tải được dữ liệu để tạo booking."
       );
     } finally {
       setCreateOptionsLoading(false);
@@ -681,8 +637,8 @@ export default function ManageBookingsPage() {
     }
 
     const selectedVehicle = vehicles.find(
-      (vehicle) =>
-        Number(vehicle.vehicleId || vehicle.id) === Number(vehicleId)
+        (vehicle) =>
+            Number(vehicle.vehicleId || vehicle.id) === Number(vehicleId)
     );
 
     if (!selectedVehicle) {
@@ -696,7 +652,7 @@ export default function ManageBookingsPage() {
       brand: selectedVehicle.brand || "",
       model: selectedVehicle.model || "",
       vehicleType: mapVehicleTypeToBookingType(
-        selectedVehicle.vehicleType
+          selectedVehicle.vehicleType
       ),
     }));
   }
@@ -704,7 +660,7 @@ export default function ManageBookingsPage() {
     setCreateForm((prev) => ({
       ...prev,
       details: prev.details.map((item, itemIndex) =>
-        itemIndex === index ? { ...item, [field]: value } : item
+          itemIndex === index ? { ...item, [field]: value } : item
       ),
     }));
   }
@@ -720,9 +676,9 @@ export default function ManageBookingsPage() {
     setCreateForm((prev) => ({
       ...prev,
       details:
-        prev.details.length === 1
-          ? prev.details
-          : prev.details.filter((_, itemIndex) => itemIndex !== index),
+          prev.details.length === 1
+              ? prev.details
+              : prev.details.filter((_, itemIndex) => itemIndex !== index),
     }));
   }
 
@@ -730,19 +686,19 @@ export default function ManageBookingsPage() {
     e.preventDefault();
 
     if (
-      !createForm.customerId ||
-      !createForm.branchId ||
-      !createForm.bookingDate ||
-      !createForm.slotId ||
-      !createForm.licensePlate.trim() ||
-      !createForm.brand.trim() ||
-      createForm.details.some(
-        (item) =>
-          !item.serviceId ||
-          Number(item.quantity) < 1
-      )
+        !createForm.customerId ||
+        !createForm.branchId ||
+        !createForm.bookingDate ||
+        !createForm.slotId ||
+        !createForm.licensePlate.trim() ||
+        !createForm.brand.trim() ||
+        createForm.details.some(
+            (item) =>
+                !item.serviceId ||
+                Number(item.quantity) < 1
+        )
     ) {
-      showMessageDialog("Thiếu dữ liệu", "Vui lòng nhập đầy đủ các trường bắt buộc.");
+      alert("Vui lòng nhập đầy đủ các trường bắt buộc.");
       return;
     }
 
@@ -765,16 +721,13 @@ export default function ManageBookingsPage() {
     setCreating(true);
     try {
       await bookingApi.adminCreate(payload);
-      showMessageDialog("Thành công", "Tạo booking thành công.");
+      alert("Tạo booking thành công.");
       setShowCreateModal(false);
       setCurrentPage(1);
       await loadBookings();
     } catch (error) {
       console.error("Create booking failed:", error);
-      showMessageDialog(
-        "Thất bại",
-        error.response?.data?.message || "Tạo booking thất bại."
-      );
+      alert(error.response?.data?.message || "Tạo booking thất bại.");
     } finally {
       setCreating(false);
     }
@@ -798,32 +751,32 @@ export default function ManageBookingsPage() {
       ]);
 
       const detail =
-        detailResponse.data?.data || detailResponse.data;
+          detailResponse.data?.data || detailResponse.data;
 
       const staffResult =
-        staffResponse.data?.data || staffResponse.data || [];
+          staffResponse.data?.data || staffResponse.data || [];
 
       const staffList = Array.isArray(staffResult)
-        ? staffResult
-        : Array.isArray(staffResult.content)
-          ? staffResult.content
-          : [];
+          ? staffResult
+          : Array.isArray(staffResult.content)
+              ? staffResult.content
+              : [];
 
       const currentAssignedStaffId =
-        detail.assignedStaffId ??
-        detail.employeeId ??
-        detail.assignedStaff?.employeeId ??
-        detail.assignedStaff?.id ??
-        "";
+          detail.assignedStaffId ??
+          detail.employeeId ??
+          detail.assignedStaff?.employeeId ??
+          detail.assignedStaff?.id ??
+          "";
 
       setEditingBooking(detail);
       setAssignableStaff(staffList);
 
       setEditForm({
         assignedStaffId:
-          currentAssignedStaffId === null
-            ? ""
-            : String(currentAssignedStaffId),
+            currentAssignedStaffId === null
+                ? ""
+                : String(currentAssignedStaffId),
 
         note: detail.note || "",
       });
@@ -831,8 +784,8 @@ export default function ManageBookingsPage() {
       console.error("Load booking for edit failed:", error);
 
       alert(
-        error.response?.data?.message ||
-        "Không tải được dữ liệu phân công nhân viên."
+          error.response?.data?.message ||
+          "Không tải được dữ liệu phân công nhân viên."
       );
     } finally {
       setStaffLoading(false);
@@ -850,885 +803,816 @@ export default function ManageBookingsPage() {
 
     const payload = {
       assignedStaffId:
-        editForm.assignedStaffId === ""
-          ? null
-          : Number(editForm.assignedStaffId),
+          editForm.assignedStaffId === ""
+              ? null
+              : Number(editForm.assignedStaffId),
       note: editForm.note.trim() || null,
     };
 
     setUpdating(true);
     try {
       await bookingApi.adminUpdate(bookingId, payload);
-      showMessageDialog("Thành công", "Cập nhật booking thành công.");
+      alert("Cập nhật booking thành công.");
       setEditingBooking(null);
       await loadBookings();
     } catch (error) {
       console.error("Update booking failed:", error);
-      showMessageDialog(
-        "Thất bại",
-        error.response?.data?.message || "Cập nhật booking thất bại."
-      );
+      alert(error.response?.data?.message || "Cập nhật booking thất bại.");
     } finally {
       setUpdating(false);
     }
   }
 
   return (
-    <div className="manage-page">
-      <div className="manage-header">
-        <div>
-          <h1>Quản lý đặt lịch</h1>
-          <p>Theo dõi, tìm kiếm và xử lý các đơn đặt lịch trong hệ thống.</p>
+      <div className="manage-page">
+        <div className="manage-header">
+          <div>
+            <h1>Quản lý đặt lịch</h1>
+            <p>Theo dõi, tìm kiếm và xử lý các đơn đặt lịch trong hệ thống.</p>
+          </div>
+
+          <div className="booking-header-actions">
+            <button className="secondary-btn" onClick={loadBookings}>
+              Làm mới
+            </button>
+
+            <button className="refresh-btn" onClick={openCreateModal}>
+              <Plus size={18} />
+              Tạo booking
+            </button>
+          </div>
         </div>
 
-        <div className="booking-header-actions">
-          <button className="secondary-btn" onClick={loadBookings}>
-            Làm mới
-          </button>
+        <div className="manage-toolbar">
+          <div className="manage-search">
+            <Search size={18} />
+            <input
+                type="text"
+                placeholder="Tìm theo mã đơn, khách hàng, chi nhánh..."
+                value={keyword}
+                onChange={(e) => setKeyword(e.target.value)}
+            />
+          </div>
 
-          <button className="refresh-btn" onClick={openCreateModal}>
-            <Plus size={18} />
-            Tạo booking
-          </button>
+          <select
+              className="manage-filter"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+          >
+            <option value="all">Tất cả trạng thái</option>
+            <option value="pending">Pending</option>
+            <option value="confirmed">Confirmed</option>
+            <option value="checked_in">Checked in</option>
+            <option value="in_progress">In progress</option>
+            <option value="completed">Completed</option>
+            <option value="cancelled">Cancelled</option>
+            <option value="no_show">No show</option>
+          </select>
+
+          <select
+              className="manage-filter"
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+          >
+            <option value="newest">Mới đặt trước</option>
+            <option value="priority">Theo thứ hạng khách hàng</option>
+          </select>
         </div>
-      </div>
 
-      <div className="manage-toolbar">
-        <div className="manage-search">
-          <Search size={18} />
-          <input
-            type="text"
-            placeholder="Tìm theo mã đơn, khách hàng, chi nhánh..."
-            value={keyword}
-            onChange={(e) => setKeyword(e.target.value)}
-          />
-        </div>
+        <div className="manage-card">
+          {loading ? (
+              <div className="empty-state">Đang tải danh sách đặt lịch...</div>
+          ) : filteredBookings.length === 0 ? (
+              <div className="empty-state">Không có đơn đặt lịch phù hợp.</div>
+          ) : (
+              <>
+                <div className="booking-table-wrap">
+                  <table className="booking-table">
+                    <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>Mã đơn</th>
+                      <th>Khách hàng</th>
+                      <th>Chi nhánh</th>
+                      <th>Dịch vụ</th>
+                      <th>Thời gian</th>
+                      <th>Trạng thái</th>
+                      <th>Thao tác</th>
+                    </tr>
+                    </thead>
 
-        <select
-          className="manage-filter"
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-        >
-          <option value="all">Tất cả trạng thái</option>
-          <option value="pending">Pending</option>
-          <option value="confirmed">Confirmed</option>
-          <option value="checked_in">Checked in</option>
-          <option value="in_progress">In progress</option>
-          <option value="completed">Completed</option>
-          <option value="cancelled">Cancelled</option>
-          <option value="no_show">No show</option>
-        </select>
-      </div>
+                    <tbody>
+                    {paginatedBookings.map((booking, index) => (
+                        <tr
+                            key={
+                                booking.bookingId ||
+                                booking.id ||
+                                index
+                            }
+                        >
+                          <td>
+                            {(currentPage - 1) * pageSize +
+                                index +
+                                1}
+                          </td>
 
-      <div className="manage-card">
-        {loading ? (
-          <div className="empty-state">Đang tải danh sách đặt lịch...</div>
-        ) : filteredBookings.length === 0 ? (
-          <div className="empty-state">Không có đơn đặt lịch phù hợp.</div>
-        ) : (
-          <>
-            <div className="booking-table-wrap">
-              <table className="booking-table">
-                <thead>
-                  <tr>
-                    <th>#</th>
-                    <th>Mã đơn</th>
-                    <th>Khách hàng</th>
-                    <th>Chi nhánh</th>
-                    <th>Dịch vụ</th>
-                    <th>Thời gian</th>
-                    <th>Trạng thái</th>
-                    <th>Thao tác</th>
-                  </tr>
-                </thead>
+                          <td>{booking.bookingCode || "N/A"}</td>
 
-                <tbody>
-                  {paginatedBookings.map((booking, index) => (
-                    <tr
-                      key={
-                        booking.bookingId ||
-                        booking.id ||
-                        index
-                      }
-                    >
-                      <td>
-                        {(currentPage - 1) * pageSize +
-                          index +
-                          1}
-                      </td>
+                          <td>
+                            {booking.customerName ||
+                                booking.customer?.fullName ||
+                                booking.customer ||
+                                "N/A"}
+                          </td>
 
-                      <td>{booking.bookingCode || "N/A"}</td>
+                          <td>
+                            {booking.branchName ||
+                                booking.branch?.branchName ||
+                                booking.branch ||
+                                "N/A"}
+                          </td>
 
-                      <td>
-                        {booking.customerName ||
-                          booking.customer?.fullName ||
-                          booking.customer ||
-                          "N/A"}
-                      </td>
+                          <td>
+                            {Array.isArray(booking.serviceNames)
+                                ? booking.serviceNames.join(", ")
+                                : booking.serviceName ||
+                                booking.service?.serviceName ||
+                                booking.service ||
+                                "N/A"}
+                          </td>
 
-                      <td>
-                        {booking.branchName ||
-                          booking.branch?.branchName ||
-                          booking.branch ||
-                          "N/A"}
-                      </td>
+                          <td>
+                            {booking.bookingDate
+                                ? new Date(
+                                    booking.bookingDate
+                                ).toLocaleString("vi-VN")
+                                : booking.startTime
+                                    ? new Date(
+                                        booking.startTime
+                                    ).toLocaleString("vi-VN")
+                                    : booking.time || "N/A"}
+                          </td>
 
-                      <td>
-                        {Array.isArray(booking.serviceNames)
-                          ? booking.serviceNames.join(", ")
-                          : booking.serviceName ||
-                          booking.service?.serviceName ||
-                          booking.service ||
-                          "N/A"}
-                      </td>
-
-                      <td>
-                        {booking.bookingDate
-                          ? new Date(
-                            booking.bookingDate
-                          ).toLocaleString("vi-VN")
-                          : booking.startTime
-                            ? new Date(
-                              booking.startTime
-                            ).toLocaleString("vi-VN")
-                            : booking.time || "N/A"}
-                      </td>
-
-                      <td>
+                          <td>
                         <span
-                          className={`status-badge ${getStatusClass(
-                            booking.status
-                          )}`}
+                            className={`status-badge ${getStatusClass(
+                                booking.status
+                            )}`}
                         >
                           {booking.status || "pending"}
                         </span>
-                      </td>
+                          </td>
 
-                      <td>
-                        <td>
-                          <div className="action-group">
-                            <button
-                              type="button"
-                              className="action-btn view"
-                              title="Xem chi tiết"
-                              onClick={() => handleViewBooking(booking)}
-                            >
-                              <Eye size={16} />
-                            </button>
-
-                            {!["completed", "cancelled"].includes(
-                              String(booking.status || "").toLowerCase()
-                            ) && (
+                          <td>
+                              <div className="action-group">
                                 <button
-                                  type="button"
-                                  className="action-btn edit"
-                                  title="Phân công nhân viên và ghi chú"
-                                  onClick={() => openEditModal(booking)}
+                                    type="button"
+                                    className="action-btn view"
+                                    title="Xem chi tiết"
+                                    onClick={() => handleViewBooking(booking)}
                                 >
-                                  <Pencil size={16} />
+                                  <Eye size={16} />
                                 </button>
-                              )}
 
-                            {String(booking.status || "").toLowerCase() ===
-                              "pending" && (
-                                <button
-                                  type="button"
-                                  className="action-btn complete"
-                                  title="Xác nhận booking"
-                                  onClick={() => handleConfirmBooking(booking)}
-                                >
-                                  <CheckCircle size={16} />
-                                </button>
-                              )}
+                                {!["completed", "cancelled"].includes(
+                                    String(booking.status || "").toLowerCase()
+                                ) && (
+                                    <button
+                                        type="button"
+                                        className="action-btn edit"
+                                        title="Phân công nhân viên và ghi chú"
+                                        onClick={() => openEditModal(booking)}
+                                    >
+                                      <Pencil size={16} />
+                                    </button>
+                                )}
 
-                            {String(booking.status || "").toLowerCase() ===
-                              "confirmed" && (
-                                <button
-                                  type="button"
-                                  className="action-btn warning"
-                                  title="Check-in booking"
-                                  onClick={() => handleCheckInBooking(booking)}
-                                >
-                                  <CheckCircle size={16} />
-                                </button>
-                              )}
+                                {String(booking.status || "").toLowerCase() ===
+                                    "pending" && (
+                                        <button
+                                            type="button"
+                                            className="action-btn complete"
+                                            title="Xác nhận booking"
+                                            onClick={() => handleConfirmBooking(booking)}
+                                        >
+                                          <CheckCircle size={16} />
+                                        </button>
+                                    )}
 
-                            {String(booking.status || "").toLowerCase() ===
-                              "checked_in" && (
-                                <button
-                                  type="button"
-                                  className="action-btn warning"
-                                  title="Bắt đầu rửa"
-                                  onClick={() => handleStartWashBooking(booking)}
-                                >
-                                  <PlayCircle size={16} />
-                                </button>
-                              )}
+                                {String(booking.status || "").toLowerCase() ===
+                                    "confirmed" && (
+                                        <button
+                                            type="button"
+                                            className="action-btn warning"
+                                            title="Check-in booking"
+                                            onClick={() => handleCheckInBooking(booking)}
+                                        >
+                                          <CheckCircle size={16} />
+                                        </button>
+                                    )}
 
-                            {String(booking.status || "").toLowerCase() ===
-                              "in_progress" && (
-                                <button
-                                  type="button"
-                                  className="action-btn complete"
-                                  title="Hoàn thành booking"
-                                  onClick={() => handleCompleteBooking(booking)}
-                                >
-                                  <CheckCircle size={16} />
-                                </button>
-                              )}
+                                {String(booking.status || "").toLowerCase() ===
+                                    "checked_in" && (
+                                        <button
+                                            type="button"
+                                            className="action-btn warning"
+                                            title="Bắt đầu rửa"
+                                            onClick={() => handleStartWashBooking(booking)}
+                                        >
+                                          <PlayCircle size={16} />
+                                        </button>
+                                    )}
 
-                            {["pending", "confirmed"].includes(
-                              String(booking.status || "").toLowerCase()
-                            ) && (
-                                <button
-                                  type="button"
-                                  className="action-btn cancel"
-                                  title="Hủy booking"
-                                  onClick={() => handleCancelBooking(booking)}
-                                >
-                                  <XCircle size={16} />
-                                </button>
-                              )}
-                          </div>
-                        </td>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                                {String(booking.status || "").toLowerCase() ===
+                                    "in_progress" && (
+                                        <button
+                                            type="button"
+                                            className="action-btn complete"
+                                            title="Hoàn thành booking"
+                                            onClick={() => handleCompleteBooking(booking)}
+                                        >
+                                          <CheckCircle size={16} />
+                                        </button>
+                                    )}
 
-            <div className="booking-pagination">
-              <div className="pagination-summary">
-                Hiển thị{" "}
-                <strong>
-                  {firstVisibleItem}–{lastVisibleItem}
-                </strong>{" "}
-                trong tổng số{" "}
-                <strong>{filteredBookings.length}</strong> đơn
-              </div>
+                                {["pending", "confirmed"].includes(
+                                    String(booking.status || "").toLowerCase()
+                                ) && (
+                                    <button
+                                        type="button"
+                                        className="action-btn cancel"
+                                        title="Hủy booking"
+                                        onClick={() => handleCancelBooking(booking)}
+                                    >
+                                      <XCircle size={16} />
+                                    </button>
+                                )}
+                              </div>
+                            </td>
+                        </tr>
+                    ))}
+                    </tbody>
+                  </table>
+                </div>
 
-              <div className="pagination-controls">
-                <button
-                  type="button"
-                  disabled={currentPage === 1}
-                  onClick={() =>
-                    setCurrentPage((previousPage) =>
-                      Math.max(previousPage - 1, 1)
-                    )
-                  }
-                >
-                  Trước
-                </button>
+                <div className="booking-pagination">
+                  <div className="pagination-summary">
+                    Hiển thị{" "}
+                    <strong>
+                      {firstVisibleItem}–{lastVisibleItem}
+                    </strong>{" "}
+                    trong tổng số{" "}
+                    <strong>{filteredBookings.length}</strong> đơn
+                  </div>
 
-                {paginationItems.map((item) =>
-                  typeof item === "number" ? (
+                  <div className="pagination-controls">
                     <button
-                      type="button"
-                      key={item}
-                      className={
-                        item === currentPage ? "active" : ""
-                      }
-                      onClick={() => setCurrentPage(item)}
+                        type="button"
+                        disabled={currentPage === 1}
+                        onClick={() =>
+                            setCurrentPage((previousPage) =>
+                                Math.max(previousPage - 1, 1)
+                            )
+                        }
                     >
-                      {item}
+                      Trước
                     </button>
-                  ) : (
-                    <span
-                      className="pagination-ellipsis"
-                      key={item}
-                    >
+
+                    {paginationItems.map((item) =>
+                            typeof item === "number" ? (
+                                <button
+                                    type="button"
+                                    key={item}
+                                    className={
+                                      item === currentPage ? "active" : ""
+                                    }
+                                    onClick={() => setCurrentPage(item)}
+                                >
+                                  {item}
+                                </button>
+                            ) : (
+                                <span
+                                    className="pagination-ellipsis"
+                                    key={item}
+                                >
                       …
                     </span>
-                  )
-                )}
-
-                <button
-                  type="button"
-                  disabled={currentPage === totalPages}
-                  onClick={() =>
-                    setCurrentPage((previousPage) =>
-                      Math.min(
-                        previousPage + 1,
-                        totalPages
-                      )
-                    )
-                  }
-                >
-                  Sau
-                </button>
-              </div>
-
-              <label className="page-size-control">
-                <span>Mỗi trang</span>
-
-                <select
-                  value={pageSize}
-                  onChange={(event) =>
-                    setPageSize(Number(event.target.value))
-                  }
-                >
-                  <option value={10}>10</option>
-                  <option value={20}>20</option>
-                  <option value={50}>50</option>
-                </select>
-              </label>
-            </div>
-          </>
-        )}
-      </div>
-      {selectedBooking && (
-        <div className="modal-backdrop">
-          <div className="booking-detail-modal">
-            <div className="modal-header">
-              <h2>Chi tiết đặt lịch</h2>
-              <button onClick={() => setSelectedBooking(null)}>×</button>
-            </div>
-
-            {detailLoading ? (
-              <div className="empty-state">Đang tải chi tiết...</div>
-            ) : (
-              <div className="detail-content">
-                <p><strong>Mã đơn:</strong> {selectedBooking.bookingCode || "N/A"}</p>
-                <p><strong>Khách hàng:</strong> {selectedBooking.customerName || "N/A"}</p>
-                <p><strong>SĐT:</strong> {selectedBooking.customerPhone || "N/A"}</p>
-                <p><strong>Biển số:</strong> {selectedBooking.licensePlate || "N/A"}</p>
-                <p><strong>Chi nhánh:</strong> {selectedBooking.branchName || "N/A"}</p>
-                <p><strong>Trạng thái:</strong> {selectedBooking.status || "N/A"}</p>
-                <p>
-                  <strong>Thời gian:</strong>{" "}
-                  {selectedBooking.bookingDate
-                    ? new Date(selectedBooking.bookingDate).toLocaleString("vi-VN")
-                    : "N/A"}
-                </p>
-                <p><strong>Ghi chú:</strong> {selectedBooking.note || "Không có"}</p>
-                <p>
-                  <strong>Tổng tiền:</strong>{" "}
-                  {Number(selectedBooking.totalAmount || 0).toLocaleString("vi-VN")} đ
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {showCreateModal && (
-        <div className="modal-backdrop">
-          <div className="booking-form-modal">
-            <div className="modal-header">
-              <h2>Tạo booking mới</h2>
-              <button type="button" onClick={() => setShowCreateModal(false)}>
-                ×
-              </button>
-            </div>
-
-            <form className="booking-admin-form" onSubmit={handleCreateBooking}>
-              <div className="booking-form-grid">
-                <div className="form-group full">
-                  <label>Khách hàng *</label>
-
-                  <select
-                    name="customerId"
-                    value={createForm.customerId}
-                    onChange={handleCreateCustomerChange}
-                    disabled={createOptionsLoading}
-                    required
-                  >
-                    <option value="">
-                      {createOptionsLoading
-                        ? "Đang tải khách hàng..."
-                        : "-- Chọn khách hàng --"}
-                    </option>
-
-                    {customers.map((customer) => (
-                      <option
-                        key={customer.customerId}
-                        value={customer.customerId}
-                      >
-                        {customer.fullName || "Chưa có tên"}
-                        {" — "}
-                        {customer.phone || "Chưa có SĐT"}
-                        {customer.email ? ` — ${customer.email}` : ""}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="form-group">
-                  <label>Chi nhánh *</label>
-
-                  <select
-                    name="branchId"
-                    value={createForm.branchId}
-                    onChange={handleCreateFieldChange}
-                    disabled={createOptionsLoading}
-                    required
-                  >
-                    <option value="">
-                      {createOptionsLoading
-                        ? "Đang tải chi nhánh..."
-                        : "-- Chọn chi nhánh --"}
-                    </option>
-
-                    {branches.map((branch) => (
-                      <option
-                        key={branch.branchId}
-                        value={branch.branchId}
-                      >
-                        {branch.branchName}
-                        {branch.address ? ` — ${branch.address}` : ""}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="form-group">
-                  <label>Ngày đặt lịch *</label>
-
-                  <input
-                    type="date"
-                    name="bookingDate"
-                    min={getLocalToday()}
-                    value={createForm.bookingDate}
-                    onChange={handleCreateFieldChange}
-                    required
-                  />
-                </div>
-
-                <div className="form-group full">
-                  <label>Khung giờ còn trống *</label>
-
-                  <select
-                    name="slotId"
-                    value={createForm.slotId}
-                    onChange={handleCreateFieldChange}
-                    disabled={
-                      !createForm.branchId ||
-                      !createForm.bookingDate ||
-                      slotsLoading
-                    }
-                    required
-                  >
-                    <option value="">
-                      {slotsLoading
-                        ? "Đang tải khung giờ..."
-                        : !createForm.branchId
-                          ? "Vui lòng chọn chi nhánh trước"
-                          : !createForm.bookingDate
-                            ? "Vui lòng chọn ngày trước"
-                            : availableSlots.length === 0
-                              ? "Không còn khung giờ trống"
-                              : "-- Chọn khung giờ --"}
-                    </option>
-
-                    {availableSlots.map((slot) => {
-                      const remainingCapacity = Math.max(
-                        Number(slot.maxCapacity || 0) -
-                        Number(slot.currentBookings || 0),
-                        0
-                      );
-
-                      return (
-                        <option
-                          key={slot.slotId}
-                          value={slot.slotId}
-                        >
-                          {formatTime(slot.startTime)}
-                          {" - "}
-                          {formatTime(slot.endTime)}
-                          {slot.bayName ? ` — ${slot.bayName}` : ""}
-                          {` — còn ${remainingCapacity} chỗ`}
-                        </option>
-                      );
-                    })}
-                  </select>
-                </div>
-
-                <div className="form-group full">
-                  <label>Xe của khách *</label>
-
-                  <select
-                    value={createForm.vehicleId}
-                    onChange={handleCreateVehicleChange}
-                    disabled={!createForm.customerId}
-                    required
-                  >
-                    <option value="">
-                      {!createForm.customerId
-                        ? "Vui lòng chọn khách hàng trước"
-                        : "-- Chọn xe --"}
-                    </option>
-
-                    {selectedCustomerVehicles.map((vehicle) => (
-                      <option
-                        key={vehicle.vehicleId || vehicle.id}
-                        value={vehicle.vehicleId || vehicle.id}
-                      >
-                        {vehicle.licensePlate}
-                        {" — "}
-                        {vehicle.brand || "Chưa rõ hãng"}
-                        {vehicle.model ? ` ${vehicle.model}` : ""}
-                      </option>
-                    ))}
-
-                    {createForm.customerId && (
-                      <option value="new">
-                        + Nhập xe mới cho khách hàng
-                      </option>
+                            )
                     )}
-                  </select>
+
+                    <button
+                        type="button"
+                        disabled={currentPage === totalPages}
+                        onClick={() =>
+                            setCurrentPage((previousPage) =>
+                                Math.min(
+                                    previousPage + 1,
+                                    totalPages
+                                )
+                            )
+                        }
+                    >
+                      Sau
+                    </button>
+                  </div>
+
+                  <label className="page-size-control">
+                    <span>Mỗi trang</span>
+
+                    <select
+                        value={pageSize}
+                        onChange={(event) =>
+                            setPageSize(Number(event.target.value))
+                        }
+                    >
+                      <option value={10}>10</option>
+                      <option value={20}>20</option>
+                      <option value={50}>50</option>
+                    </select>
+                  </label>
+                </div>
+              </>
+          )}
+        </div>
+        {selectedBooking && (
+            <div className="modal-backdrop">
+              <div className="booking-detail-modal">
+                <div className="modal-header">
+                  <h2>Chi tiết đặt lịch</h2>
+                  <button onClick={() => setSelectedBooking(null)}>×</button>
                 </div>
 
-                <div className="form-group">
-                  <label>Biển số xe *</label>
-
-                  <input
-                    name="licensePlate"
-                    value={createForm.licensePlate}
-                    onChange={handleCreateFieldChange}
-                    placeholder="Ví dụ: 51A-123.45"
-                    required
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>Hãng xe *</label>
-
-                  <input
-                    name="brand"
-                    value={createForm.brand}
-                    onChange={handleCreateFieldChange}
-                    placeholder="Ví dụ: Toyota"
-                    required
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>Model</label>
-
-                  <input
-                    name="model"
-                    value={createForm.model}
-                    onChange={handleCreateFieldChange}
-                    placeholder="Ví dụ: Camry"
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>Loại xe *</label>
-
-                  <select
-                    name="vehicleType"
-                    value={createForm.vehicleType}
-                    onChange={handleCreateFieldChange}
-                    required
-                  >
-                    <option value="4_seats">
-                      Xe 4 chỗ
-                    </option>
-
-                    <option value="7_seats">
-                      Xe 7 chỗ / SUV
-                    </option>
-                  </select>
-                </div>
-
-                <div className="form-group">
-                  <label>Phương thức thanh toán</label>
-
-                  <select
-                    name="paymentMethod"
-                    value={createForm.paymentMethod}
-                    onChange={handleCreateFieldChange}
-                  >
-                    <option value="offline">
-                      Thanh toán tại quầy
-                    </option>
-
-                    <option value="online">
-                      Thanh toán online
-                    </option>
-                  </select>
-                </div>
-
-                <div className="form-group full">
-                  <label>Ghi chú</label>
-
-                  <textarea
-                    name="note"
-                    maxLength={255}
-                    rows={3}
-                    value={createForm.note}
-                    onChange={handleCreateFieldChange}
-                    placeholder="Yêu cầu đặc biệt của khách hàng..."
-                  />
-                </div>
+                {detailLoading ? (
+                    <div className="empty-state">Đang tải chi tiết...</div>
+                ) : (
+                    <div className="detail-content">
+                      <p><strong>Mã đơn:</strong> {selectedBooking.bookingCode || "N/A"}</p>
+                      <p><strong>Khách hàng:</strong> {selectedBooking.customerName || "N/A"}</p>
+                      <p><strong>SĐT:</strong> {selectedBooking.customerPhone || "N/A"}</p>
+                      <p><strong>Biển số:</strong> {selectedBooking.licensePlate || "N/A"}</p>
+                      <p><strong>Chi nhánh:</strong> {selectedBooking.branchName || "N/A"}</p>
+                      <p><strong>Trạng thái:</strong> {selectedBooking.status || "N/A"}</p>
+                      <p>
+                        <strong>Thời gian:</strong>{" "}
+                        {selectedBooking.bookingDate
+                            ? new Date(selectedBooking.bookingDate).toLocaleString("vi-VN")
+                            : "N/A"}
+                      </p>
+                      <p><strong>Ghi chú:</strong> {selectedBooking.note || "Không có"}</p>
+                      <p>
+                        <strong>Tổng tiền:</strong>{" "}
+                        {Number(selectedBooking.totalAmount || 0).toLocaleString("vi-VN")} đ
+                      </p>
+                    </div>
+                )}
               </div>
+            </div>
+        )}
 
-              <div className="booking-service-editor">
-                <div className="service-editor-header">
-                  <h3>Dịch vụ</h3>
-                  <button
-                    type="button"
-                    className="secondary-btn"
-                    onClick={addServiceRow}
-                  >
-                    <Plus size={16} />
-                    Thêm dịch vụ
+        {showCreateModal && (
+            <div className="modal-backdrop">
+              <div className="booking-form-modal">
+                <div className="modal-header">
+                  <h2>Tạo booking mới</h2>
+                  <button type="button" onClick={() => setShowCreateModal(false)}>
+                    ×
                   </button>
                 </div>
 
-                {createForm.details.map((detail, index) => (
-                  <div className="service-row" key={index}>
-                    <div className="form-group">
-                      <label>Dịch vụ *</label>
+                <form className="booking-admin-form" onSubmit={handleCreateBooking}>
+                  <div className="booking-form-grid">
+                    <div className="form-group full">
+                      <label>Khách hàng *</label>
 
                       <select
-                        value={detail.serviceId}
-                        onChange={(e) =>
-                          handleCreateDetailChange(
-                            index,
-                            "serviceId",
-                            e.target.value
-                          )
-                        }
-                        required
+                          name="customerId"
+                          value={createForm.customerId}
+                          onChange={handleCreateCustomerChange}
+                          disabled={createOptionsLoading}
+                          required
                       >
                         <option value="">
-                          -- Chọn dịch vụ --
+                          {createOptionsLoading
+                              ? "Đang tải khách hàng..."
+                              : "-- Chọn khách hàng --"}
                         </option>
 
-                        {servicePackages.map((service) => (
-                          <option
-                            key={service.serviceId}
-                            value={service.serviceId}
-                          >
-                            {service.serviceName}
-                            {" — "}
-                            {formatMoney(service.basePrice)} đ
-                            {service.durationMinutes
-                              ? ` — ${service.durationMinutes} phút`
-                              : ""}
-                          </option>
+                        {customers.map((customer) => (
+                            <option
+                                key={customer.customerId}
+                                value={customer.customerId}
+                            >
+                              {customer.fullName || "Chưa có tên"}
+                              {" — "}
+                              {customer.phone || "Chưa có SĐT"}
+                              {customer.email ? ` — ${customer.email}` : ""}
+                            </option>
                         ))}
                       </select>
                     </div>
 
                     <div className="form-group">
-                      <label>Số lượng *</label>
+                      <label>Chi nhánh *</label>
+
+                      <select
+                          name="branchId"
+                          value={createForm.branchId}
+                          onChange={handleCreateFieldChange}
+                          disabled={createOptionsLoading}
+                          required
+                      >
+                        <option value="">
+                          {createOptionsLoading
+                              ? "Đang tải chi nhánh..."
+                              : "-- Chọn chi nhánh --"}
+                        </option>
+
+                        {branches.map((branch) => (
+                            <option
+                                key={branch.branchId}
+                                value={branch.branchId}
+                            >
+                              {branch.branchName}
+                              {branch.address ? ` — ${branch.address}` : ""}
+                            </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="form-group">
+                      <label>Ngày đặt lịch *</label>
+
                       <input
-                        type="number"
-                        min="1"
-                        value={detail.quantity}
-                        onChange={(e) =>
-                          handleCreateDetailChange(
-                            index,
-                            "quantity",
-                            e.target.value
-                          )
-                        }
-                        required
+                          type="date"
+                          name="bookingDate"
+                          min={getLocalToday()}
+                          value={createForm.bookingDate}
+                          onChange={handleCreateFieldChange}
+                          required
                       />
                     </div>
 
+                    <div className="form-group full">
+                      <label>Khung giờ còn trống *</label>
+
+                      <select
+                          name="slotId"
+                          value={createForm.slotId}
+                          onChange={handleCreateFieldChange}
+                          disabled={
+                              !createForm.branchId ||
+                              !createForm.bookingDate ||
+                              slotsLoading
+                          }
+                          required
+                      >
+                        <option value="">
+                          {slotsLoading
+                              ? "Đang tải khung giờ..."
+                              : !createForm.branchId
+                                  ? "Vui lòng chọn chi nhánh trước"
+                                  : !createForm.bookingDate
+                                      ? "Vui lòng chọn ngày trước"
+                                      : availableSlots.length === 0
+                                          ? "Không còn khung giờ trống"
+                                          : "-- Chọn khung giờ --"}
+                        </option>
+
+                        {availableSlots.map((slot) => {
+                          const remainingCapacity = Math.max(
+                              Number(slot.maxCapacity || 0) -
+                              Number(slot.currentBookings || 0),
+                              0
+                          );
+
+                          return (
+                              <option
+                                  key={slot.slotId}
+                                  value={slot.slotId}
+                              >
+                                {formatTime(slot.startTime)}
+                                {" - "}
+                                {formatTime(slot.endTime)}
+                                {slot.bayName ? ` — ${slot.bayName}` : ""}
+                                {` — còn ${remainingCapacity} chỗ`}
+                              </option>
+                          );
+                        })}
+                      </select>
+                    </div>
+
+                    <div className="form-group full">
+                      <label>Xe của khách *</label>
+
+                      <select
+                          value={createForm.vehicleId}
+                          onChange={handleCreateVehicleChange}
+                          disabled={!createForm.customerId}
+                          required
+                      >
+                        <option value="">
+                          {!createForm.customerId
+                              ? "Vui lòng chọn khách hàng trước"
+                              : "-- Chọn xe --"}
+                        </option>
+
+                        {selectedCustomerVehicles.map((vehicle) => (
+                            <option
+                                key={vehicle.vehicleId || vehicle.id}
+                                value={vehicle.vehicleId || vehicle.id}
+                            >
+                              {vehicle.licensePlate}
+                              {" — "}
+                              {vehicle.brand || "Chưa rõ hãng"}
+                              {vehicle.model ? ` ${vehicle.model}` : ""}
+                            </option>
+                        ))}
+
+                        {createForm.customerId && (
+                            <option value="new">
+                              + Nhập xe mới cho khách hàng
+                            </option>
+                        )}
+                      </select>
+                    </div>
+
+                    <div className="form-group">
+                      <label>Biển số xe *</label>
+
+                      <input
+                          name="licensePlate"
+                          value={createForm.licensePlate}
+                          onChange={handleCreateFieldChange}
+                          placeholder="Ví dụ: 51A-123.45"
+                          required
+                      />
+                    </div>
+
+                    <div className="form-group">
+                      <label>Hãng xe *</label>
+
+                      <input
+                          name="brand"
+                          value={createForm.brand}
+                          onChange={handleCreateFieldChange}
+                          placeholder="Ví dụ: Toyota"
+                          required
+                      />
+                    </div>
+
+                    <div className="form-group">
+                      <label>Model</label>
+
+                      <input
+                          name="model"
+                          value={createForm.model}
+                          onChange={handleCreateFieldChange}
+                          placeholder="Ví dụ: Camry"
+                      />
+                    </div>
+
+                    <div className="form-group">
+                      <label>Loại xe *</label>
+
+                      <select
+                          name="vehicleType"
+                          value={createForm.vehicleType}
+                          onChange={handleCreateFieldChange}
+                          required
+                      >
+                        <option value="4_seats">
+                          Xe 4 chỗ
+                        </option>
+
+                        <option value="7_seats">
+                          Xe 7 chỗ / SUV
+                        </option>
+                      </select>
+                    </div>
+
+                    <div className="form-group">
+                      <label>Phương thức thanh toán</label>
+
+                      <select
+                          name="paymentMethod"
+                          value={createForm.paymentMethod}
+                          onChange={handleCreateFieldChange}
+                      >
+                        <option value="offline">
+                          Thanh toán tại quầy
+                        </option>
+
+                        <option value="online">
+                          Thanh toán online
+                        </option>
+                      </select>
+                    </div>
+
+                    <div className="form-group full">
+                      <label>Ghi chú</label>
+
+                      <textarea
+                          name="note"
+                          maxLength={255}
+                          rows={3}
+                          value={createForm.note}
+                          onChange={handleCreateFieldChange}
+                          placeholder="Yêu cầu đặc biệt của khách hàng..."
+                      />
+                    </div>
+                  </div>
+
+                  <div className="booking-service-editor">
+                    <div className="service-editor-header">
+                      <h3>Dịch vụ</h3>
+                      <button
+                          type="button"
+                          className="secondary-btn"
+                          onClick={addServiceRow}
+                      >
+                        <Plus size={16} />
+                        Thêm dịch vụ
+                      </button>
+                    </div>
+
+                    {createForm.details.map((detail, index) => (
+                        <div className="service-row" key={index}>
+                          <div className="form-group">
+                            <label>Dịch vụ *</label>
+
+                            <select
+                                value={detail.serviceId}
+                                onChange={(e) =>
+                                    handleCreateDetailChange(
+                                        index,
+                                        "serviceId",
+                                        e.target.value
+                                    )
+                                }
+                                required
+                            >
+                              <option value="">
+                                -- Chọn dịch vụ --
+                              </option>
+
+                              {servicePackages.map((service) => (
+                                  <option
+                                      key={service.serviceId}
+                                      value={service.serviceId}
+                                  >
+                                    {service.serviceName}
+                                    {" — "}
+                                    {formatMoney(service.basePrice)} đ
+                                    {service.durationMinutes
+                                        ? ` — ${service.durationMinutes} phút`
+                                        : ""}
+                                  </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div className="form-group">
+                            <label>Số lượng *</label>
+                            <input
+                                type="number"
+                                min="1"
+                                value={detail.quantity}
+                                onChange={(e) =>
+                                    handleCreateDetailChange(
+                                        index,
+                                        "quantity",
+                                        e.target.value
+                                    )
+                                }
+                                required
+                            />
+                          </div>
+
+                          <button
+                              type="button"
+                              className="remove-service-btn"
+                              disabled={createForm.details.length === 1}
+                              onClick={() => removeServiceRow(index)}
+                          >
+                            <Trash2 size={17} />
+                          </button>
+                        </div>
+                    ))}
+                  </div>
+
+                  <div className="modal-actions">
                     <button
-                      type="button"
-                      className="remove-service-btn"
-                      disabled={createForm.details.length === 1}
-                      onClick={() => removeServiceRow(index)}
+                        type="button"
+                        className="secondary-btn"
+                        onClick={() => setShowCreateModal(false)}
+                        disabled={creating}
                     >
-                      <Trash2 size={17} />
+                      Hủy
+                    </button>
+                    <button
+                        type="submit"
+                        className="refresh-btn"
+                        disabled={creating}
+                    >
+                      {creating ? "Đang tạo..." : "Tạo booking"}
                     </button>
                   </div>
-                ))}
+                </form>
               </div>
-
-              <div className="modal-actions">
-                <button
-                  type="button"
-                  className="secondary-btn"
-                  onClick={() => setShowCreateModal(false)}
-                  disabled={creating}
-                >
-                  Hủy
-                </button>
-                <button
-                  type="submit"
-                  className="refresh-btn"
-                  disabled={creating}
-                >
-                  {creating ? "Đang tạo..." : "Tạo booking"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {editingBooking && (
-        <div className="modal-backdrop">
-          <div className="booking-form-modal booking-edit-modal">
-            <div className="modal-header">
-              <h2>
-                Chỉnh sửa {editingBooking.bookingCode || "booking"}
-              </h2>
-              <button type="button" onClick={() => setEditingBooking(null)}>
-                ×
-              </button>
             </div>
+        )}
 
-            <form className="booking-admin-form" onSubmit={handleUpdateBooking}>
-              <div className="booking-form-grid">
-                <div className="form-group full">
-                  <label>Nhân viên phụ trách</label>
+        {editingBooking && (
+            <div className="modal-backdrop">
+              <div className="booking-form-modal booking-edit-modal">
+                <div className="modal-header">
+                  <h2>
+                    Chỉnh sửa {editingBooking.bookingCode || "booking"}
+                  </h2>
+                  <button type="button" onClick={() => setEditingBooking(null)}>
+                    ×
+                  </button>
+                </div>
 
-                  <select
-                    value={editForm.assignedStaffId}
-                    onChange={(e) =>
-                      setEditForm((prev) => ({
-                        ...prev,
-                        assignedStaffId: e.target.value,
-                      }))
-                    }
-                    disabled={staffLoading}
-                  >
-                    <option value="">
-                      {staffLoading
-                        ? "Đang tải danh sách nhân viên..."
-                        : assignableStaff.length === 0
-                          ? "Không có nhân viên active tại chi nhánh"
-                          : "-- Chọn nhân viên phụ trách --"}
-                    </option>
+                <form className="booking-admin-form" onSubmit={handleUpdateBooking}>
+                  <div className="booking-form-grid">
+                    <div className="form-group full">
+                      <label>Nhân viên phụ trách</label>
 
-                    {assignableStaff.map((employee) => (
-                      <option
-                        key={employee.employeeId}
-                        value={employee.employeeId}
+                      <select
+                          value={editForm.assignedStaffId}
+                          onChange={(e) =>
+                              setEditForm((prev) => ({
+                                ...prev,
+                                assignedStaffId: e.target.value,
+                              }))
+                          }
+                          disabled={staffLoading}
                       >
-                        {employee.fullName || "Chưa có tên"}
-                        {employee.phone ? ` — ${employee.phone}` : ""}
-                        {employee.role ? ` — ${employee.role}` : ""}
-                      </option>
-                    ))}
-                  </select>
+                        <option value="">
+                          {staffLoading
+                              ? "Đang tải danh sách nhân viên..."
+                              : assignableStaff.length === 0
+                                  ? "Không có nhân viên active tại chi nhánh"
+                                  : "-- Chọn nhân viên phụ trách --"}
+                        </option>
 
-                  {!staffLoading && assignableStaff.length > 0 && (
-                    <small className="form-help-text">
-                      Chỉ hiển thị nhân viên đang hoạt động và thuộc đúng chi nhánh.
-                    </small>
-                  )}
-                </div>
+                        {assignableStaff.map((employee) => (
+                            <option
+                                key={employee.employeeId}
+                                value={employee.employeeId}
+                            >
+                              {employee.fullName || "Chưa có tên"}
+                              {employee.phone ? ` — ${employee.phone}` : ""}
+                              {employee.role ? ` — ${employee.role}` : ""}
+                            </option>
+                        ))}
+                      </select>
 
-                <div className="form-group full">
-                  <label>Ghi chú</label>
-                  <textarea
-                    maxLength={255}
-                    rows={4}
-                    value={editForm.note}
-                    onChange={(e) =>
-                      setEditForm((prev) => ({
-                        ...prev,
-                        note: e.target.value,
-                      }))
-                    }
-                  />
-                </div>
+                      {!staffLoading && assignableStaff.length > 0 && (
+                          <small className="form-help-text">
+                            Chỉ hiển thị nhân viên đang hoạt động và thuộc đúng chi nhánh.
+                          </small>
+                      )}
+                    </div>
+
+                    <div className="form-group full">
+                      <label>Ghi chú</label>
+                      <textarea
+                          maxLength={255}
+                          rows={4}
+                          value={editForm.note}
+                          onChange={(e) =>
+                              setEditForm((prev) => ({
+                                ...prev,
+                                note: e.target.value,
+                              }))
+                          }
+                      />
+                    </div>
+                  </div>
+
+                  <div className="modal-actions">
+                    <button
+                        type="button"
+                        className="secondary-btn"
+                        onClick={() => setEditingBooking(null)}
+                        disabled={updating}
+                    >
+                      Hủy
+                    </button>
+                    <button
+                        type="submit"
+                        className="refresh-btn"
+                        disabled={updating}
+                    >
+                      {updating ? "Đang lưu..." : "Lưu thay đổi"}
+                    </button>
+                  </div>
+                </form>
               </div>
-
-              <div className="modal-actions">
-                <button
-                  type="button"
-                  className="secondary-btn"
-                  onClick={() => setEditingBooking(null)}
-                  disabled={updating}
-                >
-                  Hủy
-                </button>
-                <button
-                  type="submit"
-                  className="refresh-btn"
-                  disabled={updating}
-                >
-                  {updating ? "Đang lưu..." : "Lưu thay đổi"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-      {confirmDialog && (
-        <div className="modal-backdrop">
-          <div className="booking-detail-modal action-dialog-modal">
-            <div className="modal-header">
-              <h2>{confirmDialog.title}</h2>
-              <button
-                type="button"
-                onClick={closeConfirmDialog}
-                disabled={actionLoading}
-              >
-                ×
-              </button>
             </div>
-
-            <div className="detail-content">
-              <p className="dialog-message">{confirmDialog.message}</p>
-            </div>
-
-            <div className="modal-actions">
-              <button
-                type="button"
-                className="secondary-btn"
-                onClick={closeConfirmDialog}
-                disabled={actionLoading}
-              >
-                Hủy
-              </button>
-
-              <button
-                type="button"
-                className={
-                  confirmDialog.confirmVariant === "danger"
-                    ? "danger-btn"
-                    : "refresh-btn"
-                }
-                onClick={handleConfirmDialog}
-                disabled={actionLoading}
-              >
-                {actionLoading ? "Đang xử lý..." : confirmDialog.confirmText}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-      {messageDialog && (
-        <div className="modal-backdrop">
-          <div className="booking-detail-modal action-dialog-modal">
-            <div className="modal-header">
-              <h2>{messageDialog.title}</h2>
-              <button
-                type="button"
-                onClick={() => setMessageDialog(null)}
-              >
-                ×
-              </button>
-            </div>
-
-            <div className="detail-content">
-              <p className="dialog-message">{messageDialog.message}</p>
-            </div>
-
-            <div className="modal-actions">
-              <button
-                type="button"
-                className="refresh-btn"
-                onClick={() => setMessageDialog(null)}
-              >
-                OK
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
   );
 }

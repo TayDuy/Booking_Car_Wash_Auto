@@ -541,6 +541,7 @@ public class PaymentServiceImpl implements PaymentService {
         }
     }
 
+    /** Gửi email + tạo thông báo in-app khi thanh toán thành công. */
     private void notifyPaymentSuccess(Payment payment) {
         Booking booking = payment.getBooking();
         Customer customer = booking.getCustomer();
@@ -584,6 +585,7 @@ public class PaymentServiceImpl implements PaymentService {
         }
     }
 
+    /** Gửi email + tạo thông báo in-app khi thanh toán thất bại/bị hủy. */
     private void notifyPaymentFailed(Payment payment, String reason) {
         Booking booking = payment.getBooking();
         Customer customer = booking.getCustomer();
