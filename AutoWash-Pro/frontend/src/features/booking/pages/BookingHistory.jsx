@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import bookingApi from '../../../api/bookingApi';
+import ratingApi from '../../../api/ratingApi';
 import { getCustomerId } from '../../../api/authService';
 import SiteHeader from '../../../components/layout/SiteHeader';
 
@@ -66,12 +67,31 @@ export default function BookingHistory() {
   const [cancelTarget, setCancelTarget] = useState(null);  // booking summary
   const [cancelling, setCancelling] = useState(false);
 
+  // Rating modal & map
+  const [ratingModalTarget, setRatingModalTarget] = useState(null);
+  const [ratingStars, setRatingStars] = useState(5);
+  const [ratingHoverStars, setRatingHoverStars] = useState(0);
+  const [ratingComment, setRatingComment] = useState('');
+  const [submittingRating, setSubmittingRating] = useState(false);
+  const [ratingsMap, setRatingsMap] = useState({});
+
   // ── Fetch bookings ─────────────────────────────────────────
   const fetchBookings = useCallback(async () => {
     try {
       setLoading(true);
       const res = await bookingApi.myBookings(getCustomerId());
-      setBookings(res.data || []);
+      const fetchedBookings = res.data || [];
+      setBookings(fetchedBookings);
+
+      const completedList = fetchedBookings.filter(b => b.status === 'completed');
+      completedList.forEach(async (b) => {
+        try {
+          const rRes = await ratingApi.getRating(b.bookingId);
+          if (rRes.data) {
+            setRatingsMap(prev => ({ ...prev, [b.bookingId]: rRes.data }));
+          }
+        } catch (e) { /* 404 = chưa đánh giá */ }
+      });
     } catch (err) {
       console.error('Lỗi tải lịch sử đặt lịch:', err);
     } finally {
@@ -152,6 +172,26 @@ export default function BookingHistory() {
   };
 
   const canCancel = (status) => status === 'pending' || status === 'confirmed';
+
+  // ── Rating handlers ─────────────────────────────────────────
+  const handleRatingSubmit = async (e) => {
+    e.preventDefault();
+    if (!ratingModalTarget) return;
+    try {
+      setSubmittingRating(true);
+      const res = await ratingApi.createRating(ratingModalTarget.bookingId, {
+        ratingStars,
+        comment: ratingComment
+      });
+      setRatingsMap(prev => ({ ...prev, [ratingModalTarget.bookingId]: res.data }));
+      setRatingModalTarget(null);
+      alert('Cảm ơn bạn đã đánh giá dịch vụ!');
+    } catch (err) {
+      alert(err.response?.data?.message || 'Không thể tạo đánh giá. Vui lòng thử lại.');
+    } finally {
+      setSubmittingRating(false);
+    }
+  };
 
   // ══════════════════════════════════════════════════════════════
   // Render
@@ -298,6 +338,24 @@ export default function BookingHistory() {
                             <span className="material-symbols-outlined">visibility</span>
                             Chi tiết
                           </button>
+                          {booking.status === 'completed' && (
+                            <button
+                              className="bh-btn-detail"
+                              onClick={() => {
+                                setRatingModalTarget(booking);
+                                setRatingStars(ratingsMap[booking.bookingId]?.ratingStars || 5);
+                                setRatingComment(ratingsMap[booking.bookingId]?.comment || '');
+                              }}
+                              style={{
+                                borderColor: '#f59e0b',
+                                color: '#f59e0b',
+                                backgroundColor: 'rgba(245, 158, 11, 0.08)'
+                              }}
+                            >
+                              <span className="material-symbols-outlined" style={{ fontSize: '18px', color: '#f59e0b' }}>star</span>
+                              {ratingsMap[booking.bookingId] ? `⭐ ${ratingsMap[booking.bookingId].ratingStars}/5` : 'Đánh giá'}
+                            </button>
+                          )}
                           {canCancel(booking.status) && (
                               <button className="bh-btn-cancel" onClick={() => setCancelTarget(booking)}>
                                 <span className="material-symbols-outlined">close</span>
@@ -522,6 +580,109 @@ export default function BookingHistory() {
                     </button>
                   </div>
                 </div>
+              </div>
+            </div>
+        )}
+
+        {/* ══════════════════════════════════════════════════════
+          Rating Modal
+          ══════════════════════════════════════════════════════ */}
+        {ratingModalTarget && (
+            <div className="bh-modal-overlay" onClick={() => !submittingRating && setRatingModalTarget(null)}>
+              <div className="bh-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '440px' }}>
+                <div className="bh-modal-head">
+                  <div className="bh-modal-title">
+                    <span className="material-symbols-outlined" style={{ color: '#f59e0b' }}>star</span>
+                    Đánh giá dịch vụ
+                  </div>
+                  <button className="bh-modal-close" onClick={() => setRatingModalTarget(null)}>
+                    <span className="material-symbols-outlined">close</span>
+                  </button>
+                </div>
+                <form onSubmit={handleRatingSubmit} className="bh-modal-body" style={{ padding: '20px' }}>
+                  <div style={{ textAlign: 'center', marginBottom: '16px' }}>
+                    <div style={{ fontSize: '13px', color: 'var(--on-surface-variant, #64748b)', marginBottom: '4px' }}>
+                      Đơn hàng: <strong style={{ color: 'var(--on-surface, #0f172a)' }}>{ratingModalTarget.bookingCode || `#${ratingModalTarget.bookingId}`}</strong>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', margin: '12px 0' }}>
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <button
+                          key={star}
+                          type="button"
+                          disabled={!!ratingsMap[ratingModalTarget.bookingId]}
+                          onClick={() => setRatingStars(star)}
+                          onMouseEnter={() => setRatingHoverStars(star)}
+                          onMouseLeave={() => setRatingHoverStars(0)}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            cursor: ratingsMap[ratingModalTarget.bookingId] ? 'default' : 'pointer',
+                            fontSize: '32px',
+                            color: star <= (ratingHoverStars || ratingStars) ? '#f59e0b' : '#cbd5e1',
+                            transition: 'transform 0.15s ease, color 0.15s ease',
+                            transform: star <= (ratingHoverStars || ratingStars) ? 'scale(1.15)' : 'scale(1)'
+                          }}
+                        >
+                          ★
+                        </button>
+                      ))}
+                    </div>
+                    <div style={{ fontSize: '13px', fontWeight: '600', color: '#f59e0b' }}>
+                      {ratingStars === 5 && 'Tuyệt vời! 😍'}
+                      {ratingStars === 4 && 'Rất tốt! 😊'}
+                      {ratingStars === 3 && 'Bình thường 🙂'}
+                      {ratingStars === 2 && 'Chưa hài lòng 🙁'}
+                      {ratingStars === 1 && 'Rất kém 😠'}
+                    </div>
+                  </div>
+
+                  <div style={{ marginBottom: '16px' }}>
+                    <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', marginBottom: '6px', color: 'var(--on-surface, #0f172a)' }}>
+                      Nhận xét / Góp ý (không bắt buộc)
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={ratingComment}
+                      onChange={(e) => setRatingComment(e.target.value)}
+                      placeholder="Chia sẻ trải nghiệm của bạn về dịch vụ rửa xe..."
+                      style={{
+                        width: '100%',
+                        padding: '10px',
+                        borderRadius: '8px',
+                        border: '1px solid var(--outline-variant, #cbd5e1)',
+                        fontSize: '13px',
+                        resize: 'none',
+                        boxSizing: 'border-box'
+                      }}
+                      disabled={!!ratingsMap[ratingModalTarget.bookingId]}
+                    />
+                  </div>
+
+                  {!ratingsMap[ratingModalTarget.bookingId] ? (
+                    <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                      <button
+                        type="button"
+                        className="bh-cancel-keep"
+                        onClick={() => setRatingModalTarget(null)}
+                        disabled={submittingRating}
+                      >
+                        Hủy
+                      </button>
+                      <button
+                        type="submit"
+                        className="bh-cancel-confirm"
+                        style={{ backgroundColor: '#f59e0b', color: '#fff', borderColor: '#f59e0b' }}
+                        disabled={submittingRating}
+                      >
+                        {submittingRating ? 'Đang gửi...' : 'Gửi đánh giá'}
+                      </button>
+                    </div>
+                  ) : (
+                    <div style={{ textAlign: 'center', color: '#10b981', fontSize: '13px', fontWeight: '600' }}>
+                      ✓ Bạn đã đánh giá đơn hàng này rồi!
+                    </div>
+                  )}
+                </form>
               </div>
             </div>
         )}
