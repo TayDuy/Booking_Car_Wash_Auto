@@ -1,3 +1,4 @@
+// frontend/src/routes/AppRoutes.jsx
 import { Suspense, lazy } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 
@@ -29,6 +30,7 @@ const BookingPage = lazy(() => import("../features/booking/pages/BookingPage"));
 const BookingSuccessPage = lazy(() => import("../features/booking/pages/BookingSuccessPage"));
 const BookingDetailPage = lazy(() => import("../features/booking/pages/BookingDetailPage"));
 const BookingHistory = lazy(() => import("../features/booking/pages/BookingHistory"));
+const CustomerRefundsPage = lazy(() => import("../features/customer/pages/CustomerRefundsPage"));
 
 const PaymentPage = lazy(() => import("../features/payment/pages/PaymentPage"));
 const PaymentSuccessPage = lazy(() => import("../features/payment/pages/PaymentSuccessPage"));
@@ -51,10 +53,12 @@ const RoleManagementPage = lazy(() => import("../features/admin/pages/RoleManage
 const SystemSettingsPage = lazy(() => import("../features/admin/pages/SystemSettingsPage"));
 const ManageOrdersPage = lazy(() => import("../features/admin/pages/ManageOrdersPage"));
 const PaymentHistoryPage = lazy(() => import("../features/admin/pages/PaymentHistoryPage"));
+const RefundsPage = lazy(() => import("../features/admin/pages/RefundsPage"));
 
 const EmployeeDashboardPage = lazy(() => import("../features/employee/pages/EmployeeDashboardPage"));
 const EmployeeQueuePage = lazy(() => import("../features/employee/pages/EmployeeQueuePage"));
 const WalkInBookingPage = lazy(() => import("../features/employee/pages/WalkInBookingPage"));
+const EmployeeRefundsPage = lazy(() => import("../features/employee/pages/EmployeeRefundsPage"));
 
 const UnauthorizedPage = lazy(() => import("../pages/UnauthorizedPage"));
 
@@ -109,6 +113,7 @@ function AppRoutes() {
                     <Route path="booking/success" element={<BookingSuccessPage />} />
                     <Route path="booking/:bookingId" element={<BookingDetailPage />} />
                     <Route path="history" element={<BookingHistory />} />
+                    <Route path="refunds" element={<CustomerRefundsPage />} />
 
                     <Route path="promotions" element={<PromotionListPage />} />
                     <Route path="rewards" element={<RewardsPage />} />
@@ -146,6 +151,7 @@ function AppRoutes() {
                     <Route path="settings" element={<SystemSettingsPage />} />
                     <Route path="orders" element={<ManageOrdersPage />} />
                     <Route path="payments" element={<PaymentHistoryPage />} />
+                    <Route path="refunds" element={<RefundsPage />} />
                 </Route>
 
                 {/* Employee */}
@@ -167,6 +173,7 @@ function AppRoutes() {
                     <Route path="bookings/new" element={<WalkInBookingPage />} />
                     <Route path="payment" element={<PaymentPage />} />
                     <Route path="payment/success" element={<PaymentSuccessPage />} />
+                    <Route path="refunds" element={<EmployeeRefundsPage />} />
                     <Route path="*" element={<Navigate to="dashboard" replace />} />
                 </Route>
 

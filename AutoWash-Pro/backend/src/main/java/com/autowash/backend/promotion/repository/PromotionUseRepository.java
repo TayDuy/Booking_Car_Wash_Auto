@@ -22,7 +22,7 @@ public interface PromotionUseRepository extends JpaRepository<PromotionUse, Inte
     @Modifying(clearAutomatically = true)
     @Transactional
     @Query("DELETE FROM PromotionUse p WHERE p.promotionId = :promotionId AND p.customerId = :customerId")
-    void deleteByPromotionIdAndCustomerId(Integer promotionId, Integer customerId);
+    void deleteByPromotionIdAndCustomerId(@Param("promotionId") Integer promotionId, @Param("customerId") Integer customerId);
 
     @Query("SELECT p.promotionId FROM PromotionUse p WHERE p.promotionId IN :ids AND p.customerId = :customerId")
     List<Integer> findUsedPromotionIds(@Param("ids") List<Integer> ids, @Param("customerId") Integer customerId);

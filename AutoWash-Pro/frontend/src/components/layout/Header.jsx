@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import useAuth from "../../hooks/useAuth";
 import { logoutFromServer } from "../../api/authService";
 import { countUnread } from "../../api/notificationService";
+import LogoutConfirmModal from "../common/LogoutConfirmModal";
 
 import {
   Bell,
@@ -92,8 +93,9 @@ export default function Header({ onToggleSidebar }) {
   const profileRef = useRef(null);
 
   const [profileOpen, setProfileOpen] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [unreadNotificationCount, setUnreadNotificationCount] =
-    useState(0);
+      useState(0);
   const [searchValue, setSearchValue] = useState("");
 
   const [isDarkMode, setIsDarkMode] = useState(() => {
@@ -111,15 +113,15 @@ export default function Header({ onToggleSidebar }) {
       const result = await countUnread();
 
       const count =
-        typeof result === "number"
-          ? result
-          : Number(result?.count || 0);
+          typeof result === "number"
+              ? result
+              : Number(result?.count || 0);
 
       setUnreadNotificationCount(count);
     } catch (error) {
       console.error(
-        "Load unread notification count failed:",
-        error
+          "Load unread notification count failed:",
+          error
       );
 
       setUnreadNotificationCount(0);
@@ -127,36 +129,36 @@ export default function Header({ onToggleSidebar }) {
   }
 
   const rawFullName =
-    auth?.user?.fullName ||
-    auth?.user?.name ||
-    auth?.user?.username ||
-    localStorage.getItem("fullName") ||
-    localStorage.getItem("username");
+      auth?.user?.fullName ||
+      auth?.user?.name ||
+      auth?.user?.username ||
+      localStorage.getItem("fullName") ||
+      localStorage.getItem("username");
 
   const fullName =
-    rawFullName &&
+      rawFullName &&
       String(rawFullName).trim() &&
       String(rawFullName).trim().toLowerCase() !== "unknown"
-      ? String(rawFullName).trim()
-      : "Admin";
+          ? String(rawFullName).trim()
+          : "Admin";
 
   const role =
-    auth?.user?.role ||
-    localStorage.getItem("role") ||
-    "ADMIN";
+      auth?.user?.role ||
+      localStorage.getItem("role") ||
+      "ADMIN";
 
   const avatarText =
-    String(fullName || "A")
-      .trim()
-      .charAt(0)
-      .toUpperCase() || "A";
+      String(fullName || "A")
+          .trim()
+          .charAt(0)
+          .toUpperCase() || "A";
 
   useEffect(() => {
     const theme = isDarkMode ? "dark" : "light";
 
     document.documentElement.setAttribute(
-      "data-theme",
-      theme
+        "data-theme",
+        theme
     );
 
     localStorage.setItem("adminTheme", theme);
@@ -176,29 +178,29 @@ export default function Header({ onToggleSidebar }) {
     }
 
     window.addEventListener(
-      "admin-notification-count-changed",
-      handleNotificationCountChanged
+        "admin-notification-count-changed",
+        handleNotificationCountChanged
     );
 
     document.addEventListener(
-      "visibilitychange",
-      handleVisibilityChange
+        "visibilitychange",
+        handleVisibilityChange
     );
 
     const intervalId = window.setInterval(
-      loadUnreadNotificationCount,
-      30000
+        loadUnreadNotificationCount,
+        30000
     );
 
     return () => {
       window.removeEventListener(
-        "admin-notification-count-changed",
-        handleNotificationCountChanged
+          "admin-notification-count-changed",
+          handleNotificationCountChanged
       );
 
       document.removeEventListener(
-        "visibilitychange",
-        handleVisibilityChange
+          "visibilitychange",
+          handleVisibilityChange
       );
 
       window.clearInterval(intervalId);
@@ -208,8 +210,8 @@ export default function Header({ onToggleSidebar }) {
   useEffect(() => {
     function handleClickOutside(event) {
       if (
-        profileRef.current &&
-        !profileRef.current.contains(event.target)
+          profileRef.current &&
+          !profileRef.current.contains(event.target)
       ) {
         setProfileOpen(false);
       }
@@ -219,8 +221,8 @@ export default function Header({ onToggleSidebar }) {
 
     return () => {
       document.removeEventListener(
-        "mousedown",
-        handleClickOutside
+          "mousedown",
+          handleClickOutside
       );
     };
   }, []);
@@ -233,8 +235,8 @@ export default function Header({ onToggleSidebar }) {
     event.preventDefault();
 
     const keyword = searchValue
-      .trim()
-      .toLowerCase();
+        .trim()
+        .toLowerCase();
 
     if (!keyword) {
       return;
@@ -242,14 +244,14 @@ export default function Header({ onToggleSidebar }) {
 
     const matchedPage = adminPages.find((page) => {
       const searchableText =
-        `${page.label} ${page.keywords}`.toLowerCase();
+          `${page.label} ${page.keywords}`.toLowerCase();
 
       return searchableText.includes(keyword);
     });
 
     if (!matchedPage) {
       alert(
-        `Không tìm thấy trang quản trị phù hợp với "${searchValue}".`
+          `Không tìm thấy trang quản trị phù hợp với "${searchValue}".`
       );
 
       return;
@@ -259,16 +261,17 @@ export default function Header({ onToggleSidebar }) {
     setSearchValue("");
   }
 
-  async function handleLogout() {
-    const confirmed = window.confirm(
-      "Bạn có chắc muốn đăng xuất khỏi tài khoản Admin không?"
-    );
-
-    if (!confirmed) {
-      return;
-    }
-
+  function handleLogoutClick() {
     setProfileOpen(false);
+    setShowLogoutConfirm(true);
+  }
+
+  function handleCancelLogout() {
+    setShowLogoutConfirm(false);
+  }
+
+  async function handleConfirmLogout() {
+    setShowLogoutConfirm(false);
 
     try {
       await logoutFromServer();
@@ -283,163 +286,169 @@ export default function Header({ onToggleSidebar }) {
   }
 
   return (
-    <header className="admin-header">
-      <div className="header-left">
-        <button
-          type="button"
-          className="icon-btn"
-          title="Thu gọn hoặc mở rộng thanh menu"
-          onClick={() => onToggleSidebar?.()}
-        >
-          <Menu size={20} />
-        </button>
-
-        <form
-          className="search-box"
-          onSubmit={handleSearch}
-        >
-          <Search size={18} />
-
-          <input
-            type="text"
-            list="admin-page-search"
-            placeholder="Tìm trang quản trị..."
-            value={searchValue}
-            onChange={(event) =>
-              setSearchValue(event.target.value)
-            }
-          />
-
-          <datalist id="admin-page-search">
-            {adminPages.map((page) => (
-              <option
-                key={page.path}
-                value={page.label}
-              />
-            ))}
-          </datalist>
-        </form>
-      </div>
-
-      <div className="header-right">
-        <button
-          type="button"
-          className="icon-btn notification-btn"
-          title="Thông báo"
-          onClick={() =>
-            navigate("/admin/notifications")
-          }
-        >
-          <Bell size={19} />
-
-          {unreadNotificationCount > 0 && (
-            <span className="notification-dot">
-              {unreadNotificationCount > 99
-                ? "99+"
-                : unreadNotificationCount}
-            </span>
-          )}
-        </button>
-
-        <button
-          type="button"
-          className={`icon-btn theme-toggle-btn ${isDarkMode ? "active" : ""
-            }`}
-          title={
-            isDarkMode
-              ? "Chuyển sang giao diện sáng"
-              : "Chuyển sang giao diện tối"
-          }
-          onClick={handleToggleTheme}
-        >
-          {isDarkMode ? (
-            <Sun size={19} />
-          ) : (
-            <Moon size={19} />
-          )}
-        </button>
-
-        <div
-          className="admin-profile-wrapper"
-          ref={profileRef}
-        >
+      <header className="admin-header">
+        <div className="header-left">
           <button
-            type="button"
-            className={`admin-profile ${profileOpen ? "open" : ""
-              }`}
-            onClick={() =>
-              setProfileOpen(
-                (previousValue) => !previousValue
-              )
-            }
+              type="button"
+              className="icon-btn"
+              title="Thu gọn hoặc mở rộng thanh menu"
+              onClick={() => onToggleSidebar?.()}
           >
-            <div className="admin-avatar">
-              {avatarText}
-            </div>
-
-            <div className="admin-profile-info">
-              <strong>{fullName}</strong>
-              <p>{role}</p>
-            </div>
-
-            <ChevronDown
-              size={16}
-              className={`profile-chevron ${profileOpen ? "rotated" : ""
-                }`}
-            />
+            <Menu size={20} />
           </button>
 
-          {profileOpen && (
-            <div className="admin-profile-dropdown">
-              <div className="profile-dropdown-header">
-                <div className="admin-avatar large">
-                  {avatarText}
-                </div>
+          <form
+              className="search-box"
+              onSubmit={handleSearch}
+          >
+            <Search size={18} />
 
-                <div>
-                  <strong>{fullName}</strong>
-                  <p>{role}</p>
-                </div>
+            <input
+                type="text"
+                list="admin-page-search"
+                placeholder="Tìm trang quản trị..."
+                value={searchValue}
+                onChange={(event) =>
+                    setSearchValue(event.target.value)
+                }
+            />
+
+            <datalist id="admin-page-search">
+              {adminPages.map((page) => (
+                  <option
+                      key={page.path}
+                      value={page.label}
+                  />
+              ))}
+            </datalist>
+          </form>
+        </div>
+
+        <div className="header-right">
+          <button
+              type="button"
+              className="icon-btn notification-btn"
+              title="Thông báo"
+              onClick={() =>
+                  navigate("/admin/notifications")
+              }
+          >
+            <Bell size={19} />
+
+            {unreadNotificationCount > 0 && (
+                <span className="notification-dot">
+              {unreadNotificationCount > 99
+                  ? "99+"
+                  : unreadNotificationCount}
+            </span>
+            )}
+          </button>
+
+          <button
+              type="button"
+              className={`icon-btn theme-toggle-btn ${isDarkMode ? "active" : ""
+              }`}
+              title={
+                isDarkMode
+                    ? "Chuyển sang giao diện sáng"
+                    : "Chuyển sang giao diện tối"
+              }
+              onClick={handleToggleTheme}
+          >
+            {isDarkMode ? (
+                <Sun size={19} />
+            ) : (
+                <Moon size={19} />
+            )}
+          </button>
+
+          <div
+              className="admin-profile-wrapper"
+              ref={profileRef}
+          >
+            <button
+                type="button"
+                className={`admin-profile ${profileOpen ? "open" : ""
+                }`}
+                onClick={() =>
+                    setProfileOpen(
+                        (previousValue) => !previousValue
+                    )
+                }
+            >
+              <div className="admin-avatar">
+                {avatarText}
               </div>
 
-              <div className="profile-dropdown-divider" />
+              <div className="admin-profile-info">
+                <strong>{fullName}</strong>
+                <p>{role}</p>
+              </div>
 
-              <button
-                type="button"
-                onClick={() => {
-                  setProfileOpen(false);
-                  navigate("/admin/settings");
-                }}
-              >
-                <Settings size={17} />
-                Cấu hình hệ thống
-              </button>
+              <ChevronDown
+                  size={16}
+                  className={`profile-chevron ${profileOpen ? "rotated" : ""
+                  }`}
+              />
+            </button>
 
-              <button
-                type="button"
-                onClick={() => {
-                  setProfileOpen(false);
-                  navigate("/admin/roles");
-                }}
-              >
-                <UserRound size={17} />
-                Phân quyền
-              </button>
+            {profileOpen && (
+                <div className="admin-profile-dropdown">
+                  <div className="profile-dropdown-header">
+                    <div className="admin-avatar large">
+                      {avatarText}
+                    </div>
 
-              <div className="profile-dropdown-divider" />
+                    <div>
+                      <strong>{fullName}</strong>
+                      <p>{role}</p>
+                    </div>
+                  </div>
 
-              <button
-                type="button"
-                className="logout-menu-item"
-                onClick={handleLogout}
-              >
-                <LogOut size={17} />
-                Đăng xuất
-              </button>
-            </div>
-          )}
+                  <div className="profile-dropdown-divider" />
+
+                  <button
+                      type="button"
+                      onClick={() => {
+                        setProfileOpen(false);
+                        navigate("/admin/settings");
+                      }}
+                  >
+                    <Settings size={17} />
+                    Cấu hình hệ thống
+                  </button>
+
+                  <button
+                      type="button"
+                      onClick={() => {
+                        setProfileOpen(false);
+                        navigate("/admin/roles");
+                      }}
+                  >
+                    <UserRound size={17} />
+                    Phân quyền
+                  </button>
+
+                  <div className="profile-dropdown-divider" />
+
+                  <button
+                      type="button"
+                      className="logout-menu-item"
+                      onClick={handleLogoutClick}
+                  >
+                    <LogOut size={17} />
+                    Đăng xuất
+                  </button>
+                </div>
+            )}
+          </div>
         </div>
-      </div>
-    </header>
+
+        <LogoutConfirmModal
+            open={showLogoutConfirm}
+            onCancel={handleCancelLogout}
+            onConfirm={handleConfirmLogout}
+        />
+      </header>
   );
 }

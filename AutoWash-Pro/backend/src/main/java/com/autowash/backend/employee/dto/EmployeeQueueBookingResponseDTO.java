@@ -61,6 +61,16 @@ public class EmployeeQueueBookingResponseDTO {
      */
     private String customerPhoneMasked;
 
+    /**
+     * true nếu Customer chưa có tài khoản đăng nhập (User == null) = khách vãng lai.
+     */
+    private Boolean customerIsGuest;
+
+    /**
+     * Tổng điểm tích lũy hiện có của khách hàng.
+     */
+    private Integer customerTotalPoints;
+
     // =========================================================
     // VEHICLE
     // =========================================================

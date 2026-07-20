@@ -27,14 +27,12 @@ public class VehicleController {
         return ResponseEntity.ok(vehicleService.getAllVehicles());
     }
 
-    // Lấy danh sách xe của chính mình
     @GetMapping
     public ResponseEntity<List<VehicleResponse>> getMyVehicles(
             @org.springframework.security.core.annotation.AuthenticationPrincipal com.autowash.backend.security.CustomUserDetails userDetails) {
         return ResponseEntity.ok(vehicleService.getMyVehicles(getUserId(userDetails)));
     }
 
-    // Thêm xe mới
     @PostMapping
     public ResponseEntity<VehicleResponse> addVehicle(
             @org.springframework.security.core.annotation.AuthenticationPrincipal com.autowash.backend.security.CustomUserDetails userDetails,
@@ -43,29 +41,26 @@ public class VehicleController {
                 .body(vehicleService.addVehicle(getUserId(userDetails), request));
     }
 
-    // Sửa thông tin xe
     @PutMapping("/{vehicleId}")
     public ResponseEntity<VehicleResponse> updateVehicle(
             @org.springframework.security.core.annotation.AuthenticationPrincipal com.autowash.backend.security.CustomUserDetails userDetails,
-            @PathVariable Integer vehicleId,
+            @PathVariable("vehicleId") Integer vehicleId,
             @Valid @RequestBody VehicleRequest request) {
         return ResponseEntity.ok(vehicleService.updateVehicle(getUserId(userDetails), vehicleId, request));
     }
 
-    // Xóa xe (Soft delete)
     @DeleteMapping("/{vehicleId}")
     public ResponseEntity<Void> deleteVehicle(
             @org.springframework.security.core.annotation.AuthenticationPrincipal com.autowash.backend.security.CustomUserDetails userDetails,
-            @PathVariable Integer vehicleId) {
+            @PathVariable("vehicleId") Integer vehicleId) {
         vehicleService.deleteVehicle(getUserId(userDetails), vehicleId);
         return ResponseEntity.noContent().build();
     }
 
-    // Bật tắt trạng thái hoạt động của xe
     @PutMapping("/{vehicleId}/toggle-active")
     public ResponseEntity<VehicleResponse> toggleActive(
             @org.springframework.security.core.annotation.AuthenticationPrincipal com.autowash.backend.security.CustomUserDetails userDetails,
-            @PathVariable Integer vehicleId) {
+            @PathVariable("vehicleId") Integer vehicleId) {
         return ResponseEntity.ok(vehicleService.toggleActive(getUserId(userDetails), vehicleId));
     }
 

@@ -25,16 +25,9 @@ public class AdminBookingController {
 
     private final BookingService bookingService;
 
-    /**
-     * Admin lấy toàn bộ booking.
-     *
-     * GET /api/v1/admin/bookings
-     * GET /api/v1/admin/bookings?sortBy=newest   (mặc định)
-     * GET /api/v1/admin/bookings?sortBy=priority
-     */
     @GetMapping
     public ResponseEntity<List<BookingSummaryResponseDTO>> getAllBookings(
-            @RequestParam(required = false) String sortBy
+            @RequestParam(required = false, name = "sortBy") String sortBy
     ) {
         return ResponseEntity.ok(
                 bookingService.getAllBookings(
@@ -43,16 +36,9 @@ public class AdminBookingController {
         );
     }
 
-    /**
-     * Admin xem chi tiết một booking.
-     *
-     * GET /api/v1/admin/bookings/{bookingId}
-     *
-     * Truyền userId = null để bỏ kiểm tra booking thuộc Customer nào.
-     */
     @GetMapping("/{bookingId}")
     public ResponseEntity<BookingResponseDTO> getBookingById(
-            @PathVariable Integer bookingId
+            @PathVariable("bookingId") Integer bookingId
     ) {
         return ResponseEntity.ok(
                 bookingService.getBookingById(
@@ -62,29 +48,19 @@ public class AdminBookingController {
         );
     }
 
-    /**
-     * Admin lấy nhân viên có thể phân công cho booking.
-     *
-     * GET /api/v1/admin/bookings/{bookingId}/assignable-staff
-     */
     @GetMapping("/{bookingId}/assignable-staff")
     public ResponseEntity<List<AssignableStaffResponseDTO>>
     getAssignableStaff(
-            @PathVariable Integer bookingId
+            @PathVariable("bookingId") Integer bookingId
     ) {
         return ResponseEntity.ok(
                 bookingService.getAssignableStaff(bookingId)
         );
     }
 
-    /**
-     * Admin cập nhật booking.
-     *
-     * PUT /api/v1/admin/bookings/{bookingId}
-     */
     @PutMapping("/{bookingId}")
     public ResponseEntity<BookingResponseDTO> updateBooking(
-            @PathVariable Integer bookingId,
+            @PathVariable("bookingId") Integer bookingId,
             @Valid @RequestBody BookingUpdateRequestDTO request
     ) {
         return ResponseEntity.ok(
@@ -95,14 +71,9 @@ public class AdminBookingController {
         );
     }
 
-    /**
-     * Admin hủy booking.
-     *
-     * DELETE /api/v1/admin/bookings/{bookingId}/cancel
-     */
     @DeleteMapping("/{bookingId}/cancel")
     public ResponseEntity<BookingResponseDTO> cancelBooking(
-            @PathVariable Integer bookingId
+            @PathVariable("bookingId") Integer bookingId
     ) {
         return ResponseEntity.ok(
                 bookingService.cancelBooking(
@@ -112,67 +83,42 @@ public class AdminBookingController {
         );
     }
 
-    /**
-     * Admin xác nhận booking.
-     *
-     * PATCH /api/v1/admin/bookings/{bookingId}/confirm
-     */
     @PatchMapping("/{bookingId}/confirm")
     public ResponseEntity<BookingResponseDTO> confirmBooking(
-            @PathVariable Integer bookingId
+            @PathVariable("bookingId") Integer bookingId
     ) {
         return ResponseEntity.ok(
                 bookingService.confirmBooking(bookingId)
         );
     }
 
-    /**
-     * Admin check-in booking.
-     *
-     * PATCH /api/v1/admin/bookings/{bookingId}/check-in
-     */
     @PatchMapping("/{bookingId}/check-in")
     public ResponseEntity<BookingResponseDTO> checkInBooking(
-            @PathVariable Integer bookingId
+            @PathVariable("bookingId") Integer bookingId
     ) {
         return ResponseEntity.ok(
                 bookingService.checkInBooking(bookingId)
         );
     }
 
-    /**
-     * Admin bắt đầu thực hiện dịch vụ.
-     *
-     * PATCH /api/v1/admin/bookings/{bookingId}/start-wash
-     */
     @PatchMapping("/{bookingId}/start-wash")
     public ResponseEntity<BookingResponseDTO> startWashBooking(
-            @PathVariable Integer bookingId
+            @PathVariable("bookingId") Integer bookingId
     ) {
         return ResponseEntity.ok(
                 bookingService.startWashBooking(bookingId)
         );
     }
 
-    /**
-     * Admin hoàn thành booking.
-     *
-     * PATCH /api/v1/admin/bookings/{bookingId}/complete
-     */
     @PatchMapping("/{bookingId}/complete")
     public ResponseEntity<BookingResponseDTO> completeBooking(
-            @PathVariable Integer bookingId
+            @PathVariable("bookingId") Integer bookingId
     ) {
         return ResponseEntity.ok(
                 bookingService.completeBooking(bookingId)
         );
     }
 
-    /**
-     * Admin tạo booking cho khách hàng.
-     *
-     * POST /api/v1/admin/bookings
-     */
     @PostMapping
     public ResponseEntity<BookingCreateResponseDTO> createBooking(
             @Valid @RequestBody BookingCreateRequestDTO request

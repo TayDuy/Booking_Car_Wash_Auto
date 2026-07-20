@@ -13,6 +13,33 @@ function hasStatus(value, ...statuses) {
     const normalizedValue = String(value || "").toLowerCase();
     return statuses.includes(normalizedValue);
 }
+// Lọc bỏ các message lỗi kỹ thuật (stack trace, exception nội bộ của Java/Spring...)
+// để không hiển thị trực tiếp cho khách hàng — chỉ hiển thị message nghiệp vụ
+// dễ hiểu (do BusinessException/@Valid ném ra) hoặc fallback tiếng Việt chung chung.
+function isTechnicalErrorMessage(message) {
+    if (!message || typeof message !== "string") return false;
+    const technicalPatterns = [
+        /\bjava\.\w+/i,
+        /\borg\.springframework/i,
+        /exception/i,
+        /stack ?trace/i,
+        /reflection/i,
+        /compiler/i,
+        /nullpointer/i,
+        /at\s+com\.autowash/i,
+    ];
+    if (technicalPatterns.some((p) => p.test(message))) return true;
+    if (message.length > 200) return true; // message quá dài, khả năng cao là raw error
+    return false;
+}
+
+function getFriendlyErrorMessage(error, fallback) {
+    const rawMessage = error?.response?.data?.message || error?.message;
+    if (rawMessage && !isTechnicalErrorMessage(rawMessage)) {
+        return rawMessage;
+    }
+    return fallback;
+}
 
 function PaymentPage() {
     const location = useLocation();

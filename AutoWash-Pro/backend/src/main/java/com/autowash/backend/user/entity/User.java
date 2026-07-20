@@ -35,9 +35,11 @@ public class User {
     private String phone;
 
     @Column(name = "status", nullable = false, length = 10)
+    @Builder.Default
     private String status = "active";
 
     @Column(name = "role", nullable = false, length = 10)
+    @Builder.Default
     private String role = "customer";
 
     @Column(name = "failed_attempts")

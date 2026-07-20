@@ -18,6 +18,8 @@
         <java.version>17</java.version>
         <mapstruct.version>1.5.5.Final</mapstruct.version>
         <lombok.version>1.18.46</lombok.version>
+        <!-- [FIXED] Version của lombok-mapstruct-binding, tương thích với mapstruct 1.5.x -->
+        <lombok-mapstruct-binding.version>0.2.0</lombok-mapstruct-binding.version>
     </properties>
 
     <dependencies>
@@ -70,6 +72,18 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
+
+        <!-- [FIXED] Spring Boot 4 mặc định dùng Jackson 3 (package tools.jackson.*) thay vì
+             Jackson 2 cổ điển (com.fasterxml.jackson.databind.*), nên jackson-databind KHÔNG
+             còn tự động có trong classpath qua spring-boot-starter-web nữa. Code hiện tại
+             (PaypalRefundServiceImpl, ...) vẫn dùng ObjectMapper/JsonNode của Jackson 2 cổ điển,
+             nên phải khai báo tường minh dependency này. Không cần <version> vì
+             spring-boot-starter-parent đã quản lý version tương thích. -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
+
         <dependency>
             <groupId>org.hibernate.orm</groupId>
             <artifactId>hibernate-core</artifactId>
@@ -143,12 +157,30 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <configuration>
                     <parameters>true</parameters>
+                    <!-- [TẠM THỜI] Bật -Xlint để xem chi tiết dòng nào gây warning deprecation/unchecked.
+                         Có thể xóa đoạn compilerArgs này sau khi đã xem xong, không bắt buộc giữ lại. -->
+                    <compilerArgs>
+                        <arg>-Xlint:deprecation</arg>
+                        <arg>-Xlint:unchecked</arg>
+                    </compilerArgs>
                     <annotationProcessorPaths>
                         <!-- Lombok PHẢI đứng trước MapStruct -->
                         <path>
                             <groupId>org.projectlombok</groupId>
                             <artifactId>lombok</artifactId>
                             <version>${lombok.version}</version>
+                        </path>
+                        <!-- [FIXED] Bắt buộc phải có khi dùng chung Lombok + MapStruct với
+                             annotationProcessorPaths tường minh — nếu không, Maven tắt cơ chế
+                             tự dò processor mặc định và 2 processor chạy round không đồng bộ:
+                             MapStruct có thể chạy round xử lý TRƯỚC khi Lombok kịp sinh
+                             getter/setter/builder, khiến MapStructProcessor không thấy các
+                             symbol đó -> lỗi biên dịch lan ra hàng loạt file không liên quan
+                             (chính là lỗi "cannot find symbol: getEmail(), builder()..." bạn gặp). -->
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok-mapstruct-binding</artifactId>
+                            <version>${lombok-mapstruct-binding.version}</version>
                         </path>
                         <!-- MapStruct processor sinh ra BranchMapperImpl lúc compile -->
                         <path>

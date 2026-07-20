@@ -56,8 +56,8 @@ public class AdminUserController {
     @PutMapping("/{id}/status")
     @Transactional
     public ResponseEntity<ApiResponse<String>> updateUserStatus(
-            @PathVariable Integer id,
-            @RequestParam String status,
+            @PathVariable("id") Integer id,
+            @RequestParam(name = "status") String status,
             @AuthenticationPrincipal UserDetails currentUser
     ) {
         User targetUser = userRepository.findById(id)
@@ -109,25 +109,24 @@ public class AdminUserController {
                 )
         );
     }
+
     @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{id}/role")
     @Transactional
     public ResponseEntity<ApiResponse<String>> updateUserRole(
-            @PathVariable Integer id,
-            @RequestParam String newRole,
+            @PathVariable("id") Integer id,
+            @RequestParam(name = "newRole") String newRole,
             @AuthenticationPrincipal UserDetails currentUser
-            ) {
+    ) {
         User targetUser = userRepository.findById(id)
                 .orElseThrow(() -> new BusinessException("Không tìm thấy user", HttpStatus.NOT_FOUND));
 
-        // Prevent self-demotion
         com.autowash.backend.security.CustomUserDetails customUser =
                 (com.autowash.backend.security.CustomUserDetails) currentUser;
         if (targetUser.getId().equals(customUser.getId())) {
             throw new BusinessException("Không thể tự thay đổi quyền của chính mình", HttpStatus.BAD_REQUEST);
         }
 
-        // Validate newRole
         boolean isValidRole = false;
         for (Role r : Role.values()) {
             if (r.name().equalsIgnoreCase(newRole)) {
@@ -142,7 +141,6 @@ public class AdminUserController {
 
         String oldRole = targetUser.getRole();
 
-        // Prevent demoting the last ADMIN
         String newRoleLower = newRole.toLowerCase();
         if (!"admin".equals(newRoleLower)) {
             long adminCount = userRepository.countByRole("admin");
@@ -156,10 +154,10 @@ public class AdminUserController {
         userRepository.save(targetUser);
 
         auditLogRepository.save(AuditLog.builder()
-                        .action("CHANGE_ROLE")
-                        .performedBy(currentUser.getUsername())
-                        .targetUserId(id)
-                        .details(oldRole + " -> " + newRole)
+                .action("CHANGE_ROLE")
+                .performedBy(currentUser.getUsername())
+                .targetUserId(id)
+                .details(oldRole + " -> " + newRole)
                 .build());
         return ResponseEntity.ok(ApiResponse.success("Đổi quyền thành công: " + oldRole + " -> " + newRole, null));
     }

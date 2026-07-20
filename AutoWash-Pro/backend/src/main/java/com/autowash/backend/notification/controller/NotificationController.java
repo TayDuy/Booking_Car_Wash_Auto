@@ -32,7 +32,7 @@ public class NotificationController {
     private final SseTicketService sseTicketService;
 
     @GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public SseEmitter stream(@RequestParam String ticket) {
+    public SseEmitter stream(@RequestParam(name = "ticket") String ticket) {
         Integer userId = sseTicketService.consume(ticket);
         return sseService.register(userId);
     }
@@ -83,7 +83,7 @@ public class NotificationController {
 
     @PatchMapping("/{id}/read")
     public ResponseEntity<ApiResponse<Void>> markAsRead(
-            @PathVariable Integer id,
+            @PathVariable("id") Integer id,
             @AuthenticationPrincipal UserDetails currentUser) {
         Integer userId = resolveUserId(currentUser);
         notificationService.markAsRead(id, userId);
@@ -109,7 +109,7 @@ public class NotificationController {
 
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<Void>> delete(
-            @PathVariable Integer id,
+            @PathVariable("id") Integer id,
             @AuthenticationPrincipal UserDetails currentUser) {
         Integer userId = resolveUserId(currentUser);
         notificationService.delete(id, userId);
@@ -126,7 +126,7 @@ public class NotificationController {
 
     @DeleteMapping("/admin/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<Void>> adminRevoke(@PathVariable Integer id) {
+    public ResponseEntity<ApiResponse<Void>> adminRevoke(@PathVariable("id") Integer id) {
         notificationService.adminRevoke(id);
         return ResponseEntity.ok(ApiResponse.success("Đã thu hồi thông báo", null));
     }

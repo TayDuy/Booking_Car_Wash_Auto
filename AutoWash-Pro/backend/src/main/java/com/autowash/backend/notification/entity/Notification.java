@@ -1,3 +1,4 @@
+// backend/src/main/java/com/autowash/backend/notification/entity/Notification.java
 package com.autowash.backend.notification.entity;
 
 import com.autowash.backend.user.entity.User;
@@ -132,9 +133,9 @@ public class Notification {
 
     public enum NotificationType {
         BOOKING_CONFIRMED, BOOKING_CANCELLED, BOOKING_RESCHEDULED,
-        WAITLIST_PROMOTED, TIER_UPGRADED, TIER_DOWNGRADED, PAYMENT_COMPLETED, PAYMENT_FAILED
+        WAITLIST_PROMOTED, TIER_UPGRADED, TIER_DOWNGRADED, PAYMENT_COMPLETED, PAYMENT_FAILED,
+        REFUND_REQUESTED, REFUND_PROCESSING, REFUND_APPROVED, REFUND_REJECTED, REFUND_COMPLETED
     }
-
     public enum NotificationChannel { in_app, sms, email }
 
     public enum NotificationStatus { sent, failed, dead_lettered }

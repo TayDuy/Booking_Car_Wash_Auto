@@ -19,13 +19,10 @@ public class CustomerRewardController {
 
     private final CustomerRewardService customerRewardService;
 
-    /**
-     * Customer đổi điểm lấy voucher.
-     */
     @PostMapping("/{rewardId}/redeem")
     public ResponseEntity<CustomerRewardResponseDTO> redeemReward(
-            @PathVariable Integer rewardId,
-            @RequestParam Integer customerId,
+            @PathVariable("rewardId") Integer rewardId,
+            @RequestParam(name = "customerId") Integer customerId,
             @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
         CustomerRewardResponseDTO response = customerRewardService.redeemReward(
@@ -37,12 +34,9 @@ public class CustomerRewardController {
         return ResponseEntity.ok(response);
     }
 
-    /**
-     * Customer xem voucher đã đổi.
-     */
     @GetMapping("/my/{customerId}")
     public ResponseEntity<List<CustomerRewardResponseDTO>> getMyRewards(
-            @PathVariable Integer customerId,
+            @PathVariable("customerId") Integer customerId,
             @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
         List<CustomerRewardResponseDTO> response =
@@ -53,8 +47,8 @@ public class CustomerRewardController {
 
     @PatchMapping("/use")
     public ResponseEntity<CustomerRewardResponseDTO> useReward(
-            @RequestParam String voucherCode,
-            @RequestParam Integer bookingId,
+            @RequestParam(name = "voucherCode") String voucherCode,
+            @RequestParam(name = "bookingId") Integer bookingId,
             @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
         CustomerRewardResponseDTO response =

@@ -42,6 +42,7 @@ public interface TimeSlotMapper {
     @Mapping(target = "currentBookings", ignore = true)  // default = 0
     @Mapping(target = "createdAt",       ignore = true)
     @Mapping(target = "updatedAt",       ignore = true)
+    @Mapping(target = "version",         ignore = true)  // JPA @Version tự quản lý, không map từ DTO
     TimeSlot toEntity(TimeSlotRequestDTO request);
 
     /**
@@ -54,5 +55,6 @@ public interface TimeSlotMapper {
     @Mapping(target = "currentBookings", ignore = true)
     @Mapping(target = "createdAt",       ignore = true)
     @Mapping(target = "updatedAt",       ignore = true)
+    @Mapping(target = "version",         ignore = true)  // JPA @Version tự quản lý, không map từ DTO
     void updateEntity(TimeSlotRequestDTO request, @MappingTarget TimeSlot entity);
 }

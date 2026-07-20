@@ -140,7 +140,18 @@ public class EmployeeMapper {
                                 ? customer.getFullName()
                                 : null
                 )
+                // SAU
                 .customerPhoneMasked(maskPhone(customerPhone))
+                .customerIsGuest(
+                        customer != null
+                                ? customer.getUser() == null
+                                : null
+                )
+                .customerTotalPoints(
+                        customer != null
+                                ? customer.getTotalPoints()
+                                : null
+                )
 
                 // Vehicle
                 .vehicleId(
