@@ -34,7 +34,7 @@ import java.util.UUID;
  * Customer đạt một hạng nếu:
  * - totalVisits >= minVisits
  * AND
- * - currentPoints >= minPoints OR totalSpending >= minSpending
+ * - (currentPoints >= minPoints OR totalSpending >= minSpending)
  *
  * ============================================================================
  * TỐI ƯU N+1 QUERY (so với bản gốc)
@@ -214,7 +214,7 @@ public class LoyaltyTierEvaluationServiceImpl implements LoyaltyTierEvaluationSe
         Integer totalVisits = getTotalVisits(customer);
         BigDecimal totalSpending = getTotalSpending(customer);
 
-        LoyaltyTier matchedTier = findMatchedTier(activeTiers, totalVisits, totalSpending);
+        LoyaltyTier matchedTier = findMatchedTier(activeTiers, totalVisits, currentBalance, totalSpending);
 
         Integer previousTierId = customer.getTierId();
         String previousTierName = findTierNameById(activeTiers, previousTierId);
@@ -360,39 +360,45 @@ public class LoyaltyTierEvaluationServiceImpl implements LoyaltyTierEvaluationSe
     private LoyaltyTier findMatchedTier(
             List<LoyaltyTier> activeTiers,
             Integer totalVisits,
+            Integer currentPoints,
             BigDecimal totalSpending
     ) {
         return activeTiers.stream()
-                .filter(tier -> isMatchedShopeeStyle(tier, totalVisits, totalSpending))
+                .filter(tier -> isMatchedShopeeStyle(tier, totalVisits, currentPoints, totalSpending))
                 .findFirst()
                 .orElse(activeTiers.get(activeTiers.size() - 1));
     }
 
     /**
      * Logic match tier:
-     * totalVisits >= minVisits OR totalSpending >= minSpending
+     * totalVisits >= minVisits AND (currentPoints >= minPoints OR totalSpending >= minSpending)
      */
     private boolean isMatchedShopeeStyle(
             LoyaltyTier tier,
             Integer totalVisits,
+            Integer currentPoints,
             BigDecimal totalSpending
     ) {
         Integer requiredVisits = tier.getMinVisits() != null ? tier.getMinVisits() : 0;
+        Integer requiredPoints = tier.getMinPoints() != null ? tier.getMinPoints() : 0;
         BigDecimal requiredSpending = tier.getMinSpending() != null ? tier.getMinSpending() : BigDecimal.ZERO;
 
         Integer safeVisits = totalVisits != null ? totalVisits : 0;
+        Integer safePoints = currentPoints != null ? currentPoints : 0;
         BigDecimal safeSpending = totalSpending != null ? totalSpending : BigDecimal.ZERO;
 
-        boolean isDefaultTier = requiredVisits <= 0 && requiredSpending.compareTo(BigDecimal.ZERO) <= 0;
+        boolean isDefaultTier = requiredVisits <= 0 && requiredPoints <= 0 && requiredSpending.compareTo(BigDecimal.ZERO) <= 0;
         if (isDefaultTier) {
             return true;
         }
 
         boolean enoughVisits = safeVisits >= requiredVisits;
+        boolean enoughPoints = safePoints >= requiredPoints;
         boolean enoughSpending = safeSpending.compareTo(requiredSpending) >= 0;
 
-        // Giai đoạn đầu: dùng OR để tránh làm sụt hạng sốc khách hàng cũ
-        return enoughVisits || enoughSpending;
+        // totalVisits >= minVisits
+        // AND (currentPoints >= minPoints OR totalSpending >= minSpending)
+        return enoughVisits && (enoughPoints || enoughSpending);
     }
 
     private Integer getTotalVisits(Customer customer) {

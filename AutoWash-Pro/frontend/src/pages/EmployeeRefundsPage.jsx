@@ -9,7 +9,7 @@ import {
     Undo2,
 } from "lucide-react";
 
-import refundApi from "../../../api/refundApi";
+import refundApi from "../api/refundApi";
 
 import "./EmployeeRefundsPage.css";
 
@@ -360,7 +360,6 @@ export default function EmployeeRefundsPage() {
                                 >
                                     <option value="cash">Tiền mặt</option>
                                     <option value="bank_transfer">Chuyển khoản</option>
-                                    <option value="original_payment_method">Hoàn về phương thức gốc</option>
                                 </select>
                             </label>
 

@@ -22,6 +22,7 @@ const HomePage = lazy(() => import("../features/customer/pages/HomePage"));
 const ProfilePage = lazy(() => import("../features/customer/pages/ProfilePage"));
 const CustomerNotificationPage = lazy(() => import("../features/customer/pages/CustomerNotificationPage"));
 const SupportPage = lazy(() => import("../features/customer/pages/Helpcenter"));
+const CustomerRefundsPage = lazy(() => import("../features/customer/pages/CustomerRefundsPage"));
 
 const ServicesPage = lazy(() => import("../features/services/pages/ServicesPage"));
 
@@ -51,10 +52,13 @@ const RoleManagementPage = lazy(() => import("../features/admin/pages/RoleManage
 const SystemSettingsPage = lazy(() => import("../features/admin/pages/SystemSettingsPage"));
 const ManageOrdersPage = lazy(() => import("../features/admin/pages/ManageOrdersPage"));
 const PaymentHistoryPage = lazy(() => import("../features/admin/pages/PaymentHistoryPage"));
+const RefundsPage = lazy(() => import("../features/admin/pages/RefundsPage"));
+const AdminRatingsPage = lazy(() => import("../features/admin/pages/AdminRatingsPage"));
 
 const EmployeeDashboardPage = lazy(() => import("../features/employee/pages/EmployeeDashboardPage"));
 const EmployeeQueuePage = lazy(() => import("../features/employee/pages/EmployeeQueuePage"));
 const WalkInBookingPage = lazy(() => import("../features/employee/pages/WalkInBookingPage"));
+const EmployeeRefundsPage = lazy(() => import("../pages/EmployeeRefundsPage"));
 
 const UnauthorizedPage = lazy(() => import("../pages/UnauthorizedPage"));
 
@@ -119,6 +123,7 @@ function AppRoutes() {
 
                     <Route path="payment" element={<PaymentPage />} />
                     <Route path="payment/success" element={<PaymentSuccessPage />} />
+                    <Route path="refunds" element={<CustomerRefundsPage />} />
                 </Route>
 
                 {/* Admin */}
@@ -146,6 +151,8 @@ function AppRoutes() {
                     <Route path="settings" element={<SystemSettingsPage />} />
                     <Route path="orders" element={<ManageOrdersPage />} />
                     <Route path="payments" element={<PaymentHistoryPage />} />
+                    <Route path="refunds" element={<RefundsPage />} />
+                    <Route path="ratings" element={<AdminRatingsPage />} />
                 </Route>
 
                 {/* Employee */}
@@ -161,6 +168,8 @@ function AppRoutes() {
                     <Route path="dashboard" element={<EmployeeDashboardPage />} />
                     <Route path="queue" element={<EmployeeQueuePage />} />
                     <Route path="bookings/new" element={<WalkInBookingPage />} />
+                    <Route path="refunds" element={<EmployeeRefundsPage />} />
+                    <Route path="ratings" element={<AdminRatingsPage />} />
                 </Route>
 
                 {/* Not found */}

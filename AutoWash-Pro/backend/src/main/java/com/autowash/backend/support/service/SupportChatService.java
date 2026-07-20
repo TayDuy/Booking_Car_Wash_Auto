@@ -224,8 +224,11 @@ public class SupportChatService {
         } catch (RuntimeException e) {
             // RuntimeException đã có message rõ ràng → ném thẳng lên controller
             throw e;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException("Lỗi khi gọi Gemini API: " + e.getMessage(), e);
         } catch (Exception e) {
-            // Các lỗi khác (IOException khi gọi HTTP, InterruptedException...) → wrap lại
+            // Các lỗi khác (IOException khi gọi HTTP...) → wrap lại
             throw new RuntimeException("Lỗi khi gọi Gemini API: " + e.getMessage(), e);
         }
     }

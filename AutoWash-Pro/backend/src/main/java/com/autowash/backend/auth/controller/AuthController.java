@@ -35,7 +35,7 @@ public class AuthController {
     private final CookieUtil cookieUtil;
 
     // Thời hạn sống của refreshToken (giây) - khớp với thời hạn tạo trong RefreshTokenServiceImpl (7 ngày)
-    private static final long REFRESH_TOKEN_MAX_AGE_SECONDS = 7 * 24 * 60 * 60;
+    private static final long REFRESH_TOKEN_MAX_AGE_SECONDS = 7 * 24 * 60 * 60L;
 
     public AuthController(AuthService authService,
                           OtpService otpService,

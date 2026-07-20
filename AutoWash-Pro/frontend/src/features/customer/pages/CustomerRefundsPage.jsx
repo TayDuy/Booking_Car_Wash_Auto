@@ -28,7 +28,6 @@ const STATUS_MAP = {
 const REFUND_METHOD_MAP = {
     cash: 'Tiền mặt tại chi nhánh',
     bank_transfer: 'Chuyển khoản ngân hàng',
-    original_payment_method: 'Phương thức thanh toán gốc',
 };
 
 const STEP_ORDER = ['pending', 'processing', 'approved', 'completed'];

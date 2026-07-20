@@ -1,11 +1,10 @@
-// backend/src/main/java/com/autowash/backend/refund/service/PaypalRefundService.java
 package com.autowash.backend.refund.service;
 
 import java.math.BigDecimal;
 
 /**
  * Gọi PayPal Refund API để hoàn tiền thật cho một capture đã thanh toán.
- * Dùng khi refund.refundMethod = original_payment_method và payment.paymentMethod = paypal.
+ * Dùng khi payment.paymentMethod = paypal.
  */
 public interface PaypalRefundService {
 

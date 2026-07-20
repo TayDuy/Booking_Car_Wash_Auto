@@ -5,6 +5,7 @@ import com.autowash.backend.customer.entity.Customer;
 import com.autowash.backend.employee.entity.Employee;
 import com.autowash.backend.payment.entity.Payment;
 import com.autowash.backend.refund.dto.RefundCreateRequestDTO;
+import com.autowash.backend.refund.dto.RefundCustomerCreateRequestDTO;
 import com.autowash.backend.refund.dto.RefundResponseDTO;
 import com.autowash.backend.refund.dto.RefundSelfRequestDTO;
 import com.autowash.backend.refund.entity.Refund;
@@ -35,6 +36,21 @@ public class RefundMapper {
                 .amount(amount)
                 .reason(dto.getReason())
                 .refundMethod(refundMethod)
+                .build();
+    }
+
+    /** Khách hàng tự tạo yêu cầu từ booking (có chọn phương thức hoàn tiền, bank info). */
+    public Refund toCustomerEntity(RefundCustomerCreateRequestDTO dto, Payment payment, Customer requestedByCustomer,
+                                   java.math.BigDecimal amount, Refund.RefundMethod refundMethod) {
+        return Refund.builder()
+                .payment(payment)
+                .requestedByCustomer(requestedByCustomer)
+                .amount(amount)
+                .reason(dto.getReason())
+                .refundMethod(refundMethod)
+                .bankName(dto.getBankName())
+                .bankAccountNumber(dto.getBankAccountNumber())
+                .bankAccountName(dto.getBankAccountName())
                 .build();
     }
 

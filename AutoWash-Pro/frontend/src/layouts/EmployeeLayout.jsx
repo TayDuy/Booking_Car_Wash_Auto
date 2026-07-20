@@ -1,4 +1,3 @@
-// frontend/src/layouts/EmployeeLayout.jsx
 import {
   CalendarPlus,
   CarFront,
@@ -6,6 +5,7 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
+  Star,
   Undo2,
   UserRound,
   X,
@@ -20,6 +20,7 @@ import {
 
 import employeeApi from "../api/employeeApi";
 import LogoutConfirmModal from "../components/common/LogoutConfirmModal";
+import useAuth from "../hooks/useAuth";
 
 import "./EmployeeLayout.css";
 
@@ -44,6 +45,11 @@ const EMPLOYEE_NAVIGATION = [
     path: "/employee/refunds",
     icon: Undo2,
   },
+  {
+    label: "Đánh giá",
+    path: "/employee/ratings",
+    icon: Star,
+  },
 ];
 
 const PAGE_TITLES = {
@@ -53,6 +59,7 @@ const PAGE_TITLES = {
   "/employee/payment": "Thanh toán booking",
   "/employee/payment/success": "Thanh toán thành công",
   "/employee/refunds": "Yêu cầu hoàn tiền",
+  "/employee/ratings": "Đánh giá khách hàng",
 };
 
 function getStoredUser() {
@@ -104,29 +111,10 @@ function getPageTitle(pathname) {
       "Employee Portal";
 }
 
-function clearAuthenticationStorage() {
-  [
-    "token",
-    "accessToken",
-    "refreshToken",
-    "username",
-    "fullName",
-    "role",
-    "userId",
-    "customerId",
-    "employeeId",
-    "branchId",
-    "branchName",
-    "permissions",
-    "user",
-  ].forEach((key) => {
-    localStorage.removeItem(key);
-  });
-}
-
 function EmployeeLayout() {
   const location = useLocation();
   const navigate = useNavigate();
+  const auth = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [user, setUser] = useState(getStoredUser);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
@@ -189,7 +177,7 @@ function EmployeeLayout() {
 
   const handleConfirmLogout = () => {
     setShowLogoutConfirm(false);
-    clearAuthenticationStorage();
+    auth.logout();
     navigate("/auth/login", { replace: true });
   };
 

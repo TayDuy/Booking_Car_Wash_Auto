@@ -1,11 +1,14 @@
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import { logoutFromServer } from "../api/authService";
+import useAuth from "../hooks/useAuth";
 
 function ManagerLayout() {
   const navigate = useNavigate();
+  const auth = useAuth();
 
   const handleLogout = async () => {
     await logoutFromServer();
+    auth.logout();
     navigate("/");
   };
 

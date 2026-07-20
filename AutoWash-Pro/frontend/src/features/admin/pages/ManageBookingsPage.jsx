@@ -124,8 +124,10 @@ export default function ManageBookingsPage() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [sortBy, setSortBy] = useState("newest");
 
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [pageSize, setPageSize] = useState(50);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalElements, setTotalElements] = useState(0);
 
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -152,7 +154,7 @@ export default function ManageBookingsPage() {
 
   useEffect(() => {
     loadBookings();
-  }, [sortBy]);
+  }, [sortBy, currentPage, pageSize]);
 
   useEffect(() => {
     if (
@@ -213,18 +215,15 @@ export default function ManageBookingsPage() {
     setLoading(true);
 
     try {
-      const response = await bookingApi.adminList({ sortBy });
+      const response = await bookingApi.adminList({ sortBy, page: currentPage, size: pageSize });
       console.log("ADMIN BOOKINGS:", response.data);
 
-      const result = response.data?.data || response.data || [];
+      const body = response.data?.data || response.data || {};
+      const content = body.content || [];
 
-      if (Array.isArray(result)) {
-        setBookings(result);
-      } else if (Array.isArray(result.content)) {
-        setBookings(result.content);
-      } else {
-        setBookings([]);
-      }
+      setBookings(Array.isArray(content) ? content : []);
+      if (body.totalPages !== undefined) setTotalPages(body.totalPages || 1);
+      if (body.totalElements !== undefined) setTotalElements(body.totalElements);
     } catch (error) {
       console.error("Load bookings failed:", error);
     } finally {
@@ -256,40 +255,32 @@ export default function ManageBookingsPage() {
   }, [bookings, keyword, statusFilter]);
 
   useEffect(() => {
-    setCurrentPage(1);
+    setCurrentPage(0);
   }, [keyword, statusFilter, sortBy, pageSize]);
 
-  const totalPages = Math.max(
-      1,
-      Math.ceil(filteredBookings.length / pageSize)
-  );
-
   useEffect(() => {
-    if (currentPage > totalPages) {
-      setCurrentPage(totalPages);
+    if (currentPage >= totalPages) {
+      setCurrentPage(Math.max(0, totalPages - 1));
     }
   }, [currentPage, totalPages]);
 
   const paginatedBookings = useMemo(() => {
-    const startIndex = (currentPage - 1) * pageSize;
-    const endIndex = startIndex + pageSize;
-
-    return filteredBookings.slice(startIndex, endIndex);
-  }, [filteredBookings, currentPage, pageSize]);
+    return filteredBookings;
+  }, [filteredBookings]);
 
   const paginationItems = useMemo(
-      () => getPaginationItems(currentPage, totalPages),
+      () => getPaginationItems(currentPage + 1, totalPages),
       [currentPage, totalPages]
   );
 
   const firstVisibleItem =
-      filteredBookings.length === 0
+      totalElements === 0
           ? 0
-          : (currentPage - 1) * pageSize + 1;
+          : currentPage * pageSize + 1;
 
   const lastVisibleItem = Math.min(
-      currentPage * pageSize,
-      filteredBookings.length
+      (currentPage + 1) * pageSize,
+      totalElements
   );
 
   const selectedCustomerVehicles = useMemo(() => {
@@ -911,7 +902,7 @@ export default function ManageBookingsPage() {
                             }
                         >
                           <td>
-                            {(currentPage - 1) * pageSize +
+                            {currentPage * pageSize +
                                 index +
                                 1}
                           </td>
@@ -1062,16 +1053,16 @@ export default function ManageBookingsPage() {
                       {firstVisibleItem}–{lastVisibleItem}
                     </strong>{" "}
                     trong tổng số{" "}
-                    <strong>{filteredBookings.length}</strong> đơn
+                    <strong>{totalElements}</strong> đơn
                   </div>
 
                   <div className="pagination-controls">
                     <button
                         type="button"
-                        disabled={currentPage === 1}
+                        disabled={currentPage === 0}
                         onClick={() =>
-                            setCurrentPage((previousPage) =>
-                                Math.max(previousPage - 1, 1)
+                            setCurrentPage((prev) =>
+                                Math.max(prev - 1, 0)
                             )
                         }
                     >
@@ -1084,9 +1075,9 @@ export default function ManageBookingsPage() {
                                     type="button"
                                     key={item}
                                     className={
-                                      item === currentPage ? "active" : ""
+                                      item - 1 === currentPage ? "active" : ""
                                     }
-                                    onClick={() => setCurrentPage(item)}
+                                    onClick={() => setCurrentPage(item - 1)}
                                 >
                                   {item}
                                 </button>
@@ -1102,12 +1093,12 @@ export default function ManageBookingsPage() {
 
                     <button
                         type="button"
-                        disabled={currentPage === totalPages}
+                        disabled={currentPage >= totalPages - 1}
                         onClick={() =>
-                            setCurrentPage((previousPage) =>
+                            setCurrentPage((prev) =>
                                 Math.min(
-                                    previousPage + 1,
-                                    totalPages
+                                    prev + 1,
+                                    totalPages - 1
                                 )
                             )
                         }
@@ -1128,6 +1119,7 @@ export default function ManageBookingsPage() {
                       <option value={10}>10</option>
                       <option value={20}>20</option>
                       <option value={50}>50</option>
+                      <option value={100}>100</option>
                     </select>
                   </label>
                 </div>

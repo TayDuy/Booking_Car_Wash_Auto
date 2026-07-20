@@ -2,8 +2,8 @@
 package com.autowash.backend.refund.service.impl;
 
 import com.autowash.backend.refund.service.PaypalRefundService;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
@@ -26,10 +26,10 @@ public class PaypalRefundServiceImpl implements PaypalRefundService {
     private final RestTemplate restTemplate = new RestTemplate();
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    @Value("${paypal.client-id}")
+    @Value("${paypal.client-id:}")
     private String clientId;
 
-    @Value("${paypal.client-secret}")
+    @Value("${paypal.client-secret:}")
     private String clientSecret;
 
     @Value("${paypal.base-url:https://api-m.sandbox.paypal.com}")

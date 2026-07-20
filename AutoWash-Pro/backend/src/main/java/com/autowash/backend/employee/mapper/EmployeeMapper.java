@@ -17,6 +17,8 @@ import org.springframework.stereotype.Component;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.Collections;
 import java.util.List;
 
@@ -317,9 +319,10 @@ public class EmployeeMapper {
                 ? booking.getCompleteAt()
                 : LocalDateTime.now();
 
+        ZoneId zone = ZoneId.systemDefault();
         long minutes = Duration.between(
-                booking.getCheckInAt(),
-                endTime
+                booking.getCheckInAt().atZone(zone),
+                endTime.atZone(zone)
         ).toMinutes();
 
         return Math.max(minutes, 0L);

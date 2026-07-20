@@ -154,16 +154,16 @@ public class SecurityConfig {
                         ).permitAll()
 
                         // =====================================================
-                        // ADMIN
+                        // ADMIN & STAFF
                         // =====================================================
                         .requestMatchers("/api/v1/admin/**")
-                        .hasRole("ADMIN")
+                        .hasAnyRole("ADMIN", "STAFF")
 
                         // =====================================================
                         // EMPLOYEE
                         // =====================================================
                         .requestMatchers("/api/v1/employee/**")
-                        .hasRole("EMPLOYEE")
+                        .hasAnyRole("EMPLOYEE", "STAFF", "ADMIN")
                         // Cho phép ADMIN / EMPLOYEE tạo khách hàng
                         .requestMatchers("/api/v1/staff/customers")
                         .hasAnyRole("EMPLOYEE", "ADMIN")
