@@ -35,13 +35,6 @@ public class EmployeeController {
 
     private final EmployeeService employeeService;
 
-    // =========================================================
-    // PROFILE
-    // =========================================================
-
-    /**
-     * GET /api/v1/employee/profile
-     */
     @GetMapping("/profile")
     public ResponseEntity<EmployeeProfileResponseDTO> getMyProfile(
             @AuthenticationPrincipal CustomUserDetails userDetails
@@ -51,36 +44,22 @@ public class EmployeeController {
         );
     }
 
-    // =========================================================
-    // QUEUE
-    // =========================================================
-
-    /**
-     * GET /api/v1/employee/queue
-     *
-     * Ví dụ:
-     * /queue
-     * /queue?date=2026-07-13
-     * /queue?status=confirmed
-     * /queue?date=2026-07-13&status=checked_in
-     * /queue?date=2026-07-13&status=confirmed&page=0&size=9
-     */
     @GetMapping("/queue")
     public ResponseEntity<Page<EmployeeQueueBookingResponseDTO>> getMyBranchQueue(
             @AuthenticationPrincipal CustomUserDetails userDetails,
 
-            @RequestParam(required = false)
+            @RequestParam(required = false, name = "date")
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
             LocalDate date,
 
-            @RequestParam(required = false)
+            @RequestParam(required = false, name = "status")
             BookingStatus status,
 
-            @RequestParam(defaultValue = "0")
+            @RequestParam(defaultValue = "0", name = "page")
             @Min(value = 0, message = "page không được nhỏ hơn 0")
             int page,
 
-            @RequestParam(defaultValue = "9")
+            @RequestParam(defaultValue = "9", name = "size")
             @Min(value = 1, message = "size phải lớn hơn 0")
             @Max(value = 100, message = "size không được vượt quá 100")
             int size
@@ -97,17 +76,10 @@ public class EmployeeController {
         );
     }
 
-    // =========================================================
-    // BOOKING DETAIL
-    // =========================================================
-
-    /**
-     * GET /api/v1/employee/bookings/{bookingId}
-     */
     @GetMapping("/bookings/{bookingId}")
     public ResponseEntity<EmployeeQueueBookingResponseDTO> getBookingById(
             @AuthenticationPrincipal CustomUserDetails userDetails,
-            @PathVariable Integer bookingId
+            @PathVariable("bookingId") Integer bookingId
     ) {
         return ResponseEntity.ok(
                 employeeService.getMyBranchBookingById(
@@ -117,13 +89,11 @@ public class EmployeeController {
         );
     }
 
-    /**
-     * GET /api/v1/employee/bookings/search?bookingCode=...
-     */
     @GetMapping("/bookings/search")
     public ResponseEntity<EmployeeQueueBookingResponseDTO> searchBooking(
             @AuthenticationPrincipal CustomUserDetails userDetails,
-            @RequestParam String bookingCode
+            @RequestParam(name = "bookingCode") String bookingCode
+
     ) {
         return ResponseEntity.ok(
                 employeeService.findMyBranchBookingByCode(
@@ -133,22 +103,6 @@ public class EmployeeController {
         );
     }
 
-    // =========================================================
-// CREATE BOOKING FOR CUSTOMER
-// =========================================================
-
-    /**
-     * Employee tạo booking hộ khách tại quầy.
-     *
-     * Hỗ trợ:
-     * - Khách đã có customerId.
-     * - Khách vãng lai chưa có tài khoản.
-     *
-     * Chi nhánh được lấy từ Employee đang đăng nhập,
-     * frontend không được tự truyền branchId.
-     *
-     * POST /api/v1/employee/bookings
-     */
     @PostMapping("/bookings")
     public ResponseEntity<EmployeeQueueBookingResponseDTO>
     createBookingForCustomer(
@@ -169,22 +123,10 @@ public class EmployeeController {
                 .body(response);
     }
 
-
-
-    // =========================================================
-    // CONFIRM
-    // pending → confirmed
-    // =========================================================
-
-    /**
-     * PATCH /api/v1/employee/bookings/{bookingId}/confirm
-     *
-     * Chỉ supervisor hoặc manager được phép xác nhận.
-     */
     @PatchMapping("/bookings/{bookingId}/confirm")
     public ResponseEntity<EmployeeQueueBookingResponseDTO> confirmBooking(
             @AuthenticationPrincipal CustomUserDetails userDetails,
-            @PathVariable Integer bookingId
+            @PathVariable("bookingId") Integer bookingId
     ) {
         return ResponseEntity.ok(
                 employeeService.confirmBooking(
@@ -194,18 +136,10 @@ public class EmployeeController {
         );
     }
 
-    // =========================================================
-    // CHECK-IN
-    // confirmed → checked_in
-    // =========================================================
-
-    /**
-     * PATCH /api/v1/employee/bookings/{bookingId}/check-in
-     */
     @PatchMapping("/bookings/{bookingId}/check-in")
     public ResponseEntity<EmployeeQueueBookingResponseDTO> checkInBooking(
             @AuthenticationPrincipal CustomUserDetails userDetails,
-            @PathVariable Integer bookingId
+            @PathVariable("bookingId") Integer bookingId
     ) {
         return ResponseEntity.ok(
                 employeeService.checkInBooking(
@@ -215,25 +149,11 @@ public class EmployeeController {
         );
     }
 
-    // =========================================================
-    // START WASH
-    // checked_in → in_progress
-    // =========================================================
-
-    /**
-     * PATCH /api/v1/employee/bookings/{bookingId}/start-wash
-     *
-     * Gán Employee hiện tại vào assignedStaff
-     * và chuyển wash bay sang occupied.
-     *
-     * @param bayId (tùy chọn) Chuyển booking sang wash bay khác
-     *              khi bay hiện tại đang occupied.
-     */
     @PatchMapping("/bookings/{bookingId}/start-wash")
     public ResponseEntity<EmployeeQueueBookingResponseDTO> startWash(
             @AuthenticationPrincipal CustomUserDetails userDetails,
-            @PathVariable Integer bookingId,
-            @RequestParam(required = false) Integer bayId
+            @PathVariable("bookingId") Integer bookingId,
+            @RequestParam(required = false, name = "bayId") Integer bayId
     ) {
         return ResponseEntity.ok(
                 employeeService.startWash(
@@ -244,21 +164,10 @@ public class EmployeeController {
         );
     }
 
-    // =========================================================
-    // COMPLETE
-    // in_progress → completed
-    // =========================================================
-
-    /**
-     * PATCH /api/v1/employee/bookings/{bookingId}/complete
-     *
-     * Ghi completeAt và chuyển wash bay về available.
-     * Không cộng loyalty point tại đây.
-     */
     @PatchMapping("/bookings/{bookingId}/complete")
     public ResponseEntity<EmployeeQueueBookingResponseDTO> completeWash(
             @AuthenticationPrincipal CustomUserDetails userDetails,
-            @PathVariable Integer bookingId
+            @PathVariable("bookingId") Integer bookingId
     ) {
         return ResponseEntity.ok(
                 employeeService.completeWash(
@@ -268,21 +177,10 @@ public class EmployeeController {
         );
     }
 
-    // =========================================================
-    // PAYMENT — thanh toán tại trạm
-    // =========================================================
-
-    /**
-     * PATCH /api/v1/employee/bookings/{bookingId}/collect-cash-payment
-     *
-     * Thu tiền mặt tại quầy cho booking đã completed.
-     * Tạo payment (cash) và chuyển ngay sang paid, cộng điểm loyalty
-     * cho khách (kể cả khách vãng lai).
-     */
     @PatchMapping("/bookings/{bookingId}/collect-cash-payment")
     public ResponseEntity<EmployeeQueueBookingResponseDTO> collectCashPayment(
             @AuthenticationPrincipal CustomUserDetails userDetails,
-            @PathVariable Integer bookingId
+            @PathVariable("bookingId") Integer bookingId
     ) {
         return ResponseEntity.ok(
                 employeeService.collectCashPayment(
@@ -292,17 +190,10 @@ public class EmployeeController {
         );
     }
 
-    /**
-     * POST /api/v1/employee/bookings/{bookingId}/online-payment
-     *
-     * Tạo (hoặc lấy lại) yêu cầu thanh toán online (VNPay) cho booking
-     * đã completed. Trả về finalAmount + paymentId để frontend hiển thị
-     * trước khi lấy mã QR.
-     */
     @PostMapping("/bookings/{bookingId}/online-payment")
     public ResponseEntity<PaymentResponseDTO> createOnlinePayment(
             @AuthenticationPrincipal CustomUserDetails userDetails,
-            @PathVariable Integer bookingId
+            @PathVariable("bookingId") Integer bookingId
     ) {
         return ResponseEntity.ok(
                 employeeService.ensureOnlinePayment(
@@ -312,21 +203,11 @@ public class EmployeeController {
         );
     }
 
-    /**
-     * GET /api/v1/employee/bookings/{bookingId}/online-payment/vnpay-qr
-     *
-     * Sinh ảnh QR (PNG) để khách vãng lai quét bằng app ngân hàng/VNPay
-     * ngay tại quầy — không cần khách đăng nhập tài khoản.
-     * Sau khi khách thanh toán xong, VNPay tự động gọi
-     * /api/v1/payments/vnpay-ipn (không đổi) để cập nhật trạng thái;
-     * frontend nên poll GET /api/v1/payments/booking/{bookingId} để biết
-     * khi nào chuyển sang paid.
-     */
     @GetMapping("/bookings/{bookingId}/online-payment/vnpay-qr")
     public ResponseEntity<byte[]> getOnlinePaymentQr(
             HttpServletRequest request,
             @AuthenticationPrincipal CustomUserDetails userDetails,
-            @PathVariable Integer bookingId
+            @PathVariable("bookingId") Integer bookingId
     ) throws Exception {
         byte[] qrImage = employeeService.generateOnlinePaymentQr(
                 userDetails.getId(),

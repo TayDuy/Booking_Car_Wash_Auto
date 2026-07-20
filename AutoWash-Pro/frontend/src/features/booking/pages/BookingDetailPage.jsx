@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import bookingApi from "../../../api/bookingApi";
+import refundApi from "../../../api/refundApi";
+import "./BookingHistory.css";
 
 const STATUS_MAP = {
   pending:     { label: "Chờ xử lý",    badge: "badge-pending" },
@@ -31,40 +33,52 @@ function BookingDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // ── Yêu cầu hoàn tiền (khách tự gửi, giống luồng ở trang Lịch sử đặt lịch) ──
+  const [showRefundModal, setShowRefundModal] = useState(false);
+  const [refundForm, setRefundForm] = useState({
+    reason: "",
+    refundMethod: "original_payment_method",
+    bankName: "",
+    bankAccountNumber: "",
+    bankAccountName: "",
+  });
+  const [submittingRefund, setSubmittingRefund] = useState(false);
+  const [refundSent, setRefundSent] = useState(false);
+
   useEffect(() => {
     if (!bookingId) return;
     setLoading(true);
     bookingApi.get(bookingId)
-      .then((res) => {
-        setBooking(res.data);
-        setError(null);
-      })
-      .catch((err) => {
-        setError(err.response?.data?.message || "Không thể tải chi tiết booking.");
-      })
-      .finally(() => setLoading(false));
+        .then((res) => {
+          setBooking(res.data);
+          setError(null);
+        })
+        .catch((err) => {
+          setError(err.response?.data?.message || "Không thể tải chi tiết booking.");
+        })
+        .finally(() => setLoading(false));
   }, [bookingId]);
 
   if (loading) {
     return (
-      <div className="app-container" style={{ padding: "72px 0" }}>
-        <div className="card" style={{ padding: "32px", textAlign: "center" }}>
-          <p>Đang tải chi tiết...</p>
+        <div className="app-container" style={{ padding: "72px 0" }}>
+          <div className="card" style={{ padding: "32px", textAlign: "center" }}>
+            <p>Đang tải chi tiết...</p>
+          </div>
         </div>
-      </div>
     );
   }
 
   if (error) {
     return (
-      <div className="app-container" style={{ padding: "72px 0" }}>
-        <div className="card" style={{ padding: "32px", textAlign: "center" }}>
-          <p style={{ color: "var(--color-error, #e53935)" }}>{error}</p>
-          <Link to="/customer/history" className="primary-button" style={{ marginTop: "16px", display: "inline-block" }}>
-            Quay lại lịch sử
-          </Link>
+        <div className="app-container" style={{ padding: "72px 0" }}>
+          <div className="card" style={{ padding: "32px", textAlign: "center" }}>
+            <p style={{ color: "var(--color-error, #e53935)" }}>{error}</p>
+            <Link to="/customer/history" className="primary-button" style={{ marginTop: "16px", display: "inline-block" }}>
+              Quay lại lịch sử
+            </Link>
+          </div>
         </div>
-      </div>
     );
   }
 
@@ -72,180 +86,361 @@ function BookingDetailPage() {
 
   const statusConfig = STATUS_MAP[booking.status] || STATUS_MAP.pending;
 
-  return (
-    <div className="app-container" style={{ padding: "72px 0" }}>
-      <div style={{ maxWidth: "900px", margin: "0 auto", padding: "0 24px" }}>
-        <Link to="/customer/history" style={{
-          display: "inline-flex", alignItems: "center", gap: "6px",
-          color: "var(--color-primary, #003d9b)", textDecoration: "none",
-          marginBottom: "24px", fontSize: "14px", fontWeight: 500,
-        }}>
-          ← Quay lại lịch sử
-        </Link>
+  // Điều kiện được yêu cầu hoàn tiền: đã thanh toán + lịch đã hoàn thành/đã hủy + chưa gửi yêu cầu nào
+  const isPaidForRefund = booking.status === "completed" || booking.paymentStatus?.toLowerCase() === "paid";
+  const isRefundEligibleStatus = booking.status === "cancelled" || booking.status === "completed";
+  const canRequestRefund = isPaidForRefund && isRefundEligibleStatus && !refundSent;
 
-        <div className="card" style={{ padding: "32px" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "28px", flexWrap: "wrap", gap: "12px" }}>
-            <div>
-              <h1 style={{ margin: 0, fontSize: "22px", fontWeight: 700 }}>
-                Booking #{booking.bookingCode || booking.bookingId}
-              </h1>
-              <p style={{ margin: "6px 0 0", color: "var(--color-text-muted, #666)", fontSize: "14px" }}>
-                {booking.bookingDate ? fmtDateTime(booking.bookingDate) : ""}
-              </p>
-            </div>
-            <span className={`bh-status-badge ${statusConfig.badge}`} style={{
-              display: "inline-flex", alignItems: "center", gap: "6px",
-              padding: "4px 14px", borderRadius: "20px", fontSize: "13px", fontWeight: 600,
-            }}>
+  const openRefundModal = () => {
+    setRefundForm({
+      reason: "",
+      refundMethod: "original_payment_method",
+      bankName: "",
+      bankAccountNumber: "",
+      bankAccountName: "",
+    });
+    setShowRefundModal(true);
+  };
+
+  const handleRefundSubmit = async () => {
+    if (!refundForm.reason.trim()) {
+      alert("Vui lòng nhập lý do hoàn tiền.");
+      return;
+    }
+    if (
+        refundForm.refundMethod === "bank_transfer" &&
+        (!refundForm.bankName.trim() || !refundForm.bankAccountNumber.trim() || !refundForm.bankAccountName.trim())
+    ) {
+      alert("Vui lòng nhập đầy đủ thông tin ngân hàng.");
+      return;
+    }
+
+    try {
+      setSubmittingRefund(true);
+      await refundApi.createMine({
+        bookingId: booking.bookingId,
+        reason: refundForm.reason.trim(),
+        refundMethod: refundForm.refundMethod,
+        bankName: refundForm.refundMethod === "bank_transfer" ? refundForm.bankName.trim() : null,
+        bankAccountNumber: refundForm.refundMethod === "bank_transfer" ? refundForm.bankAccountNumber.trim() : null,
+        bankAccountName: refundForm.refundMethod === "bank_transfer" ? refundForm.bankAccountName.trim() : null,
+      });
+      setRefundSent(true);
+      setShowRefundModal(false);
+      alert('Đã gửi yêu cầu hoàn tiền thành công. Bạn có thể theo dõi trạng thái tại mục "Yêu cầu hoàn tiền của tôi".');
+    } catch (err) {
+      console.error("Lỗi gửi yêu cầu hoàn tiền:", err);
+      alert(err.response?.data?.message || "Gửi yêu cầu hoàn tiền không thành công. Vui lòng thử lại.");
+    } finally {
+      setSubmittingRefund(false);
+    }
+  };
+
+  return (
+      <div className="app-container" style={{ padding: "72px 0" }}>
+        <div style={{ maxWidth: "900px", margin: "0 auto", padding: "0 24px" }}>
+          <Link to="/customer/history" style={{
+            display: "inline-flex", alignItems: "center", gap: "6px",
+            color: "var(--color-primary, #003d9b)", textDecoration: "none",
+            marginBottom: "24px", fontSize: "14px", fontWeight: 500,
+          }}>
+            ← Quay lại lịch sử
+          </Link>
+
+          <div className="card" style={{ padding: "32px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "28px", flexWrap: "wrap", gap: "12px" }}>
+              <div>
+                <h1 style={{ margin: 0, fontSize: "22px", fontWeight: 700 }}>
+                  Booking #{booking.bookingCode || booking.bookingId}
+                </h1>
+                <p style={{ margin: "6px 0 0", color: "var(--color-text-muted, #666)", fontSize: "14px" }}>
+                  {booking.bookingDate ? fmtDateTime(booking.bookingDate) : ""}
+                </p>
+              </div>
+              <span className={`bh-status-badge ${statusConfig.badge}`} style={{
+                display: "inline-flex", alignItems: "center", gap: "6px",
+                padding: "4px 14px", borderRadius: "20px", fontSize: "13px", fontWeight: 600,
+              }}>
               <span className="bh-status-dot" style={{
                 width: "8px", height: "8px", borderRadius: "50%", display: "inline-block",
                 background: "currentColor",
               }} />
-              {statusConfig.label}
+                {statusConfig.label}
             </span>
-          </div>
+            </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "32px" }}>
-            <DetailItem label="Ngày hẹn" value={`${booking.slotDate ? fmtDate(booking.slotDate) : ""}${booking.slotStartTime ? ` — ${fmtTime(booking.slotStartTime)}` : ""}${booking.slotEndTime ? ` → ${fmtTime(booking.slotEndTime)}` : ""}`} />
-            <DetailItem label="Chi nhánh" value={booking.branchName || "—"} />
-            <DetailItem label="Biển số xe" value={booking.licensePlate || "—"} />
-            <DetailItem label="Loại xe" value={booking.vehicleType || "—"} />
-            <DetailItem label="Nhân viên phụ trách" value={booking.assignedStaffName || "Chưa phân công"} />
-            <DetailItem label="Khách hàng" value={booking.customerName || "—"} />
-            {booking.note && <DetailItem label="Ghi chú" value={booking.note} fullWidth />}
-          </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "32px" }}>
+              <DetailItem label="Ngày hẹn" value={`${booking.slotDate ? fmtDate(booking.slotDate) : ""}${booking.slotStartTime ? ` — ${fmtTime(booking.slotStartTime)}` : ""}${booking.slotEndTime ? ` → ${fmtTime(booking.slotEndTime)}` : ""}`} />
+              <DetailItem label="Chi nhánh" value={booking.branchName || "—"} />
+              <DetailItem label="Biển số xe" value={booking.licensePlate || "—"} />
+              <DetailItem label="Loại xe" value={booking.vehicleType || "—"} />
+              <DetailItem label="Nhân viên phụ trách" value={booking.assignedStaffName || "Chưa phân công"} />
+              <DetailItem label="Khách hàng" value={booking.customerName || "—"} />
+              {booking.note && <DetailItem label="Ghi chú" value={booking.note} fullWidth />}
+            </div>
 
-          {booking.details && booking.details.length > 0 && (
-            <>
-              <h3 style={{ fontSize: "16px", fontWeight: 600, margin: "0 0 12px", display: "flex", alignItems: "center", gap: "8px" }}>
-                Dịch vụ đã chọn
-              </h3>
-              <table style={{
-                width: "100%", borderCollapse: "collapse", fontSize: "14px",
-                border: "1px solid var(--color-border, #e0e0e0)", borderRadius: "8px",
-                overflow: "hidden", marginBottom: "16px",
-              }}>
-                <thead>
-                  <tr style={{ background: "var(--color-surface-hover, #f5f5f5)", textAlign: "left" }}>
-                    <th style={thStyle}>Dịch vụ</th>
-                    <th style={thStyle}>Mô tả</th>
-                    <th style={thStyle}>Thời gian</th>
-                    <th style={thStyle}>SL</th>
-                    <th style={thStyle}>Đơn giá</th>
-                    <th style={{ ...thStyle, textAlign: "right" }}>Thành tiền</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {booking.details.map((d) => (
-                    <tr key={d.bookingDetailId} style={{ borderBottom: "1px solid var(--color-border, #eee)" }}>
-                      <td style={tdStyle}>{d.serviceName}</td>
-                      <td style={{ ...tdStyle, color: "var(--color-text-muted, #666)", maxWidth: "200px" }}>
-                        {d.description || "—"}
-                      </td>
-                      <td style={tdStyle}>{d.durationMinutes ? `${d.durationMinutes} phút` : "—"}</td>
-                      <td style={tdStyle}>{d.quantity}</td>
-                      <td style={tdStyle}>{fmt.format(d.unitPrice || 0)}</td>
-                      <td style={{ ...tdStyle, textAlign: "right", fontWeight: 600 }}>{fmt.format(d.subTotal || 0)}</td>
+            {booking.details && booking.details.length > 0 && (
+                <>
+                  <h3 style={{ fontSize: "16px", fontWeight: 600, margin: "0 0 12px", display: "flex", alignItems: "center", gap: "8px" }}>
+                    Dịch vụ đã chọn
+                  </h3>
+                  <table style={{
+                    width: "100%", borderCollapse: "collapse", fontSize: "14px",
+                    border: "1px solid var(--color-border, #e0e0e0)", borderRadius: "8px",
+                    overflow: "hidden", marginBottom: "16px",
+                  }}>
+                    <thead>
+                    <tr style={{ background: "var(--color-surface-hover, #f5f5f5)", textAlign: "left" }}>
+                      <th style={thStyle}>Dịch vụ</th>
+                      <th style={thStyle}>Mô tả</th>
+                      <th style={thStyle}>Thời gian</th>
+                      <th style={thStyle}>SL</th>
+                      <th style={thStyle}>Đơn giá</th>
+                      <th style={{ ...thStyle, textAlign: "right" }}>Thành tiền</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-              <div style={{
-                display: "flex", justifyContent: "flex-end", alignItems: "center",
-                gap: "8px", fontSize: "16px", fontWeight: 700, padding: "8px 0",
-              }}>
-                <span>Tổng cộng:</span>
-                <span style={{ color: "var(--color-primary, #003d9b)", fontSize: "18px" }}>
+                    </thead>
+                    <tbody>
+                    {booking.details.map((d) => (
+                        <tr key={d.bookingDetailId} style={{ borderBottom: "1px solid var(--color-border, #eee)" }}>
+                          <td style={tdStyle}>{d.serviceName}</td>
+                          <td style={{ ...tdStyle, color: "var(--color-text-muted, #666)", maxWidth: "200px" }}>
+                            {d.description || "—"}
+                          </td>
+                          <td style={tdStyle}>{d.durationMinutes ? `${d.durationMinutes} phút` : "—"}</td>
+                          <td style={tdStyle}>{d.quantity}</td>
+                          <td style={tdStyle}>{fmt.format(d.unitPrice || 0)}</td>
+                          <td style={{ ...tdStyle, textAlign: "right", fontWeight: 600 }}>{fmt.format(d.subTotal || 0)}</td>
+                        </tr>
+                    ))}
+                    </tbody>
+                  </table>
+                  <div style={{
+                    display: "flex", justifyContent: "flex-end", alignItems: "center",
+                    gap: "8px", fontSize: "16px", fontWeight: 700, padding: "8px 0",
+                  }}>
+                    <span>Tổng cộng:</span>
+                    <span style={{ color: "var(--color-primary, #003d9b)", fontSize: "18px" }}>
                   {fmt.format(booking.totalAmount || 0)}
                 </span>
-              </div>
-            </>
-          )}
+                  </div>
+                </>
+            )}
 
-          {(() => {
-            const isPaid = booking.status === "completed" || booking.paymentStatus?.toLowerCase() === "paid";
-            const isTerminal = booking.status === "cancelled" || booking.status === "no_show";
-            const canPay = !isPaid && !isTerminal;
+            {(() => {
+              const isPaid = booking.status === "completed" || booking.paymentStatus?.toLowerCase() === "paid";
+              const isTerminal = booking.status === "cancelled" || booking.status === "no_show";
+              const canPay = !isPaid && !isTerminal;
 
-            if (isPaid) {
-              const payMethod = booking.paymentMethod === "bank_transfer" ? "Chuyển khoản (VNPAY)" : booking.paymentMethod === "paypal" ? "PayPal" : "Tại tiệm";
-              return (
-                <div style={{ marginTop: "24px", paddingTop: "20px", borderTop: "1px solid var(--color-border, #eee)" }}>
-                  <div style={{ background: "#f8fafc", borderRadius: "12px", padding: "20px", marginBottom: "16px" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
-                      <span style={{ fontSize: "14px", fontWeight: 600, color: "#334155" }}>Thông tin thanh toán</span>
-                      <span style={{
-                        display: "inline-flex", alignItems: "center", gap: "6px",
-                        padding: "4px 12px", borderRadius: "20px",
-                        background: "#e8f5e9", color: "#2e7d32",
-                        fontWeight: 600, fontSize: "13px",
-                      }}>
+              if (isPaid) {
+                const payMethod = booking.paymentMethod === "bank_transfer" ? "Chuyển khoản (VNPAY)" : booking.paymentMethod === "paypal" ? "PayPal" : "Tại tiệm";
+                return (
+                    <div style={{ marginTop: "24px", paddingTop: "20px", borderTop: "1px solid var(--color-border, #eee)" }}>
+                      <div style={{ background: "#f8fafc", borderRadius: "12px", padding: "20px", marginBottom: "16px" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+                          <span style={{ fontSize: "14px", fontWeight: 600, color: "#334155" }}>Thông tin thanh toán</span>
+                          <span style={{
+                            display: "inline-flex", alignItems: "center", gap: "6px",
+                            padding: "4px 12px", borderRadius: "20px",
+                            background: "#e8f5e9", color: "#2e7d32",
+                            fontWeight: 600, fontSize: "13px",
+                          }}>
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                           <polyline points="20 6 9 17 4 12" />
                         </svg>
                         Đã thanh toán
                       </span>
-                    </div>
+                        </div>
 
-                    {booking.originalAmount && (
-                      <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", fontSize: "14px", color: "#64748b" }}>
+                        {booking.originalAmount && (
+                            <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", fontSize: "14px", color: "#64748b" }}>
+                              <span>Tạm tính</span>
+                              <span>{fmt.format(booking.originalAmount)}</span>
+                            </div>
+                        )}
+                        {booking.discountAmount > 0 && (
+                            <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", fontSize: "14px", color: "#16a34a" }}>
+                              <span>Giảm giá</span>
+                              <span>-{fmt.format(booking.discountAmount)}</span>
+                            </div>
+                        )}
+                        <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 0 0", fontSize: "16px", fontWeight: 700, borderTop: "1px solid #e2e8f0", marginTop: "4px" }}>
+                          <span>Thành tiền</span>
+                          <span style={{ color: "#003d9b" }}>{fmt.format(booking.finalAmount || booking.totalAmount || 0)}</span>
+                        </div>
+                        <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0 0", fontSize: "12px", color: "#94a3b8" }}>
+                          <span>Phương thức</span>
+                          <span>{payMethod}{booking.vnpayBankCode ? ` (${booking.vnpayBankCode})` : ""}</span>
+                        </div>
+                      </div>
+
+                      {canRequestRefund && (
+                          <button
+                              className="bh-btn-refund"
+                              onClick={openRefundModal}
+                              style={{
+                                display: "flex", alignItems: "center", justifyContent: "center", gap: "8px",
+                                width: "100%", padding: "12px 24px", borderRadius: "8px",
+                                border: "1px solid #fecaca", background: "#fff5f5", color: "#dc2626",
+                                fontWeight: 600, cursor: "pointer", fontSize: "14px",
+                              }}
+                          >
+                            <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>currency_exchange</span>
+                            Yêu cầu hoàn tiền
+                          </button>
+                      )}
+
+                      {refundSent && (
+                          <div style={{
+                            display: "flex", alignItems: "center", justifyContent: "center", gap: "8px",
+                            width: "100%", padding: "12px 24px", borderRadius: "8px",
+                            background: "#f0fdf4", color: "#16a34a", fontWeight: 600, fontSize: "14px",
+                          }}>
+                            <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>task_alt</span>
+                            Đã gửi yêu cầu hoàn tiền — đang chờ xử lý
+                          </div>
+                      )}
+
+                      {isPaidForRefund && !isRefundEligibleStatus && (
+                          <p style={{ fontSize: "12px", color: "#94a3b8", textAlign: "center", margin: "12px 0 0" }}>
+                            Chỉ có thể yêu cầu hoàn tiền khi lịch hẹn đã hoàn thành hoặc đã hủy.
+                          </p>
+                      )}
+
+                      <p style={{ fontSize: "12px", color: "#94a3b8", textAlign: "center", margin: "12px 0 0" }}>
+                        Đã gửi yêu cầu? Xem trạng thái tại{" "}
+                        <Link to="/customer/refunds" style={{ color: "var(--color-primary, #003d9b)", fontWeight: 600 }}>
+                          Yêu cầu hoàn tiền của tôi
+                        </Link>
+                      </p>
+                    </div>
+                );
+              }
+
+              if (canPay) {
+                return (
+                    <div style={{ marginTop: "24px", paddingTop: "20px", borderTop: "1px solid var(--color-border, #eee)" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px", padding: "6px 0", fontSize: "14px", color: "#64748b" }}>
                         <span>Tạm tính</span>
-                        <span>{fmt.format(booking.originalAmount)}</span>
+                        <span style={{ fontWeight: 600, color: "#334155" }}>{fmt.format(booking.totalAmount || 0)}</span>
                       </div>
-                    )}
-                    {booking.discountAmount > 0 && (
-                      <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", fontSize: "14px", color: "#16a34a" }}>
-                        <span>Giảm giá</span>
-                        <span>-{fmt.format(booking.discountAmount)}</span>
-                      </div>
-                    )}
-                    <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 0 0", fontSize: "16px", fontWeight: 700, borderTop: "1px solid #e2e8f0", marginTop: "4px" }}>
-                      <span>Thành tiền</span>
-                      <span style={{ color: "#003d9b" }}>{fmt.format(booking.finalAmount || booking.totalAmount || 0)}</span>
+                      <button onClick={() => navigate(`/customer/payment?bookingId=${booking.bookingId}`)} style={{
+                        padding: "10px 24px", borderRadius: "8px", border: "none",
+                        background: "var(--color-primary, #003d9b)", color: "#fff",
+                        fontWeight: 600, cursor: "pointer", fontSize: "14px", width: "100%",
+                      }}>
+                        Tiến hành thanh toán
+                      </button>
                     </div>
-                    <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0 0", fontSize: "12px", color: "#94a3b8" }}>
-                      <span>Phương thức</span>
-                      <span>{payMethod}{booking.vnpayBankCode ? ` (${booking.vnpayBankCode})` : ""}</span>
-                    </div>
-                  </div>
-                </div>
-              );
-            }
+                );
+              }
 
-            if (canPay) {
-              return (
-                <div style={{ marginTop: "24px", paddingTop: "20px", borderTop: "1px solid var(--color-border, #eee)" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px", padding: "6px 0", fontSize: "14px", color: "#64748b" }}>
-                    <span>Tạm tính</span>
-                    <span style={{ fontWeight: 600, color: "#334155" }}>{fmt.format(booking.totalAmount || 0)}</span>
+              return null;
+            })()}
+          </div>
+        </div>
+
+        {showRefundModal && (
+            <div className="bh-modal-overlay" onClick={() => !submittingRefund && setShowRefundModal(false)}>
+              <div className="bh-modal bh-refund-modal" onClick={(e) => e.stopPropagation()}>
+                <div className="bh-modal-head">
+                  <div className="bh-modal-title">
+                    <span className="material-symbols-outlined">currency_exchange</span>
+                    Yêu cầu hoàn tiền
                   </div>
-                  <button onClick={() => navigate(`/customer/payment?bookingId=${booking.bookingId}`)} style={{
-                    padding: "10px 24px", borderRadius: "8px", border: "none",
-                    background: "var(--color-primary, #003d9b)", color: "#fff",
-                    fontWeight: 600, cursor: "pointer", fontSize: "14px", width: "100%",
-                  }}>
-                    Tiến hành thanh toán
+                  <button className="bh-modal-close" onClick={() => setShowRefundModal(false)}>
+                    <span className="material-symbols-outlined">close</span>
                   </button>
                 </div>
-              );
-            }
+                <div className="bh-modal-body">
+                  <div className="bh-refund-booking-info">
+                    Lịch hẹn <strong>{booking.bookingCode || `#${booking.bookingId}`}</strong> · Số tiền hoàn:{" "}
+                    <strong>{fmt.format(booking.finalAmount || booking.totalAmount || 0)}</strong>
+                  </div>
 
-            return null;
-          })()}
-        </div>
+                  <div className="bh-refund-field">
+                    <label>Lý do hoàn tiền <span className="required">*</span></label>
+                    <textarea
+                        className="bh-refund-textarea"
+                        rows={3}
+                        maxLength={500}
+                        placeholder="Ví dụ: Tôi phải hủy lịch vì lý do cá nhân, mong được hoàn lại tiền..."
+                        value={refundForm.reason}
+                        onChange={(e) => setRefundForm((prev) => ({ ...prev, reason: e.target.value }))}
+                    />
+                  </div>
+
+                  <div className="bh-refund-field">
+                    <label>Phương thức hoàn tiền <span className="required">*</span></label>
+                    <select
+                        className="bh-refund-select"
+                        value={refundForm.refundMethod}
+                        onChange={(e) => setRefundForm((prev) => ({ ...prev, refundMethod: e.target.value }))}
+                    >
+                      <option value="original_payment_method">Hoàn về phương thức thanh toán gốc</option>
+                      <option value="bank_transfer">Chuyển khoản ngân hàng</option>
+                      <option value="cash">Tiền mặt tại chi nhánh</option>
+                    </select>
+                  </div>
+
+                  {refundForm.refundMethod === "bank_transfer" && (
+                      <>
+                        <div className="bh-refund-field">
+                          <label>Tên ngân hàng <span className="required">*</span></label>
+                          <input
+                              className="bh-refund-input"
+                              type="text"
+                              placeholder="Ví dụ: Vietcombank"
+                              value={refundForm.bankName}
+                              onChange={(e) => setRefundForm((prev) => ({ ...prev, bankName: e.target.value }))}
+                          />
+                        </div>
+                        <div className="bh-refund-field">
+                          <label>Số tài khoản <span className="required">*</span></label>
+                          <input
+                              className="bh-refund-input"
+                              type="text"
+                              placeholder="Số tài khoản ngân hàng"
+                              value={refundForm.bankAccountNumber}
+                              onChange={(e) => setRefundForm((prev) => ({ ...prev, bankAccountNumber: e.target.value }))}
+                          />
+                        </div>
+                        <div className="bh-refund-field">
+                          <label>Tên chủ tài khoản <span className="required">*</span></label>
+                          <input
+                              className="bh-refund-input"
+                              type="text"
+                              placeholder="Tên đúng như trên thẻ ngân hàng"
+                              value={refundForm.bankAccountName}
+                              onChange={(e) => setRefundForm((prev) => ({ ...prev, bankAccountName: e.target.value }))}
+                          />
+                        </div>
+                      </>
+                  )}
+
+                  <div className="bh-cancel-btns">
+                    <button className="bh-cancel-keep" onClick={() => setShowRefundModal(false)} disabled={submittingRefund}>
+                      Hủy bỏ
+                    </button>
+                    <button className="bh-refund-confirm" onClick={handleRefundSubmit} disabled={submittingRefund}>
+                      {submittingRefund ? "Đang gửi…" : "Gửi yêu cầu hoàn tiền"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+        )}
       </div>
-    </div>
   );
 }
 
 function DetailItem({ label, value, fullWidth }) {
   return (
-    <div style={fullWidth ? { gridColumn: "1 / -1" } : {}}>
-      <div style={{ fontSize: "12px", color: "var(--color-text-muted, #888)", marginBottom: "4px", fontWeight: 500 }}>
-        {label}
+      <div style={fullWidth ? { gridColumn: "1 / -1" } : {}}>
+        <div style={{ fontSize: "12px", color: "var(--color-text-muted, #888)", marginBottom: "4px", fontWeight: 500 }}>
+          {label}
+        </div>
+        <div style={{ fontSize: "14px", fontWeight: 500 }}>{value}</div>
       </div>
-      <div style={{ fontSize: "14px", fontWeight: 500 }}>{value}</div>
-    </div>
   );
 }
 

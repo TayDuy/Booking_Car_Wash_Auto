@@ -45,35 +45,35 @@ public class PaymentController {
     @PreAuthorize("hasRole('CUSTOMER')")
     @PatchMapping("/{id}/status")
     public ResponseEntity<PaymentResponseDTO> updateStatus(
-            @PathVariable Integer id,
+            @PathVariable("id") Integer id,
             @Valid @RequestBody PaymentUpdateRequestDTO request) {
         return ResponseEntity.ok(paymentService.updateStatus(id, request));
     }
 
     @PreAuthorize("isAuthenticated()")
     @GetMapping("/{id}")
-    public ResponseEntity<PaymentResponseDTO> getById(@PathVariable Integer id) {
+    public ResponseEntity<PaymentResponseDTO> getById(@PathVariable("id") Integer id) {
         return ResponseEntity.ok(paymentService.getById(id));
     }
 
     @PreAuthorize("hasAnyRole('EMPLOYEE','ADMIN')")
     @GetMapping("/booking/{bookingId}")
     public ResponseEntity<PaymentResponseDTO> getByBookingId(
-            @PathVariable Integer bookingId) {
+            @PathVariable("bookingId") Integer bookingId) {
         return ResponseEntity.ok(paymentService.getByBookingId(bookingId));
     }
 
     @PreAuthorize("hasAnyRole('EMPLOYEE','ADMIN')")
     @GetMapping
     public ResponseEntity<List<PaymentResponseDTO>> getAll(
-            @RequestParam(required = false) PaymentStatus status) {
+            @RequestParam(required = false, name = "status") PaymentStatus status) {
         return ResponseEntity.ok(paymentService.getByStatus(status));
     }
 
     @PreAuthorize("hasRole('CUSTOMER')")
     @GetMapping("/{id}/vnpay-qr")
     public ResponseEntity<byte[]> getVnpayQrCode(HttpServletRequest request,
-                                                  @PathVariable Integer id) throws Exception {
+                                                 @PathVariable("id") Integer id) throws Exception {
         PaymentResponseDTO payment = paymentService.getById(id);
 
         String txnRef = "PAY" + payment.getPaymentId();
@@ -167,7 +167,7 @@ public class PaymentController {
      */
     @PreAuthorize("hasRole('CUSTOMER')")
     @PostMapping("/{id}/paypal-order")
-    public ResponseEntity<Map<String, String>> createPaypalOrder(@PathVariable Integer id) {
+    public ResponseEntity<Map<String, String>> createPaypalOrder(@PathVariable("id") Integer id) {
         return ResponseEntity.ok(paymentService.createPaypalOrder(id));
     }
 

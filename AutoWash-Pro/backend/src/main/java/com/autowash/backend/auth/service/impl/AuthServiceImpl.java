@@ -18,6 +18,7 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.util.StringUtils;
@@ -233,11 +234,11 @@ public class AuthServiceImpl implements AuthService {
         Map<String, Object> body;
 
         try {
-            ResponseEntity<Map> supabaseResponse = restTemplate.exchange(
+            ResponseEntity<Map<String, Object>> supabaseResponse = restTemplate.exchange(
                     supabaseUrl + "/auth/v1/user",
                     HttpMethod.GET,
                     entity,
-                    Map.class
+                    new ParameterizedTypeReference<Map<String, Object>>() {}
             );
             body = supabaseResponse.getBody();
         } catch (org.springframework.web.client.ResourceAccessException e) {
@@ -253,6 +254,7 @@ public class AuthServiceImpl implements AuthService {
         }
 
         String email = (String) body.get("email");
+        @SuppressWarnings("unchecked")
         Map<String, Object> metadata = (Map<String, Object>) body.get("user_metadata");
         String fullName = metadata != null && metadata.containsKey("full_name")
                 ? (String) metadata.get("full_name")

@@ -1,3 +1,4 @@
+// frontend/src/layouts/EmployeeLayout.jsx
 import {
   CalendarPlus,
   CarFront,
@@ -5,6 +6,7 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
+  Undo2,
   UserRound,
   X,
 } from "lucide-react";
@@ -17,6 +19,7 @@ import {
 } from "react-router-dom";
 
 import employeeApi from "../api/employeeApi";
+import LogoutConfirmModal from "../components/common/LogoutConfirmModal";
 
 import "./EmployeeLayout.css";
 
@@ -36,6 +39,11 @@ const EMPLOYEE_NAVIGATION = [
     path: "/employee/bookings/new",
     icon: CalendarPlus,
   },
+  {
+    label: "Hoàn tiền",
+    path: "/employee/refunds",
+    icon: Undo2,
+  },
 ];
 
 const PAGE_TITLES = {
@@ -44,6 +52,7 @@ const PAGE_TITLES = {
   "/employee/bookings/new": "Tạo booking tại quầy",
   "/employee/payment": "Thanh toán booking",
   "/employee/payment/success": "Thanh toán thành công",
+  "/employee/refunds": "Yêu cầu hoàn tiền",
 };
 
 function getStoredUser() {
@@ -57,16 +66,16 @@ function getStoredUser() {
 
   return {
     username:
-      storedUser.username || localStorage.getItem("username") || "",
+        storedUser.username || localStorage.getItem("username") || "",
     fullName:
-      storedUser.fullName ||
-      localStorage.getItem("fullName") ||
-      localStorage.getItem("username") ||
-      "Nhân viên",
+        storedUser.fullName ||
+        localStorage.getItem("fullName") ||
+        localStorage.getItem("username") ||
+        "Nhân viên",
     role:
-      storedUser.role || localStorage.getItem("role") || "EMPLOYEE",
+        storedUser.role || localStorage.getItem("role") || "EMPLOYEE",
     branchName:
-      storedUser.branchName || localStorage.getItem("branchName") || "",
+        storedUser.branchName || localStorage.getItem("branchName") || "",
   };
 }
 
@@ -80,19 +89,19 @@ function normalizeEmployee(profile, fallbackUser) {
     fullName: profile?.fullName || fallbackUser.fullName,
     role: profile?.role || fallbackUser.role,
     branchName:
-      profile?.branchName ||
-      profile?.branch?.branchName ||
-      profile?.branch?.name ||
-      fallbackUser.branchName,
+        profile?.branchName ||
+        profile?.branch?.branchName ||
+        profile?.branch?.name ||
+        fallbackUser.branchName,
   };
 }
 
 function getPageTitle(pathname) {
   return PAGE_TITLES[pathname] ||
-    Object.entries(PAGE_TITLES).find(
-      ([path]) => pathname.startsWith(`${path}/`)
-    )?.[1] ||
-    "Employee Portal";
+      Object.entries(PAGE_TITLES).find(
+          ([path]) => pathname.startsWith(`${path}/`)
+      )?.[1] ||
+      "Employee Portal";
 }
 
 function clearAuthenticationStorage() {
@@ -120,6 +129,7 @@ function EmployeeLayout() {
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [user, setUser] = useState(getStoredUser);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   const pageTitle = getPageTitle(location.pathname);
 
@@ -127,19 +137,19 @@ function EmployeeLayout() {
     let active = true;
 
     employeeApi
-      .getProfile()
-      .then((response) => {
-        if (!active) {
-          return;
-        }
+        .getProfile()
+        .then((response) => {
+          if (!active) {
+            return;
+          }
 
-        setUser((currentUser) =>
-          normalizeEmployee(unwrapResponse(response), currentUser)
-        );
-      })
-      .catch(() => {
-        // Giữ thông tin trong localStorage nếu profile tạm thời không tải được.
-      });
+          setUser((currentUser) =>
+              normalizeEmployee(unwrapResponse(response), currentUser)
+          );
+        })
+        .catch(() => {
+          // Giữ thông tin trong localStorage nếu profile tạm thời không tải được.
+        });
 
     return () => {
       active = false;
@@ -169,141 +179,156 @@ function EmployeeLayout() {
     setSidebarOpen(false);
   };
 
-  const handleLogout = () => {
+  const handleLogoutClick = () => {
+    setShowLogoutConfirm(true);
+  };
+
+  const handleCancelLogout = () => {
+    setShowLogoutConfirm(false);
+  };
+
+  const handleConfirmLogout = () => {
+    setShowLogoutConfirm(false);
     clearAuthenticationStorage();
     navigate("/auth/login", { replace: true });
   };
 
   return (
-    <div className="employee-layout">
-      {sidebarOpen && (
-        <button
-          type="button"
-          className="employee-layout__overlay"
-          onClick={closeSidebar}
-          aria-label="Đóng menu"
-        />
-      )}
-
-      <aside
-        id="employee-navigation"
-        className={[
-          "employee-sidebar",
-          sidebarOpen ? "is-open" : "",
-        ].join(" ")}
-      >
-        <header className="employee-sidebar__brand">
-          <div className="employee-sidebar__logo">
-            <CarFront size={27} aria-hidden="true" />
-          </div>
-
-          <div>
-            <strong>AutoWash Pro</strong>
-            <span>Employee Portal</span>
-          </div>
-
-          <button
-            type="button"
-            className="employee-sidebar__close"
-            onClick={closeSidebar}
-            aria-label="Đóng menu"
-          >
-            <X size={21} aria-hidden="true" />
-          </button>
-        </header>
-
-        <nav
-          className="employee-sidebar__navigation"
-          aria-label="Điều hướng nhân viên"
-        >
-          <p className="employee-sidebar__section-label">
-            Vận hành
-          </p>
-
-          {EMPLOYEE_NAVIGATION.map((item) => {
-            const Icon = item.icon;
-
-            return (
-              <NavLink
-                key={item.path}
-                to={item.path}
-                onClick={closeSidebar}
-                className={({ isActive }) =>
-                  [
-                    "employee-sidebar__link",
-                    isActive ? "is-active" : "",
-                  ].join(" ")
-                }
-              >
-                <Icon size={20} aria-hidden="true" />
-                <span>{item.label}</span>
-              </NavLink>
-            );
-          })}
-        </nav>
-
-        <footer className="employee-sidebar__footer">
-          <div className="employee-sidebar__user">
-            <div className="employee-sidebar__avatar">
-              <UserRound size={20} aria-hidden="true" />
-            </div>
-
-            <div>
-              <strong>{user.fullName}</strong>
-              <span>{user.username || "Employee"}</span>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            className="employee-sidebar__logout"
-            onClick={handleLogout}
-          >
-            <LogOut size={19} aria-hidden="true" />
-            <span>Đăng xuất</span>
-          </button>
-        </footer>
-      </aside>
-
-      <div className="employee-layout__content">
-        <header className="employee-topbar">
-          <div className="employee-topbar__left">
+      <div className="employee-layout">
+        {sidebarOpen && (
             <button
-              type="button"
-              className="employee-topbar__menu"
-              onClick={() => setSidebarOpen(true)}
-              aria-label="Mở menu"
-              aria-controls="employee-navigation"
-              aria-expanded={sidebarOpen}
-            >
-              <Menu size={22} aria-hidden="true" />
-            </button>
+                type="button"
+                className="employee-layout__overlay"
+                onClick={closeSidebar}
+                aria-label="Đóng menu"
+            />
+        )}
 
-            <div>
-              <span>AutoWash Pro</span>
-              <h1>{pageTitle}</h1>
+        <aside
+            id="employee-navigation"
+            className={[
+              "employee-sidebar",
+              sidebarOpen ? "is-open" : "",
+            ].join(" ")}
+        >
+          <header className="employee-sidebar__brand">
+            <div className="employee-sidebar__logo">
+              <CarFront size={27} aria-hidden="true" />
             </div>
-          </div>
 
-          <div className="employee-topbar__account">
             <div>
-              <strong>{user.fullName}</strong>
-              <span>
+              <strong>AutoWash Pro</strong>
+              <span>Employee Portal</span>
+            </div>
+
+            <button
+                type="button"
+                className="employee-sidebar__close"
+                onClick={closeSidebar}
+                aria-label="Đóng menu"
+            >
+              <X size={21} aria-hidden="true" />
+            </button>
+          </header>
+
+          <nav
+              className="employee-sidebar__navigation"
+              aria-label="Điều hướng nhân viên"
+          >
+            <p className="employee-sidebar__section-label">
+              Vận hành
+            </p>
+
+            {EMPLOYEE_NAVIGATION.map((item) => {
+              const Icon = item.icon;
+
+              return (
+                  <NavLink
+                      key={item.path}
+                      to={item.path}
+                      onClick={closeSidebar}
+                      className={({ isActive }) =>
+                          [
+                            "employee-sidebar__link",
+                            isActive ? "is-active" : "",
+                          ].join(" ")
+                      }
+                  >
+                    <Icon size={20} aria-hidden="true" />
+                    <span>{item.label}</span>
+                  </NavLink>
+              );
+            })}
+          </nav>
+
+          <footer className="employee-sidebar__footer">
+            <div className="employee-sidebar__user">
+              <div className="employee-sidebar__avatar">
+                <UserRound size={20} aria-hidden="true" />
+              </div>
+
+              <div>
+                <strong>{user.fullName}</strong>
+                <span>{user.username || "Employee"}</span>
+              </div>
+            </div>
+
+            <button
+                type="button"
+                className="employee-sidebar__logout"
+                onClick={handleLogoutClick}
+            >
+              <LogOut size={19} aria-hidden="true" />
+              <span>Đăng xuất</span>
+            </button>
+          </footer>
+        </aside>
+
+        <div className="employee-layout__content">
+          <header className="employee-topbar">
+            <div className="employee-topbar__left">
+              <button
+                  type="button"
+                  className="employee-topbar__menu"
+                  onClick={() => setSidebarOpen(true)}
+                  aria-label="Mở menu"
+                  aria-controls="employee-navigation"
+                  aria-expanded={sidebarOpen}
+              >
+                <Menu size={22} aria-hidden="true" />
+              </button>
+
+              <div>
+                <span>AutoWash Pro</span>
+                <h1>{pageTitle}</h1>
+              </div>
+            </div>
+
+            <div className="employee-topbar__account">
+              <div>
+                <strong>{user.fullName}</strong>
+                <span>
                 {user.branchName || "Chưa phân chi nhánh"} · {user.role}
               </span>
-            </div>
+              </div>
 
-            <div className="employee-topbar__avatar">
-              <UserRound size={20} aria-hidden="true" />
+              <div className="employee-topbar__avatar">
+                <UserRound size={20} aria-hidden="true" />
+              </div>
             </div>
-          </div>
-        </header>
+          </header>
 
-        <main className="employee-layout__main">
-          <Outlet />
-        </main>
+          <main className="employee-layout__main">
+            <Outlet />
+          </main>
+        </div>
+
+        <LogoutConfirmModal
+            open={showLogoutConfirm}
+            onCancel={handleCancelLogout}
+            onConfirm={handleConfirmLogout}
+        />
       </div>
-    </div>
   );
 }
 

@@ -17,7 +17,6 @@ public class CustomerController {
 
     private final CustomerService customerService;
 
-    // Lấy profile của chính mình
     @GetMapping("/me")
     @PreAuthorize("hasRole('CUSTOMER')")
     public ResponseEntity<CustomerProfileResponse> getMyProfile(
@@ -25,7 +24,6 @@ public class CustomerController {
         return ResponseEntity.ok(customerService.getCustomerProfile(userDetails.getId()));
     }
 
-    // Cập nhật profile của chính mình
     @PutMapping("/me")
     @PreAuthorize("hasRole('CUSTOMER')")
     public ResponseEntity<CustomerProfileResponse> updateMyProfile(
@@ -43,7 +41,7 @@ public class CustomerController {
     @PutMapping("/{customerId}")
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'ADMIN')")
     public ResponseEntity<CustomerProfileResponse> updateCustomer(
-            @PathVariable Integer customerId,
+            @PathVariable("customerId") Integer customerId,
             @Valid @RequestBody CustomerUpdateRequest request
     ) {
         return ResponseEntity.ok(
@@ -54,7 +52,7 @@ public class CustomerController {
     @DeleteMapping("/{customerId}")
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'ADMIN')")
     public ResponseEntity<Void> deleteCustomer(
-            @PathVariable Integer customerId
+            @PathVariable("customerId") Integer customerId
     ) {
         customerService.deleteCustomer(customerId);
         return ResponseEntity.noContent().build();

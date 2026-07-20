@@ -211,7 +211,7 @@ public class SupportChatService {
             StringBuilder result = new StringBuilder();
             for (JsonNode part : parts) {
                 if (part.has("text")) {
-                    result.append(part.path("text").asText());
+                    result.append(part.path("text").asString());
                 }
             }
 

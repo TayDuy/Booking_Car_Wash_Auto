@@ -1,3 +1,4 @@
+// backend/src/main/java/com/autowash/backend/payment/entity/Payment.java
 package com.autowash.backend.payment.entity;
 
 import com.autowash.backend.booking.entity.Booking;
@@ -125,5 +126,5 @@ public class Payment {
     }
 
     public enum PaymentMethod { cash, bank_transfer, pos, paypal }
-    public enum PaymentStatus { unpaid, paid, failed, cancelled }
+    public enum PaymentStatus { unpaid, paid, failed, cancelled, refunded }
 }

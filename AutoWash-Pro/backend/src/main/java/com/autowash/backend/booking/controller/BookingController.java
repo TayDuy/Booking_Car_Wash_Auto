@@ -17,18 +17,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-/**
- * API Booking dành cho Customer.
- *
- * Base URL:
- * /api/v1/bookings
- *
- * Nghiệp vụ Employee được xử lý riêng tại:
- * /api/v1/employee/**
- *
- * Nghiệp vụ Admin sẽ được xử lý riêng tại:
- * /api/v1/admin/bookings/**
- */
 @RestController
 @RequestMapping("/api/v1/bookings")
 @RequiredArgsConstructor
@@ -37,15 +25,6 @@ public class BookingController {
 
     private final BookingService bookingService;
 
-    // =========================================================
-    // CREATE BOOKING
-    // =========================================================
-
-    /**
-     * Customer tạo booking mới.
-     *
-     * POST /api/v1/bookings
-     */
     @PostMapping
     public ResponseEntity<BookingCreateResponseDTO> createBooking(
             @Valid @RequestBody BookingCreateRequestDTO request,
@@ -62,19 +41,10 @@ public class BookingController {
                 .body(response);
     }
 
-    // =========================================================
-    // MY BOOKINGS
-    // =========================================================
-
-    /**
-     * Customer xem danh sách booking của mình.
-     *
-     * GET /api/v1/bookings/my/{customerId}
-     */
     @GetMapping("/my/{customerId}")
     public ResponseEntity<List<BookingSummaryResponseDTO>> getMyBookings(
-            @PathVariable Integer customerId,
-            @RequestParam(required = false) Integer limit,
+            @PathVariable("customerId") Integer customerId,
+            @RequestParam(required = false, name = "limit") Integer limit,
             @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
         return ResponseEntity.ok(
@@ -86,18 +56,9 @@ public class BookingController {
         );
     }
 
-    // =========================================================
-    // BOOKING DETAIL
-    // =========================================================
-
-    /**
-     * Customer xem chi tiết booking của mình.
-     *
-     * GET /api/v1/bookings/{bookingId}
-     */
     @GetMapping("/{bookingId}")
     public ResponseEntity<BookingResponseDTO> getBookingById(
-            @PathVariable Integer bookingId,
+            @PathVariable("bookingId") Integer bookingId,
             @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
         return ResponseEntity.ok(
@@ -108,18 +69,9 @@ public class BookingController {
         );
     }
 
-    // =========================================================
-    // CANCEL BOOKING
-    // =========================================================
-
-    /**
-     * Customer hủy booking của chính mình.
-     *
-     * DELETE /api/v1/bookings/{bookingId}/cancel
-     */
     @DeleteMapping("/{bookingId}/cancel")
     public ResponseEntity<BookingResponseDTO> cancelBooking(
-            @PathVariable Integer bookingId,
+            @PathVariable("bookingId") Integer bookingId,
             @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
         return ResponseEntity.ok(
@@ -130,20 +82,9 @@ public class BookingController {
         );
     }
 
-    // =========================================================
-    // RESCHEDULE BOOKING
-    // =========================================================
-
-    /**
-     * Customer thay đổi khung giờ booking.
-     *
-     * Chỉ áp dụng khi booking đang ở trạng thái pending.
-     *
-     * PUT /api/v1/bookings/{bookingId}/reschedule
-     */
     @PutMapping("/{bookingId}/reschedule")
     public ResponseEntity<BookingResponseDTO> rescheduleBooking(
-            @PathVariable Integer bookingId,
+            @PathVariable("bookingId") Integer bookingId,
             @Valid @RequestBody BookingRescheduleRequestDTO request,
             @AuthenticationPrincipal CustomUserDetails userDetails
     ) {

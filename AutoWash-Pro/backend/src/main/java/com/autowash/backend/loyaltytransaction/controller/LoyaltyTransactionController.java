@@ -12,9 +12,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-/**
- * REST Controller xử lý lịch sử điểm và số dư điểm của customer.
- */
 @RestController
 @RequestMapping("/api/v1/loyalty-transactions")
 @RequiredArgsConstructor
@@ -22,18 +19,11 @@ public class LoyaltyTransactionController {
 
     private final LoyaltyTransactionService loyaltyTransactionService;
 
-    /**
-     * Lấy lịch sử giao dịch điểm của customer.
-     *
-     * Ví dụ:
-     * GET /api/v1/loyalty-transactions/customers/1
-     * GET /api/v1/loyalty-transactions/customers/1?transactionType=redeem
-     */
     @GetMapping("/customers/{customerId}")
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'ADMIN')")
     public ResponseEntity<List<LoyaltyTransactionResponseDTO>> getCustomerTransactions(
-            @PathVariable Integer customerId,
-            @RequestParam(required = false) String transactionType
+            @PathVariable("customerId") Integer customerId,
+            @RequestParam(required = false, name = "transactionType") String transactionType
     ) {
         return ResponseEntity.ok(
                 loyaltyTransactionService.getCustomerTransactions(
@@ -43,11 +33,6 @@ public class LoyaltyTransactionController {
         );
     }
 
-    /**
-     * CUSTOMER xem lịch sử giao dịch của chính mình.
-     *
-     * GET /api/v1/loyalty-transactions/me
-     */
     @GetMapping("/me")
     @PreAuthorize("hasRole('CUSTOMER')")
     public ResponseEntity<List<LoyaltyTransactionResponseDTO>> getMyTransactions(
@@ -59,11 +44,6 @@ public class LoyaltyTransactionController {
         );
     }
 
-    /**
-     * CUSTOMER xem số dư điểm của chính mình.
-     *
-     * GET /api/v1/loyalty-transactions/me/balance
-     */
     @GetMapping("/me/balance")
     @PreAuthorize("hasRole('CUSTOMER')")
     public ResponseEntity<LoyaltyBalanceResponseDTO> getMyBalance(
@@ -74,15 +54,10 @@ public class LoyaltyTransactionController {
         );
     }
 
-    /**
-     * Lấy số điểm hiện tại của customer.
-     *
-     * GET /api/v1/loyalty-transactions/customers/1/balance
-     */
     @GetMapping("/customers/{customerId}/balance")
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'ADMIN')")
     public ResponseEntity<LoyaltyBalanceResponseDTO> getCustomerBalance(
-            @PathVariable Integer customerId
+            @PathVariable("customerId") Integer customerId
     ) {
         return ResponseEntity.ok(
                 loyaltyTransactionService.getCustomerBalance(customerId)

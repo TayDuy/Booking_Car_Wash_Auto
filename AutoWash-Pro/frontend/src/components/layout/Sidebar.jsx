@@ -1,4 +1,5 @@
-﻿import { NavLink } from "react-router-dom";
+﻿// frontend/src/components/layout/Sidebar.jsx
+import { NavLink } from "react-router-dom";
 import useAuth from "../../hooks/useAuth";
 import {
   LayoutDashboard,
@@ -15,6 +16,7 @@ import {
   ReceiptText,
   ShieldCheck,
   Settings,
+  Undo2,
 } from "lucide-react";
 import "./Sidebar.css";
 
@@ -35,6 +37,7 @@ const menuGroups = [
       { label: "Dịch vụ", path: "/admin/services", icon: Package },
       { label: "Đơn hàng", path: "/admin/orders", icon: ShoppingCart },
       { label: "Thanh toán", path: "/admin/payments", icon: ReceiptText },
+      { label: "Hoàn tiền", path: "/admin/refunds", icon: Undo2 },
     ],
   },
   {
@@ -62,48 +65,48 @@ export default function Sidebar() {
   const displayRole = user?.role === "ADMIN" ? "Quản trị viên" : user?.role || "Admin";
 
   return (
-    <aside className="admin-sidebar">
-      <div className="sidebar-brand">
-        <div className="brand-icon">💧</div>
-        <div>
-          <h2>WashFlow Pro</h2>
-          <p>Admin Dashboard</p>
-        </div>
-      </div>
-
-      <nav className="sidebar-nav">
-        {menuGroups.map((group) => (
-          <div className="menu-group" key={group.title}>
-            <span className="menu-title">{group.title}</span>
-
-            {group.items.map((item) => {
-              const Icon = item.icon;
-
-              return (
-                <NavLink
-                  key={item.path}
-                  to={item.path}
-                  end={item.path === "/admin/dashboard"}
-                  className={({ isActive }) =>
-                    isActive ? "sidebar-link active" : "sidebar-link"
-                  }
-                >
-                  <Icon size={18} />
-                  <span>{item.label}</span>
-                </NavLink>
-              );
-            })}
+      <aside className="admin-sidebar">
+        <div className="sidebar-brand">
+          <div className="brand-icon">💧</div>
+          <div>
+            <h2>WashFlow Pro</h2>
+            <p>Admin Dashboard</p>
           </div>
-        ))}
-      </nav>
-
-      <div className="sidebar-user">
-        <div className="user-avatar">{displayName.charAt(0).toUpperCase()}</div>
-        <div>
-          <strong>{displayName}</strong>
-          <p>{displayRole}</p>
         </div>
-      </div>
-    </aside>
+
+        <nav className="sidebar-nav">
+          {menuGroups.map((group) => (
+              <div className="menu-group" key={group.title}>
+                <span className="menu-title">{group.title}</span>
+
+                {group.items.map((item) => {
+                  const Icon = item.icon;
+
+                  return (
+                      <NavLink
+                          key={item.path}
+                          to={item.path}
+                          end={item.path === "/admin/dashboard"}
+                          className={({ isActive }) =>
+                              isActive ? "sidebar-link active" : "sidebar-link"
+                          }
+                      >
+                        <Icon size={18} />
+                        <span>{item.label}</span>
+                      </NavLink>
+                  );
+                })}
+              </div>
+          ))}
+        </nav>
+
+        <div className="sidebar-user">
+          <div className="user-avatar">{displayName.charAt(0).toUpperCase()}</div>
+          <div>
+            <strong>{displayName}</strong>
+            <p>{displayRole}</p>
+          </div>
+        </div>
+      </aside>
   );
 }

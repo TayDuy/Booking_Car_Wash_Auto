@@ -14,6 +14,7 @@ public class LoginResponseDTO {
 
     private String refreshToken;
 
+    @Builder.Default
     private String tokenType = "Bearer";
     private UserDto user;
 

@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 
 import bookingApi from '../../../api/bookingApi';
+import refundApi from '../../../api/refundApi';
 import { getCustomerId } from '../../../api/authService';
 import SiteHeader from '../../../components/layout/SiteHeader';
 
@@ -47,9 +48,6 @@ const fmt = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' 
 const fmtDate = (d) => new Date(d).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
 const fmtTime = (t) => (t ? t.substring(0, 5) : '');
 
-// ══════════════════════════════════════════════════════════════
-// Component
-// ══════════════════════════════════════════════════════════════
 export default function BookingHistory() {
   const navigate = useNavigate();
 
@@ -59,14 +57,25 @@ export default function BookingHistory() {
   const [searchTerm, setSearchTerm] = useState('');
 
   // Detail modal
-  const [detailModal, setDetailModal] = useState(null);   // full BookingResponseDTO
+  const [detailModal, setDetailModal] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
 
   // Cancel modal
-  const [cancelTarget, setCancelTarget] = useState(null);  // booking summary
+  const [cancelTarget, setCancelTarget] = useState(null);
   const [cancelling, setCancelling] = useState(false);
 
-  // ── Fetch bookings ─────────────────────────────────────────
+  // Refund request modal (khách tự gửi yêu cầu hoàn tiền)
+  const [refundTarget, setRefundTarget] = useState(null);
+  const [refundForm, setRefundForm] = useState({
+    reason: '',
+    refundMethod: 'original_payment_method',
+    bankName: '',
+    bankAccountNumber: '',
+    bankAccountName: '',
+  });
+  const [submittingRefund, setSubmittingRefund] = useState(false);
+  const [refundedBookingIds, setRefundedBookingIds] = useState([]);
+
   const fetchBookings = useCallback(async () => {
     try {
       setLoading(true);
@@ -81,7 +90,6 @@ export default function BookingHistory() {
 
   useEffect(() => { fetchBookings(); }, [fetchBookings]);
 
-  // ── Stats ──────────────────────────────────────────────────
   const stats = {
     total: bookings.length,
     pending: bookings.filter(b => b.status === 'pending').length,
@@ -90,7 +98,6 @@ export default function BookingHistory() {
     cancelled: bookings.filter(b => b.status === 'cancelled').length,
   };
 
-  // ── Filter & search ────────────────────────────────────────
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
 
@@ -117,11 +124,10 @@ export default function BookingHistory() {
       ? bookings.length
       : bookings.filter(b => b.status === key).length;
 
-  // ── Detail modal handler ───────────────────────────────────
   const openDetail = async (bookingId) => {
     try {
       setDetailLoading(true);
-      setDetailModal({}); // open modal shell
+      setDetailModal({});
       const res = await bookingApi.get(bookingId);
       setDetailModal(res.data);
     } catch (err) {
@@ -132,13 +138,11 @@ export default function BookingHistory() {
     }
   };
 
-  // ── Cancel handler ─────────────────────────────────────────
   const handleCancel = async () => {
     if (!cancelTarget) return;
     try {
       setCancelling(true);
       await bookingApi.cancel(cancelTarget.bookingId);
-      // Update local state
       setBookings(prev =>
           prev.map(b => b.bookingId === cancelTarget.bookingId ? { ...b, status: 'cancelled' } : b)
       );
@@ -153,15 +157,64 @@ export default function BookingHistory() {
 
   const canCancel = (status) => status === 'pending' || status === 'confirmed';
 
-  // ══════════════════════════════════════════════════════════════
-  // Render
-  // ══════════════════════════════════════════════════════════════
+  // ── Refund request handler ─────────────────────────────────
+  const canRequestRefund = (booking) => {
+    const isPaid = booking.status === 'completed' || booking.paymentStatus?.toLowerCase() === 'paid';
+    const eligibleStatus = booking.status === 'cancelled' || booking.status === 'completed';
+    return isPaid && eligibleStatus && !refundedBookingIds.includes(booking.bookingId);
+  };
+
+  const openRefundModal = (booking) => {
+    setRefundForm({
+      reason: '',
+      refundMethod: 'original_payment_method',
+      bankName: '',
+      bankAccountNumber: '',
+      bankAccountName: '',
+    });
+    setRefundTarget(booking);
+  };
+
+  const handleRefundSubmit = async () => {
+    if (!refundTarget) return;
+    if (!refundForm.reason.trim()) {
+      alert('Vui lòng nhập lý do hoàn tiền.');
+      return;
+    }
+    if (
+        refundForm.refundMethod === 'bank_transfer' &&
+        (!refundForm.bankName.trim() || !refundForm.bankAccountNumber.trim() || !refundForm.bankAccountName.trim())
+    ) {
+      alert('Vui lòng nhập đầy đủ thông tin ngân hàng.');
+      return;
+    }
+
+    try {
+      setSubmittingRefund(true);
+      await refundApi.createMine({
+        bookingId: refundTarget.bookingId,
+        reason: refundForm.reason.trim(),
+        refundMethod: refundForm.refundMethod,
+        bankName: refundForm.refundMethod === 'bank_transfer' ? refundForm.bankName.trim() : null,
+        bankAccountNumber: refundForm.refundMethod === 'bank_transfer' ? refundForm.bankAccountNumber.trim() : null,
+        bankAccountName: refundForm.refundMethod === 'bank_transfer' ? refundForm.bankAccountName.trim() : null,
+      });
+      setRefundedBookingIds(prev => [...prev, refundTarget.bookingId]);
+      setRefundTarget(null);
+      alert('Đã gửi yêu cầu hoàn tiền thành công. Bạn có thể theo dõi trạng thái tại mục "Yêu cầu hoàn tiền của tôi".');
+    } catch (err) {
+      console.error('Lỗi gửi yêu cầu hoàn tiền:', err);
+      alert(err.response?.data?.message || 'Gửi yêu cầu hoàn tiền không thành công. Vui lòng thử lại.');
+    } finally {
+      setSubmittingRefund(false);
+    }
+  };
+
   return (
-    <div className="bh-page">
+      <div className="bh-page">
 
-      <div className="bh-container">
+        <div className="bh-container">
 
-          {/* ── Page Header ──────────────────────────────────── */}
           <div className="bh-page-header">
             <div className="bh-header-left">
               <button className="bh-back-btn" onClick={() => navigate(-1)}>
@@ -172,15 +225,18 @@ export default function BookingHistory() {
                 <p className="bh-page-subtitle">Theo dõi và quản lý tất cả lịch hẹn rửa xe của bạn</p>
               </div>
             </div>
-            <div className="bh-header-badge">
-              <span className="material-symbols-outlined" style={{ fontSize: 16 }}>schedule</span>
-              {stats.total} lịch hẹn
+            <div className="bh-header-badge-group">
+              <Link to="/customer/refunds" className="bh-header-badge bh-header-badge-link">
+                <span className="material-symbols-outlined" style={{ fontSize: 16 }}>currency_exchange</span>
+                Yêu cầu hoàn tiền của tôi
+              </Link>
+              <div className="bh-header-badge">
+                <span className="material-symbols-outlined" style={{ fontSize: 16 }}>schedule</span>
+                {stats.total} lịch hẹn
+              </div>
             </div>
           </div>
 
-
-
-          {/* ── Toolbar ──────────────────────────────────────── */}
           <div className="bh-toolbar">
             <div className="bh-search-box">
               <span className="bh-search-icon material-symbols-outlined">search</span>
@@ -207,7 +263,6 @@ export default function BookingHistory() {
             </div>
           </div>
 
-          {/* ── Booking List ─────────────────────────────────── */}
           {loading ? (
               <div className="bh-skeleton">
                 {[1, 2, 3, 4].map(i => <div key={i} className="bh-skeleton-card" />)}
@@ -245,10 +300,8 @@ export default function BookingHistory() {
                           key={booking.bookingId}
                           style={{ animationDelay: `${idx * 0.05}s` }}
                       >
-                        {/* Status stripe */}
                         <div className={`bh-card-stripe stripe-${booking.status}`} />
 
-                        {/* Body */}
                         <div className="bh-card-body">
                           <div className="bh-card-primary">
                             <div className="bh-card-code">
@@ -271,8 +324,8 @@ export default function BookingHistory() {
                                 <span className="bh-card-plate">
                           <span className="material-symbols-outlined" style={{ fontSize: 13 }}>directions_car</span>
                                   {booking.vehicleNickname
-                                    ? <>{booking.vehicleNickname} <span style={{ opacity: 0.6 }}>({booking.licensePlate})</span></>
-                                    : booking.licensePlate}
+                                      ? <>{booking.vehicleNickname} <span style={{ opacity: 0.6 }}>({booking.licensePlate})</span></>
+                                      : booking.licensePlate}
                         </span>
                             )}
                           </div>
@@ -292,7 +345,6 @@ export default function BookingHistory() {
                           </div>
                         </div>
 
-                        {/* Actions */}
                         <div className="bh-card-actions">
                           <button className="bh-btn-detail" onClick={() => openDetail(booking.bookingId)}>
                             <span className="material-symbols-outlined">visibility</span>
@@ -304,49 +356,58 @@ export default function BookingHistory() {
                                 Hủy lịch
                               </button>
                           )}
+                          {canRequestRefund(booking) && (
+                              <button className="bh-btn-refund" onClick={() => openRefundModal(booking)}>
+                                <span className="material-symbols-outlined">currency_exchange</span>
+                                Yêu cầu hoàn tiền
+                              </button>
+                          )}
+                          {refundedBookingIds.includes(booking.bookingId) && (
+                              <span className="bh-refund-sent-tag">
+                                <span className="material-symbols-outlined" style={{ fontSize: 14 }}>check_circle</span>
+                                Đã gửi yêu cầu hoàn tiền
+                              </span>
+                          )}
                         </div>
                       </div>
                   );
                 })}
 
                 {totalPages > 1 && (
-                  <div className="bh-pagination">
-                    <button
-                      className="bh-page-btn"
-                      disabled={currentPage === 1}
-                      onClick={() => setCurrentPage(prev => prev - 1)}
-                    >
-                      <span className="material-symbols-outlined">chevron_left</span>
-                      Trang trước
-                    </button>
-                    <div className="bh-page-numbers">
-                      {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                        <button
-                          key={page}
-                          className={`bh-page-num ${currentPage === page ? 'active' : ''}`}
-                          onClick={() => setCurrentPage(page)}
-                        >
-                          {page}
-                        </button>
-                      ))}
+                    <div className="bh-pagination">
+                      <button
+                          className="bh-page-btn"
+                          disabled={currentPage === 1}
+                          onClick={() => setCurrentPage(prev => prev - 1)}
+                      >
+                        <span className="material-symbols-outlined">chevron_left</span>
+                        Trang trước
+                      </button>
+                      <div className="bh-page-numbers">
+                        {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                            <button
+                                key={page}
+                                className={`bh-page-num ${currentPage === page ? 'active' : ''}`}
+                                onClick={() => setCurrentPage(page)}
+                            >
+                              {page}
+                            </button>
+                        ))}
+                      </div>
+                      <button
+                          className="bh-page-btn"
+                          disabled={currentPage === totalPages}
+                          onClick={() => setCurrentPage(prev => prev + 1)}
+                      >
+                        Trang sau
+                        <span className="material-symbols-outlined">chevron_right</span>
+                      </button>
                     </div>
-                    <button
-                      className="bh-page-btn"
-                      disabled={currentPage === totalPages}
-                      onClick={() => setCurrentPage(prev => prev + 1)}
-                    >
-                      Trang sau
-                      <span className="material-symbols-outlined">chevron_right</span>
-                    </button>
-                  </div>
                 )}
               </div>
           )}
         </div>
 
-        {/* ══════════════════════════════════════════════════════
-          Detail Modal
-          ══════════════════════════════════════════════════════ */}
         {detailModal && (
             <div className="bh-modal-overlay" onClick={() => !detailLoading && setDetailModal(null)}>
               <div className="bh-modal" onClick={(e) => e.stopPropagation()}>
@@ -390,12 +451,12 @@ export default function BookingHistory() {
                                 const pmCfg = isPaid ? PAYMENT_STATUS_MAP.paid : (PAYMENT_STATUS_MAP[detailModal.paymentStatus?.toLowerCase()] || PAYMENT_STATUS_MAP.unpaid);
                                 const payMethod = detailModal.status === 'completed' ? 'at_shop' : (detailModal.paymentMethod?.toLowerCase() || 'cash');
                                 const pmLabel = isPaid
-                                  ? `Đã thanh toán (${PAYMENT_METHOD_MAP[payMethod] || payMethod})`
-                                  : pmCfg.label;
+                                    ? `Đã thanh toán (${PAYMENT_METHOD_MAP[payMethod] || payMethod})`
+                                    : pmCfg.label;
                                 return (
-                                  <span className={`bh-status-badge ${pmCfg.badge}`}>
+                                    <span className={`bh-status-badge ${pmCfg.badge}`}>
                                     <span className="bh-status-dot" />
-                                    {pmLabel}
+                                      {pmLabel}
                                   </span>
                                 );
                               })()}
@@ -417,8 +478,8 @@ export default function BookingHistory() {
                             <div className="bh-detail-label">Xe</div>
                             <div className="bh-detail-value">
                               {detailModal.vehicleNickname
-                                ? <>{detailModal.vehicleNickname} <span style={{ opacity: 0.6 }}>({detailModal.licensePlate})</span></>
-                                : detailModal.licensePlate || '—'}
+                                  ? <>{detailModal.vehicleNickname} <span style={{ opacity: 0.6 }}>({detailModal.licensePlate})</span></>
+                                  : detailModal.licensePlate || '—'}
                             </div>
                           </div>
                           <div className="bh-detail-item">
@@ -433,7 +494,6 @@ export default function BookingHistory() {
                           )}
                         </div>
 
-                        {/* Services */}
                         {detailModal.details && detailModal.details.length > 0 && (
                             <>
                               <div className="bh-services-title">
@@ -472,9 +532,9 @@ export default function BookingHistory() {
                               </div>
                               <div style={{ marginTop: '12px', textAlign: 'right' }}>
                                 <button
-                                  className="bh-btn-detail"
-                                  onClick={() => navigate(`/customer/booking/${detailModal.bookingId}`)}
-                                  style={{ fontSize: '13px', padding: '6px 16px' }}
+                                    className="bh-btn-detail"
+                                    onClick={() => navigate(`/customer/booking/${detailModal.bookingId}`)}
+                                    style={{ fontSize: '13px', padding: '6px 16px' }}
                                 >
                                   Xem chi tiết →
                                 </button>
@@ -488,9 +548,97 @@ export default function BookingHistory() {
             </div>
         )}
 
-        {/* ══════════════════════════════════════════════════════
-          Cancel Confirmation Modal
-          ══════════════════════════════════════════════════════ */}
+        {refundTarget && (
+            <div className="bh-modal-overlay" onClick={() => !submittingRefund && setRefundTarget(null)}>
+              <div className="bh-modal bh-refund-modal" onClick={(e) => e.stopPropagation()}>
+                <div className="bh-modal-head">
+                  <div className="bh-modal-title">
+                    <span className="material-symbols-outlined">currency_exchange</span>
+                    Yêu cầu hoàn tiền
+                  </div>
+                  <button className="bh-modal-close" onClick={() => setRefundTarget(null)}>
+                    <span className="material-symbols-outlined">close</span>
+                  </button>
+                </div>
+                <div className="bh-modal-body">
+                  <div className="bh-refund-booking-info">
+                    Lịch hẹn <strong>{refundTarget.bookingCode || `#${refundTarget.bookingId}`}</strong> · Số tiền hoàn:{' '}
+                    <strong>{fmt.format(refundTarget.finalAmount || refundTarget.totalAmount || 0)}</strong>
+                  </div>
+
+                  <div className="bh-refund-field">
+                    <label>Lý do hoàn tiền <span className="required">*</span></label>
+                    <textarea
+                        className="bh-refund-textarea"
+                        rows={3}
+                        maxLength={500}
+                        placeholder="Ví dụ: Tôi phải hủy lịch vì lý do cá nhân, mong được hoàn lại tiền..."
+                        value={refundForm.reason}
+                        onChange={(e) => setRefundForm(prev => ({ ...prev, reason: e.target.value }))}
+                    />
+                  </div>
+
+                  <div className="bh-refund-field">
+                    <label>Phương thức hoàn tiền <span className="required">*</span></label>
+                    <select
+                        className="bh-refund-select"
+                        value={refundForm.refundMethod}
+                        onChange={(e) => setRefundForm(prev => ({ ...prev, refundMethod: e.target.value }))}
+                    >
+                      <option value="original_payment_method">Hoàn về phương thức thanh toán gốc</option>
+                      <option value="bank_transfer">Chuyển khoản ngân hàng</option>
+                      <option value="cash">Tiền mặt tại chi nhánh</option>
+                    </select>
+                  </div>
+
+                  {refundForm.refundMethod === 'bank_transfer' && (
+                      <>
+                        <div className="bh-refund-field">
+                          <label>Tên ngân hàng <span className="required">*</span></label>
+                          <input
+                              className="bh-refund-input"
+                              type="text"
+                              placeholder="Ví dụ: Vietcombank"
+                              value={refundForm.bankName}
+                              onChange={(e) => setRefundForm(prev => ({ ...prev, bankName: e.target.value }))}
+                          />
+                        </div>
+                        <div className="bh-refund-field">
+                          <label>Số tài khoản <span className="required">*</span></label>
+                          <input
+                              className="bh-refund-input"
+                              type="text"
+                              placeholder="Số tài khoản ngân hàng"
+                              value={refundForm.bankAccountNumber}
+                              onChange={(e) => setRefundForm(prev => ({ ...prev, bankAccountNumber: e.target.value }))}
+                          />
+                        </div>
+                        <div className="bh-refund-field">
+                          <label>Tên chủ tài khoản <span className="required">*</span></label>
+                          <input
+                              className="bh-refund-input"
+                              type="text"
+                              placeholder="Tên đúng như trên thẻ ngân hàng"
+                              value={refundForm.bankAccountName}
+                              onChange={(e) => setRefundForm(prev => ({ ...prev, bankAccountName: e.target.value }))}
+                          />
+                        </div>
+                      </>
+                  )}
+
+                  <div className="bh-cancel-btns">
+                    <button className="bh-cancel-keep" onClick={() => setRefundTarget(null)} disabled={submittingRefund}>
+                      Hủy bỏ
+                    </button>
+                    <button className="bh-refund-confirm" onClick={handleRefundSubmit} disabled={submittingRefund}>
+                      {submittingRefund ? 'Đang gửi…' : 'Gửi yêu cầu hoàn tiền'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+        )}
+
         {cancelTarget && (
             <div className="bh-modal-overlay" onClick={() => !cancelling && setCancelTarget(null)}>
               <div className="bh-modal bh-cancel-modal" onClick={(e) => e.stopPropagation()}>
