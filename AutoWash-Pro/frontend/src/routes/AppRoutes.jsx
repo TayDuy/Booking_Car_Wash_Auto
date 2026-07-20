@@ -51,6 +51,9 @@ const RoleManagementPage = lazy(() => import("../features/admin/pages/RoleManage
 const SystemSettingsPage = lazy(() => import("../features/admin/pages/SystemSettingsPage"));
 const ManageOrdersPage = lazy(() => import("../features/admin/pages/ManageOrdersPage"));
 const PaymentHistoryPage = lazy(() => import("../features/admin/pages/PaymentHistoryPage"));
+const ManageLoyaltyPointsPage = lazy(() => import("../features/admin/pages/ManageLoyaltyPointsPage"));
+const ManageRewardsPage = lazy(() => import("../features/admin/pages/ManageRewardsPage"));
+const ManageCustomerRewardsPage = lazy(() => import("../features/admin/pages/ManageCustomerRewardsPage"));
 
 const EmployeeDashboardPage = lazy(() => import("../features/employee/pages/EmployeeDashboardPage"));
 const EmployeeQueuePage = lazy(() => import("../features/employee/pages/EmployeeQueuePage"));
@@ -146,6 +149,9 @@ function AppRoutes() {
                     <Route path="settings" element={<SystemSettingsPage />} />
                     <Route path="orders" element={<ManageOrdersPage />} />
                     <Route path="payments" element={<PaymentHistoryPage />} />
+                    <Route path="loyalty-points" element={<ManageLoyaltyPointsPage />} />
+                    <Route path="rewards" element={<ManageRewardsPage />} />
+                    <Route path="customer-rewards" element={<ManageCustomerRewardsPage />} />
                 </Route>
 
                 {/* Employee */}

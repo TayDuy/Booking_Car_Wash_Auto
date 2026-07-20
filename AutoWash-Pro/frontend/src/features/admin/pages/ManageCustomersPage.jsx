@@ -5,8 +5,10 @@ import {
   Pencil,
   Trash2,
   RefreshCw,
+  Plus,
 } from "lucide-react";
 import customerApi from "../../../api/customerApi";
+import { useAppDialog } from "../../../contexts/DialogContext.jsx";
 import "./ManageCustomersPage.css";
 
 function getPaginationItems(currentPage, totalPages) {
@@ -45,8 +47,17 @@ function getPaginationItems(currentPage, totalPages) {
 
   return items;
 }
-
+const emptyCustomerForm = {
+  username: "",
+  password: "",
+  fullName: "",
+  email: "",
+  phone: "",
+  gender: "",
+  dateOfBirth: "",
+};
 export default function ManageCustomersPage() {
+  const { confirmAction, showMessage } = useAppDialog();
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -59,11 +70,7 @@ export default function ManageCustomersPage() {
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [editingCustomer, setEditingCustomer] = useState(null);
   const [formData, setFormData] = useState({
-    fullName: "",
-    email: "",
-    phone: "",
-    gender: "",
-    dateOfBirth: "",
+    ...emptyCustomerForm,
   });
   useEffect(() => {
     loadCustomers();
@@ -94,10 +101,13 @@ export default function ManageCustomersPage() {
 
       setCustomers([]);
 
-      alert(
-        error.response?.data?.message ||
-        "Không tải được danh sách khách hàng."
-      );
+      await showMessage({
+        title: "Tải dữ liệu thất bại",
+        message:
+          error.response?.data?.message ||
+          "Không tải được danh sách khách hàng.",
+        variant: "error",
+      });
     } finally {
       setLoading(false);
     }
@@ -173,13 +183,20 @@ export default function ManageCustomersPage() {
   function handleViewCustomer(customer) {
     setSelectedCustomer(customer);
   }
-
+  function openCreateForm() {
+    setEditingCustomer(null);
+    setFormData({
+      ...emptyCustomerForm,
+    });
+    setShowForm(true);
+  }
   function openEditForm(customer) {
     setEditingCustomer(customer);
     setFormData({
+      ...emptyCustomerForm,
       fullName: customer.fullName || "",
-      email: customer.email || "",
-      phone: customer.phone || "",
+      email: customer.email || customer.user?.email || "",
+      phone: customer.phone || customer.user?.phone || "",
       gender: customer.gender || "",
       dateOfBirth: customer.dateOfBirth || "",
     });
@@ -197,43 +214,209 @@ export default function ManageCustomersPage() {
   async function handleSubmit(e) {
     e.preventDefault();
 
-    const customerId = editingCustomer?.customerId || editingCustomer?.id;
+    const isEditing = Boolean(editingCustomer);
+    const customerId =
+      editingCustomer?.customerId ||
+      editingCustomer?.id;
 
-    if (!customerId) {
-      alert("Không tìm thấy customerId.");
+    const fullName = formData.fullName.trim();
+    const email = formData.email.trim();
+    const phone = formData.phone.trim();
+    const username = formData.username.trim();
+    const password = formData.password.trim();
+
+    if (!fullName || !email || !phone) {
+      await showMessage({
+        title: "Thiếu dữ liệu",
+        message:
+          "Vui lòng nhập đầy đủ họ tên, email và số điện thoại.",
+        variant: "warning",
+      });
+      return;
+    }
+
+    if (!isEditing && !username) {
+      await showMessage({
+        title: "Thiếu dữ liệu",
+        message: "Vui lòng nhập tên đăng nhập.",
+        variant: "warning",
+      });
+      return;
+    }
+
+    if (!isEditing && username.length < 3) {
+      await showMessage({
+        title: "Tên đăng nhập không hợp lệ",
+        message: "Tên đăng nhập phải có ít nhất 3 ký tự.",
+        variant: "warning",
+      });
+      return;
+    }
+
+    if (!isEditing && password && password.length < 6) {
+      await showMessage({
+        title: "Mật khẩu không hợp lệ",
+        message: "Mật khẩu phải có ít nhất 6 ký tự.",
+        variant: "warning",
+      });
+      return;
+    }
+
+    if (isEditing && !customerId) {
+      await showMessage({
+        title: "Thiếu dữ liệu",
+        message: "Không tìm thấy customerId.",
+        variant: "error",
+      });
       return;
     }
 
     try {
-      await customerApi.update(customerId, formData);
-      alert("Cập nhật khách hàng thành công.");
+      if (isEditing) {
+        const updatePayload = {
+          fullName,
+          email,
+          phone,
+          gender: formData.gender || null,
+          dateOfBirth: formData.dateOfBirth || null,
+        };
+
+        await customerApi.update(
+          customerId,
+          updatePayload
+        );
+
+        setShowForm(false);
+        setEditingCustomer(null);
+        setFormData({
+          ...emptyCustomerForm,
+        });
+
+        await loadCustomers();
+
+        await showMessage({
+          title: "Thành công",
+          message: "Cập nhật khách hàng thành công.",
+          variant: "success",
+        });
+
+        return;
+      }
+
+      const createPayload = {
+        username,
+        email,
+        phone,
+        fullName,
+        dateOfBirth: formData.dateOfBirth || null,
+        gender: formData.gender || null,
+      };
+
+      if (password) {
+        createPayload.password = password;
+      }
+
+      const response =
+        await customerApi.create(createPayload);
+
+      const result =
+        response?.data ?? response;
+
+      const generatedPassword =
+        result?.generatedPassword;
+
+      const createdUsername =
+        result?.customer?.username ||
+        username;
+
       setShowForm(false);
       setEditingCustomer(null);
-      loadCustomers();
+      setFormData({
+        ...emptyCustomerForm,
+      });
+
+      await loadCustomers();
+
+      await showMessage({
+        title: "Tạo khách hàng thành công",
+        message: generatedPassword
+          ? `Tài khoản: ${createdUsername}. Mật khẩu tạm thời: ${generatedPassword}`
+          : `Đã tạo tài khoản ${createdUsername} thành công.`,
+        variant: "success",
+      });
     } catch (error) {
-      console.error("Update customer failed:", error);
-      alert(error.response?.data?.message || "Cập nhật khách hàng thất bại.");
+      console.error(
+        isEditing
+          ? "Update customer failed:"
+          : "Create customer failed:",
+        error
+      );
+
+      await showMessage({
+        title: isEditing
+          ? "Cập nhật thất bại"
+          : "Tạo khách hàng thất bại",
+        message:
+          error.response?.data?.message ||
+          (isEditing
+            ? "Cập nhật khách hàng thất bại."
+            : "Tạo khách hàng thất bại."),
+        variant: "error",
+      });
     }
   }
 
   async function handleDeleteCustomer(customer) {
-    const customerId = customer.customerId || customer.id;
+    const customerId =
+      customer.customerId || customer.id;
 
     if (!customerId) {
-      alert("Không tìm thấy customerId.");
+      await showMessage({
+        title: "Thiếu dữ liệu",
+        message: "Không tìm thấy customerId.",
+        variant: "error",
+      });
       return;
     }
 
-    const ok = window.confirm("Bạn có chắc muốn xóa/khóa khách hàng này không?");
+    const customerName =
+      customer.fullName ||
+      customer.email ||
+      `#${customerId}`;
+
+    const ok = await confirmAction({
+      title: "Xóa/khóa khách hàng",
+      message: `Bạn có chắc muốn xóa hoặc khóa khách hàng "${customerName}" không?`,
+      confirmText: "Xóa/khóa",
+      cancelText: "Quay lại",
+      variant: "danger",
+    });
+
     if (!ok) return;
 
     try {
       await customerApi.delete(customerId);
-      alert("Xóa/khóa khách hàng thành công.");
-      loadCustomers();
+
+      await showMessage({
+        title: "Thành công",
+        message: "Xóa/khóa khách hàng thành công.",
+        variant: "success",
+      });
+
+      await loadCustomers();
     } catch (error) {
-      console.error("Delete customer failed:", error);
-      alert(error.response?.data?.message || "Xóa/khóa khách hàng thất bại.");
+      console.error(
+        "Delete customer failed:",
+        error
+      );
+
+      await showMessage({
+        title: "Thao tác thất bại",
+        message:
+          error.response?.data?.message ||
+          "Xóa/khóa khách hàng thất bại.",
+        variant: "error",
+      });
     }
   }
   return (
@@ -244,19 +427,40 @@ export default function ManageCustomersPage() {
           <p>Theo dõi thông tin khách hàng trong hệ thống.</p>
         </div>
 
-        <button
-          type="button"
-          className="refresh-btn"
-          onClick={handleRefreshCustomers}
-          disabled={loading}
+        <div
+          style={{
+            display: "flex",
+            gap: "12px",
+            alignItems: "center",
+          }}
         >
-          <RefreshCw
-            size={18}
-            className={loading ? "customer-refresh-spinning" : ""}
-          />
+          <button
+            type="button"
+            className="create-btn"
+            onClick={openCreateForm}
+          >
+            <Plus size={18} />
+            Thêm khách hàng
+          </button>
 
-          {loading ? "Đang tải..." : "Làm mới"}
-        </button>
+          <button
+            type="button"
+            className="refresh-btn"
+            onClick={handleRefreshCustomers}
+            disabled={loading}
+          >
+            <RefreshCw
+              size={18}
+              className={
+                loading
+                  ? "customer-refresh-spinning"
+                  : ""
+              }
+            />
+
+            {loading ? "Đang tải..." : "Làm mới"}
+          </button>
+        </div>
       </div>
 
       <div className="manage-toolbar">
@@ -450,12 +654,44 @@ export default function ManageCustomersPage() {
         <div className="modal-backdrop">
           <div className="customer-modal">
             <div className="modal-header">
-              <h2>Cập nhật khách hàng</h2>
+              <h2>
+                {editingCustomer
+                  ? "Cập nhật khách hàng"
+                  : "Thêm khách hàng"}
+              </h2>
               <button onClick={() => setShowForm(false)}>×</button>
             </div>
 
             <form className="customer-form" onSubmit={handleSubmit}>
               <div className="form-grid">
+                {!editingCustomer && (
+                  <>
+                    <div className="form-group">
+                      <label>Tên đăng nhập</label>
+                      <input
+                        name="username"
+                        value={formData.username}
+                        onChange={handleChange}
+                        placeholder="Tối thiểu 3 ký tự"
+                        autoComplete="username"
+                        required
+                      />
+                    </div>
+
+                    <div className="form-group">
+                      <label>Mật khẩu</label>
+                      <input
+                        type="password"
+                        name="password"
+                        value={formData.password}
+                        onChange={handleChange}
+                        placeholder="Để trống để hệ thống tự tạo"
+                        autoComplete="new-password"
+                      />
+                    </div>
+                  </>
+                )}
+
                 <div className="form-group">
                   <label>Họ tên</label>
                   <input
@@ -518,7 +754,9 @@ export default function ManageCustomersPage() {
                 </button>
 
                 <button type="submit" className="save-btn">
-                  Lưu thay đổi
+                  {editingCustomer
+                    ? "Lưu thay đổi"
+                    : "Tạo khách hàng"}
                 </button>
               </div>
             </form>

@@ -4,6 +4,7 @@ const customerApi = {
   profile: () => axiosClient.get('/customers/me'),
   updateProfile: (payload) => axiosClient.put('/customers/me', payload),
   list: (params) => axiosClient.get('/customers', { params }),
+  create: (payload) => axiosClient.post('/staff/customers', payload),
   update: (id, payload) => axiosClient.put(`/customers/${id}`, payload),
   delete: (id) => axiosClient.delete(`/customers/${id}`),
 }
