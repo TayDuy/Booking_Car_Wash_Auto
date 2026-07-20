@@ -132,7 +132,8 @@ public class Notification {
 
     public enum NotificationType {
         BOOKING_CONFIRMED, BOOKING_CANCELLED, BOOKING_RESCHEDULED,
-        WAITLIST_PROMOTED, TIER_UPGRADED, TIER_DOWNGRADED, PAYMENT_COMPLETED, PAYMENT_FAILED
+        WAITLIST_PROMOTED, TIER_UPGRADED, TIER_DOWNGRADED, PAYMENT_COMPLETED, PAYMENT_FAILED,
+        RATING_ALERT
     }
 
     public enum NotificationChannel { in_app, sms, email }
