@@ -145,12 +145,8 @@ public class Refund {
                 || RefundStatus.processing.equals(this.status);
     }
 
-    public boolean isAutoRefundMethod() {
-        return RefundMethod.original_payment_method.equals(this.refundMethod);
-    }
-
     public boolean canComplete() {
-        return RefundStatus.approved.equals(this.status) && !isAutoRefundMethod();
+        return RefundStatus.approved.equals(this.status);
     }
 
     public void approve(Employee admin, String note) {
@@ -174,7 +170,7 @@ public class Refund {
         this.completedAt = LocalDateTime.now();
     }
 
-    public enum RefundMethod { cash, bank_transfer, original_payment_method }
+    public enum RefundMethod { cash, bank_transfer }
 
     public enum RefundStatus { pending, processing, approved, completed, rejected }
 }

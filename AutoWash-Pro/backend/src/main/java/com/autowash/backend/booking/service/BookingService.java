@@ -7,8 +7,13 @@ import com.autowash.backend.booking.dto.BookingResponseDTO;
 import com.autowash.backend.booking.dto.BookingSummaryResponseDTO;
 import com.autowash.backend.booking.dto.BookingUpdateRequestDTO;
 import com.autowash.backend.booking.dto.AssignableStaffResponseDTO;
+import com.autowash.backend.booking.dto.OrderStatisticsDTO;
 import com.autowash.backend.booking.enums.BookingSortOption;
+import com.autowash.backend.booking.enums.BookingStatus;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import java.util.Collection;
 import java.util.List;
 
 /**
@@ -59,11 +64,19 @@ public interface BookingService {
     );
 
     /**
-     * Admin lấy toàn bộ booking.
+     * Admin lấy toàn bộ booking (phân trang).
      *
      * @param sortOption NEWEST (mặc định) hoặc PRIORITY.
+     * @param pageable   thông tin phân trang.
      */
-    List<BookingSummaryResponseDTO> getAllBookings(BookingSortOption sortOption);
+    Page<BookingSummaryResponseDTO> getAllBookings(BookingSortOption sortOption, Pageable pageable);
+
+    /**
+     * Admin lấy danh sách đơn hàng (checked_in, in_progress, completed).
+     */
+    Page<BookingSummaryResponseDTO> getAllOrders(Collection<BookingStatus> statuses, Pageable pageable);
+
+    OrderStatisticsDTO getOrderStatistics(Collection<BookingStatus> statuses);
 
     /**
      * Customer lấy danh sách booking của mình.

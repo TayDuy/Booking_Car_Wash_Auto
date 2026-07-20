@@ -93,11 +93,18 @@ export function logout() {
   // Cookie refreshToken được xóa ở server (xem logoutFromServer -> POST /auth/logout).
   // Ở đây chỉ dọn dữ liệu phía client.
   localStorage.removeItem("token");
+  localStorage.removeItem("accessToken");
   localStorage.removeItem("username");
   localStorage.removeItem("fullName");
   localStorage.removeItem("role");
+  localStorage.removeItem("roles");
   localStorage.removeItem("userId");
   localStorage.removeItem("customerId");
+  localStorage.removeItem("employeeId");
+  localStorage.removeItem("branchId");
+  localStorage.removeItem("branchName");
+  localStorage.removeItem("permissions");
+  localStorage.removeItem("user");
 }
 
 export function isLoggedIn() {

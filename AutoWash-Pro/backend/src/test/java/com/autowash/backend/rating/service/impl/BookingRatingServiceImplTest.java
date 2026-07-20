@@ -44,10 +44,7 @@ class BookingRatingServiceImplTest {
     private UserRepository userRepository;
 
     @Mock
-    private NotificationRepository notificationRepository;
-
-    @Mock
-    private com.autowash.backend.notification.service.NotificationService notificationService;
+    private com.autowash.backend.notification.service.NotificationHelperService notificationHelperService;
 
     @InjectMocks
     private BookingRatingServiceImpl bookingRatingService;
@@ -83,7 +80,7 @@ class BookingRatingServiceImplTest {
         assertNotNull(response);
         assertEquals(5, response.getRatingStars());
         assertEquals("Rất hài lòng", response.getComment());
-        verify(notificationService, never()).create(any());
+        verify(notificationHelperService, never()).sendNotificationSafely(any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -119,7 +116,7 @@ class BookingRatingServiceImplTest {
 
         assertNotNull(response);
         assertEquals(2, response.getRatingStars());
-        verify(notificationService, times(1)).create(any());
+        verify(notificationHelperService, times(1)).sendNotificationSafely(eq(99), any(), any(), any(), any(), any());
     }
 
     @Test

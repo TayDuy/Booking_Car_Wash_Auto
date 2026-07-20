@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 
 import bookingApi from '../../../api/bookingApi';
 import ratingApi from '../../../api/ratingApi';
+import refundApi from '../../../api/refundApi';
 import { getCustomerId } from '../../../api/authService';
 import SiteHeader from '../../../components/layout/SiteHeader';
 
@@ -24,6 +25,7 @@ const PAYMENT_STATUS_MAP = {
   paid:      { label: 'Đã thanh toán',   badge: 'payment-badge-paid' },
   failed:    { label: 'Thanh toán lỗi',  badge: 'payment-badge-failed' },
   cancelled: { label: 'Hủy thanh toán',  badge: 'payment-badge-cancelled' },
+  refunded:  { label: 'Đã hoàn tiền',    badge: 'payment-badge-paid' },
 };
 
 const PAYMENT_METHOD_MAP = {
@@ -74,6 +76,7 @@ export default function BookingHistory() {
   const [ratingComment, setRatingComment] = useState('');
   const [submittingRating, setSubmittingRating] = useState(false);
   const [ratingsMap, setRatingsMap] = useState({});
+  const [refundsMap, setRefundsMap] = useState({});
 
   // ── Fetch bookings ─────────────────────────────────────────
   const fetchBookings = useCallback(async () => {
@@ -83,14 +86,30 @@ export default function BookingHistory() {
       const fetchedBookings = res.data || [];
       setBookings(fetchedBookings);
 
+      try {
+        const refRes = await refundApi.myRefunds();
+        const refList = refRes.data?.data ?? refRes.data ?? [];
+        if (Array.isArray(refList)) {
+          const map = {};
+          refList.forEach((r) => {
+            if (r.bookingId) map[r.bookingId] = r;
+          });
+          setRefundsMap(map);
+        }
+      } catch (e) {
+        // ignore
+      }
+
       const completedList = fetchedBookings.filter(b => b.status === 'completed');
       completedList.forEach(async (b) => {
         try {
           const rRes = await ratingApi.getRating(b.bookingId);
-          if (rRes.data) {
+          if (rRes && rRes.data) {
             setRatingsMap(prev => ({ ...prev, [b.bookingId]: rRes.data }));
           }
-        } catch (e) { /* 404 = chưa đánh giá */ }
+        } catch (e) {
+          // ignore
+        }
       });
     } catch (err) {
       console.error('Lỗi tải lịch sử đặt lịch:', err);
@@ -327,6 +346,25 @@ export default function BookingHistory() {
                                 <span className="bh-status-dot" />
                                 {paymentLabel}
                               </div>
+                              {refundsMap[booking.bookingId] ? (
+                                <div className="bh-status-badge" style={{
+                                  ...(refundsMap[booking.bookingId].status === 'completed' ? { background: '#f0fdf4', color: '#16a34a', border: '1px solid #bbf7d0' } :
+                                     refundsMap[booking.bookingId].status === 'approved' ? { background: '#e0f2fe', color: '#0284c7', border: '1px solid #bae6fd' } :
+                                     refundsMap[booking.bookingId].status === 'rejected' ? { background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca' } :
+                                     { background: '#fef3c7', color: '#d97706', border: '1px solid #fde68a' })
+                                }}>
+                                  <span className="bh-status-dot" style={{ background: 'currentColor' }} />
+                                  {refundsMap[booking.bookingId].status === 'completed' ? 'Đã hoàn tiền' :
+                                   refundsMap[booking.bookingId].status === 'approved' ? 'Đã duyệt hoàn tiền' :
+                                   refundsMap[booking.bookingId].status === 'rejected' ? 'Từ chối hoàn tiền' :
+                                   'Đang xử lý hoàn tiền'}
+                                </div>
+                              ) : booking.paymentStatus?.toLowerCase() === 'refunded' ? (
+                                <div className="bh-status-badge" style={{ background: '#f0fdf4', color: '#16a34a', border: '1px solid #bbf7d0' }}>
+                                  <span className="bh-status-dot" style={{ background: '#16a34a' }} />
+                                  Đã hoàn tiền
+                                </div>
+                              ) : null}
                             </div>
                             <div className="bh-card-amount">{fmt.format(booking.finalAmount || booking.totalAmount || 0)}</div>
                           </div>
@@ -338,6 +376,20 @@ export default function BookingHistory() {
                             <span className="material-symbols-outlined">visibility</span>
                             Chi tiết
                           </button>
+                          {(refundsMap[booking.bookingId] || booking.paymentStatus?.toLowerCase() === 'refunded') && (
+                            <button
+                              className="bh-btn-detail"
+                              onClick={() => navigate('/customer/refunds')}
+                              style={{
+                                borderColor: '#0284c7',
+                                color: '#0284c7',
+                                backgroundColor: 'rgba(2, 132, 199, 0.08)'
+                              }}
+                            >
+                              <span className="material-symbols-outlined" style={{ fontSize: '18px', color: '#0284c7' }}>receipt_long</span>
+                              Chi tiết hoàn tiền
+                            </button>
+                          )}
                           {booking.status === 'completed' && (
                             <button
                               className="bh-btn-detail"
@@ -528,13 +580,22 @@ export default function BookingHistory() {
                                 <span className="bh-services-total-label">Tổng cộng</span>
                                 <span className="bh-services-total-value">{fmt.format(detailModal.finalAmount || detailModal.totalAmount || 0)}</span>
                               </div>
-                              <div style={{ marginTop: '12px', textAlign: 'right' }}>
+                              <div style={{ marginTop: '12px', display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                                {refundsMap[detailModal.bookingId] && (
+                                  <button
+                                    className="bh-btn-detail"
+                                    onClick={() => navigate('/customer/refunds')}
+                                    style={{ fontSize: '13px', padding: '6px 16px', borderColor: '#0284c7', color: '#0284c7', backgroundColor: 'rgba(2, 132, 199, 0.08)' }}
+                                  >
+                                    Chi tiết hoàn tiền →
+                                  </button>
+                                )}
                                 <button
                                   className="bh-btn-detail"
                                   onClick={() => navigate(`/customer/booking/${detailModal.bookingId}`)}
                                   style={{ fontSize: '13px', padding: '6px 16px' }}
                                 >
-                                  Xem chi tiết →
+                                  Xem chi tiết đầy đủ →
                                 </button>
                               </div>
                             </>

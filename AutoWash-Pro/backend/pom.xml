@@ -18,6 +18,12 @@
         <java.version>17</java.version>
         <mapstruct.version>1.5.5.Final</mapstruct.version>
         <lombok.version>1.18.46</lombok.version>
+        <jacoco.version>0.8.12</jacoco.version>
+        <sonar.host.url>http://localhost:9000</sonar.host.url>
+        <sonar.coverage.jacoco.xmlReportPaths>${project.build.directory}/site/jacoco/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
+        <sonar.projectKey>autowash-backend</sonar.projectKey>
+        <sonar.projectName>AutoWash Backend</sonar.projectName>
+        <sonar.exclusions>**/generated/**</sonar.exclusions>
     </properties>
 
     <dependencies>
@@ -157,6 +163,34 @@
                         </path>
                     </annotationProcessorPaths>
                 </configuration>
+            </plugin>
+
+            <!-- JaCoCo -->
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>${jacoco.version}</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>report</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- SonarQube -->
+            <plugin>
+                <groupId>org.sonarsource.scanner.maven</groupId>
+                <artifactId>sonar-maven-plugin</artifactId>
+                <version>4.0.0.4121</version>
             </plugin>
         </plugins>
     </build>

@@ -33,6 +33,9 @@ public class JwtTokenProvider {
      */
     public String generateToken(Authentication authentication) {
         CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
+        if (userDetails == null) {
+            throw new IllegalArgumentException("Authentication principal cannot be null");
+        }
         return buildToken(userDetails.getUsername(), userDetails.getId(), userDetails.getPassword());
     }
 

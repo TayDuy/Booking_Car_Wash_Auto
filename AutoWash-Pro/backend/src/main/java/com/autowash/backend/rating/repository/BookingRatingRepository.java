@@ -15,4 +15,6 @@ public interface BookingRatingRepository extends JpaRepository<BookingRating, In
     boolean existsByBooking_BookingId(Integer bookingId);
 
     List<BookingRating> findByCustomer_CustomerId(Integer customerId);
+
+    List<BookingRating> findAllByOrderByCreatedAtDesc();
 }

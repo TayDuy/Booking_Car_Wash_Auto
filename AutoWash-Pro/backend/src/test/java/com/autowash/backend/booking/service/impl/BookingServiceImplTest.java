@@ -104,7 +104,7 @@ class BookingServiceImplTest {
                 .vehicleId(2)
                 .customer(customer)
                 .licensePlate("51A-999.99")
-                .vehicleType(Vehicle.VehicleType.car)
+                .vehicleType(Vehicle.VehicleType.FOUR_SEATS)
                 .isActive(true)
                 .build();
 
@@ -175,7 +175,7 @@ class BookingServiceImplTest {
                 .vehicleId(2)
                 .customer(customer)
                 .licensePlate("51A-999.99")
-                .vehicleType(Vehicle.VehicleType.car)
+                .vehicleType(Vehicle.VehicleType.FOUR_SEATS)
                 .build();
 
         WashBay washBay = new WashBay();
@@ -216,7 +216,7 @@ class BookingServiceImplTest {
                 .vehicleId(2)
                 .customer(customer)
                 .licensePlate("51A-999.99")
-                .vehicleType(Vehicle.VehicleType.car)
+                .vehicleType(Vehicle.VehicleType.FOUR_SEATS)
                 .build();
 
         WashBay washBay = new WashBay();

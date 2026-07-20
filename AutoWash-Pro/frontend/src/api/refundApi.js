@@ -12,7 +12,11 @@ const refundApi = {
     requestSelf: (paymentId, reason) =>
         axiosClient.post("/refunds/self", { paymentId, reason }),
 
+    // Khách hàng tự gửi yêu cầu hoàn tiền (kèm bookingId, lý do, phương thức, bank info).
+    createMine: (payload) => axiosClient.post("/refunds/my", payload),
+
     // Danh sách yêu cầu hoàn tiền mà chính khách hàng đã tự gửi.
+    myRefunds: () => axiosClient.get("/refunds/my"),
     mySelfRequests: () => axiosClient.get("/refunds/self/mine"),
 
     list: (status) => {

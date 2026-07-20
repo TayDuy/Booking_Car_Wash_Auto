@@ -8,3 +8,5 @@ backend/target/
 .scannerwork/
 strix_runs/
 sonar-project.properties
+*.jar
+backend/app.jar

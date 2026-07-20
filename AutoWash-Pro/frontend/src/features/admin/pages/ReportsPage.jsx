@@ -9,7 +9,7 @@ import {
   Users,
 } from "lucide-react";
 import reportApi from "../../../api/reportApi";
-import * as XLSX from "xlsx";
+import * as XLSX from "xlsx-js-style";
 import { useAppDialog } from "../../../contexts/DialogContext.jsx";
 import "./ReportsPage.css";
 

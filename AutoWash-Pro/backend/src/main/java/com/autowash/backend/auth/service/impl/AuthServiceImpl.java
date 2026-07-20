@@ -32,6 +32,8 @@ import org.springframework.web.client.RestTemplate;
 
 import com.autowash.backend.mail.service.MailService;
 
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.Map;
 
 @Service
@@ -101,6 +103,9 @@ public class AuthServiceImpl implements AuthService {
             SecurityContextHolder.getContext().setAuthentication(authentication);
 
             CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
+            if (userDetails == null) {
+                throw new BusinessException("Xac thuc that bai", HttpStatus.UNAUTHORIZED);
+            }
             User loggedUser = userRepository.findById(userDetails.getId())
                     .orElseThrow(() -> new BusinessException("Khong tim thay nguoi dung", HttpStatus.NOT_FOUND));
 
@@ -121,8 +126,11 @@ public class AuthServiceImpl implements AuthService {
         if (user == null || user.getLockoutEndTime() == null) {
             return;
         }
-        if (user.getLockoutEndTime().isAfter(java.time.LocalDateTime.now())) {
-            long seconds = java.time.Duration.between(java.time.LocalDateTime.now(), user.getLockoutEndTime()).getSeconds();
+        ZoneId zone = ZoneId.systemDefault();
+        ZonedDateTime now = ZonedDateTime.now(zone);
+        ZonedDateTime lockoutEnd = user.getLockoutEndTime().atZone(zone);
+        if (lockoutEnd.isAfter(now)) {
+            long seconds = java.time.Duration.between(now, lockoutEnd).getSeconds();
             if (seconds < 0) seconds = 0;
             String formatted = String.format("%02d:%02d", seconds / 60, seconds % 60);
             throw new BusinessException(
@@ -310,7 +318,7 @@ public class AuthServiceImpl implements AuthService {
         } else {
             // Chống Timing-based email enumeration bằng cách giả lập thời gian xử lý (DB queries + gửi email)
             long elapsed = System.currentTimeMillis() - startTime;
-            long targetDelay = 1500 + secureRandom.nextInt(2000); // 1500ms - 3500ms
+            long targetDelay = 1500L + secureRandom.nextInt(2000); // 1500ms - 3500ms
 
             if (elapsed < targetDelay) {
                 try {

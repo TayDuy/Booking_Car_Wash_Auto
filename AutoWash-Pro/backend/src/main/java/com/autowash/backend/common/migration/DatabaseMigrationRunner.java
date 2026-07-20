@@ -54,7 +54,7 @@ public class DatabaseMigrationRunner implements CommandLineRunner {
         jdbcTemplate.update("UPDATE customer_reward SET discount_value = 150000.00 WHERE status = 'UNUSED' AND reward_id IN (SELECT reward_id FROM reward WHERE required_tier_level = 4 AND reward_value = 150000.00)");
 
         String sql = "INSERT INTO reward (reward_name, required_points, reward_type, reward_value, vehicle_type, status, required_tier_level, created_at) " +
-                     "SELECT ?, 1, 'discount', ?, 'car', 'active', ?, NOW() " +
+                      "SELECT ?, 1, 'discount', ?, '4 chỗ', 'active', ?, NOW() " +
                      "WHERE NOT EXISTS (SELECT 1 FROM reward WHERE required_tier_level = ? AND reward_type = 'discount' AND reward_name LIKE '%chào mừng%')";
 
         int silver = jdbcTemplate.update(sql, "Voucher chào mừng hạng Bạc", BigDecimal.valueOf(50000.00), 2, 2);

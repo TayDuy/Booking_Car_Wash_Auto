@@ -2,6 +2,7 @@ package com.autowash.backend.refund.controller;
 
 import com.autowash.backend.refund.dto.RefundCompleteRequestDTO;
 import com.autowash.backend.refund.dto.RefundCreateRequestDTO;
+import com.autowash.backend.refund.dto.RefundCustomerCreateRequestDTO;
 import com.autowash.backend.refund.dto.RefundDecisionDTO;
 import com.autowash.backend.refund.dto.RefundLookupResponseDTO;
 import com.autowash.backend.refund.dto.RefundResponseDTO;
@@ -69,7 +70,7 @@ public class RefundController {
     @PreAuthorize("hasRole('CUSTOMER')")
     @PostMapping("/my")
     public ResponseEntity<RefundResponseDTO> createMine(
-            @Valid @RequestBody RefundSelfRequestDTO request,
+            @Valid @RequestBody RefundCustomerCreateRequestDTO request,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         return ResponseEntity
                 .status(HttpStatus.CREATED)

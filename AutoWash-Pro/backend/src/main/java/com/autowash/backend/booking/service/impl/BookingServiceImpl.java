@@ -34,6 +34,9 @@ import com.autowash.backend.payment.entity.Payment;
 import com.autowash.backend.payment.repository.PaymentRepository;
 import com.autowash.backend.promotion.repository.PromotionUseRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,6 +45,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -328,15 +332,42 @@ public class BookingServiceImpl implements BookingService {
                 .toList();
     }
 
-    /** Lấy danh sách tóm tắt tất cả booking. */
+    /** Lấy danh sách tóm tắt tất cả booking (phân trang). */
     @Override
     @Transactional(readOnly = true)
-    public List<BookingSummaryResponseDTO> getAllBookings(BookingSortOption sortOption) {
+    public Page<BookingSummaryResponseDTO> getAllBookings(BookingSortOption sortOption, Pageable pageable) {
         BookingSortOption effectiveSort = sortOption != null ? sortOption : BookingSortOption.NEWEST;
-        List<Booking> bookings = effectiveSort == BookingSortOption.PRIORITY
-                ? bookingRepository.findAllWithAssociationsOrderByPriority()
-                : bookingRepository.findAllWithAssociationsOrderByNewest();
-        return mapToSummaryResponses(bookings);
+        Page<Booking> bookingPage = effectiveSort == BookingSortOption.PRIORITY
+                ? bookingRepository.findAllWithAssociationsOrderByPriority(pageable)
+                : bookingRepository.findAllWithAssociationsOrderByNewest(pageable);
+        List<BookingSummaryResponseDTO> dtos = mapToSummaryResponses(bookingPage.getContent());
+        return new PageImpl<>(dtos, pageable, bookingPage.getTotalElements());
+    }
+
+    /** Lấy danh sách đơn hàng (checked_in, in_progress, completed) phân trang. */
+    @Override
+    @Transactional(readOnly = true)
+    public Page<BookingSummaryResponseDTO> getAllOrders(Collection<BookingStatus> statuses, Pageable pageable) {
+        Page<Booking> bookingPage = bookingRepository.findAllWithAssociationsByStatusIn(statuses, pageable);
+        List<BookingSummaryResponseDTO> dtos = mapToSummaryResponses(bookingPage.getContent());
+        return new PageImpl<>(dtos, pageable, bookingPage.getTotalElements());
+    }
+
+    /** Thống kê đơn hàng (checked_in, in_progress, completed). */
+    @Override
+    @Transactional(readOnly = true)
+    public OrderStatisticsDTO getOrderStatistics(Collection<BookingStatus> statuses) {
+        long total = bookingRepository.countByStatusIn(statuses);
+        long checkedIn = bookingRepository.countByStatusIn(List.of(BookingStatus.checked_in));
+        long inProgress = bookingRepository.countByStatusIn(List.of(BookingStatus.in_progress));
+        long completed = bookingRepository.countByStatusIn(List.of(BookingStatus.completed));
+
+        List<BigDecimal> totals = bookingRepository.findTotalAmountByStatusIn(statuses);
+        BigDecimal totalValue = totals.stream()
+                .filter(java.util.Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        return new OrderStatisticsDTO(total, checkedIn, inProgress, completed, totalValue);
     }
 
     /** Lấy danh sách booking theo customer, sắp xếp mới nhất trước. */

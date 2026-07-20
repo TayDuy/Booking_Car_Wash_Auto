@@ -884,7 +884,7 @@ public class PaymentServiceImpl implements PaymentService {
         int balanceAfter = currentBalance - reward.getRequiredPoints();
 
         loyaltyTransactionRepository.save(LoyaltyTransaction.builder()
-                .customerId(Integer.valueOf(customer.getCustomerId()))
+                .customerId(customer.getCustomerId())
                 .transactionType("redeem")
                 .points(-reward.getRequiredPoints())
                 .balanceBefore(currentBalance)
@@ -905,7 +905,7 @@ public class PaymentServiceImpl implements PaymentService {
         int balanceAfter = currentBalance + reward.getRequiredPoints();
 
         loyaltyTransactionRepository.save(LoyaltyTransaction.builder()
-                .customerId(Integer.valueOf(customer.getCustomerId()))
+                .customerId(customer.getCustomerId())
                 .transactionType("adjust")
                 .points(reward.getRequiredPoints())
                 .balanceBefore(currentBalance)

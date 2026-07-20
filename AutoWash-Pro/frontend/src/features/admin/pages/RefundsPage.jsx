@@ -118,8 +118,6 @@ function getMethodLabel(method) {
         case "bank_transfer":
             return "Chuyển khoản";
 
-        case "original_payment_method":
-            return "Hoàn về phương thức gốc";
 
         default:
             return method || "N/A";
@@ -136,6 +134,13 @@ export default function RefundsPage() {
     const [selectedRefund, setSelectedRefund] = useState(null);
     const [adminNote, setAdminNote] = useState("");
     const [actionLoading, setActionLoading] = useState(false);
+    const [toast, setToast] = useState(null);
+
+    useEffect(() => {
+        if (!toast) return;
+        const t = setTimeout(() => setToast(null), 2500);
+        return () => clearTimeout(t);
+    }, [toast]);
 
     useEffect(() => {
         loadRefunds();
@@ -258,6 +263,7 @@ export default function RefundsPage() {
             await refundApi.markProcessing(refund.refundId);
             await loadRefunds();
             closeDetail();
+            setToast("Đã tiếp nhận xử lý yêu cầu");
         } catch (error) {
             console.error("Mark processing failed:", error);
 
@@ -283,6 +289,7 @@ export default function RefundsPage() {
             await refundApi.approve(refund.refundId, adminNote);
             await loadRefunds();
             closeDetail();
+            setToast("Đã duyệt yêu cầu hoàn tiền");
         } catch (error) {
             console.error("Approve refund failed:", error);
 
@@ -311,6 +318,7 @@ export default function RefundsPage() {
             await refundApi.reject(refund.refundId, adminNote);
             await loadRefunds();
             closeDetail();
+            setToast("Đã từ chối yêu cầu hoàn tiền");
         } catch (error) {
             console.error("Reject refund failed:", error);
 
@@ -336,6 +344,7 @@ export default function RefundsPage() {
             await refundApi.complete(refund.refundId, adminNote);
             await loadRefunds();
             closeDetail();
+            setToast("Đã xác nhận hoàn tiền thành công");
         } catch (error) {
             console.error("Complete refund failed:", error);
 
@@ -701,8 +710,7 @@ export default function RefundsPage() {
                                 </section>
                             )}
 
-                            {selectedRefund.status === "approved" &&
-                                selectedRefund.refundMethod !== "original_payment_method" && (
+                            {selectedRefund.status === "approved" && (
                                     <section className="refunds-detail-section">
                                         <h3>Xác nhận chuyển tiền</h3>
                                         <p className="refunds-reason-text">
@@ -785,6 +793,18 @@ export default function RefundsPage() {
                             )}
                         </div>
                     </div>
+                </div>
+            )}
+            {toast && (
+                <div style={{
+                    position: "fixed", bottom: "24px", right: "24px",
+                    background: "#065f46", color: "#fff", padding: "12px 20px",
+                    borderRadius: "8px", fontWeight: 600, fontSize: "14px",
+                    boxShadow: "0 4px 12px rgba(0,0,0,0.15)", zIndex: 9999,
+                    display: "flex", alignItems: "center", gap: "8px",
+                }}>
+                    <CheckCircle2 size={18} />
+                    {toast}
                 </div>
             )}
         </div>

@@ -2,6 +2,8 @@
 package com.autowash.backend.refund.service.impl;
 
 import com.autowash.backend.booking.entity.Booking;
+import com.autowash.backend.booking.enums.BookingStatus;
+import com.autowash.backend.booking.repository.BookingRepository;
 import com.autowash.backend.common.exception.BusinessException;
 import com.autowash.backend.common.exception.ResourceNotFoundException;
 import com.autowash.backend.customer.entity.Customer;
@@ -10,6 +12,8 @@ import com.autowash.backend.employee.entity.Employee;
 import com.autowash.backend.employee.entity.Employee.EmployeePosition;
 import com.autowash.backend.employee.entity.Employee.StaffStatus;
 import com.autowash.backend.employee.repository.EmployeeRepository;
+import com.autowash.backend.user.entity.User;
+import com.autowash.backend.user.repository.UserRepository;
 import com.autowash.backend.notification.dto.NotificationCreateDTO;
 import com.autowash.backend.notification.entity.Notification;
 import com.autowash.backend.notification.service.NotificationService;
@@ -39,10 +43,12 @@ public class RefundServiceImpl implements RefundService {
 
     private final RefundRepository refundRepository;
     private final PaymentRepository paymentRepository;
+    private final BookingRepository bookingRepository;
     private final EmployeeRepository employeeRepository;
     private final CustomerRepository customerRepository;
+    private final UserRepository userRepository;
     private final RefundMapper refundMapper;
-    private final NotificationService notificationService;
+    private final com.autowash.backend.notification.service.NotificationHelperService notificationHelperService;
 
     @Override
     @Transactional(readOnly = true)
@@ -145,18 +151,24 @@ public class RefundServiceImpl implements RefundService {
      * booking (khách có thể yêu cầu hoàn tiền bất kỳ lúc nào miễn là đã thanh toán).
      */
     @Override
-    public RefundResponseDTO createSelfRequest(RefundSelfRequestDTO request, Integer customerUserId) {
+    public RefundResponseDTO createSelfRequest(RefundCustomerCreateRequestDTO request, Integer customerUserId) {
         Customer customer = resolveCustomer(customerUserId);
 
-        Payment payment = paymentRepository.findByIdForUpdate(request.getPaymentId())
-                .orElseThrow(() -> new ResourceNotFoundException("Payment", "id", request.getPaymentId()));
+        Booking booking = bookingRepository.findById(request.getBookingId())
+                .orElseThrow(() -> new ResourceNotFoundException("Booking", "id", request.getBookingId()));
 
-        Booking booking = payment.getBooking();
-        if (booking == null || booking.getCustomer() == null
+        if (booking.getCustomer() == null
                 || !booking.getCustomer().getCustomerId().equals(customer.getCustomerId())) {
             throw new BusinessException(
-                    "Bạn không có quyền yêu cầu hoàn tiền cho giao dịch này.",
+                    "Bạn không có quyền yêu cầu hoàn tiền cho đơn đặt lịch này.",
                     HttpStatus.FORBIDDEN);
+        }
+
+        Payment payment = booking.getPayment();
+        if (payment == null) {
+            throw new BusinessException(
+                    "Đơn đặt lịch này chưa có giao dịch thanh toán.",
+                    HttpStatus.BAD_REQUEST);
         }
 
         if (payment.getPaymentStatus() != PaymentStatus.paid) {
@@ -171,14 +183,12 @@ public class RefundServiceImpl implements RefundService {
                     HttpStatus.CONFLICT);
         });
 
-        boolean isOnlinePayment = payment.getPaymentMethod() == Payment.PaymentMethod.bank_transfer
-                || payment.getPaymentMethod() == Payment.PaymentMethod.paypal;
-        Refund.RefundMethod refundMethod = isOnlinePayment
-                ? Refund.RefundMethod.original_payment_method
-                : Refund.RefundMethod.cash;
+        Refund.RefundMethod refundMethod = request.getRefundMethod();
+        if (refundMethod == null) {
+            refundMethod = Refund.RefundMethod.cash;
+        }
 
-        Refund refund = refundMapper.toSelfEntity(
-                request, payment, customer, payment.getFinalAmount(), refundMethod);
+        Refund refund = refundMapper.toCustomerEntity(request, payment, customer, payment.getFinalAmount(), refundMethod);
         refund.setStatus(RefundStatus.pending);
         refund = refundRepository.save(refund);
 
@@ -207,6 +217,7 @@ public class RefundServiceImpl implements RefundService {
     @Transactional(readOnly = true)
     public List<RefundResponseDTO> getMine(Integer requestingUserId) {
         Employee employee = resolveEmployee(requestingUserId);
+        if (employee == null) return List.of();
 
         return refundRepository.findByRequestedBy_EmployeeIdOrderByCreatedAtDesc(employee.getEmployeeId())
                 .stream()
@@ -259,38 +270,27 @@ public class RefundServiceImpl implements RefundService {
         }
 
         String adminNote = decision != null ? decision.getAdminNote() : null;
-        boolean autoRefund = refund.isAutoRefundMethod();
-
         refund.approve(admin, adminNote);
-
-        if (autoRefund) {
-            refund.complete(admin, "Tự động hoàn tiền qua cổng thanh toán gốc.");
-        }
-
         refund = refundRepository.save(refund);
 
-        if (autoRefund) {
-            payment.setPaymentStatus(PaymentStatus.refunded);
-            paymentRepository.save(payment);
+        Booking booking = payment.getBooking();
+        if (booking != null) {
+            booking.setStatus(BookingStatus.cancelled);
+            bookingRepository.save(booking);
         }
 
-        if (autoRefund) {
-            notifyRequester(refund, "Yêu cầu hoàn tiền đã được duyệt",
-                    String.format("Yêu cầu hoàn tiền #%d (%s VND) đã được duyệt và tự động hoàn tất qua cổng thanh toán gốc.",
-                            refund.getRefundId(), refund.getAmount().toPlainString()),
-                    Notification.NotificationType.REFUND_APPROVED);
+        String refundMethodStr = refund.getRefundMethod() != null ? refund.getRefundMethod().name() : "tiền";
 
-            notifyCustomer(refund, "Hoàn tiền thành công",
-                    String.format("Yêu cầu hoàn tiền %s VND cho lịch #%s đã được hoàn thành công qua phương thức thanh toán gốc.",
-                            refund.getAmount().toPlainString(),
-                            payment.getBooking() != null ? payment.getBooking().getBookingCode() : ""),
-                    Notification.NotificationType.REFUND_COMPLETED);
-        } else {
-            notifyRequester(refund, "Yêu cầu hoàn tiền chờ chuyển khoản",
-                    String.format("Yêu cầu hoàn tiền #%d đã được duyệt, vui lòng thực hiện chuyển tiền (%s) và xác nhận hoàn tất.",
-                            refund.getRefundId(), refund.getRefundMethod().name()),
-                    Notification.NotificationType.REFUND_APPROVED);
-        }
+        notifyRequester(refund, "Yêu cầu hoàn tiền đã được duyệt",
+                String.format("Yêu cầu hoàn tiền #%d đã được duyệt, vui lòng thực hiện chuyển tiền (%s) và xác nhận hoàn tất.",
+                        refund.getRefundId(), refundMethodStr),
+                Notification.NotificationType.REFUND_APPROVED);
+
+        notifyCustomer(refund, "Hoàn tiền — lịch hẹn đã hủy",
+                String.format("Yêu cầu hoàn tiền %s VND cho lịch #%s đã được duyệt. Lịch hẹn đã được hủy.",
+                        refund.getAmount() != null ? refund.getAmount().toPlainString() : "0",
+                        booking != null ? booking.getBookingCode() : ""),
+                Notification.NotificationType.REFUND_APPROVED);
 
         return refundMapper.toResponse(refund);
     }
@@ -320,12 +320,12 @@ public class RefundServiceImpl implements RefundService {
 
         notifyRequester(refund, "Yêu cầu hoàn tiền đã hoàn tất",
                 String.format("Yêu cầu hoàn tiền #%d (%s VND) đã được chuyển tiền và đánh dấu hoàn tất.",
-                        refund.getRefundId(), refund.getAmount().toPlainString()),
+                        refund.getRefundId(), refund.getAmount() != null ? refund.getAmount().toPlainString() : "0"),
                 Notification.NotificationType.REFUND_COMPLETED);
 
         notifyCustomer(refund, "Hoàn tiền thành công",
                 String.format("Yêu cầu hoàn tiền %s VND cho lịch #%s đã hoàn tất.",
-                        refund.getAmount().toPlainString(),
+                        refund.getAmount() != null ? refund.getAmount().toPlainString() : "0",
                         payment.getBooking() != null ? payment.getBooking().getBookingCode() : ""),
                 Notification.NotificationType.REFUND_COMPLETED);
 
@@ -363,8 +363,8 @@ public class RefundServiceImpl implements RefundService {
     }
 
     private Employee resolveEmployee(Integer userId) {
-        return employeeRepository.findByUser_Id(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("Employee", "userId", userId));
+        if (userId == null) return null;
+        return employeeRepository.findByUser_Id(userId).orElse(null);
     }
 
     private Customer resolveCustomer(Integer userId) {
@@ -377,80 +377,46 @@ public class RefundServiceImpl implements RefundService {
     }
 
     private void notifyRequester(Refund refund, String title, String body, Notification.NotificationType type) {
-        try {
-            Employee requestedBy = refund.getRequestedBy();
-            if (requestedBy != null && requestedBy.getUser() != null) {
-                notificationService.create(NotificationCreateDTO.builder()
-                        .userId(requestedBy.getUser().getId())
-                        .type(type)
-                        .title(title)
-                        .body(body)
-                        .referenceId(refund.getRefundId())
-                        .referenceType("refund")
-                        .channel(Notification.NotificationChannel.in_app)
-                        .build());
-            }
-        } catch (Exception e) {
-            log.error("Lỗi khi tạo thông báo cho người yêu cầu hoàn tiền #{}: {}",
-                    refund.getRefundId(), e.getMessage(), e);
+        Payment payment = refund.getPayment();
+        Booking booking = payment != null ? payment.getBooking() : null;
+        Integer refId = booking != null ? booking.getBookingId() : refund.getRefundId();
+
+        Employee requestedBy = refund.getRequestedBy();
+        if (requestedBy != null && requestedBy.getUser() != null) {
+            notificationHelperService.sendNotificationSafely(requestedBy.getUser().getId(), type, title, body, refId, "booking");
+        } else if (refund.getRequestedByCustomer() != null && refund.getRequestedByCustomer().getUser() != null) {
+            notificationHelperService.sendNotificationSafely(refund.getRequestedByCustomer().getUser().getId(), type, title, body, refId, "booking");
         }
     }
 
     private void notifyCustomer(Refund refund, String title, String body, Notification.NotificationType type) {
-        try {
-            Payment payment = refund.getPayment();
-            Booking booking = payment != null ? payment.getBooking() : null;
-            Customer customer = booking != null ? booking.getCustomer() : null;
+        Payment payment = refund.getPayment();
+        Booking booking = payment != null ? payment.getBooking() : null;
+        Customer customer = booking != null ? booking.getCustomer() : null;
 
-            if (customer != null && customer.getUser() != null) {
-                notificationService.create(NotificationCreateDTO.builder()
-                        .userId(customer.getUser().getId())
-                        .type(type)
-                        .title(title)
-                        .body(body)
-                        .referenceId(booking.getBookingId())
-                        .referenceType("booking")
-                        .channel(Notification.NotificationChannel.in_app)
-                        .build());
-            }
-        } catch (Exception e) {
-            log.error("Lỗi khi tạo thông báo cho khách hàng về hoàn tiền #{}: {}",
-                    refund.getRefundId(), e.getMessage(), e);
+        if (customer != null && customer.getUser() != null) {
+            notificationHelperService.sendNotificationSafely(customer.getUser().getId(), type, title, body, booking != null ? booking.getBookingId() : null, "booking");
         }
     }
 
     private void notifyAdminsRefundRequested(Refund refund) {
-        try {
-            List<Employee> admins = employeeRepository
-                    .findByPositionAndStatus(EmployeePosition.admin, StaffStatus.active);
+        List<Employee> admins = employeeRepository.findByPositionAndStatus(EmployeePosition.admin, StaffStatus.active);
+        Payment payment = refund.getPayment();
+        Booking booking = payment != null ? payment.getBooking() : null;
+        Integer refId = booking != null ? booking.getBookingId() : refund.getRefundId();
 
-            for (Employee admin : admins) {
-                if (admin.getUser() == null) {
-                    continue;
-                }
-                String requesterName = refund.getRequestedBy() != null
-                        ? "Nhân viên " + refund.getRequestedBy().getFullName()
-                        : (refund.getRequestedByCustomer() != null
-                        ? "Khách hàng " + refund.getRequestedByCustomer().getFullName()
-                        : "Một người dùng");
-                notificationService.create(NotificationCreateDTO.builder()
-                        .userId(admin.getUser().getId())
-                        .type(Notification.NotificationType.REFUND_REQUESTED)
-                        .title("Yêu cầu hoàn tiền mới")
-                        .body(String.format(
-                                "%s vừa tạo yêu cầu hoàn tiền #%d (%s VND) cho PAY-%d.",
-                                requesterName,
-                                refund.getRefundId(),
-                                refund.getAmount().toPlainString(),
-                                refund.getPayment().getPaymentId()))
-                        .referenceId(refund.getRefundId())
-                        .referenceType("refund")
-                        .channel(Notification.NotificationChannel.in_app)
-                        .build());
+        for (Employee admin : admins) {
+            if (admin.getUser() == null || admin.getUser().getId() == null) {
+                continue;
             }
-        } catch (Exception e) {
-            log.error("Lỗi khi tạo thông báo cho admin về yêu cầu hoàn tiền #{}: {}",
-                    refund.getRefundId(), e.getMessage(), e);
+            String requesterName = refund.getRequestedBy() != null
+                    ? "Nhân viên " + refund.getRequestedBy().getFullName()
+                    : (refund.getRequestedByCustomer() != null
+                    ? "Khách hàng " + refund.getRequestedByCustomer().getFullName()
+                    : "Một người dùng");
+            String body = String.format("%s vừa tạo yêu cầu hoàn tiền #%d (%s VND) cho PAY-%d.",
+                    requesterName, refund.getRefundId(), refund.getAmount() != null ? refund.getAmount().toPlainString() : "0", refund.getPayment().getPaymentId());
+            notificationHelperService.sendNotificationSafely(admin.getUser().getId(), Notification.NotificationType.REFUND_REQUESTED, "Yêu cầu hoàn tiền mới", body, refId, "booking");
         }
     }
 }

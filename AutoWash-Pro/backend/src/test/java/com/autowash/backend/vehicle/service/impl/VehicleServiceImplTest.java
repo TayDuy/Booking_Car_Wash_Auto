@@ -52,7 +52,7 @@ class VehicleServiceImplTest {
                 .licensePlate("51A-999.99")
                 .brand("Honda")
                 .model("Civic")
-                .vehicleType(Vehicle.VehicleType.car)
+                .vehicleType(Vehicle.VehicleType.FOUR_SEATS)
                 .isActive(true)
                 .build();
 
@@ -80,7 +80,7 @@ class VehicleServiceImplTest {
                 .licensePlate("51A-999.99")
                 .brand("Honda")
                 .model("Civic")
-                .vehicleType(Vehicle.VehicleType.car)
+                .vehicleType(Vehicle.VehicleType.FOUR_SEATS)
                 .isActive(true)
                 .build();
 
@@ -104,7 +104,7 @@ class VehicleServiceImplTest {
         request.setLicensePlate("51A-999.99");
         request.setBrand("Honda");
         request.setModel("Civic");
-        request.setVehicleType(Vehicle.VehicleType.car);
+        request.setVehicleType(Vehicle.VehicleType.FOUR_SEATS);
         request.setCustomerId(10);
 
         when(customerRepository.findByUser_Id(1)).thenReturn(Optional.of(customer));
@@ -116,7 +116,7 @@ class VehicleServiceImplTest {
                 .licensePlate("51A-999.99")
                 .brand("Honda")
                 .model("Civic")
-                .vehicleType(Vehicle.VehicleType.car)
+                .vehicleType(Vehicle.VehicleType.FOUR_SEATS)
                 .isActive(true)
                 .build();
         when(vehicleRepository.save(any(Vehicle.class))).thenReturn(savedVehicle);

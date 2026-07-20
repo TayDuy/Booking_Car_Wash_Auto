@@ -1,8 +1,9 @@
-﻿import { NavLink } from "react-router-dom";
+import { NavLink } from "react-router-dom";
 import useAuth from "../../hooks/useAuth";
 import {
   LayoutDashboard,
   CalendarCheck,
+  Star,
   Users,
   Car,
   Building2,
@@ -15,6 +16,7 @@ import {
   ReceiptText,
   ShieldCheck,
   Settings,
+  Undo2,
 } from "lucide-react";
 import "./Sidebar.css";
 
@@ -29,12 +31,14 @@ const menuGroups = [
     title: "Quản lý",
     items: [
       { label: "Đặt lịch", path: "/admin/bookings", icon: CalendarCheck },
+      { label: "Đánh giá", path: "/admin/ratings", icon: Star },
       { label: "Khách hàng", path: "/admin/customers", icon: Users },
       { label: "Xe của khách", path: "/admin/vehicles", icon: Car },
       { label: "Chi nhánh", path: "/admin/branches", icon: Building2 },
       { label: "Dịch vụ", path: "/admin/services", icon: Package },
       { label: "Đơn hàng", path: "/admin/orders", icon: ShoppingCart },
       { label: "Thanh toán", path: "/admin/payments", icon: ReceiptText },
+      { label: "Hoàn tiền", path: "/admin/refunds", icon: Undo2 },
     ],
   },
   {

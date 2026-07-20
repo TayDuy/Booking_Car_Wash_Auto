@@ -232,6 +232,7 @@ public class PaymentController {
     }
 
     @GetMapping("/vnpay-ipn")
+    @SuppressWarnings("java:S6863")
     public ResponseEntity<Map<String, String>> vnpayIpn(HttpServletRequest request) {
         Map<String, String> result = new HashMap<>();
         try {

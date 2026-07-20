@@ -44,7 +44,7 @@ public interface RewardRepository extends JpaRepository<Reward, Integer> {
             SELECT r FROM Reward r
             WHERE r.status = 'active'
               AND r.requiredPoints <= :customerPoints
-              AND (r.vehicleType = 'both' OR r.vehicleType = :vehicleType)
+              AND (r.vehicleType = 'BOTH' OR r.vehicleType = :vehicleType)
             ORDER BY r.requiredPoints ASC
             """)
     List<Reward> findRedeemableByCustomer(@Param("customerPoints") Integer customerPoints,

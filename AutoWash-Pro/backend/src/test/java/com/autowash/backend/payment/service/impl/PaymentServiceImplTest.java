@@ -67,7 +67,7 @@ class PaymentServiceImplTest {
                 .build();
 
         Vehicle vehicle = Vehicle.builder()
-                .vehicleType(Vehicle.VehicleType.car)
+                .vehicleType(Vehicle.VehicleType.FOUR_SEATS)
                 .build();
 
         Booking booking = Booking.builder()

@@ -235,52 +235,49 @@ export default function ManageOrdersPage() {
   const { showMessage } = useAppDialog();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [statistics, setStatistics] = useState({
+    total: 0, received: 0, processing: 0, completed: 0, totalValue: 0,
+  });
 
   const [keyword, setKeyword] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [paymentFilter, setPaymentFilter] = useState("all");
 
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [pageSize, setPageSize] = useState(50);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalElements, setTotalElements] = useState(0);
 
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
 
   useEffect(() => {
     loadOrders();
-  }, []);
+  }, [currentPage, pageSize]);
 
   async function loadOrders() {
     setLoading(true);
 
     try {
-      const response = await bookingApi.adminList();
-      const bookingList = unwrapList(response);
+      const [ordersResponse, statsResponse] = await Promise.all([
+        bookingApi.adminListOrders({ page: currentPage, size: pageSize }),
+        bookingApi.adminOrderStatistics(),
+      ]);
 
-      const orderList = bookingList
-        .filter((booking) =>
-          ORDER_STATUSES.includes(
-            normalizeValue(booking.status)
-          )
-        )
-        .sort((firstOrder, secondOrder) => {
-          const firstDate = getOrderDateValue(firstOrder);
-          const secondDate = getOrderDateValue(secondOrder);
+      const body = ordersResponse.data?.data || ordersResponse.data || {};
+      const content = body.content || [];
+      setOrders(Array.isArray(content) ? content : []);
+      if (body.totalPages !== undefined) setTotalPages(body.totalPages || 1);
+      if (body.totalElements !== undefined) setTotalElements(body.totalElements);
 
-          const firstTime = firstDate?.getTime() || 0;
-          const secondTime = secondDate?.getTime() || 0;
-
-          if (secondTime !== firstTime) {
-            return secondTime - firstTime;
-          }
-
-          return (
-            Number(secondOrder.bookingId || 0) -
-            Number(firstOrder.bookingId || 0)
-          );
-        });
-
-      setOrders(orderList);
+      const statsBody = statsResponse.data?.data || statsResponse.data || {};
+      setStatistics({
+        total: statsBody.total || 0,
+        received: statsBody.checkedIn || 0,
+        processing: statsBody.inProgress || 0,
+        completed: statsBody.completed || 0,
+        totalValue: statsBody.totalValue || 0,
+      });
     } catch (error) {
       console.error("Load admin orders failed:", error);
 
@@ -297,39 +294,6 @@ export default function ManageOrdersPage() {
       setLoading(false);
     }
   }
-
-  const statistics = useMemo(() => {
-    return orders.reduce(
-      (result, order) => {
-        const status = normalizeValue(order.status);
-
-        result.total += 1;
-
-        if (status === "checked_in") {
-          result.received += 1;
-        }
-
-        if (status === "in_progress") {
-          result.processing += 1;
-        }
-
-        if (status === "completed") {
-          result.completed += 1;
-        }
-
-        result.totalValue += Number(order.totalAmount || 0);
-
-        return result;
-      },
-      {
-        total: 0,
-        received: 0,
-        processing: 0,
-        completed: 0,
-        totalValue: 0,
-      }
-    );
-  }, [orders]);
 
   const filteredOrders = useMemo(() => {
     const normalizedKeyword = normalizeValue(keyword);
@@ -381,7 +345,7 @@ export default function ManageOrdersPage() {
   ]);
 
   useEffect(() => {
-    setCurrentPage(1);
+    setCurrentPage(0);
   }, [
     keyword,
     statusFilter,
@@ -389,48 +353,29 @@ export default function ManageOrdersPage() {
     pageSize,
   ]);
 
-  const totalPages = Math.max(
-    1,
-    Math.ceil(filteredOrders.length / pageSize)
-  );
-
   useEffect(() => {
-    if (currentPage > totalPages) {
-      setCurrentPage(totalPages);
+    if (currentPage >= totalPages) {
+      setCurrentPage(Math.max(0, totalPages - 1));
     }
   }, [currentPage, totalPages]);
 
   const paginatedOrders = useMemo(() => {
-    const startIndex =
-      (currentPage - 1) * pageSize;
-
-    return filteredOrders.slice(
-      startIndex,
-      startIndex + pageSize
-    );
-  }, [
-    filteredOrders,
-    currentPage,
-    pageSize,
-  ]);
+    return filteredOrders;
+  }, [filteredOrders]);
 
   const paginationItems = useMemo(
-    () =>
-      getPaginationItems(
-        currentPage,
-        totalPages
-      ),
+    () => getPaginationItems(currentPage + 1, totalPages),
     [currentPage, totalPages]
   );
 
   const firstVisibleItem =
-    filteredOrders.length === 0
+    totalElements === 0
       ? 0
-      : (currentPage - 1) * pageSize + 1;
+      : currentPage * pageSize + 1;
 
   const lastVisibleItem = Math.min(
-    currentPage * pageSize,
-    filteredOrders.length
+    (currentPage + 1) * pageSize,
+    totalElements
   );
 
   async function handleViewOrder(order) {
@@ -672,7 +617,7 @@ export default function ManageOrdersPage() {
                       }
                     >
                       <td>
-                        {(currentPage - 1) * pageSize +
+                        {currentPage * pageSize +
                           index +
                           1}
                       </td>
@@ -764,7 +709,7 @@ export default function ManageOrdersPage() {
                 </strong>{" "}
                 trong tổng số{" "}
                 <strong>
-                  {filteredOrders.length}
+                  {totalElements}
                 </strong>{" "}
                 đơn
               </div>
@@ -772,10 +717,10 @@ export default function ManageOrdersPage() {
               <div className="orders-pagination-controls">
                 <button
                   type="button"
-                  disabled={currentPage === 1}
+                  disabled={currentPage === 0}
                   onClick={() =>
-                    setCurrentPage((previousPage) =>
-                      Math.max(previousPage - 1, 1)
+                    setCurrentPage((prev) =>
+                      Math.max(prev - 1, 0)
                     )
                   }
                 >
@@ -788,12 +733,12 @@ export default function ManageOrdersPage() {
                       type="button"
                       key={item}
                       className={
-                        item === currentPage
+                        item - 1 === currentPage
                           ? "active"
                           : ""
                       }
                       onClick={() =>
-                        setCurrentPage(item)
+                        setCurrentPage(item - 1)
                       }
                     >
                       {item}
@@ -811,13 +756,13 @@ export default function ManageOrdersPage() {
                 <button
                   type="button"
                   disabled={
-                    currentPage === totalPages
+                    currentPage >= totalPages - 1
                   }
                   onClick={() =>
-                    setCurrentPage((previousPage) =>
+                    setCurrentPage((prev) =>
                       Math.min(
-                        previousPage + 1,
-                        totalPages
+                        prev + 1,
+                        totalPages - 1
                       )
                     )
                   }
@@ -840,6 +785,7 @@ export default function ManageOrdersPage() {
                   <option value={10}>10</option>
                   <option value={20}>20</option>
                   <option value={50}>50</option>
+                  <option value={100}>100</option>
                 </select>
               </label>
             </div>

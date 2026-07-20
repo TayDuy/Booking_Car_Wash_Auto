@@ -391,7 +391,6 @@ export default function EmployeeRefundsPage() {
                                 >
                                     <option value="cash">Tiền mặt</option>
                                     <option value="bank_transfer">Chuyển khoản</option>
-                                    <option value="original_payment_method">Hoàn về phương thức gốc</option>
                                 </select>
                             </label>
 
@@ -511,8 +510,7 @@ export default function EmployeeRefundsPage() {
                                         </div>
                                     )}
 
-                                    {refund.status === "approved" &&
-                                        refund.refundMethod !== "original_payment_method" && (
+                                    {refund.status === "approved" && (
                                             <button
                                                 type="button"
                                                 className="employee-refunds-complete-btn"

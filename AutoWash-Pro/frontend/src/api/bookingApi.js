@@ -43,6 +43,8 @@ const bookingApi = {
   // =========================================================
 
   adminList: (params) => axiosClient.get('/admin/bookings', { params }),
+  adminListOrders: (params) => axiosClient.get('/admin/bookings/orders', { params }),
+  adminOrderStatistics: () => axiosClient.get('/admin/bookings/orders/statistics'),
 
   adminDetail: (id) => axiosClient.get(`/admin/bookings/${id}`),
 

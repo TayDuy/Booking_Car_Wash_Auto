@@ -127,7 +127,7 @@ export default function BookingPage() {
     return mainPackages.filter(s => getCategory(s) === activeServiceTab);
   }, [mainPackages, activeServiceTab]);
 
-  // Backend lưu vehicleType là car/suv/truck, UI chỉ có 2 lựa chọn 4_seats/7_seats
+  // Backend Vehicle.VehicleType: FOUR_SEATS(4 chỗ) / SEVEN_SEATS(7 chỗ)
   const mapVehicleTypeToUi = (backendType) => {
     if (backendType === "suv" || backendType === "truck") return "7_seats";
     return "4_seats";

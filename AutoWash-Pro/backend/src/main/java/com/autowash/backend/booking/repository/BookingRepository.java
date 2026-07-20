@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -30,30 +31,68 @@ public interface BookingRepository extends JpaRepository<Booking, Integer> {
     /**
      * Admin - danh sách toàn bộ booking, sắp xếp mới đặt trước (mặc định).
      */
+    @Query(
+        value = """
+            SELECT b FROM Booking b
+            LEFT JOIN FETCH b.customer
+            LEFT JOIN FETCH b.vehicle
+            LEFT JOIN FETCH b.branch
+            LEFT JOIN FETCH b.slot
+            ORDER BY b.bookingDate DESC
+            """,
+        countQuery = """
+            SELECT COUNT(b) FROM Booking b
+            """)
+    Page<Booking> findAllWithAssociationsOrderByNewest(Pageable pageable);
+
+    /**
+     * Admin - danh sách booking theo danh sách trạng thái (orders).
+     */
+    @Query(
+        value = """
+            SELECT b FROM Booking b
+            LEFT JOIN FETCH b.customer
+            LEFT JOIN FETCH b.vehicle
+            LEFT JOIN FETCH b.branch
+            LEFT JOIN FETCH b.slot
+            WHERE b.status IN :statuses
+            ORDER BY b.bookingDate DESC
+            """,
+        countQuery = """
+            SELECT COUNT(b) FROM Booking b
+            WHERE b.status IN :statuses
+            """)
+    Page<Booking> findAllWithAssociationsByStatusIn(
+            @Param("statuses") java.util.Collection<BookingStatus> statuses,
+            Pageable pageable);
+
+    long countByStatusIn(@Param("statuses") java.util.Collection<BookingStatus> statuses);
+
     @Query("""
-        SELECT b FROM Booking b
-        LEFT JOIN FETCH b.customer
-        LEFT JOIN FETCH b.vehicle
-        LEFT JOIN FETCH b.branch
-        LEFT JOIN FETCH b.slot
-        ORDER BY b.bookingDate DESC
-        """)
-    List<Booking> findAllWithAssociationsOrderByNewest();
+            SELECT b.payment.finalAmount FROM Booking b
+            WHERE b.payment IS NOT NULL
+            AND b.status IN :statuses
+            """)
+    List<BigDecimal> findTotalAmountByStatusIn(@Param("statuses") java.util.Collection<BookingStatus> statuses);
 
     /**
      * Admin - danh sách toàn bộ booking, sắp xếp theo thứ hạng khách hàng
      * (priorityScore: Platinum > Gold > Silver > Member), cùng hạng thì
      * ai đặt trước xếp trước (FIFO).
      */
-    @Query("""
-        SELECT b FROM Booking b
-        LEFT JOIN FETCH b.customer
-        LEFT JOIN FETCH b.vehicle
-        LEFT JOIN FETCH b.branch
-        LEFT JOIN FETCH b.slot
-        ORDER BY b.priorityScore DESC, b.bookingDate ASC
-        """)
-    List<Booking> findAllWithAssociationsOrderByPriority();
+    @Query(
+        value = """
+            SELECT b FROM Booking b
+            LEFT JOIN FETCH b.customer
+            LEFT JOIN FETCH b.vehicle
+            LEFT JOIN FETCH b.branch
+            LEFT JOIN FETCH b.slot
+            ORDER BY b.priorityScore DESC, b.bookingDate ASC
+            """,
+        countQuery = """
+            SELECT COUNT(b) FROM Booking b
+            """)
+    Page<Booking> findAllWithAssociationsOrderByPriority(Pageable pageable);
 
     @Query("""
             SELECT DISTINCT b FROM Booking b
