@@ -1,0 +1,751 @@
+.customer-reward-admin-page {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  min-width: 0;
+  padding: 28px;
+}
+
+.customer-reward-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.customer-reward-header h1 {
+  margin: 0;
+  color: #101828;
+  font-size: 28px;
+  line-height: 1.2;
+}
+
+.customer-reward-header p {
+  margin: 8px 0 0;
+  color: #667085;
+  font-size: 14px;
+}
+
+.customer-reward-refresh {
+  min-height: 42px;
+  padding: 0 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid #d6deea;
+  border-radius: 11px;
+  background: #fff;
+  color: #344054;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.customer-reward-refresh:hover:not(:disabled) {
+  background: #f8fafc;
+}
+
+.customer-reward-refresh:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.customer-reward-spinning {
+  animation: customer-reward-spin 0.8s linear infinite;
+}
+
+@keyframes customer-reward-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.customer-reward-layout {
+  display: grid;
+  grid-template-columns: 300px minmax(0, 1fr);
+  align-items: start;
+  gap: 18px;
+  min-width: 0;
+}
+
+.customer-reward-customer-card {
+  position: sticky;
+  top: 20px;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid #e5eaf1;
+  border-radius: 17px;
+  background: #fff;
+}
+
+.customer-reward-card-title {
+  padding: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #edf0f5;
+}
+
+.customer-reward-card-title > div {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: #101828;
+}
+
+.customer-reward-card-title > span {
+  min-width: 30px;
+  height: 26px;
+  padding: 0 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: #eaf2ff;
+  color: #175cd3;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.customer-reward-customer-search {
+  height: 42px;
+  margin: 14px;
+  padding: 0 11px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #d6deea;
+  border-radius: 10px;
+  color: #667085;
+}
+
+.customer-reward-customer-search:focus-within {
+  border-color: #1570ef;
+  box-shadow: 0 0 0 3px rgba(21, 112, 239, 0.1);
+}
+
+.customer-reward-customer-search input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #101828;
+  font: inherit;
+  font-size: 13px;
+}
+
+.customer-reward-customer-list {
+  max-height: calc(100vh - 330px);
+  min-height: 260px;
+  padding: 0 10px 12px;
+  overflow-y: auto;
+}
+
+.customer-reward-customer-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.customer-reward-customer-list::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: #cbd5e1;
+}
+
+.customer-reward-customer-item {
+  width: 100%;
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: transparent;
+  color: #344054;
+  text-align: left;
+  cursor: pointer;
+}
+
+.customer-reward-customer-item:hover {
+  background: #f8fafc;
+}
+
+.customer-reward-customer-item.active {
+  border-color: #b2ccff;
+  background: #eff6ff;
+}
+
+.customer-reward-avatar {
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #dbeafe;
+  color: #175cd3;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.customer-reward-customer-item.active .customer-reward-avatar {
+  background: #175cd3;
+  color: #fff;
+}
+
+.customer-reward-customer-info {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.customer-reward-customer-info strong {
+  overflow: hidden;
+  color: #101828;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.customer-reward-customer-info small {
+  overflow: hidden;
+  color: #667085;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.customer-reward-empty {
+  min-height: 220px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #667085;
+  font-size: 13px;
+  text-align: center;
+}
+
+.customer-reward-content {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.customer-reward-no-customer {
+  min-height: 400px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #e5eaf1;
+  border-radius: 17px;
+  background: #fff;
+  color: #667085;
+}
+
+.customer-reward-selected {
+  padding: 18px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  border: 1px solid #e5eaf1;
+  border-radius: 17px;
+  background: #fff;
+}
+
+.customer-reward-selected > div {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 13px;
+}
+
+.customer-reward-selected-avatar {
+  width: 48px;
+  height: 48px;
+  flex: 0 0 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #175cd3;
+  color: #fff;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.customer-reward-selected h2 {
+  margin: 0;
+  color: #101828;
+  font-size: 18px;
+}
+
+.customer-reward-selected p {
+  margin: 5px 0 0;
+  overflow: hidden;
+  color: #667085;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.customer-reward-customer-id {
+  padding: 7px 11px;
+  border-radius: 999px;
+  background: #f2f4f7;
+  color: #475467;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.customer-reward-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.customer-reward-stat-card {
+  min-width: 0;
+  padding: 17px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid #e5eaf1;
+  border-radius: 15px;
+  background: #fff;
+}
+
+.customer-reward-stat-card > svg {
+  flex: 0 0 auto;
+}
+
+.customer-reward-stat-card > div {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.customer-reward-stat-card span {
+  overflow: hidden;
+  color: #667085;
+  font-size: 12px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.customer-reward-stat-card strong {
+  color: #101828;
+  font-size: 22px;
+}
+
+.customer-reward-stat-card.total {
+  color: #175cd3;
+}
+
+.customer-reward-stat-card.unused {
+  color: #b54708;
+}
+
+.customer-reward-stat-card.used {
+  color: #067647;
+}
+
+.customer-reward-stat-card.expired {
+  color: #b42318;
+}
+
+.customer-reward-table-card {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid #e5eaf1;
+  border-radius: 17px;
+  background: #fff;
+}
+
+.customer-reward-toolbar {
+  padding: 15px;
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) 210px;
+  gap: 12px;
+  border-bottom: 1px solid #edf0f5;
+}
+
+.customer-reward-search {
+  height: 42px;
+  padding: 0 11px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #d6deea;
+  border-radius: 10px;
+  color: #667085;
+}
+
+.customer-reward-search:focus-within {
+  border-color: #1570ef;
+  box-shadow: 0 0 0 3px rgba(21, 112, 239, 0.1);
+}
+
+.customer-reward-search input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #101828;
+  font: inherit;
+  font-size: 13px;
+}
+
+.customer-reward-toolbar > select {
+  height: 42px;
+  padding: 0 11px;
+  border: 1px solid #d6deea;
+  border-radius: 10px;
+  outline: 0;
+  background: #fff;
+  color: #344054;
+  font: inherit;
+  font-size: 13px;
+}
+
+.customer-reward-table-wrap {
+  overflow-x: auto;
+}
+
+.customer-reward-table {
+  width: 100%;
+  min-width: 1250px;
+  border-collapse: collapse;
+}
+
+.customer-reward-table th,
+.customer-reward-table td {
+  padding: 14px 13px;
+  border-bottom: 1px solid #edf0f5;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.customer-reward-table th {
+  background: #f8fafc;
+  color: #52637a;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.customer-reward-table td {
+  color: #344054;
+  font-size: 13px;
+}
+
+.customer-reward-table tbody tr:hover {
+  background: #fafcff;
+}
+
+.customer-reward-code {
+  color: #175cd3;
+  font-family: Consolas, monospace;
+  white-space: nowrap;
+}
+
+.customer-reward-points {
+  color: #b54708;
+  white-space: nowrap;
+}
+
+.customer-reward-value {
+  margin-top: 3px;
+  display: block;
+  color: #667085;
+  white-space: nowrap;
+}
+
+.customer-reward-status {
+  padding: 6px 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.customer-reward-status.unused {
+  background: #fff3d6;
+  color: #b54708;
+}
+
+.customer-reward-status.used {
+  background: #dcfae6;
+  color: #067647;
+}
+
+.customer-reward-status.expired {
+  background: #fee4e2;
+  color: #b42318;
+}
+
+.customer-reward-view-btn {
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 10px;
+  background: #eaf2ff;
+  color: #175cd3;
+  cursor: pointer;
+}
+
+.customer-reward-view-btn:hover {
+  background: #dbeafe;
+}
+
+.customer-reward-table-empty {
+  min-height: 260px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #667085;
+  font-size: 14px;
+}
+
+.customer-reward-pagination {
+  padding: 17px 19px;
+  display: grid;
+  grid-template-columns: minmax(210px, 1fr) auto auto;
+  align-items: center;
+  gap: 15px;
+  border-top: 1px solid #edf0f5;
+  color: #667085;
+  font-size: 13px;
+}
+
+.customer-reward-pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.customer-reward-pagination-controls button {
+  min-width: 38px;
+  height: 38px;
+  padding: 0 10px;
+  border: 1px solid #d6deea;
+  border-radius: 9px;
+  background: #fff;
+  color: #344054;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.customer-reward-pagination-controls button:hover:not(:disabled) {
+  border-color: #1570ef;
+  color: #175cd3;
+}
+
+.customer-reward-pagination-controls button.active {
+  border-color: #175cd3;
+  background: #175cd3;
+  color: #fff;
+}
+
+.customer-reward-pagination-controls button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.customer-reward-pagination-controls span {
+  width: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #98a2b3;
+}
+
+.customer-reward-pagination > label {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.customer-reward-pagination > label select {
+  height: 38px;
+  padding: 0 9px;
+  border: 1px solid #d6deea;
+  border-radius: 9px;
+  outline: 0;
+  background: #fff;
+  color: #344054;
+}
+
+.customer-reward-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1500;
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 23, 42, 0.56);
+}
+
+.customer-reward-modal {
+  width: min(680px, calc(100vw - 32px));
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+  border-radius: 19px;
+  background: #fff;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.22);
+}
+
+.customer-reward-modal-header {
+  padding: 20px 23px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  border-bottom: 1px solid #e5eaf1;
+}
+
+.customer-reward-modal-header span {
+  color: #667085;
+  font-size: 13px;
+}
+
+.customer-reward-modal-header h2 {
+  margin: 4px 0 0;
+  color: #101828;
+  font-family: Consolas, monospace;
+  font-size: 20px;
+}
+
+.customer-reward-modal-header button {
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 10px;
+  background: #f2f4f7;
+  color: #344054;
+  cursor: pointer;
+}
+
+.customer-reward-detail-grid {
+  padding: 23px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 15px;
+}
+
+.customer-reward-detail-grid > div {
+  min-width: 0;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  border: 1px solid #e5eaf1;
+  border-radius: 11px;
+}
+
+.customer-reward-detail-grid span {
+  color: #667085;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.customer-reward-detail-grid strong {
+  color: #101828;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 1180px) {
+  .customer-reward-layout {
+    grid-template-columns: 270px minmax(0, 1fr);
+  }
+
+  .customer-reward-stat-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .customer-reward-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .customer-reward-customer-card {
+    position: static;
+  }
+
+  .customer-reward-customer-list {
+    max-height: 320px;
+  }
+
+  .customer-reward-pagination {
+    grid-template-columns: 1fr;
+  }
+
+  .customer-reward-pagination > div:first-child {
+    text-align: center;
+  }
+
+  .customer-reward-pagination-controls {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .customer-reward-pagination > label {
+    justify-content: center;
+  }
+}
+
+@media (max-width: 650px) {
+  .customer-reward-admin-page {
+    padding: 18px;
+  }
+
+  .customer-reward-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .customer-reward-refresh {
+    width: 100%;
+  }
+
+  .customer-reward-selected {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .customer-reward-selected p {
+    white-space: normal;
+  }
+
+  .customer-reward-stat-grid,
+  .customer-reward-detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .customer-reward-toolbar {
+    grid-template-columns: 1fr;
+  }
+}

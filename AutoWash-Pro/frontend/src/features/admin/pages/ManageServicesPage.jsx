@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Eye, Pencil, Plus, Search, Trash2 } from "lucide-react";
 import servicePackageApi from "../../../api/servicePackageApi";
+import { useAppDialog } from "../../../contexts/DialogContext.jsx";
 import "./ManageServicesPage.css";
 
 const emptyForm = {
@@ -12,6 +13,7 @@ const emptyForm = {
 };
 
 export default function ManageServicesPage() {
+  const { confirmAction, showMessage } = useAppDialog();
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [keyword, setKeyword] = useState("");
@@ -105,8 +107,8 @@ export default function ManageServicesPage() {
         type === "checkbox"
           ? checked
           : name === "basePrice" || name === "durationMinutes"
-          ? Number(value)
-          : value,
+            ? Number(value)
+            : value,
     }));
   }
 
@@ -114,63 +116,130 @@ export default function ManageServicesPage() {
     e.preventDefault();
 
     if (!formData.serviceName.trim()) {
-      alert("Vui lòng nhập tên dịch vụ.");
+      await showMessage({
+        title: "Thiếu dữ liệu",
+        message: "Vui lòng nhập tên dịch vụ.",
+        variant: "warning",
+      });
       return;
     }
 
     if (!formData.basePrice || Number(formData.basePrice) < 0) {
-      alert("Vui lòng nhập giá dịch vụ hợp lệ.");
+      await showMessage({
+        title: "Giá không hợp lệ",
+        message: "Vui lòng nhập giá dịch vụ hợp lệ.",
+        variant: "warning",
+      });
       return;
     }
 
     if (!formData.durationMinutes || Number(formData.durationMinutes) <= 0) {
-      alert("Vui lòng nhập thời gian thực hiện hợp lệ.");
+      await showMessage({
+        title: "Thời gian không hợp lệ",
+        message: "Vui lòng nhập thời gian thực hiện hợp lệ.",
+        variant: "warning",
+      });
       return;
     }
 
     try {
-      if (editingService) {
+      const isEditing = Boolean(editingService);
+
+      if (isEditing) {
         const serviceId =
           editingService.serviceId ||
           editingService.servicePackageId ||
           editingService.id;
 
-        await servicePackageApi.update(serviceId, formData);
-        alert("Cập nhật dịch vụ thành công.");
+        await servicePackageApi.update(
+          serviceId,
+          formData
+        );
       } else {
         await servicePackageApi.create(formData);
-        alert("Thêm dịch vụ thành công.");
       }
 
       setShowForm(false);
       setEditingService(null);
       setFormData(emptyForm);
-      loadServices();
+
+      await loadServices();
+
+      await showMessage({
+        title: "Thành công",
+        message: isEditing
+          ? "Cập nhật dịch vụ thành công."
+          : "Thêm dịch vụ thành công.",
+        variant: "success",
+      });
     } catch (error) {
-      console.error("Save service failed:", error);
-      alert(error.response?.data?.message || "Lưu dịch vụ thất bại.");
+      console.error(
+        "Save service failed:",
+        error
+      );
+
+      await showMessage({
+        title: "Lưu dịch vụ thất bại",
+        message:
+          error.response?.data?.message ||
+          "Lưu dịch vụ thất bại.",
+        variant: "error",
+      });
     }
   }
 
   async function handleDelete(service) {
     const serviceId =
-      service.serviceId || service.servicePackageId || service.id;
+      service.serviceId ||
+      service.servicePackageId ||
+      service.id;
 
     if (!serviceId) {
-      alert("Không tìm thấy serviceId.");
+      await showMessage({
+        title: "Thiếu dữ liệu",
+        message: "Không tìm thấy serviceId.",
+        variant: "error",
+      });
       return;
     }
 
-    const ok = window.confirm("Bạn có chắc muốn xóa mềm dịch vụ này không?");
+    const serviceName =
+      service.serviceName ||
+      service.name ||
+      `#${serviceId}`;
+
+    const ok = await confirmAction({
+      title: "Xóa dịch vụ",
+      message: `Bạn có chắc muốn xóa dịch vụ "${serviceName}" không?`,
+      confirmText: "Xóa dịch vụ",
+      cancelText: "Hủy",
+      variant: "danger",
+    });
+
     if (!ok) return;
 
     try {
       await servicePackageApi.delete(serviceId);
-      alert("Xóa dịch vụ thành công.");
-      loadServices();
+      await loadServices();
+
+      await showMessage({
+        title: "Thành công",
+        message: "Xóa dịch vụ thành công.",
+        variant: "success",
+      });
     } catch (error) {
-      console.error("Delete service failed:", error);
-      alert(error.response?.data?.message || "Xóa dịch vụ thất bại.");
+      console.error(
+        "Delete service failed:",
+        error
+      );
+
+      await showMessage({
+        title: "Xóa dịch vụ thất bại",
+        message:
+          error.response?.data?.message ||
+          "Xóa dịch vụ thất bại.",
+        variant: "error",
+      });
     }
   }
 

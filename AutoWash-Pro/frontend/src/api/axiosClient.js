@@ -8,7 +8,7 @@ const axiosClient = axios.create({
     // QUAN TRỌNG: nếu không có timeout, khi backend bị treo (ví dụ backend
     // đang chờ vô thời hạn để gọi ra Supabase) thì request phía frontend
     // (ví dụ /auth/google) cũng sẽ chờ MÃI MÃI, khiến màn hình bị treo.
-    timeout: 15000,
+    timeout: 30000,
     headers: {
         "Content-Type": "application/json",
         Accept: "application/json",

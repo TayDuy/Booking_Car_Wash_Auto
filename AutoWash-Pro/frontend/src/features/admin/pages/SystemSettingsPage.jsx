@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Save, RotateCcw } from "lucide-react";
 import systemSettingApi from "../../../api/systemSettingApi";
+import { useAppDialog } from "../../../contexts/DialogContext.jsx";
 import "./SystemSettingsPage.css";
 
 const defaultSettings = {
@@ -28,6 +29,7 @@ const defaultSettings = {
 };
 
 export default function SystemSettingsPage() {
+  const { confirmAction, showMessage } = useAppDialog();
   const [settings, setSettings] = useState(defaultSettings);
   const [loading, setLoading] = useState(true);
 
@@ -48,10 +50,13 @@ export default function SystemSettingsPage() {
       });
     } catch (error) {
       console.error("Load settings failed:", error);
-      alert(
-        error.response?.data?.message ||
-        "Không tải được cấu hình hệ thống."
-      );
+      await showMessage({
+        title: "Tải cấu hình thất bại",
+        message:
+          error.response?.data?.message ||
+          "Không tải được cấu hình hệ thống.",
+        variant: "error",
+      });
     } finally {
       setLoading(false);
     }
@@ -83,47 +88,83 @@ export default function SystemSettingsPage() {
 
   async function handleSave() {
     try {
-      const response = await systemSettingApi.update(settings);
-      const data = response.data?.data || response.data;
+      const response =
+        await systemSettingApi.update(settings);
+
+      const data =
+        response.data?.data ||
+        response.data;
 
       setSettings({
         ...defaultSettings,
         ...data,
       });
 
-      alert("Lưu cấu hình thành công.");
+      await showMessage({
+        title: "Thành công",
+        message: "Lưu cấu hình thành công.",
+        variant: "success",
+      });
     } catch (error) {
-      console.error("Save settings failed:", error);
-      alert(
-        error.response?.data?.message ||
-        "Lưu cấu hình thất bại."
+      console.error(
+        "Save settings failed:",
+        error
       );
+
+      await showMessage({
+        title: "Lưu cấu hình thất bại",
+        message:
+          error.response?.data?.message ||
+          "Lưu cấu hình thất bại.",
+        variant: "error",
+      });
     }
   }
 
   async function handleReset() {
-    const ok = window.confirm(
-      "Bạn có chắc muốn khôi phục cấu hình mặc định?"
-    );
+    const ok = await confirmAction({
+      title: "Khôi phục cấu hình mặc định",
+      message:
+        "Bạn có chắc muốn khôi phục toàn bộ cấu hình mặc định không?",
+      confirmText: "Khôi phục",
+      cancelText: "Hủy",
+      variant: "danger",
+    });
 
     if (!ok) return;
 
     try {
-      const response = await systemSettingApi.reset();
-      const data = response.data?.data || response.data;
+      const response =
+        await systemSettingApi.reset();
+
+      const data =
+        response.data?.data ||
+        response.data;
 
       setSettings({
         ...defaultSettings,
         ...data,
       });
 
-      alert("Đã khôi phục cấu hình mặc định.");
+      await showMessage({
+        title: "Thành công",
+        message:
+          "Đã khôi phục cấu hình mặc định.",
+        variant: "success",
+      });
     } catch (error) {
-      console.error("Reset settings failed:", error);
-      alert(
-        error.response?.data?.message ||
-        "Khôi phục cấu hình thất bại."
+      console.error(
+        "Reset settings failed:",
+        error
       );
+
+      await showMessage({
+        title: "Khôi phục thất bại",
+        message:
+          error.response?.data?.message ||
+          "Khôi phục cấu hình thất bại.",
+        variant: "error",
+      });
     }
   }
 

@@ -14,6 +14,7 @@ import {
 
 import paymentApi from "../../../api/paymentApi";
 import bookingApi from "../../../api/bookingApi";
+import { useAppDialog } from "../../../contexts/DialogContext.jsx";
 
 import "./PaymentHistoryPage.css";
 
@@ -223,6 +224,7 @@ function getPaginationItems(currentPage, totalPages) {
 }
 
 export default function PaymentHistoryPage() {
+  const { showMessage } = useAppDialog();
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -318,10 +320,13 @@ export default function PaymentHistoryPage() {
 
       setPayments([]);
 
-      alert(
-        error.response?.data?.message ||
-        "Không tải được lịch sử thanh toán."
-      );
+      await showMessage({
+        title: "Tải lịch sử thanh toán thất bại",
+        message:
+          error.response?.data?.message ||
+          "Không tải được lịch sử thanh toán.",
+        variant: "error",
+      });
     } finally {
       setLoading(false);
     }
@@ -501,7 +506,14 @@ export default function PaymentHistoryPage() {
 
   async function handleViewPayment(payment) {
     if (!payment.paymentId) {
-      alert("Không tìm thấy paymentId.");
+      if (!payment.paymentId) {
+        await showMessage({
+          title: "Không thể mở thanh toán",
+          message: "Không tìm thấy paymentId.",
+          variant: "warning",
+        });
+        return;
+      }
       return;
     }
 
@@ -536,10 +548,13 @@ export default function PaymentHistoryPage() {
     } catch (error) {
       console.error("Load payment detail failed:", error);
 
-      alert(
-        error.response?.data?.message ||
-        "Không tải được chi tiết thanh toán."
-      );
+      await showMessage({
+        title: "Tải chi tiết thanh toán thất bại",
+        message:
+          error.response?.data?.message ||
+          "Không tải được chi tiết thanh toán.",
+        variant: "error",
+      });
     } finally {
       setDetailLoading(false);
     }

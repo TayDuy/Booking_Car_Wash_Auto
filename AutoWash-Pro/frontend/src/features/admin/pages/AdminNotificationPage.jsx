@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAppDialog } from "../../../contexts/DialogContext.jsx";
 import {
     Bell,
     CheckCheck,
@@ -16,13 +17,13 @@ import { getActiveTiers } from '../../../api/loyaltyTierService';
 import { isLoggedIn, getRole } from '../../../api/authService';
 
 const NOTIFICATION_TYPES = {
-    BOOKING_CONFIRMED:   { label: "Đặt lịch đã xác nhận",   category: "booking" },
-    BOOKING_CANCELLED:   { label: "Đặt lịch đã hủy",        category: "booking" },
-    BOOKING_RESCHEDULED: { label: "Đặt lịch đổi giờ",        category: "booking" },
-    WAITLIST_PROMOTED:   { label: "Được xếp từ danh sách chờ", category: "booking" },
-    TIER_UPGRADED:       { label: "Nâng hạng thành viên",    category: "tier" },
-    TIER_DOWNGRADED:     { label: "Hạ hạng thành viên",      category: "tier" },
-    PAYMENT_COMPLETED:   { label: "Thanh toán hoàn tất",     category: "payment" },
+    BOOKING_CONFIRMED: { label: "Đặt lịch đã xác nhận", category: "booking" },
+    BOOKING_CANCELLED: { label: "Đặt lịch đã hủy", category: "booking" },
+    BOOKING_RESCHEDULED: { label: "Đặt lịch đổi giờ", category: "booking" },
+    WAITLIST_PROMOTED: { label: "Được xếp từ danh sách chờ", category: "booking" },
+    TIER_UPGRADED: { label: "Nâng hạng thành viên", category: "tier" },
+    TIER_DOWNGRADED: { label: "Hạ hạng thành viên", category: "tier" },
+    PAYMENT_COMPLETED: { label: "Thanh toán hoàn tất", category: "payment" },
 };
 
 const CHANNELS = [
@@ -85,6 +86,7 @@ function NotifCard({ item, onMark, onRevoke }) {
 }
 
 export default function AdminNotificationPage() {
+    const { confirmAction } = useAppDialog();
     const navigate = useNavigate();
     const [activeFilter, setActiveFilter] = useState("all");
     const [groups, setGroups] = useState(GROUPS);
@@ -104,31 +106,31 @@ export default function AdminNotificationPage() {
     const [categoryCounts, setCategoryCounts] = useState({ booking: 0, tier: 0, payment: 0 });
     const [toast, setToast] = useState(null);
 
-    function showToast(message){
+    function showToast(message) {
         setToast(message);
-        setTimeout(()=> setToast(null), 2500);
+        setTimeout(() => setToast(null), 2500);
     }
 
-    useEffect(()=>{
-        if(!isLoggedIn()){
+    useEffect(() => {
+        if (!isLoggedIn()) {
             navigate('/login');
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    },[]);
+    }, []);
 
-    useEffect(()=>{
-        async function loadTiers(){
-            try{
+    useEffect(() => {
+        async function loadTiers() {
+            try {
                 const data = await getActiveTiers();
                 setTiers(data);
-            }catch(err){
+            } catch (err) {
                 console.error('load tiers', err);
             }
         }
         loadTiers();
-    },[]);
+    }, []);
 
-    function mapDtoToItem(dto){
+    function mapDtoToItem(dto) {
         const cat = categoryOf(dto.type);
         const tone = dto.isRead ? 'gray' : (cat === 'payment' ? 'green' : cat === 'tier' ? 'red' : 'blue');
         const icon = cat === 'payment' ? ThumbsUp : cat === 'tier' ? Star : AlertTriangle;
@@ -148,9 +150,9 @@ export default function AdminNotificationPage() {
         };
     }
 
-    async function load(){
+    async function load() {
         setLoading(true);
-        try{
+        try {
             const data = await getAll();
             const today = [];
             const yesterday = [];
@@ -161,23 +163,23 @@ export default function AdminNotificationPage() {
                 const item = mapDtoToItem(d);
                 catCount[item.categoryId] = (catCount[item.categoryId] || 0) + 1;
                 const dt = d.createdAt ? new Date(d.createdAt) : null;
-                if(!dt) { older.push(item); return; }
-                const diff = Math.floor((now - dt)/(1000*60*60*24));
-                if(diff === 0) today.push(item);
-                else if(diff === 1) yesterday.push(item);
+                if (!dt) { older.push(item); return; }
+                const diff = Math.floor((now - dt) / (1000 * 60 * 60 * 24));
+                if (diff === 0) today.push(item);
+                else if (diff === 1) yesterday.push(item);
                 else older.push(item);
             });
             const newGroups = [];
-            if(today.length) newGroups.push({ id: 'today', label: 'HÔM NAY', items: today });
-            if(yesterday.length) newGroups.push({ id: 'yesterday', label: 'HÔM QUA', items: yesterday });
-            if(older.length) newGroups.push({ id: 'older', label: 'CŨ HƠN', items: older });
+            if (today.length) newGroups.push({ id: 'today', label: 'HÔM NAY', items: today });
+            if (yesterday.length) newGroups.push({ id: 'yesterday', label: 'HÔM QUA', items: yesterday });
+            if (older.length) newGroups.push({ id: 'older', label: 'CŨ HƠN', items: older });
             setGroups(newGroups);
             setTotalCount(data.length);
             setCategoryCounts(catCount);
-        }catch(err){
+        } catch (err) {
             console.error('load notifications', err);
             setFormError('Không tải được danh sách thông báo. Vui lòng thử lại.');
-        }finally{ setLoading(false); }
+        } finally { setLoading(false); }
     }
 
     const role = getRole();
@@ -185,26 +187,26 @@ export default function AdminNotificationPage() {
     const [showList, setShowList] = useState(false);
     const [unreadItems, setUnreadItems] = useState([]);
 
-    async function loadUnread(){
-        try{
+    async function loadUnread() {
+        try {
             const u = await getUnread();
             setUnreadItems(u.map(mapDtoToItem));
             const cnt = await countUnread();
             setUnreadCount(cnt.count ?? cnt?.unread ?? 0);
-        }catch(err){ console.error('load unread', err); }
+        } catch (err) { console.error('load unread', err); }
     }
 
-    useEffect(()=>{
-        if(!isLoggedIn()){ navigate('/login'); return; }
+    useEffect(() => {
+        if (!isLoggedIn()) { navigate('/login'); return; }
         // eslint-disable-next-line react-hooks/set-state-in-effect
         load();
         loadUnread();
-        const es = subscribeSSE((payload)=>{
-            if(payload && payload.notificationId){
+        const es = subscribeSSE((payload) => {
+            if (payload && payload.notificationId) {
                 setGroups(prev => {
                     const item = mapDtoToItem(payload);
                     const g = [...prev];
-                    if(g.length && g[0].id === 'today') g[0].items.unshift(item);
+                    if (g.length && g[0].id === 'today') g[0].items.unshift(item);
                     else g.unshift({ id: 'today', label: 'HÔM NAY', items: [item] });
                     return g;
                 });
@@ -212,29 +214,38 @@ export default function AdminNotificationPage() {
                 setUnreadCount(c => c + 1);
             }
         });
-        return ()=>{ if(es && es.close) es.close(); };
+        return () => { if (es && es.close) es.close(); };
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    },[]);
+    }, []);
 
-    async function handleMarkAll(){
-        try{
+    async function handleMarkAll() {
+        try {
             await markAllRead();
             await load();
             await loadUnread();
             showToast('Đã đánh dấu tất cả là đã đọc');
-        }catch(err){
+        } catch (err) {
             console.error(err);
             showToast('Không thể đánh dấu đã đọc, vui lòng thử lại');
         }
     }
 
-    async function handleMark(id){
-        try{ await markAsRead(id); load(); loadUnread(); }catch(err){ console.error(err); }
+    async function handleMark(id) {
+        try { await markAsRead(id); load(); loadUnread(); } catch (err) { console.error(err); }
     }
 
-    async function handleRevoke(id){
-        if(!window.confirm('Thu hồi thông báo này? Thông báo sẽ bị xoá vĩnh viễn khỏi tài khoản người dùng.')) return;
-        try{
+    async function handleRevoke(id) {
+        const confirmed = await confirmAction({
+            title: "Thu hồi thông báo",
+            message:
+                "Thông báo sẽ bị xóa vĩnh viễn khỏi tài khoản người dùng.",
+            confirmText: "Thu hồi",
+            cancelText: "Hủy",
+            variant: "danger",
+        });
+
+        if (!confirmed) return;
+        try {
             await adminRevoke(id);
             setGroups(prev => prev
                 .map(g => ({ ...g, items: g.items.filter(it => it.id !== id) }))
@@ -243,40 +254,40 @@ export default function AdminNotificationPage() {
             setTotalCount(c => Math.max(0, c - 1));
             showToast('Đã thu hồi thông báo');
             loadUnread();
-        }catch(err){
+        } catch (err) {
             console.error('revoke', err);
             showToast('Không thể thu hồi thông báo, vui lòng thử lại');
         }
     }
 
-    function resetComposeForm(){
+    function resetComposeForm() {
         setTitle(''); setBody(''); setType(''); setChannel('in_app');
         setSendMode('single'); setTargetUserId(''); setMinTierId('');
     }
 
-    async function handleCreate(e){
+    async function handleCreate(e) {
         e.preventDefault();
         setFormError('');
 
-        if(!type){
+        if (!type) {
             setFormError('Vui lòng chọn loại thông báo.');
             return;
         }
-        if(sendMode === 'single' && !targetUserId.trim()){
+        if (sendMode === 'single' && !targetUserId.trim()) {
             setFormError('Vui lòng nhập ID người dùng nhận thông báo, hoặc chuyển sang "Gửi cho tất cả".');
             return;
         }
-        if(sendMode === 'tier' && !minTierId){
+        if (sendMode === 'tier' && !minTierId) {
             setFormError('Vui lòng chọn hạng thành viên tối thiểu để gửi.');
             return;
         }
 
         setSubmitting(true);
-        try{
-            if(sendMode === 'broadcast'){
+        try {
+            if (sendMode === 'broadcast') {
                 const res = await createBulk({ type, title, body, channel });
                 showToast(`Đã gửi thông báo đến ${res?.totalSent ?? 0} người dùng (${res?.targetDescription ?? 'tất cả'})`);
-            } else if(sendMode === 'tier'){
+            } else if (sendMode === 'tier') {
                 const res = await createBulk({ type, title, body, channel, minTierId: Number(minTierId) });
                 showToast(`Đã gửi thông báo đến ${res?.totalSent ?? 0} người dùng (${res?.targetDescription ?? ''})`);
             } else {
@@ -284,18 +295,18 @@ export default function AdminNotificationPage() {
                 const created = await createNotification(dto);
                 const item = mapDtoToItem(created);
                 setGroups(prev => {
-                    if(prev.length && prev[0].id === 'today') { prev[0].items.unshift(item); return [...prev]; }
+                    if (prev.length && prev[0].id === 'today') { prev[0].items.unshift(item); return [...prev]; }
                     return [{ id: 'today', label: 'HÔM NAY', items: [item] }, ...prev];
                 });
                 showToast('Đã gửi thông báo');
             }
             resetComposeForm();
             setShowCompose(false);
-        }catch(err){
+        } catch (err) {
             console.error('create', err);
             const apiMsg = err?.response?.data?.message;
             setFormError(apiMsg || 'Gửi thông báo thất bại. Vui lòng kiểm tra lại thông tin (đặc biệt là ID người dùng).');
-        }finally{
+        } finally {
             setSubmitting(false);
         }
     }
@@ -317,7 +328,7 @@ export default function AdminNotificationPage() {
 
                 <div className="manage-header__actions">
                     <div className="an-bell-wrap">
-                        <button className="an-icon-btn" onClick={async ()=>{ await loadUnread(); setShowList(s=>!s); }}>
+                        <button className="an-icon-btn" onClick={async () => { await loadUnread(); setShowList(s => !s); }}>
                             <Bell size={18} />
                             {unreadCount > 0 && <span className="an-bell-badge">{unreadCount}</span>}
                         </button>
@@ -332,13 +343,13 @@ export default function AdminNotificationPage() {
                                             <div className="an-unread-item__title">{it.title}</div>
                                             <div className="an-unread-item__time">{it.time}</div>
                                             <div className="an-unread-item__actions">
-                                                <button className="an-btn an-btn--small" onClick={async ()=>{ await handleMark(it.id); await loadUnread(); setShowList(false); }}>Đánh dấu đã đọc</button>
+                                                <button className="an-btn an-btn--small" onClick={async () => { await handleMark(it.id); await loadUnread(); setShowList(false); }}>Đánh dấu đã đọc</button>
                                             </div>
                                         </div>
                                     ))}
                                 </div>
                                 <div className="an-unread-footer">
-                                    <button className="an-btn an-btn--muted" onClick={()=>{ setShowList(false); }}>Đóng</button>
+                                    <button className="an-btn an-btn--muted" onClick={() => { setShowList(false); }}>Đóng</button>
                                 </div>
                             </div>
                         )}
@@ -347,7 +358,7 @@ export default function AdminNotificationPage() {
                     <button className="an-icon-btn"><Settings size={18} /></button>
 
                     {role === 'ADMIN' && (
-                        <button className="refresh-btn" onClick={()=>setShowCompose(s=>!s)}>
+                        <button className="refresh-btn" onClick={() => setShowCompose(s => !s)}>
                             <Megaphone size={16} /> {showCompose ? 'Đóng' : 'Tạo thông báo'}
                         </button>
                     )}
@@ -380,49 +391,49 @@ export default function AdminNotificationPage() {
                             {formError && <div className="an-form-error">{formError}</div>}
 
                             <label className="an-field-label">Loại thông báo</label>
-                            <select value={type} onChange={e=>setType(e.target.value)} required>
+                            <select value={type} onChange={e => setType(e.target.value)} required>
                                 <option value="" disabled>Chọn loại thông báo…</option>
                                 {Object.entries(NOTIFICATION_TYPES).map(([key, val]) => (
                                     <option key={key} value={key}>{val.label}</option>
                                 ))}
                             </select>
 
-                            <input placeholder="Tiêu đề (tối đa 100 ký tự)" value={title} maxLength={100} onChange={e=>setTitle(e.target.value)} required />
-                            <textarea placeholder="Nội dung (tối đa 500 ký tự)" value={body} maxLength={500} onChange={e=>setBody(e.target.value)} />
+                            <input placeholder="Tiêu đề (tối đa 100 ký tự)" value={title} maxLength={100} onChange={e => setTitle(e.target.value)} required />
+                            <textarea placeholder="Nội dung (tối đa 500 ký tự)" value={body} maxLength={500} onChange={e => setBody(e.target.value)} />
 
                             <label className="an-field-label">Kênh gửi</label>
-                            <select value={channel} onChange={e=>setChannel(e.target.value)}>
+                            <select value={channel} onChange={e => setChannel(e.target.value)}>
                                 {CHANNELS.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
                             </select>
 
                             <label className="an-field-label">Đối tượng nhận</label>
                             <div className="an-send-mode">
                                 <button type="button"
-                                        className={`an-filter ${sendMode === 'single' ? 'is-active' : ''}`}
-                                        onClick={()=>setSendMode('single')}>
+                                    className={`an-filter ${sendMode === 'single' ? 'is-active' : ''}`}
+                                    onClick={() => setSendMode('single')}>
                                     Một người dùng
                                 </button>
                                 <button type="button"
-                                        className={`an-filter ${sendMode === 'broadcast' ? 'is-active' : ''}`}
-                                        onClick={()=>setSendMode('broadcast')}>
+                                    className={`an-filter ${sendMode === 'broadcast' ? 'is-active' : ''}`}
+                                    onClick={() => setSendMode('broadcast')}>
                                     Tất cả khách hàng đang hoạt động
                                 </button>
                                 <button type="button"
-                                        className={`an-filter ${sendMode === 'tier' ? 'is-active' : ''}`}
-                                        onClick={()=>setSendMode('tier')}>
+                                    className={`an-filter ${sendMode === 'tier' ? 'is-active' : ''}`}
+                                    onClick={() => setSendMode('tier')}>
                                     Theo hạng thành viên
                                 </button>
                             </div>
 
                             {sendMode === 'single' && (
-                                <input placeholder="ID người dùng nhận thông báo" value={targetUserId} onChange={e=>setTargetUserId(e.target.value)} required />
+                                <input placeholder="ID người dùng nhận thông báo" value={targetUserId} onChange={e => setTargetUserId(e.target.value)} required />
                             )}
                             {sendMode === 'broadcast' && (
                                 <p className="an-hint">Thông báo sẽ được gửi đến tất cả người dùng có trạng thái hoạt động (active).</p>
                             )}
                             {sendMode === 'tier' && (
                                 <>
-                                    <select value={minTierId} onChange={e=>setMinTierId(e.target.value)} required>
+                                    <select value={minTierId} onChange={e => setMinTierId(e.target.value)} required>
                                         <option value="" disabled>Chọn hạng tối thiểu…</option>
                                         {tiers.map(t => (
                                             <option key={t.tierId} value={t.tierId}>{t.tierName} trở lên</option>
@@ -439,7 +450,7 @@ export default function AdminNotificationPage() {
                                 <button className="an-btn" type="submit" disabled={submitting}>
                                     {submitting ? 'Đang gửi…' : 'Gửi'}
                                 </button>
-                                <button type="button" className="an-btn an-btn--muted" onClick={()=>{ setShowCompose(false); setFormError(''); }}>Hủy</button>
+                                <button type="button" className="an-btn an-btn--muted" onClick={() => { setShowCompose(false); setFormError(''); }}>Hủy</button>
                             </div>
                         </form>
                     )}

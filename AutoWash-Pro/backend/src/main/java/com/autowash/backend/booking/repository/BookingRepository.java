@@ -22,6 +22,10 @@ public interface BookingRepository extends JpaRepository<Booking, Integer> {
     boolean existsByBookingCode(String bookingCode);
 
     List<Booking> findByCustomer_CustomerIdOrderByBookingDateDesc(Integer customerId);
+    List<Booking> findByBookingDateGreaterThanEqualAndBookingDateLessThan(
+        LocalDateTime fromDate,
+        LocalDateTime toDateExclusive
+    );
 
     /**
      * Admin - danh sách toàn bộ booking, sắp xếp mới đặt trước (mặc định).
