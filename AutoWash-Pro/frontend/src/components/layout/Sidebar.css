@@ -1,20 +1,56 @@
 .admin-sidebar {
   position: fixed;
   inset: 0 auto 0 0;
+  z-index: 1100;
 
-  width: 230px;
-  padding: 18px 14px;
+  width: var(--sidebar-width);
   height: 100vh;
+  padding: 22px 18px;
 
   display: flex;
   flex-direction: column;
 
+  overflow-x: hidden;
+
   background: #07111f;
   color: white;
 
-  padding: 22px 18px;
+  transition:
+    width 0.25s ease,
+    padding 0.25s ease;
+}
+.dashboard-shell.sidebar-collapsed .admin-sidebar {
+  width: var(--sidebar-collapsed-width);
+  padding: 22px 14px;
 }
 
+.dashboard-shell.sidebar-collapsed .sidebar-brand {
+  justify-content: center;
+  gap: 0;
+}
+
+.dashboard-shell.sidebar-collapsed .sidebar-brand > div:last-child,
+.dashboard-shell.sidebar-collapsed .menu-title,
+.dashboard-shell.sidebar-collapsed .sidebar-link span,
+.dashboard-shell.sidebar-collapsed .sidebar-user > div:last-child {
+  display: none;
+}
+
+.dashboard-shell.sidebar-collapsed .sidebar-link {
+  justify-content: center;
+  gap: 0;
+  padding: 0;
+}
+
+.dashboard-shell.sidebar-collapsed .sidebar-link:hover {
+  transform: none;
+}
+
+.dashboard-shell.sidebar-collapsed .sidebar-user {
+  justify-content: center;
+  gap: 0;
+  padding: 14px 0;
+}
 .sidebar-brand {
   display: flex;
   align-items: center;
