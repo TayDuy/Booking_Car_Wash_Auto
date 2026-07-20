@@ -15,6 +15,9 @@ import {
   ReceiptText,
   ShieldCheck,
   Settings,
+  Gift,
+  Coins,
+  TicketCheck,
 } from "lucide-react";
 import "./Sidebar.css";
 
@@ -44,6 +47,26 @@ const menuGroups = [
     ],
   },
   {
+    title: "Khách hàng thân thiết",
+    items: [
+      {
+        label: "Quản lý điểm",
+        path: "/admin/loyalty-points",
+        icon: Coins,
+      },
+      {
+        label: "Phần thưởng đổi điểm",
+        path: "/admin/rewards",
+        icon: Gift,
+      },
+      {
+        label: "Voucher khách hàng",
+        path: "/admin/customer-rewards",
+        icon: TicketCheck,
+      },
+    ],
+  },
+  {
     title: "Báo cáo & hệ thống",
     items: [
       { label: "Phân quyền", path: "/admin/roles", icon: ShieldCheck },
@@ -58,8 +81,30 @@ const menuGroups = [
 export default function Sidebar() {
   const auth = useAuth();
   const user = auth?.user;
-  const displayName = user?.fullName || user?.username || "Admin";
-  const displayRole = user?.role === "ADMIN" ? "Quản trị viên" : user?.role || "Admin";
+
+  const rawDisplayName =
+    user?.fullName ||
+    user?.name ||
+    user?.username ||
+    localStorage.getItem("fullName") ||
+    localStorage.getItem("username");
+
+  const displayName =
+    rawDisplayName &&
+      String(rawDisplayName).trim() &&
+      String(rawDisplayName).trim().toLowerCase() !== "unknown"
+      ? String(rawDisplayName).trim()
+      : "Admin";
+
+  const rawRole =
+    user?.role ||
+    localStorage.getItem("role") ||
+    "ADMIN";
+
+  const displayRole =
+    String(rawRole).toUpperCase() === "ADMIN"
+      ? "Quản trị viên"
+      : rawRole;
 
   return (
     <aside className="admin-sidebar">
