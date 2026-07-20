@@ -8,6 +8,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import vehicleApi from "../../../api/vehicleApi";
+import { useAppDialog } from "../../../contexts/DialogContext.jsx";
 import "./ManageVehiclesPage.css";
 
 const emptyForm = {
@@ -57,6 +58,7 @@ function getPaginationItems(currentPage, totalPages) {
 }
 
 export default function ManageVehiclesPage() {
+  const { confirmAction, showMessage } = useAppDialog();
   const [vehicles, setVehicles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [keyword, setKeyword] = useState("");
@@ -97,10 +99,13 @@ export default function ManageVehiclesPage() {
 
       setVehicles([]);
 
-      alert(
-        error.response?.data?.message ||
-        "Không tải được danh sách xe."
-      );
+      await showMessage({
+        title: "Tải dữ liệu thất bại",
+        message:
+          error.response?.data?.message ||
+          "Không tải được danh sách xe.",
+        variant: "error",
+      });
     } finally {
       setLoading(false);
     }
@@ -211,67 +216,147 @@ export default function ManageVehiclesPage() {
     e.preventDefault();
 
     if (!formData.licensePlate.trim()) {
-      alert("Vui lòng nhập biển số xe.");
+      await showMessage({
+        title: "Thiếu dữ liệu",
+        message: "Vui lòng nhập biển số xe.",
+        variant: "warning",
+      });
       return;
     }
 
     try {
-      if (editingVehicle) {
-        const vehicleId = editingVehicle.vehicleId || editingVehicle.id;
-        await vehicleApi.update(vehicleId, formData);
-        alert("Cập nhật xe thành công.");
+      const isEditing = Boolean(editingVehicle);
+
+      if (isEditing) {
+        const vehicleId =
+          editingVehicle.vehicleId ||
+          editingVehicle.id;
+
+        await vehicleApi.update(
+          vehicleId,
+          formData
+        );
       } else {
         await vehicleApi.create(formData);
-        alert("Thêm xe thành công.");
       }
 
       setShowForm(false);
       setEditingVehicle(null);
       setFormData(emptyForm);
       setCurrentPage(1);
+
       await loadVehicles();
+
+      await showMessage({
+        title: "Thành công",
+        message: isEditing
+          ? "Cập nhật xe thành công."
+          : "Thêm xe thành công.",
+        variant: "success",
+      });
     } catch (error) {
-      console.error("Save vehicle failed:", error);
-      alert("Lưu xe thất bại. Kiểm tra lại dữ liệu hoặc API backend.");
+      console.error(
+        "Save vehicle failed:",
+        error
+      );
+
+      await showMessage({
+        title: "Lưu xe thất bại",
+        message:
+          error.response?.data?.message ||
+          "Lưu xe thất bại. Kiểm tra lại dữ liệu hoặc API backend.",
+        variant: "error",
+      });
     }
   }
 
   async function handleDelete(vehicle) {
-    const vehicleId = vehicle.vehicleId || vehicle.id;
+    const vehicleId =
+      vehicle.vehicleId ||
+      vehicle.id;
 
     if (!vehicleId) {
-      alert("Không tìm thấy vehicleId.");
+      await showMessage({
+        title: "Thiếu dữ liệu",
+        message: "Không tìm thấy vehicleId.",
+        variant: "error",
+      });
       return;
     }
 
-    const ok = window.confirm("Bạn có chắc muốn xoá xe này không?");
+    const licensePlate =
+      vehicle.licensePlate ||
+      `#${vehicleId}`;
+
+    const ok = await confirmAction({
+      title: "Xóa xe",
+      message: `Bạn có chắc muốn xóa xe biển số "${licensePlate}" không?`,
+      confirmText: "Xóa xe",
+      cancelText: "Hủy",
+      variant: "danger",
+    });
+
     if (!ok) return;
 
     try {
       await vehicleApi.delete(vehicleId);
-      alert("Xoá xe thành công.");
       await loadVehicles();
+
+      await showMessage({
+        title: "Thành công",
+        message: "Xóa xe thành công.",
+        variant: "success",
+      });
     } catch (error) {
-      console.error("Delete vehicle failed:", error);
-      alert("Xoá xe thất bại.");
+      console.error(
+        "Delete vehicle failed:",
+        error
+      );
+
+      await showMessage({
+        title: "Xóa xe thất bại",
+        message:
+          error.response?.data?.message ||
+          "Xóa xe thất bại.",
+        variant: "error",
+      });
     }
   }
 
-  function handleView(vehicle) {
-    alert(
-      `ID: ${vehicle.vehicleId || vehicle.id || "N/A"}\n` +
-      `Khách hàng: ${vehicle.customerName || vehicle.customer?.fullName || "N/A"
-      }\n` +
-      `Biển số: ${vehicle.licensePlate || "N/A"}\n` +
-      `Hãng: ${vehicle.brand || "N/A"}\n` +
-      `Model: ${vehicle.model || "N/A"}\n` +
-      `Loại xe: ${vehicle.vehicleType || "N/A"}\n` +
-      `Màu: ${vehicle.color || "N/A"}\n` +
-      `Trạng thái: ${vehicle.active === false || vehicle.isActive === false
+  async function handleView(vehicle) {
+    const vehicleId =
+      vehicle.vehicleId ||
+      vehicle.id ||
+      "N/A";
+
+    const customerName =
+      vehicle.customerName ||
+      vehicle.customer?.fullName ||
+      "N/A";
+
+    const licensePlate =
+      vehicle.licensePlate ||
+      "N/A";
+
+    const status =
+      vehicle.active === false ||
+        vehicle.isActive === false
         ? "Không hoạt động"
-        : "Đang hoạt động"
-      }`
-    );
+        : "Đang hoạt động";
+
+    await showMessage({
+      title: `Chi tiết xe ${licensePlate}`,
+      message:
+        `ID: ${vehicleId}\n` +
+        `Khách hàng: ${customerName}\n` +
+        `Biển số: ${licensePlate}\n` +
+        `Hãng: ${vehicle.brand || "N/A"}\n` +
+        `Model: ${vehicle.model || "N/A"}\n` +
+        `Loại xe: ${vehicle.vehicleType || "N/A"}\n` +
+        `Màu: ${vehicle.color || "N/A"}\n` +
+        `Trạng thái: ${status}`,
+      variant: "info",
+    });
   }
 
   return (

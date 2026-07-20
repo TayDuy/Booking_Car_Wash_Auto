@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 
 import bookingApi from "../../../api/bookingApi";
+import { useAppDialog } from "../../../contexts/DialogContext.jsx";
 import "./ManageOrdersPage.css";
 
 const ORDER_STATUSES = [
@@ -231,6 +232,7 @@ function getPaginationItems(currentPage, totalPages) {
 }
 
 export default function ManageOrdersPage() {
+  const { showMessage } = useAppDialog();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -284,10 +286,13 @@ export default function ManageOrdersPage() {
 
       setOrders([]);
 
-      alert(
-        error.response?.data?.message ||
-        "Không tải được danh sách đơn hàng."
-      );
+      await showMessage({
+        title: "Tải đơn hàng thất bại",
+        message:
+          error.response?.data?.message ||
+          "Không tải được danh sách đơn hàng.",
+        variant: "error",
+      });
     } finally {
       setLoading(false);
     }
@@ -432,7 +437,11 @@ export default function ManageOrdersPage() {
     const bookingId = order.bookingId || order.id;
 
     if (!bookingId) {
-      alert("Không tìm thấy bookingId của đơn hàng.");
+      await showMessage({
+        title: "Không thể mở đơn hàng",
+        message: "Không tìm thấy bookingId của đơn hàng.",
+        variant: "warning",
+      });
       return;
     }
 
@@ -450,10 +459,13 @@ export default function ManageOrdersPage() {
     } catch (error) {
       console.error("Load order detail failed:", error);
 
-      alert(
-        error.response?.data?.message ||
-        "Không tải được chi tiết đơn hàng."
-      );
+      await showMessage({
+        title: "Tải chi tiết thất bại",
+        message:
+          error.response?.data?.message ||
+          "Không tải được chi tiết đơn hàng.",
+        variant: "error",
+      });
     } finally {
       setDetailLoading(false);
     }
