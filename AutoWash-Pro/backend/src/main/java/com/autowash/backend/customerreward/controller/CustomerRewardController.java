@@ -44,6 +44,14 @@ public class CustomerRewardController {
 
         return ResponseEntity.ok(response);
     }
+    @GetMapping("/admin/all")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<CustomerRewardResponseDTO>> getAllCustomerRewards() {
+        return ResponseEntity.ok(
+                customerRewardService.getAllCustomerRewards()
+        );
+    }
+
 
     @PatchMapping("/use")
     public ResponseEntity<CustomerRewardResponseDTO> useReward(
