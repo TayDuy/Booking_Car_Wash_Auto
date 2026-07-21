@@ -27,7 +27,8 @@ import java.util.List;
  *
  * 2. Khách vãng lai:
  *    - customerId để null.
- *    - Bắt buộc guestName và guestPhone.
+ *    - Bắt buộc guestName, guestPhone và initialPassword.
+ *    - Backend tạo User và Customer trong cùng transaction với booking.
  *
  * branchId không được nhận từ frontend.
  * Backend tự lấy branch từ Employee đang đăng nhập.
@@ -78,6 +79,19 @@ public class EmployeeBookingCreateRequestDTO {
     )
     private String guestEmail;
 
+    /**
+     * Mật khẩu ban đầu cho tài khoản khách vãng lai.
+     *
+     * Chỉ bắt buộc khi customerId để null. Service sẽ kiểm tra điều kiện
+     * này và mã hóa mật khẩu trước khi lưu User.
+     */
+    @Size(
+            min = 6,
+            max = 72,
+            message = "Mật khẩu ban đầu phải từ 6 đến 72 ký tự"
+    )
+    private String initialPassword;
+
     // =========================================================
     // VEHICLE
     // =========================================================
@@ -89,6 +103,7 @@ public class EmployeeBookingCreateRequestDTO {
     )
     private String licensePlate;
 
+    @NotBlank(message = "Hãng xe không được để trống")
     @Size(
             max = 50,
             message = "Hãng xe tối đa 50 ký tự"
@@ -128,14 +143,8 @@ public class EmployeeBookingCreateRequestDTO {
     private List<ServiceItem> details;
 
     // =========================================================
-    // PAYMENT / NOTE
+    // NOTE
     // =========================================================
-
-    /**
-     * Có thể để null.
-     * Employee walk-in sẽ mặc định là offline tại service.
-     */
-    private String paymentMethod;
 
     @Size(
             max = 255,
@@ -162,6 +171,15 @@ public class EmployeeBookingCreateRequestDTO {
                 && !guestName.isBlank()
                 && guestPhone != null
                 && !guestPhone.isBlank();
+    }
+
+    /**
+     * Khách vãng lai có đủ dữ liệu tối thiểu để tạo tài khoản đăng nhập.
+     */
+    public boolean hasCompleteAccountInformation() {
+        return hasGuestInformation()
+                && initialPassword != null
+                && !initialPassword.isBlank();
     }
 
     // =========================================================

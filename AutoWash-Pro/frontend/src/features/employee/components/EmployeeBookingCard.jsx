@@ -10,9 +10,7 @@ import {
 
 import BookingStatusBadge from "./BookingStatusBadge";
 import {
-  getEmployeeBookingNextAction,
   normalizeEmployeeBookingStatus,
-  EMPLOYEE_PAYMENT_STATUS_MAP,
 } from "../constants/employeeBookingStatus";
 
 import "./EmployeeBookingCard.css";
@@ -20,9 +18,31 @@ import "./EmployeeBookingCard.css";
 const ACTION_BUTTON_CLASS = {
   confirm: "action-confirm",
   "check-in": "action-check-in",
+  "no-show": "action-no-show",
   "start-wash": "action-start-wash",
   complete: "action-complete",
 };
+
+const ACTIONS_BY_STATUS = {
+  pending: [
+    { key: "confirm", label: "Xác nhận" },
+  ],
+  confirmed: [
+    { key: "check-in", label: "Check-in" },
+    { key: "no-show", label: "Khách không đến" },
+  ],
+  checked_in: [
+    { key: "start-wash", label: "Bắt đầu rửa" },
+  ],
+  in_progress: [
+    {
+      key: "complete",
+      label: "Đã thanh toán & hoàn thành",
+    },
+  ],
+};
+
+const NO_SHOW_GRACE_MINUTES = 15;
 
 function formatCurrency(value) {
   const amount = Number(value);
@@ -72,15 +92,34 @@ function formatVehicleType(vehicleType) {
   const normalizedType = String(vehicleType ?? "").toLowerCase();
 
   const labels = {
-    car: "Ô tô",
-    sedan: "Sedan",
-    suv: "SUV",
-    truck: "Xe tải",
-    motorcycle: "Xe máy",
-    motorbike: "Xe máy",
+    car: "Xe 4 chỗ",
+    suv: "Xe 7 chỗ",
   };
 
   return labels[normalizedType] || vehicleType || "Chưa xác định";
+}
+
+function canMarkNoShow(booking, status) {
+  if (
+      status !== "confirmed" ||
+      !booking?.slotDate ||
+      !booking?.slotStartTime
+  ) {
+    return false;
+  }
+
+  const startTime = String(booking.slotStartTime).slice(0, 8);
+  const slotStart = new Date(`${booking.slotDate}T${startTime}`);
+
+  if (Number.isNaN(slotStart.getTime())) {
+    return false;
+  }
+
+  const allowedAt = new Date(
+      slotStart.getTime() + NO_SHOW_GRACE_MINUTES * 60 * 1000
+  );
+
+  return Date.now() >= allowedAt.getTime();
 }
 
 function EmployeeBookingCard({
@@ -94,16 +133,17 @@ function EmployeeBookingCard({
   }
 
   const status = normalizeEmployeeBookingStatus(booking.status);
-  const nextAction = getEmployeeBookingNextAction(status);
+  const availableActions = ACTIONS_BY_STATUS[status] || [];
+  const noShowAvailable = canMarkNoShow(booking, status);
 
-  const handleAction = () => {
-    if (!nextAction || actionLoading) {
+  const handleAction = (action) => {
+    if (!action || actionLoading) {
       return;
     }
 
     onAction?.({
       bookingId: booking.bookingId,
-      action: nextAction.key,
+      action: action.key,
       booking,
     });
   };
@@ -195,17 +235,6 @@ function EmployeeBookingCard({
             <div>
               <span>Tổng tiền</span>
               <strong>{formatCurrency(booking.totalAmount)}</strong>
-              {(() => {
-                const statusKey = booking.paymentStatus?.toLowerCase();
-                const cfg =
-                    EMPLOYEE_PAYMENT_STATUS_MAP[statusKey] ||
-                    EMPLOYEE_PAYMENT_STATUS_MAP.unpaid;
-                return (
-                    <span className={`employee-payment-badge ${cfg.badge}`}>
-                  {cfg.label}
-                </span>
-                );
-              })()}
             </div>
           </div>
 
@@ -239,19 +268,30 @@ function EmployeeBookingCard({
             Xem chi tiết
           </button>
 
-          {nextAction && (
-              <button
-                  type="button"
-                  className={[
-                    "employee-booking-card__action-button",
-                    ACTION_BUTTON_CLASS[nextAction.key] || "",
-                  ].join(" ")}
-                  onClick={handleAction}
-                  disabled={actionLoading}
-              >
-                {actionLoading ? "Đang xử lý..." : nextAction.label}
-              </button>
-          )}
+          {availableActions.map((action) => {
+            const noShowDisabled =
+                action.key === "no-show" && !noShowAvailable;
+
+            return (
+                <button
+                    key={action.key}
+                    type="button"
+                    className={[
+                      "employee-booking-card__action-button",
+                      ACTION_BUTTON_CLASS[action.key] || "",
+                    ].join(" ")}
+                    onClick={() => handleAction(action)}
+                    disabled={actionLoading || noShowDisabled}
+                    title={
+                      noShowDisabled
+                          ? `Chỉ được đánh dấu sau giờ hẹn ${NO_SHOW_GRACE_MINUTES} phút`
+                          : undefined
+                    }
+                >
+                  {actionLoading ? "Đang xử lý..." : action.label}
+                </button>
+            );
+          })}
         </footer>
       </article>
   );

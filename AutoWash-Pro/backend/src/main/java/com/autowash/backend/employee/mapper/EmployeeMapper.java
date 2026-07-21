@@ -7,7 +7,6 @@ import com.autowash.backend.customer.entity.Customer;
 import com.autowash.backend.employee.dto.EmployeeProfileResponseDTO;
 import com.autowash.backend.employee.dto.EmployeeQueueBookingResponseDTO;
 import com.autowash.backend.employee.entity.Employee;
-import com.autowash.backend.payment.entity.Payment;
 import com.autowash.backend.timeslot.entity.TimeSlot;
 import com.autowash.backend.user.entity.User;
 import com.autowash.backend.vehicle.entity.Vehicle;
@@ -17,10 +16,10 @@ import org.springframework.stereotype.Component;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 /**
  * Chuyển đổi dữ liệu Employee và Booking sang DTO dành cho trang Employee.
@@ -78,27 +77,10 @@ public class EmployeeMapper {
 
     /**
      * Chuyển một Booking thành DTO hàng chờ của Employee.
-     *
-     * Overload không kèm Payment — giữ lại để tương thích code cũ.
-     * Payment field trong DTO trả về sẽ là null.
      */
     public EmployeeQueueBookingResponseDTO toQueueResponse(
             Booking booking,
             List<BookingDetail> details
-    ) {
-        return toQueueResponse(booking, details, null);
-    }
-
-    /**
-     * Chuyển một Booking (kèm Payment nếu đã có) thành DTO hàng chờ của Employee.
-     *
-     * payment == null nghĩa là booking chưa từng tạo payment
-     * (chưa thu tiền mặt tại quầy, chưa tạo yêu cầu thanh toán online).
-     */
-    public EmployeeQueueBookingResponseDTO toQueueResponse(
-            Booking booking,
-            List<BookingDetail> details,
-            Payment payment
     ) {
         if (booking == null) {
             return null;
@@ -116,8 +98,6 @@ public class EmployeeMapper {
         WashBay washBay = slot != null
                 ? slot.getWashBay()
                 : null;
-
-        String customerPhone = resolveCustomerPhone(customer);
 
         return EmployeeQueueBookingResponseDTO.builder()
                 // Booking
@@ -142,18 +122,7 @@ public class EmployeeMapper {
                                 ? customer.getFullName()
                                 : null
                 )
-                // SAU
-                .customerPhoneMasked(maskPhone(customerPhone))
-                .customerIsGuest(
-                        customer != null
-                                ? customer.getUser() == null
-                                : null
-                )
-                .customerTotalPoints(
-                        customer != null
-                                ? customer.getTotalPoints()
-                                : null
-                )
+                .customerPhoneMasked(maskPhone(resolveCustomerPhone(customer)))
 
                 // Vehicle
                 .vehicleId(
@@ -166,12 +135,12 @@ public class EmployeeMapper {
                                 ? vehicle.getLicensePlate()
                                 : null
                 )
-                // sau
                 .vehicleType(
                         vehicle != null && vehicle.getVehicleType() != null
-                                ? vehicle.getVehicleType().getValue()
+                                ? vehicle.getVehicleType().name()
                                 : null
                 )
+
                 // Services
                 .serviceNames(resolveServiceNames(safeDetails))
                 .totalAmount(calculateTotalAmount(safeDetails))
@@ -238,23 +207,6 @@ public class EmployeeMapper {
                                 ? assignedEmployee.getFullName()
                                 : null
                 )
-
-                // Payment
-                .paymentId(
-                        payment != null
-                                ? payment.getPaymentId()
-                                : null
-                )
-                .paymentStatus(
-                        payment != null && payment.getPaymentStatus() != null
-                                ? payment.getPaymentStatus().name()
-                                : null
-                )
-                .paymentMethod(
-                        payment != null && payment.getPaymentMethod() != null
-                                ? payment.getPaymentMethod().name()
-                                : null
-                )
                 .build();
     }
 
@@ -270,7 +222,17 @@ public class EmployeeMapper {
             return null;
         }
 
-        return customer.resolvePhone();
+        if (customer.getPhone() != null && !customer.getPhone().isBlank()) {
+            return customer.getPhone().trim();
+        }
+
+        User user = customer.getUser();
+
+        if (user != null && user.getPhone() != null && !user.getPhone().isBlank()) {
+            return user.getPhone().trim();
+        }
+
+        return null;
     }
 
     /**
@@ -280,12 +242,14 @@ public class EmployeeMapper {
             List<BookingDetail> details
     ) {
         return details.stream()
-                .filter(detail -> detail != null)
+                .filter(Objects::nonNull)
                 .filter(detail -> detail.getService() != null)
                 .map(detail -> detail.getService().getServiceName())
-                .filter(name -> name != null && !name.isBlank())
+                .filter(Objects::nonNull)
+                .map(String::trim)
+                .filter(name -> !name.isEmpty())
                 .distinct()
-                .toList();
+                .collect(Collectors.toList());
     }
 
     /**
@@ -295,9 +259,9 @@ public class EmployeeMapper {
             List<BookingDetail> details
     ) {
         return details.stream()
-                .filter(detail -> detail != null)
+                .filter(Objects::nonNull)
                 .map(BookingDetail::getSubTotal)
-                .filter(amount -> amount != null)
+                .filter(Objects::nonNull)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
@@ -319,10 +283,9 @@ public class EmployeeMapper {
                 ? booking.getCompleteAt()
                 : LocalDateTime.now();
 
-        ZoneId zone = ZoneId.systemDefault();
         long minutes = Duration.between(
-                booking.getCheckInAt().atZone(zone),
-                endTime.atZone(zone)
+                booking.getCheckInAt(),
+                endTime
         ).toMinutes();
 
         return Math.max(minutes, 0L);

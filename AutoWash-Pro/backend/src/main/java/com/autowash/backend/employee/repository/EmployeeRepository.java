@@ -1,8 +1,6 @@
-// backend/src/main/java/com/autowash/backend/employee/repository/EmployeeRepository.java
 package com.autowash.backend.employee.repository;
 
 import com.autowash.backend.employee.entity.Employee;
-import com.autowash.backend.employee.entity.Employee.EmployeePosition;
 import com.autowash.backend.employee.entity.Employee.StaffRole;
 import com.autowash.backend.employee.entity.Employee.StaffStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -41,15 +39,6 @@ public interface EmployeeRepository extends JpaRepository<Employee, Integer> {
     List<Employee> findByBranch_BranchIdAndRoleAndStatus(
             Integer branchId,
             StaffRole role,
-            StaffStatus status
-    );
-
-    /**
-     * Lấy nhân viên theo chức vụ (position) và trạng thái — dùng để
-     * broadcast thông báo cho toàn bộ admin (VD: có yêu cầu hoàn tiền mới).
-     */
-    List<Employee> findByPositionAndStatus(
-            EmployeePosition position,
             StaffStatus status
     );
 

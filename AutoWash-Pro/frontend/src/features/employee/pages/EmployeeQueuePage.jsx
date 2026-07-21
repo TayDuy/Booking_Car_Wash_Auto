@@ -1,11 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  AlertCircle,
-  ChevronLeft,
-  ChevronRight,
-  ClipboardList,
-  X,
-} from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { AlertCircle, ClipboardList, X } from "lucide-react";
 
 import employeeApi from "../../../api/employeeApi";
 import EmployeeBookingCard from "../components/EmployeeBookingCard";
@@ -31,10 +25,10 @@ function unwrapResponse(response) {
 
 function getErrorMessage(error) {
   return (
-    error?.response?.data?.message ||
-    error?.response?.data?.error ||
-    error?.message ||
-    "Đã xảy ra lỗi. Vui lòng thử lại."
+      error?.response?.data?.message ||
+      error?.response?.data?.error ||
+      error?.message ||
+      "Đã xảy ra lỗi. Vui lòng thử lại."
   );
 }
 
@@ -42,58 +36,30 @@ const BOOKING_ACTIONS = {
   confirm: (bookingId) => employeeApi.confirmBooking(bookingId),
 
   "check-in": (bookingId) =>
-    employeeApi.checkInBooking(bookingId),
+      employeeApi.checkInBooking(bookingId),
+
+  "no-show": (bookingId) =>
+      employeeApi.markNoShow(bookingId),
 
   "start-wash": (bookingId) =>
-    employeeApi.startWash(bookingId),
+      employeeApi.startWash(bookingId),
 
   complete: (bookingId) =>
-    employeeApi.completeBooking(bookingId),
+      employeeApi.completeBooking(bookingId),
 };
 
-const PAGE_SIZE_OPTIONS = [6, 9, 12, 18];
-
-function normalizeQueueData(responseData) {
-  if (Array.isArray(responseData)) {
-    return {
-      items: responseData,
-      serverPaged: false,
-      totalElements: responseData.length,
-      totalPages: 0,
-    };
-  }
-
-  const content = responseData?.content;
-
-  if (Array.isArray(content)) {
-    return {
-      items: content,
-      serverPaged: true,
-      totalElements: Number(responseData.totalElements) || content.length,
-      totalPages: Number(responseData.totalPages) || 1,
-    };
-  }
-
-  return {
-    items: [],
-    serverPaged: false,
-    totalElements: 0,
-    totalPages: 0,
-  };
-}
+const ACTION_CONFIRMATIONS = {
+  "no-show":
+      "Xác nhận khách không đến? Booking sẽ chuyển sang no-show và trả lại chỗ cho khung giờ.",
+  complete:
+      "Bạn đã kiểm tra khách thanh toán tại quầy và xe đã rửa xong? Thao tác này sẽ hoàn thành booking và cộng điểm cho khách.",
+};
 
 function EmployeeQueuePage() {
   const [selectedDate, setSelectedDate] = useState(getTodayInputValue);
   const [selectedStatus, setSelectedStatus] = useState("");
 
   const [bookings, setBookings] = useState([]);
-  const [page, setPage] = useState(0);
-  const [pageSize, setPageSize] = useState(9);
-  const [queueMeta, setQueueMeta] = useState({
-    serverPaged: false,
-    totalElements: 0,
-    totalPages: 0,
-  });
   const [queueLoading, setQueueLoading] = useState(true);
   const [queueError, setQueueError] = useState("");
 
@@ -113,44 +79,37 @@ function EmployeeQueuePage() {
       const response = await employeeApi.getQueue({
         date: selectedDate,
         status: selectedStatus,
-        page,
-        size: pageSize,
       });
 
       const responseData = unwrapResponse(response);
-      const normalizedData = normalizeQueueData(responseData);
 
-      setBookings(normalizedData.items);
-      setQueueMeta({
-        serverPaged: normalizedData.serverPaged,
-        totalElements: normalizedData.totalElements,
-        totalPages: normalizedData.totalPages,
-      });
+      setBookings(
+          Array.isArray(responseData) ? responseData : []
+      );
     } catch (error) {
       setBookings([]);
-      setQueueMeta({
-        serverPaged: false,
-        totalElements: 0,
-        totalPages: 0,
-      });
       setQueueError(getErrorMessage(error));
     } finally {
       setQueueLoading(false);
     }
-  }, [page, pageSize, selectedDate, selectedStatus]);
+  }, [selectedDate, selectedStatus]);
 
   useEffect(() => {
-    loadQueue();
+    const timeoutId = window.setTimeout(() => {
+      void loadQueue();
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
   }, [loadQueue]);
 
   const handleDateChange = (date) => {
-    setPage(0);
     setSelectedDate(date);
     setDetailBookingId(null);
   };
 
   const handleStatusChange = (status) => {
-    setPage(0);
     setSelectedStatus(status);
     setDetailBookingId(null);
   };
@@ -167,7 +126,7 @@ function EmployeeQueuePage() {
       setSearchResult(null);
 
       const response =
-        await employeeApi.searchBookingByCode(bookingCode);
+          await employeeApi.searchBookingByCode(bookingCode);
 
       const booking = unwrapResponse(response);
 
@@ -192,17 +151,17 @@ function EmployeeQueuePage() {
     }
 
     setBookings((currentBookings) =>
-      currentBookings.map((booking) =>
-        booking.bookingId === updatedBooking.bookingId
-          ? updatedBooking
-          : booking
-      )
+        currentBookings.map((booking) =>
+            booking.bookingId === updatedBooking.bookingId
+                ? updatedBooking
+                : booking
+        )
     );
 
     setSearchResult((currentSearchResult) => {
       if (
-        currentSearchResult?.bookingId ===
-        updatedBooking.bookingId
+          currentSearchResult?.bookingId ===
+          updatedBooking.bookingId
       ) {
         return updatedBooking;
       }
@@ -213,15 +172,24 @@ function EmployeeQueuePage() {
   };
 
   const handleBookingAction = async ({
-    bookingId,
-    action,
-  }) => {
+                                       bookingId,
+                                       action,
+                                     }) => {
     const actionHandler = BOOKING_ACTIONS[action];
 
     if (!actionHandler) {
       setQueueError(
-        `Hành động '${action}' chưa được hỗ trợ.`
+          `Hành động '${action}' chưa được hỗ trợ.`
       );
+      return;
+    }
+
+    const confirmationMessage = ACTION_CONFIRMATIONS[action];
+
+    if (
+        confirmationMessage &&
+        !window.confirm(confirmationMessage)
+    ) {
       return;
     }
 
@@ -253,9 +221,9 @@ function EmployeeQueuePage() {
 
   const handleViewDetails = (bookingOrId) => {
     const bookingId =
-      typeof bookingOrId === "object"
-        ? bookingOrId?.bookingId
-        : bookingOrId;
+        typeof bookingOrId === "object"
+            ? bookingOrId?.bookingId
+            : bookingOrId;
 
     if (!bookingId) {
       return;
@@ -268,232 +236,143 @@ function EmployeeQueuePage() {
     setDetailBookingId(null);
   };
 
-  const totalElements = queueMeta.serverPaged
-    ? queueMeta.totalElements
-    : bookings.length;
-
-  const totalPages = queueMeta.serverPaged
-    ? Math.max(queueMeta.totalPages, 1)
-    : Math.max(Math.ceil(bookings.length / pageSize), 1);
-
-  const visibleBookings = useMemo(() => {
-    if (queueMeta.serverPaged) {
-      return bookings;
-    }
-
-    const firstIndex = page * pageSize;
-    return bookings.slice(firstIndex, firstIndex + pageSize);
-  }, [bookings, page, pageSize, queueMeta.serverPaged]);
-
-  const firstVisibleItem = totalElements === 0
-    ? 0
-    : page * pageSize + 1;
-  const lastVisibleItem = Math.min(
-    page * pageSize + visibleBookings.length,
-    totalElements
-  );
-
-  useEffect(() => {
-    if (!queueLoading && page > totalPages - 1) {
-      setPage(Math.max(totalPages - 1, 0));
-    }
-  }, [page, queueLoading, totalPages]);
-
-  const handlePageSizeChange = (event) => {
-    setPageSize(Number(event.target.value));
-    setPage(0);
-  };
-
   return (
-    <section className="employee-queue-page">
-      <header className="employee-queue-page__header">
-        <div>
-          <p className="employee-queue-page__eyebrow">
-            Quản lý vận hành
-          </p>
-
-          <h1>Hàng đợi rửa xe</h1>
-
-          <p>
-            Theo dõi và cập nhật booking tại chi nhánh của
-            bạn.
-          </p>
-        </div>
-
-        <div className="employee-queue-page__summary">
-          <ClipboardList size={22} aria-hidden="true" />
-
+      <section className="employee-queue-page">
+        <header className="employee-queue-page__header">
           <div>
-            <strong>{totalElements}</strong>
-            <span>booking phù hợp</span>
+            <p className="employee-queue-page__eyebrow">
+              Quản lý vận hành
+            </p>
+
+            <h1>Hàng đợi rửa xe</h1>
+
+            <p>
+              Theo dõi và cập nhật booking tại chi nhánh của
+              bạn.
+            </p>
           </div>
-        </div>
-      </header>
 
-      <EmployeeBookingSearch
-        value={searchCode}
-        onChange={handleSearchCodeChange}
-        onSearch={handleSearch}
-        onClear={handleClearSearch}
-        loading={searchLoading}
-        error={searchError}
-      />
+          <div className="employee-queue-page__summary">
+            <ClipboardList size={22} aria-hidden="true" />
 
-      {searchResult && (
-        <section className="employee-queue-page__search-result">
+            <div>
+              <strong>{bookings.length}</strong>
+              <span>booking đang hiển thị</span>
+            </div>
+          </div>
+        </header>
+
+        <EmployeeBookingSearch
+            value={searchCode}
+            onChange={handleSearchCodeChange}
+            onSearch={handleSearch}
+            onClear={handleClearSearch}
+            loading={searchLoading}
+            error={searchError}
+        />
+
+        {searchResult && (
+            <section className="employee-queue-page__search-result">
+              <div className="employee-queue-page__section-heading">
+                <div>
+                  <h2>Kết quả tìm kiếm</h2>
+                  <p>
+                    Booking thuộc chi nhánh của Employee đang
+                    đăng nhập.
+                  </p>
+                </div>
+
+                <button
+                    type="button"
+                    onClick={handleClearSearch}
+                    aria-label="Đóng kết quả tìm kiếm"
+                >
+                  <X size={18} aria-hidden="true" />
+                </button>
+              </div>
+
+              <EmployeeBookingCard
+                  booking={searchResult}
+                  onAction={handleBookingAction}
+                  onViewDetails={handleViewDetails}
+                  actionLoading={
+                      processingBookingId === searchResult.bookingId
+                  }
+              />
+            </section>
+        )}
+
+        <EmployeeQueueFilters
+            date={selectedDate}
+            status={selectedStatus}
+            onDateChange={handleDateChange}
+            onStatusChange={handleStatusChange}
+            onRefresh={loadQueue}
+            refreshing={queueLoading}
+        />
+
+        {queueError && (
+            <div
+                className="employee-queue-page__error"
+                role="alert"
+            >
+              <AlertCircle size={20} aria-hidden="true" />
+              <span>{queueError}</span>
+            </div>
+        )}
+
+        <section className="employee-queue-page__queue">
           <div className="employee-queue-page__section-heading">
             <div>
-              <h2>Kết quả tìm kiếm</h2>
+              <h2>Danh sách hàng đợi</h2>
+
               <p>
-                Booking thuộc chi nhánh của Employee đang
-                đăng nhập.
+                Ngày {selectedDate}
+                {selectedStatus
+                    ? ` · Trạng thái ${selectedStatus}`
+                    : " · Các booking đang xử lý"}
               </p>
             </div>
-
-            <button
-              type="button"
-              onClick={handleClearSearch}
-              aria-label="Đóng kết quả tìm kiếm"
-            >
-              <X size={18} aria-hidden="true" />
-            </button>
           </div>
 
-          <EmployeeBookingCard
-            booking={searchResult}
-            onAction={handleBookingAction}
-            onViewDetails={handleViewDetails}
-            actionLoading={
-              processingBookingId === searchResult.bookingId
-            }
-          />
+          {queueLoading ? (
+              <div className="employee-queue-page__state">
+                <div className="employee-queue-page__spinner" />
+                <p>Đang tải hàng đợi...</p>
+              </div>
+          ) : bookings.length === 0 ? (
+              <div className="employee-queue-page__state">
+                <ClipboardList size={42} aria-hidden="true" />
+                <h3>Chưa có booking</h3>
+                <p>
+                  Không có booking phù hợp với ngày và trạng thái
+                  đã chọn.
+                </p>
+              </div>
+          ) : (
+              <div className="employee-queue-page__grid">
+                {bookings.map((booking) => (
+                    <EmployeeBookingCard
+                        key={booking.bookingId}
+                        booking={booking}
+                        onAction={handleBookingAction}
+                        onViewDetails={handleViewDetails}
+                        actionLoading={
+                            processingBookingId === booking.bookingId
+                        }
+                    />
+                ))}
+              </div>
+          )}
         </section>
-      )}
 
-      <EmployeeQueueFilters
-        date={selectedDate}
-        status={selectedStatus}
-        onDateChange={handleDateChange}
-        onStatusChange={handleStatusChange}
-        onRefresh={loadQueue}
-        refreshing={queueLoading}
-      />
+        <EmployeeBookingDetailModal
+            open={Boolean(detailBookingId)}
+            bookingId={detailBookingId}
+            onClose={handleCloseDetails}
+        />
 
-      {queueError && (
-        <div
-          className="employee-queue-page__error"
-          role="alert"
-        >
-          <AlertCircle size={20} aria-hidden="true" />
-          <span>{queueError}</span>
-        </div>
-      )}
-
-      <section className="employee-queue-page__queue">
-        <div className="employee-queue-page__section-heading">
-          <div>
-            <h2>Danh sách hàng đợi</h2>
-
-            <p>
-              Ngày {selectedDate}
-              {selectedStatus
-                ? ` · Trạng thái ${selectedStatus}`
-                : " · Các booking đang xử lý"}
-            </p>
-          </div>
-        </div>
-
-        {queueLoading ? (
-          <div className="employee-queue-page__state">
-            <div className="employee-queue-page__spinner" />
-            <p>Đang tải hàng đợi...</p>
-          </div>
-        ) : totalElements === 0 ? (
-          <div className="employee-queue-page__state">
-            <ClipboardList size={42} aria-hidden="true" />
-            <h3>Chưa có booking</h3>
-            <p>
-              Không có booking phù hợp với ngày và trạng thái
-              đã chọn.
-            </p>
-          </div>
-        ) : (
-          <div className="employee-queue-page__grid">
-            {visibleBookings.map((booking) => (
-              <EmployeeBookingCard
-                key={booking.bookingId}
-                booking={booking}
-                onAction={handleBookingAction}
-                onViewDetails={handleViewDetails}
-                actionLoading={
-                  processingBookingId === booking.bookingId
-                }
-              />
-            ))}
-          </div>
-        )}
-
-        {!queueLoading && totalElements > 0 && (
-          <nav
-            className="employee-queue-page__pagination"
-            aria-label="Phân trang danh sách booking"
-          >
-            <div className="employee-queue-page__pagination-info">
-              <span>
-                Hiển thị <strong>{firstVisibleItem}–{lastVisibleItem}</strong>
-                {" "}trên <strong>{totalElements}</strong> booking
-              </span>
-
-              <label>
-                Số dòng
-                <select
-                  value={pageSize}
-                  onChange={handlePageSizeChange}
-                  aria-label="Số booking trên mỗi trang"
-                >
-                  {PAGE_SIZE_OPTIONS.map((option) => (
-                    <option key={option} value={option}>
-                      {option}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-
-            <div className="employee-queue-page__pagination-controls">
-              <button
-                type="button"
-                onClick={() => setPage((currentPage) => currentPage - 1)}
-                disabled={page === 0}
-                aria-label="Trang trước"
-              >
-                <ChevronLeft size={18} aria-hidden="true" />
-              </button>
-
-              <span aria-live="polite">
-                Trang <strong>{page + 1}</strong> / {totalPages}
-              </span>
-
-              <button
-                type="button"
-                onClick={() => setPage((currentPage) => currentPage + 1)}
-                disabled={page >= totalPages - 1}
-                aria-label="Trang sau"
-              >
-                <ChevronRight size={18} aria-hidden="true" />
-              </button>
-            </div>
-          </nav>
-        )}
       </section>
-
-      <EmployeeBookingDetailModal
-        open={Boolean(detailBookingId)}
-        bookingId={detailBookingId}
-        onClose={handleCloseDetails}
-      />
-
-    </section>
   );
 }
 

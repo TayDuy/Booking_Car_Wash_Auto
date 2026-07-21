@@ -5,36 +5,37 @@ import com.autowash.backend.employee.dto.EmployeeBookingCreateRequestDTO;
 import com.autowash.backend.employee.dto.EmployeeProfileResponseDTO;
 import com.autowash.backend.employee.dto.EmployeeQueueBookingResponseDTO;
 import com.autowash.backend.employee.service.EmployeeService;
-import com.autowash.backend.payment.dto.PaymentResponseDTO;
 import com.autowash.backend.security.CustomUserDetails;
 
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.Max;
-import jakarta.validation.constraints.Min;
-import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.*;
+
+import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/employee")
 @RequiredArgsConstructor
-@Validated
 @PreAuthorize("hasRole('EMPLOYEE')")
 public class EmployeeController {
 
     private final EmployeeService employeeService;
 
+    // =========================================================
+    // PROFILE
+    // =========================================================
+
+    /**
+     * GET /api/v1/employee/profile
+     */
     @GetMapping("/profile")
     public ResponseEntity<EmployeeProfileResponseDTO> getMyProfile(
             @AuthenticationPrincipal CustomUserDetails userDetails
@@ -44,42 +45,50 @@ public class EmployeeController {
         );
     }
 
+    // =========================================================
+    // QUEUE
+    // =========================================================
+
+    /**
+     * GET /api/v1/employee/queue
+     *
+     * Ví dụ:
+     * /queue
+     * /queue?date=2026-07-13
+     * /queue?status=confirmed
+     * /queue?date=2026-07-13&status=checked_in
+     */
     @GetMapping("/queue")
-    public ResponseEntity<Page<EmployeeQueueBookingResponseDTO>> getMyBranchQueue(
+    public ResponseEntity<List<EmployeeQueueBookingResponseDTO>> getMyBranchQueue(
             @AuthenticationPrincipal CustomUserDetails userDetails,
 
-            @RequestParam(required = false, name = "date")
+            @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
             LocalDate date,
 
-            @RequestParam(required = false, name = "status")
-            BookingStatus status,
-
-            @RequestParam(defaultValue = "0", name = "page")
-            @Min(value = 0, message = "page không được nhỏ hơn 0")
-            int page,
-
-            @RequestParam(defaultValue = "9", name = "size")
-            @Min(value = 1, message = "size phải lớn hơn 0")
-            @Max(value = 100, message = "size không được vượt quá 100")
-            int size
+            @RequestParam(required = false)
+            BookingStatus status
     ) {
-        PageRequest pageable = PageRequest.of(page, size);
-
         return ResponseEntity.ok(
                 employeeService.getMyBranchQueue(
                         userDetails.getId(),
                         date,
-                        status,
-                        pageable
+                        status
                 )
         );
     }
 
+    // =========================================================
+    // BOOKING DETAIL
+    // =========================================================
+
+    /**
+     * GET /api/v1/employee/bookings/{bookingId}
+     */
     @GetMapping("/bookings/{bookingId}")
     public ResponseEntity<EmployeeQueueBookingResponseDTO> getBookingById(
             @AuthenticationPrincipal CustomUserDetails userDetails,
-            @PathVariable("bookingId") Integer bookingId
+            @PathVariable Integer bookingId
     ) {
         return ResponseEntity.ok(
                 employeeService.getMyBranchBookingById(
@@ -89,11 +98,13 @@ public class EmployeeController {
         );
     }
 
+    /**
+     * GET /api/v1/employee/bookings/search?bookingCode=...
+     */
     @GetMapping("/bookings/search")
     public ResponseEntity<EmployeeQueueBookingResponseDTO> searchBooking(
             @AuthenticationPrincipal CustomUserDetails userDetails,
-            @RequestParam(name = "bookingCode") String bookingCode
-
+            @RequestParam String bookingCode
     ) {
         return ResponseEntity.ok(
                 employeeService.findMyBranchBookingByCode(
@@ -103,6 +114,22 @@ public class EmployeeController {
         );
     }
 
+    // =========================================================
+// CREATE BOOKING FOR CUSTOMER
+// =========================================================
+
+    /**
+     * Employee tạo booking hộ khách tại quầy.
+     *
+     * Hỗ trợ:
+     * - Khách đã có customerId.
+     * - Khách vãng lai chưa có tài khoản.
+     *
+     * Chi nhánh được lấy từ Employee đang đăng nhập,
+     * frontend không được tự truyền branchId.
+     *
+     * POST /api/v1/employee/bookings
+     */
     @PostMapping("/bookings")
     public ResponseEntity<EmployeeQueueBookingResponseDTO>
     createBookingForCustomer(
@@ -123,10 +150,22 @@ public class EmployeeController {
                 .body(response);
     }
 
+
+
+    // =========================================================
+    // CONFIRM
+    // pending → confirmed
+    // =========================================================
+
+    /**
+     * PATCH /api/v1/employee/bookings/{bookingId}/confirm
+     *
+     * Chỉ supervisor hoặc manager được phép xác nhận.
+     */
     @PatchMapping("/bookings/{bookingId}/confirm")
     public ResponseEntity<EmployeeQueueBookingResponseDTO> confirmBooking(
             @AuthenticationPrincipal CustomUserDetails userDetails,
-            @PathVariable("bookingId") Integer bookingId
+            @PathVariable Integer bookingId
     ) {
         return ResponseEntity.ok(
                 employeeService.confirmBooking(
@@ -136,10 +175,18 @@ public class EmployeeController {
         );
     }
 
+    // =========================================================
+    // CHECK-IN
+    // confirmed → checked_in
+    // =========================================================
+
+    /**
+     * PATCH /api/v1/employee/bookings/{bookingId}/check-in
+     */
     @PatchMapping("/bookings/{bookingId}/check-in")
     public ResponseEntity<EmployeeQueueBookingResponseDTO> checkInBooking(
             @AuthenticationPrincipal CustomUserDetails userDetails,
-            @PathVariable("bookingId") Integer bookingId
+            @PathVariable Integer bookingId
     ) {
         return ResponseEntity.ok(
                 employeeService.checkInBooking(
@@ -149,11 +196,50 @@ public class EmployeeController {
         );
     }
 
+    // =========================================================
+    // NO-SHOW
+    // confirmed -> no_show
+    // =========================================================
+
+    /**
+     * PATCH /api/v1/employee/bookings/{bookingId}/no-show
+     *
+     * Đánh dấu khách không đến sau thời gian chờ cho phép.
+     * Service chịu trách nhiệm kiểm tra trạng thái, thời gian,
+     * chi nhánh và quyền supervisor/manager.
+     */
+    @PatchMapping("/bookings/{bookingId}/no-show")
+    public ResponseEntity<EmployeeQueueBookingResponseDTO> markNoShow(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable Integer bookingId
+    ) {
+        return ResponseEntity.ok(
+                employeeService.markNoShow(
+                        userDetails.getId(),
+                        bookingId
+                )
+        );
+    }
+
+    // =========================================================
+    // START WASH
+    // checked_in → in_progress
+    // =========================================================
+
+    /**
+     * PATCH /api/v1/employee/bookings/{bookingId}/start-wash
+     *
+     * Gán Employee hiện tại vào assignedStaff
+     * và chuyển wash bay sang occupied.
+     *
+     * @param bayId (tùy chọn) Chuyển booking sang wash bay khác
+     *              khi bay hiện tại đang occupied.
+     */
     @PatchMapping("/bookings/{bookingId}/start-wash")
     public ResponseEntity<EmployeeQueueBookingResponseDTO> startWash(
             @AuthenticationPrincipal CustomUserDetails userDetails,
-            @PathVariable("bookingId") Integer bookingId,
-            @RequestParam(required = false, name = "bayId") Integer bayId
+            @PathVariable Integer bookingId,
+            @RequestParam(required = false) Integer bayId
     ) {
         return ResponseEntity.ok(
                 employeeService.startWash(
@@ -164,10 +250,22 @@ public class EmployeeController {
         );
     }
 
+    // =========================================================
+    // COMPLETE
+    // in_progress → completed
+    // =========================================================
+
+    /**
+     * PATCH /api/v1/employee/bookings/{bookingId}/complete
+     *
+     * Employee chỉ gọi API sau khi đã xác nhận khách thanh toán tại quầy.
+     * Service ghi completeAt, giải phóng wash bay, cộng điểm đúng một lần
+     * và đánh giá lại hạng thành viên. Không tạo Payment.
+     */
     @PatchMapping("/bookings/{bookingId}/complete")
     public ResponseEntity<EmployeeQueueBookingResponseDTO> completeWash(
             @AuthenticationPrincipal CustomUserDetails userDetails,
-            @PathVariable("bookingId") Integer bookingId
+            @PathVariable Integer bookingId
     ) {
         return ResponseEntity.ok(
                 employeeService.completeWash(
@@ -175,48 +273,5 @@ public class EmployeeController {
                         bookingId
                 )
         );
-    }
-
-    @PatchMapping("/bookings/{bookingId}/collect-cash-payment")
-    public ResponseEntity<EmployeeQueueBookingResponseDTO> collectCashPayment(
-            @AuthenticationPrincipal CustomUserDetails userDetails,
-            @PathVariable("bookingId") Integer bookingId
-    ) {
-        return ResponseEntity.ok(
-                employeeService.collectCashPayment(
-                        userDetails.getId(),
-                        bookingId
-                )
-        );
-    }
-
-    @PostMapping("/bookings/{bookingId}/online-payment")
-    public ResponseEntity<PaymentResponseDTO> createOnlinePayment(
-            @AuthenticationPrincipal CustomUserDetails userDetails,
-            @PathVariable("bookingId") Integer bookingId
-    ) {
-        return ResponseEntity.ok(
-                employeeService.ensureOnlinePayment(
-                        userDetails.getId(),
-                        bookingId
-                )
-        );
-    }
-
-    @GetMapping("/bookings/{bookingId}/online-payment/vnpay-qr")
-    public ResponseEntity<byte[]> getOnlinePaymentQr(
-            HttpServletRequest request,
-            @AuthenticationPrincipal CustomUserDetails userDetails,
-            @PathVariable("bookingId") Integer bookingId
-    ) throws Exception {
-        byte[] qrImage = employeeService.generateOnlinePaymentQr(
-                userDetails.getId(),
-                bookingId,
-                request
-        );
-
-        return ResponseEntity.ok()
-                .contentType(MediaType.IMAGE_PNG)
-                .body(qrImage);
     }
 }

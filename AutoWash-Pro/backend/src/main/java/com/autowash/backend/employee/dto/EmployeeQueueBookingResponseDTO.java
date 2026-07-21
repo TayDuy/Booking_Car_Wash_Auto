@@ -15,10 +15,15 @@ import java.time.LocalTime;
 import java.util.List;
 
 /**
- * Dữ liệu một booking trong hàng chờ của trang Employee.
+ * Dữ liệu booking dành cho Employee.
  *
- * Không trả toàn bộ thông tin nhạy cảm của khách hàng.
- * Số điện thoại trong danh sách phải được che bớt.
+ * Dùng cho:
+ * - Danh sách hàng đợi.
+ * - Chi tiết booking.
+ * - Dashboard.
+ * - Kết quả thao tác booking.
+ *
+ * Không trả password, password hash hoặc token của Customer.
  */
 @Getter
 @Setter
@@ -35,24 +40,47 @@ public class EmployeeQueueBookingResponseDTO {
     private String bookingCode;
     private BookingStatus status;
     private Integer priorityScore;
-    private LocalDateTime bookingDate;
 
+    private LocalDateTime bookingDate;
+    private LocalDateTime startTime;
+    private LocalDateTime endTime;
     private LocalDateTime checkInAt;
     private LocalDateTime completedAt;
 
     /**
-     * Số phút khách đã chờ tính từ checkInAt.
-     * Nếu chưa check-in thì trả về 0.
+     * Số phút từ lúc khách check-in.
      */
-    private Long waitingMinutes;
+    @Builder.Default
+    private Long waitingMinutes = 0L;
+
+    /**
+     * True khi booking đã quá thời gian đến cho phép
+     * nhưng khách chưa check-in.
+     */
+    @Builder.Default
+    private Boolean overdue = false;
 
     private String note;
 
     // =========================================================
-    // CUSTOMER
+    // CUSTOMER ACCOUNT
     // =========================================================
 
+    /**
+     * ID trong bảng customer.
+     */
     private Integer customerId;
+
+    /**
+     * ID trong bảng account.
+     */
+    private Integer customerUserId;
+
+    /**
+     * Username để Customer đăng nhập website.
+     */
+    private String customerUsername;
+
     private String customerName;
 
     /**
@@ -61,15 +89,20 @@ public class EmployeeQueueBookingResponseDTO {
      */
     private String customerPhoneMasked;
 
-    /**
-     * true nếu Customer chưa có tài khoản đăng nhập (User == null) = khách vãng lai.
-     */
-    private Boolean customerIsGuest;
+    private Integer customerTierId;
+    private String customerTierName;
 
     /**
-     * Tổng điểm tích lũy hiện có của khách hàng.
+     * Tổng điểm tích lũy của Customer.
      */
-    private Integer customerTotalPoints;
+    @Builder.Default
+    private Integer customerPoints = 0;
+
+    /**
+     * True khi quá trình tạo booking vừa tạo User và Customer mới.
+     */
+    @Builder.Default
+    private Boolean accountCreated = false;
 
     // =========================================================
     // VEHICLE
@@ -77,14 +110,58 @@ public class EmployeeQueueBookingResponseDTO {
 
     private Integer vehicleId;
     private String licensePlate;
+    private String vehicleBrand;
+    private String vehicleModel;
+
+    /**
+     * car hoặc suv.
+     */
     private String vehicleType;
 
+    /**
+     * Xe 4 chỗ hoặc Xe 7 chỗ.
+     */
+    private String vehicleTypeLabel;
+
     // =========================================================
-    // SERVICE
+    // SERVICES
     // =========================================================
 
+    /**
+     * Giữ lại để tương thích frontend queue hiện tại.
+     */
     private List<String> serviceNames;
-    private BigDecimal totalAmount;
+
+    /**
+     * Danh sách chi tiết để trang booking detail hiển thị
+     * quantity, unitPrice và subTotal.
+     */
+    private List<ServiceItemResponse> services;
+
+    /**
+     * Tổng từ BookingDetail.subTotal.
+     */
+    @Builder.Default
+    private BigDecimal totalAmount = BigDecimal.ZERO;
+
+    // =========================================================
+    // PAYMENT
+    // =========================================================
+
+    private Integer paymentId;
+    private String paymentMethod;
+    private String paymentStatus;
+
+    @Builder.Default
+    private BigDecimal discountAmount = BigDecimal.ZERO;
+
+    @Builder.Default
+    private BigDecimal finalAmount = BigDecimal.ZERO;
+
+    private LocalDateTime paidAt;
+
+    @Builder.Default
+    private Boolean paid = false;
 
     // =========================================================
     // SLOT
@@ -118,24 +195,57 @@ public class EmployeeQueueBookingResponseDTO {
     private String assignedEmployeeName;
 
     // =========================================================
-    // PAYMENT
+    // ALLOWED ACTIONS
     // =========================================================
 
     /**
-     * Null nếu booking chưa có payment nào được tạo
-     * (chưa thu tiền mặt tại quầy, chưa tạo yêu cầu thanh toán online).
+     * Frontend dùng các field này để ẩn hoặc hiện nút.
+     *
+     * Đây chỉ là hỗ trợ giao diện.
+     * Backend vẫn phải kiểm tra lại status và quyền.
      */
-    private Integer paymentId;
+    @Builder.Default
+    private Boolean canConfirm = false;
 
-    /**
-     * unpaid / paid / failed / cancelled.
-     * Null nếu chưa có payment.
-     */
-    private String paymentStatus;
+    @Builder.Default
+    private Boolean canCheckIn = false;
 
-    /**
-     * cash / bank_transfer / pos / paypal.
-     * Null nếu chưa có payment.
-     */
-    private String paymentMethod;
+    @Builder.Default
+    private Boolean canStartWash = false;
+
+    @Builder.Default
+    private Boolean canComplete = false;
+
+    @Builder.Default
+    private Boolean canCancel = false;
+
+    @Builder.Default
+    private Boolean canMarkNoShow = false;
+
+    // =========================================================
+    // SERVICE ITEM
+    // =========================================================
+
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class ServiceItemResponse {
+
+        private Integer serviceId;
+        private String serviceName;
+
+        @Builder.Default
+        private Integer quantity = 0;
+
+        /**
+         * Giá được lưu trong BookingDetail tại thời điểm đặt.
+         */
+        @Builder.Default
+        private BigDecimal unitPrice = BigDecimal.ZERO;
+
+        @Builder.Default
+        private BigDecimal subTotal = BigDecimal.ZERO;
+    }
 }

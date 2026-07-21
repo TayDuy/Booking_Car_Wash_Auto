@@ -1,14 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import employeeApi from "../../../api/employeeApi";
-import paymentApi from "../../../api/paymentApi";
 import BookingStatusBadge from "./BookingStatusBadge";
-import {
-  EMPLOYEE_PAYMENT_STATUS_MAP,
-  EMPLOYEE_PAYMENT_METHOD_MAP,
-} from "../constants/employeeBookingStatus";
 import "./EmployeeBookingDetailModal.css";
-
-const ONLINE_PAYMENT_POLL_INTERVAL_MS = 4000;
 
 const unwrapResponse = (response) =>
     response?.data?.data ?? response?.data ?? null;
@@ -65,6 +58,17 @@ const formatMoney = (value) => {
   }).format(amount);
 };
 
+const formatVehicleType = (value) => {
+  const normalizedValue = String(value ?? "").toLowerCase();
+
+  const labels = {
+    car: "Xe 4 chỗ",
+    suv: "Xe 7 chỗ",
+  };
+
+  return labels[normalizedValue] || value || "—";
+};
+
 function DetailItem({ label, value, fullWidth = false }) {
   return (
       <div
@@ -85,20 +89,7 @@ function EmployeeBookingDetailModal({ open, bookingId, onClose }) {
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
-  // ── Thu tiền mặt tại quầy ──────────────────────────────────────────────
-  const [collectingCash, setCollectingCash] = useState(false);
-  const [collectError, setCollectError] = useState("");
-
-  // ── Thanh toán online (VNPay QR) ──────────────────────────────────────
-  const [onlinePayment, setOnlinePayment] = useState({
-    status: "idle", // idle | loading | qr | paid | error
-    qrObjectUrl: null,
-    finalAmount: null,
-    errorMessage: "",
-  });
-  const pollTimerRef = useRef(null);
-
-  const loadBooking = async () => {
+  const loadBooking = useCallback(async () => {
     if (!bookingId) return;
 
     try {
@@ -108,128 +99,26 @@ function EmployeeBookingDetailModal({ open, bookingId, onClose }) {
       const response = await employeeApi.getBookingById(bookingId);
       setBooking(unwrapResponse(response));
     } catch (error) {
-      console.error("Load employee booking detail error:", error);
       setBooking(null);
       setErrorMessage(getErrorMessage(error));
     } finally {
       setLoading(false);
     }
-  };
-
-  const stopOnlinePaymentPolling = () => {
-    if (pollTimerRef.current) {
-      clearInterval(pollTimerRef.current);
-      pollTimerRef.current = null;
-    }
-  };
-
-  const resetOnlinePayment = () => {
-    stopOnlinePaymentPolling();
-
-    setOnlinePayment((previous) => {
-      if (previous.qrObjectUrl) {
-        URL.revokeObjectURL(previous.qrObjectUrl);
-      }
-
-      return {
-        status: "idle",
-        qrObjectUrl: null,
-        finalAmount: null,
-        errorMessage: "",
-      };
-    });
-  };
-
-  const handleCollectCash = async () => {
-    if (!bookingId || collectingCash) return;
-
-    try {
-      setCollectingCash(true);
-      setCollectError("");
-
-      const response = await employeeApi.collectCashPayment(bookingId);
-      setBooking(unwrapResponse(response));
-    } catch (error) {
-      console.error("Collect cash payment error:", error);
-      setCollectError(getErrorMessage(error));
-    } finally {
-      setCollectingCash(false);
-    }
-  };
-
-  const handleStartOnlinePayment = async () => {
-    if (!bookingId) return;
-
-    try {
-      setOnlinePayment({
-        status: "loading",
-        qrObjectUrl: null,
-        finalAmount: null,
-        errorMessage: "",
-      });
-
-      const createResponse = await employeeApi.createOnlinePayment(bookingId);
-      const paymentInfo = unwrapResponse(createResponse);
-
-      const qrResponse = await employeeApi.getOnlinePaymentQr(bookingId);
-      const qrObjectUrl = URL.createObjectURL(qrResponse.data);
-
-      setOnlinePayment({
-        status: "qr",
-        qrObjectUrl,
-        finalAmount: paymentInfo?.finalAmount,
-        errorMessage: "",
-      });
-
-      stopOnlinePaymentPolling();
-      pollTimerRef.current = setInterval(async () => {
-        try {
-          const statusResponse = await paymentApi.getByBooking(bookingId);
-          const paymentStatus = unwrapResponse(statusResponse);
-
-          if (paymentStatus?.paymentStatus?.toLowerCase() === "paid") {
-            stopOnlinePaymentPolling();
-            setOnlinePayment((previous) => ({ ...previous, status: "paid" }));
-            loadBooking();
-          }
-        } catch (error) {
-          // Bỏ qua lỗi tạm thời khi poll (VD mạng chập chờn) — sẽ tự thử lại.
-          console.error("Poll online payment status error:", error);
-        }
-      }, ONLINE_PAYMENT_POLL_INTERVAL_MS);
-    } catch (error) {
-      console.error("Create online payment error:", error);
-      setOnlinePayment({
-        status: "error",
-        qrObjectUrl: null,
-        finalAmount: null,
-        errorMessage: getErrorMessage(error),
-      });
-    }
-  };
+  }, [bookingId]);
 
   useEffect(() => {
     if (!open || !bookingId) {
       return;
     }
 
-    loadBooking();
-  }, [open, bookingId]);
+    const timeoutId = window.setTimeout(() => {
+      void loadBooking();
+    }, 0);
 
-  // Reset trạng thái thanh toán online mỗi khi đóng modal hoặc đổi booking,
-  // tránh giữ QR/polling của booking trước đó.
-  useEffect(() => {
-    if (!open) {
-      resetOnlinePayment();
-      setCollectError("");
-    }
-  }, [open, bookingId]);
-
-  useEffect(() => {
     return () => {
-      stopOnlinePaymentPolling();
+      window.clearTimeout(timeoutId);
     };
-  }, []);
+  }, [open, bookingId, loadBooking]);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -327,29 +216,6 @@ function EmployeeBookingDetailModal({ open, bookingId, onClose }) {
                       <span>Tổng tiền</span>
                       <strong>{formatMoney(booking.totalAmount)}</strong>
                     </div>
-                    <div>
-                      <span>Thanh toán</span>
-                      {(() => {
-                        const statusKey = booking.paymentStatus?.toLowerCase();
-                        const pmCfg =
-                            EMPLOYEE_PAYMENT_STATUS_MAP[statusKey] ||
-                            EMPLOYEE_PAYMENT_STATUS_MAP.unpaid;
-
-                        const methodKey = booking.paymentMethod?.toLowerCase();
-                        const methodLabel = methodKey
-                            ? EMPLOYEE_PAYMENT_METHOD_MAP[methodKey] || methodKey
-                            : null;
-
-                        return (
-                            <strong
-                                className={`employee-detail-payment ${pmCfg.badge}`}
-                            >
-                              {pmCfg.label}
-                              {methodLabel ? ` (${methodLabel})` : ""}
-                            </strong>
-                        );
-                      })()}
-                    </div>
                   </div>
 
                   <div className="employee-detail-grid">
@@ -370,7 +236,7 @@ function EmployeeBookingDetailModal({ open, bookingId, onClose }) {
 
                     <DetailItem
                         label="Loại xe"
-                        value={booking.vehicleType}
+                        value={formatVehicleType(booking.vehicleType)}
                     />
 
                     <DetailItem
@@ -431,85 +297,6 @@ function EmployeeBookingDetailModal({ open, bookingId, onClose }) {
                         value={booking.note || "Không có ghi chú"}
                     />
                   </div>
-
-                  {booking.status === "completed" &&
-                      booking.paymentStatus?.toLowerCase() !== "paid" && (
-                          <div className="employee-payment-collect">
-                            <h3 className="employee-payment-collect__title">
-                              Thu tiền tại trạm
-                            </h3>
-
-                            {collectError && (
-                                <p className="employee-payment-collect__error">
-                                  {collectError}
-                                </p>
-                            )}
-
-                            <div className="employee-payment-collect__actions">
-                              <button
-                                  type="button"
-                                  className="employee-payment-collect__cash-btn"
-                                  onClick={handleCollectCash}
-                                  disabled={
-                                      collectingCash || onlinePayment.status === "loading"
-                                  }
-                              >
-                                {collectingCash
-                                    ? "Đang thu tiền..."
-                                    : "Thu tiền mặt"}
-                              </button>
-
-                              <button
-                                  type="button"
-                                  className="employee-payment-collect__online-btn"
-                                  onClick={handleStartOnlinePayment}
-                                  disabled={
-                                      collectingCash ||
-                                      onlinePayment.status === "loading" ||
-                                      onlinePayment.status === "qr"
-                                  }
-                              >
-                                {onlinePayment.status === "loading"
-                                    ? "Đang tạo mã QR..."
-                                    : "Thanh toán online (VNPay)"}
-                              </button>
-                            </div>
-
-                            {onlinePayment.status === "qr" && (
-                                <div className="employee-payment-collect__qr">
-                                  <img
-                                      src={onlinePayment.qrObjectUrl}
-                                      alt="Mã QR thanh toán VNPay"
-                                  />
-
-                                  <p>
-                                    Số tiền cần thu:{" "}
-                                    <strong>
-                                      {formatMoney(
-                                          onlinePayment.finalAmount ?? booking.totalAmount
-                                      )}
-                                    </strong>
-                                  </p>
-
-                                  <p className="employee-payment-collect__hint">
-                                    Đưa mã QR cho khách quét bằng app ngân hàng/VNPay.
-                                    Trạng thái sẽ tự cập nhật khi thanh toán thành
-                                    công — không cần khách có tài khoản đăng nhập.
-                                  </p>
-
-                                  <button type="button" onClick={resetOnlinePayment}>
-                                    Hủy / Đóng mã QR
-                                  </button>
-                                </div>
-                            )}
-
-                            {onlinePayment.status === "error" && (
-                                <p className="employee-payment-collect__error">
-                                  {onlinePayment.errorMessage}
-                                </p>
-                            )}
-                          </div>
-                      )}
                 </>
             )}
           </div>

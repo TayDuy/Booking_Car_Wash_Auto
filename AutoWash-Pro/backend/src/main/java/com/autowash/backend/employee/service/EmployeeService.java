@@ -4,11 +4,6 @@ import com.autowash.backend.booking.enums.BookingStatus;
 import com.autowash.backend.employee.dto.EmployeeBookingCreateRequestDTO;
 import com.autowash.backend.employee.dto.EmployeeProfileResponseDTO;
 import com.autowash.backend.employee.dto.EmployeeQueueBookingResponseDTO;
-import com.autowash.backend.payment.dto.PaymentResponseDTO;
-import jakarta.servlet.http.HttpServletRequest;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -50,42 +45,6 @@ public interface EmployeeService {
             LocalDate date,
             BookingStatus status
     );
-
-    /**
-     * Lấy hàng chờ có phân trang.
-     *
-     * Implementation hiện tại có thể tiếp tục dùng hàm List phía trên.
-     * EmployeeServiceImpl sẽ override phương thức này khi BookingRepository
-     * hỗ trợ phân trang trực tiếp bằng Pageable.
-     */
-    default Page<EmployeeQueueBookingResponseDTO> getMyBranchQueue(
-            Integer userId,
-            LocalDate date,
-            BookingStatus status,
-            Pageable pageable
-    ) {
-        List<EmployeeQueueBookingResponseDTO> queue =
-                getMyBranchQueue(userId, date, status);
-
-        if (pageable == null || pageable.isUnpaged()) {
-            return new PageImpl<>(queue);
-        }
-
-        long offset = pageable.getOffset();
-        int fromIndex = offset >= queue.size()
-                ? queue.size()
-                : (int) offset;
-        int toIndex = Math.min(
-                fromIndex + pageable.getPageSize(),
-                queue.size()
-        );
-
-        return new PageImpl<>(
-                queue.subList(fromIndex, toIndex),
-                pageable,
-                queue.size()
-        );
-    }
 
     /**
      * Xem chi tiết một booking thuộc chi nhánh Employee.
@@ -153,6 +112,28 @@ public interface EmployeeService {
     );
 
     // =========================================================
+    // NO-SHOW
+    // confirmed -> no_show
+    // =========================================================
+
+    /**
+     * Đánh dấu khách không đến đúng giờ.
+     *
+     * Điều kiện:
+     * - Booking đang ở trạng thái confirmed.
+     * - Đã quá thời gian chờ cho phép kể từ giờ bắt đầu của slot.
+     * - Booking thuộc chi nhánh của Employee.
+     * - Chỉ supervisor hoặc manager được thực hiện.
+     *
+     * Đồng thời giảm số booking hiện tại của slot để trả lại chỗ trống.
+     * Không cộng điểm, không tăng lượt sử dụng và không xử lý Payment.
+     */
+    EmployeeQueueBookingResponseDTO markNoShow(
+            Integer userId,
+            Integer bookingId
+    );
+
+    // =========================================================
     // START WASH
     // checked_in -> in_progress
     // =========================================================
@@ -181,56 +162,16 @@ public interface EmployeeService {
      * Đồng thời:
      * - Ghi completeAt.
      * - Trả WashBay về available.
+     * - Ghi nhận lượt sử dụng và tổng chi tiêu của Customer.
+     * - Cộng điểm loyalty đúng một lần.
+     * - Đánh giá lại hạng thành viên.
      *
-     * Không cộng điểm loyalty tại đây.
+     * Không xử lý Payment và không lưu phương thức thanh toán.
+     * Employee chỉ bấm hoàn thành sau khi đã kiểm tra khách
+     * thanh toán tại quầy.
      */
     EmployeeQueueBookingResponseDTO completeWash(
             Integer userId,
             Integer bookingId
     );
-
-    // =========================================================
-    // PAYMENT — thanh toán tại trạm
-    // =========================================================
-
-    /**
-     * Thu tiền mặt tại quầy cho một booking đã completed.
-     *
-     * Tạo (hoặc tái sử dụng) Payment với paymentMethod = cash,
-     * sau đó chuyển ngay sang paid — kích hoạt cộng điểm loyalty.
-     *
-     * Booking phải thuộc chi nhánh của Employee và đang ở
-     * trạng thái completed, chưa có payment nào ở trạng thái paid.
-     */
-    EmployeeQueueBookingResponseDTO collectCashPayment(
-            Integer userId,
-            Integer bookingId
-    );
-
-    /**
-     * Tạo (hoặc lấy lại nếu đã tồn tại và chưa paid) yêu cầu thanh toán
-     * online (VNPay) cho một booking đã completed, dùng khi khách vãng lai
-     * muốn quét QR thanh toán ngay tại quầy thay vì trả tiền mặt.
-     *
-     * Không yêu cầu khách phải có tài khoản đăng nhập — payment được tạo
-     * dựa trên bookingId, khách chỉ cần quét QR bằng app ngân hàng của họ.
-     */
-    PaymentResponseDTO ensureOnlinePayment(
-            Integer userId,
-            Integer bookingId
-    );
-
-    /**
-     * Sinh ảnh QR (PNG) cho yêu cầu thanh toán online của một booking.
-     *
-     * Tự động tạo payment nếu chưa có (xem {@link #ensureOnlinePayment}).
-     * VNPay sẽ callback về /api/v1/payments/vnpay-return và
-     * /api/v1/payments/vnpay-ipn (không đổi, dùng chung cho cả 2 luồng
-     * customer tự thanh toán và employee thu hộ tại quầy).
-     */
-    byte[] generateOnlinePaymentQr(
-            Integer userId,
-            Integer bookingId,
-            HttpServletRequest request
-    ) throws Exception;
 }
