@@ -1,74 +1,66 @@
+/* ================= PUBLIC FOOTER ================= */
 .public-footer {
-  background: #ffffff;
+  background-color: #f8fafc;
   border-top: 1px solid #e2e8f0;
+  padding: 40px 0;
+  color: #334155;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  scroll-margin-top: 90px;
 }
 
-.public-footer-grid {
-  display: grid;
-  grid-template-columns: 1.4fr 0.7fr 0.7fr 1fr;
-  gap: 46px;
-  padding: 64px 0;
+.public-footer-inner {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 32px;
 }
 
-.public-footer-brand h3 {
-  margin: 0 0 16px;
-  color: #003b8f;
-  font-size: 24px;
+/* --- Cột Thương hiệu & Bản quyền --- */
+.footer-brand {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 360px;
+}
+
+.footer-logo {
+  font-size: 20px;
   font-weight: 800;
-}
-
-.public-footer-brand p {
+  color: #003b95;
   margin: 0;
-  color: #5d6678;
-  font-size: 14px;
-  line-height: 1.7;
+  letter-spacing: -0.3px;
 }
 
-.public-footer-col h4 {
-  margin: 0 0 18px;
-  color: #003b8f;
-  font-size: 16px;
-  font-weight: 800;
+.footer-copyright {
+  color: #64748b;
+  font-size: 13.5px;
+  line-height: 1.5;
+  margin: 0;
 }
 
-.public-footer-col p {
-  margin: 0 0 12px;
-  color: #5d6678;
-  font-size: 14px;
-  line-height: 1.7;
+/* --- Các cột đường dẫn (Liên hệ, Hỗ trợ, Pháp lý) --- */
+.footer-nav-col {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
-.public-footer-col a {
-  display: block;
-  margin-bottom: 12px;
-  color: #5d6678;
+.footer-nav-col a {
+  color: #475569;
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 500;
   text-decoration: none;
-  transition: color 0.2s;
+  transition: color 0.2s ease;
 }
 
-.public-footer-col a:hover {
-  color: #004aad;
+.footer-nav-col a:hover {
+  color: #0047ba;
 }
 
-.public-footer-bottom {
-  padding: 22px 0;
-  border-top: 1px solid #e2e8f0;
-  color: #6b7280;
-  font-size: 13px;
-  text-align: center;
-}
-
-@media (max-width: 1100px) {
-  .public-footer-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (max-width: 760px) {
-  .public-footer-grid {
-    grid-template-columns: 1fr;
-    padding: 44px 0;
+/* --- Responsive trên màn hình nhỏ --- */
+@media (max-width: 768px) {
+  .public-footer-inner {
+    flex-direction: column;
+    gap: 24px;
   }
 }
