@@ -214,7 +214,13 @@ function EmployeeBookingDetailModal({ open, bookingId, onClose }) {
 
                     <div>
                       <span>Tổng tiền</span>
-                      <strong>{formatMoney(booking.totalAmount)}</strong>
+                      <strong>
+                        {formatMoney(
+                            booking.finalAmount != null && booking.finalAmount > 0
+                                ? booking.finalAmount
+                                : booking.totalAmount
+                        )}
+                      </strong>
                     </div>
                   </div>
 

@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
-import { AlertCircle, ClipboardList, X } from "lucide-react";
+import { AlertCircle, CheckCircle2, ClipboardList, Droplets, X } from "lucide-react";
 
 import employeeApi from "../../../api/employeeApi";
+import * as washBayService from "../../../api/washBayService";
 import EmployeeBookingCard from "../components/EmployeeBookingCard";
 import EmployeeBookingSearch from "../components/EmployeeBookingSearch";
 import EmployeeQueueFilters from "../components/EmployeeQueueFilters";
@@ -20,7 +21,13 @@ function getTodayInputValue() {
 }
 
 function unwrapResponse(response) {
-  return response?.data?.data ?? response?.data ?? response;
+  const data = response?.data?.data ?? response?.data ?? response;
+
+  if (data && typeof data === "object" && Array.isArray(data.content)) {
+    return data.content;
+  }
+
+  return data;
 }
 
 function getErrorMessage(error) {
@@ -41,8 +48,8 @@ const BOOKING_ACTIONS = {
   "no-show": (bookingId) =>
       employeeApi.markNoShow(bookingId),
 
-  "start-wash": (bookingId) =>
-      employeeApi.startWash(bookingId),
+  "start-wash": (bookingId, bayId) =>
+      employeeApi.startWash(bookingId, bayId),
 
   complete: (bookingId) =>
       employeeApi.completeBooking(bookingId),
@@ -70,6 +77,12 @@ function EmployeeQueuePage() {
 
   const [processingBookingId, setProcessingBookingId] = useState(null);
   const [detailBookingId, setDetailBookingId] = useState(null);
+
+  // ── Wash Bay Selection ──
+  const [showBayModal, setShowBayModal] = useState(false);
+  const [availableBays, setAvailableBays] = useState([]);
+  const [selectedBayId, setSelectedBayId] = useState(null);
+  const [pendingWashBooking, setPendingWashBooking] = useState(null);
 
   const loadQueue = useCallback(async () => {
     try {
@@ -171,9 +184,79 @@ function EmployeeQueuePage() {
 
   };
 
+  const handleStartBaySelection = async (bookingId, booking) => {
+    const branchId = booking?.branchId;
+
+    if (!branchId) {
+      setQueueError("Không thể xác định chi nhánh để chọn khu vực rửa.");
+      return;
+    }
+
+    try {
+      const response = await washBayService.getBaysByBranch(branchId);
+      const bays = response?.data?.data ?? response?.data ?? [];
+
+      if (!Array.isArray(bays) || bays.length === 0) {
+        setQueueError("Chi nhánh chưa cài đặt khu vực rửa.");
+        return;
+      }
+
+      const available = bays.filter(
+          (bay) => bay.status === "available"
+      );
+
+      setPendingWashBooking({ bookingId, branchId });
+      setAvailableBays(bays); // Store all bays to show full status
+      setSelectedBayId(available.length > 0 ? available[0].bayId : null);
+      setShowBayModal(true);
+    } catch (error) {
+      setQueueError("Không thể tải danh sách khu vực rửa.");
+    }
+  };
+
+  const handleConfirmStartWash = async () => {
+    if (!pendingWashBooking || !selectedBayId) {
+      return;
+    }
+
+    const { bookingId } = pendingWashBooking;
+
+    try {
+      setShowBayModal(false);
+      setPendingWashBooking(null);
+      setProcessingBookingId(bookingId);
+      setQueueError("");
+      setSearchError("");
+
+      const response = await BOOKING_ACTIONS["start-wash"](bookingId, selectedBayId);
+      const updatedBooking = unwrapResponse(response);
+
+      updateBookingAfterAction(updatedBooking);
+      await loadQueue();
+    } catch (error) {
+      const message = getErrorMessage(error);
+
+      if (searchResult?.bookingId === bookingId) {
+        setSearchError(message);
+      } else {
+        setQueueError(message);
+      }
+    } finally {
+      setProcessingBookingId(null);
+    }
+  };
+
+  const handleCancelBaySelection = () => {
+    setShowBayModal(false);
+    setPendingWashBooking(null);
+    setAvailableBays([]);
+    setSelectedBayId(null);
+  };
+
   const handleBookingAction = async ({
                                        bookingId,
                                        action,
+                                       booking,
                                      }) => {
     const actionHandler = BOOKING_ACTIONS[action];
 
@@ -181,6 +264,11 @@ function EmployeeQueuePage() {
       setQueueError(
           `Hành động '${action}' chưa được hỗ trợ.`
       );
+      return;
+    }
+
+    if (action === "start-wash") {
+      await handleStartBaySelection(bookingId, booking);
       return;
     }
 
@@ -203,8 +291,6 @@ function EmployeeQueuePage() {
 
       updateBookingAfterAction(updatedBooking);
 
-      // Tải lại để booking được loại khỏi bộ lọc hiện tại
-      // khi trạng thái của nó đã thay đổi.
       await loadQueue();
     } catch (error) {
       const message = getErrorMessage(error);
@@ -372,6 +458,111 @@ function EmployeeQueuePage() {
             onClose={handleCloseDetails}
         />
 
+        {showBayModal && (
+            <div
+                className="employee-queue-page__modal-backdrop"
+                onMouseDown={(e) => {
+                  if (e.target === e.currentTarget) {
+                    handleCancelBaySelection();
+                  }
+                }}
+            >
+              <div className="employee-queue-page__bay-modal">
+                <div className="employee-queue-page__bay-modal-header">
+                  <div className="employee-queue-page__bay-modal-title">
+                    <Droplets size={20} />
+                    <h3>Chọn khu vực rửa</h3>
+                  </div>
+                  <button
+                      type="button"
+                      onClick={handleCancelBaySelection}
+                      aria-label="Đóng"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+
+                <div className="employee-queue-page__bay-modal-body">
+                  {pendingWashBooking && (
+                      <div className="employee-queue-page__bay-booking-info">
+                        <span>Booking:</span>
+                        <strong>
+                          {bookings.find(
+                              (b) => b.bookingId === pendingWashBooking.bookingId
+                          )?.bookingCode || `#${pendingWashBooking.bookingId}`}
+                        </strong>
+                      </div>
+                  )}
+
+                  <p className="employee-queue-page__bay-label">
+                    Chọn khu vực rửa khả dụng:
+                  </p>
+
+                  <div className="employee-queue-page__bay-grid">
+                    {availableBays.map((bay) => {
+                      const isAvailable = bay.status === "available";
+                      const isSelected = selectedBayId === bay.bayId;
+
+                      const statusLabels = {
+                        available: "Trống",
+                        occupied: "Đang rửa",
+                        maintenance: "Bảo trì",
+                        inactive: "Ngừng HD",
+                      };
+
+                      return (
+                          <button
+                              key={bay.bayId}
+                              type="button"
+                              disabled={!isAvailable}
+                              className={`employee-queue-page__bay-card${
+                                  isSelected ? " employee-queue-page__bay-card--selected" : ""
+                              }${!isAvailable ? " employee-queue-page__bay-card--disabled" : ""}`}
+                              onClick={() => isAvailable && setSelectedBayId(bay.bayId)}
+                          >
+                            <Droplets
+                                size={22}
+                                className="employee-queue-page__bay-card-icon"
+                            />
+                            <span className="employee-queue-page__bay-card-name">
+                              {bay.bayName}
+                            </span>
+                            <span className={`employee-queue-page__bay-card-status employee-queue-page__bay-card-status--${bay.status}`}>
+                              {statusLabels[bay.status] || bay.status}
+                            </span>
+                            {isSelected && (
+                                <CheckCircle2
+                                    size={16}
+                                    className="employee-queue-page__bay-card-check"
+                                />
+                            )}
+                          </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="employee-queue-page__bay-modal-footer">
+                  <button
+                      type="button"
+                      className="employee-queue-page__bay-btn-cancel"
+                      onClick={handleCancelBaySelection}
+                  >
+                    Hủy
+                  </button>
+                  <button
+                      type="button"
+                      className="employee-queue-page__bay-btn-confirm"
+                      onClick={handleConfirmStartWash}
+                      disabled={!selectedBayId}
+                  >
+                    <Droplets size={16} />
+                    Bắt đầu rửa
+                  </button>
+                </div>
+              </div>
+            </div>
+        )}
       </section>
   );
 }

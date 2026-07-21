@@ -135,12 +135,15 @@ public class TimeSlot {
 
         /** Kiểm tra còn chỗ — gọi trước khi incrementBookings(). */
         public boolean hasCapacity() {
+                if (this.currentBookings == null) this.currentBookings = 0;
+                if (this.maxCapacity == null) this.maxCapacity = 1;
                 return SlotStatus.open.equals(this.status)
                         && this.currentBookings < this.maxCapacity;
         }
 
         /** Gọi khi booking được xác nhận — tự chuyển status → full khi đủ chỗ. */
         public void incrementBookings() {
+                if (this.currentBookings == null) this.currentBookings = 0;
                 this.currentBookings++;
                 if (this.currentBookings >= this.maxCapacity) {
                         this.status = SlotStatus.full;
@@ -149,6 +152,7 @@ public class TimeSlot {
 
         /** Gọi khi booking bị huỷ/no_show — mở lại slot cho waitlist (FR-6). */
         public void decrementBookings() {
+                if (this.currentBookings == null) this.currentBookings = 0;
                 if (this.currentBookings > 0) this.currentBookings--;
                 if (SlotStatus.full.equals(this.status) && this.currentBookings < this.maxCapacity) {
                         this.status = SlotStatus.open;

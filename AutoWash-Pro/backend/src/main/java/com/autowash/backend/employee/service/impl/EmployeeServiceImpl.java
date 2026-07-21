@@ -895,12 +895,12 @@ public class EmployeeServiceImpl implements EmployeeService {
                  "sedan",
                  "4_seats",
                  "4-seats",
-                 "4 seats" -> Vehicle.VehicleType.car;
+                 "4 seats" -> Vehicle.VehicleType.FOUR_SEATS;
 
             case "suv",
                  "7_seats",
                  "7-seats",
-                 "7 seats" -> Vehicle.VehicleType.suv;
+                 "7 seats" -> Vehicle.VehicleType.SEVEN_SEATS;
 
             default -> throw new BusinessException(
                     "Loại xe không hợp lệ: " + vehicleType,

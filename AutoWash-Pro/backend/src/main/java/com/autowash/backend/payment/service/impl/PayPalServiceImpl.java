@@ -3,8 +3,8 @@ package com.autowash.backend.payment.service.impl;
 import com.autowash.backend.common.exception.BusinessException;
 import com.autowash.backend.payment.config.PayPalConfig;
 import com.autowash.backend.payment.service.PayPalService;
-import tools.jackson.databind.JsonNode;
-import tools.jackson.databind.json.JsonMapper;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.*;
@@ -56,7 +56,7 @@ public class PayPalServiceImpl implements PayPalService {
         try {
             ResponseEntity<String> response = restTemplate.postForEntity(url, entity, String.class);
             JsonNode json = objectMapper.readTree(response.getBody());
-            return json.get("access_token").asString();
+            return json.get("access_token").asText();
         } catch (Exception e) {
             log.error("Lỗi lấy access token PayPal: {}", e.getMessage());
             throw new BusinessException("Không kết nối được với PayPal (OAuth2 token)");
@@ -106,11 +106,11 @@ public class PayPalServiceImpl implements PayPalService {
             ResponseEntity<String> response = restTemplate.postForEntity(url, entity, String.class);
             JsonNode json = objectMapper.readTree(response.getBody());
 
-            String orderId = json.get("id").asString();
+            String orderId = json.get("id").asText();
             String approvalUrl = null;
             for (JsonNode link : json.get("links")) {
-                if ("approve".equals(link.get("rel").asString())) {
-                    approvalUrl = link.get("href").asString();
+                if ("approve".equals(link.get("rel").asText())) {
+                    approvalUrl = link.get("href").asText();
                     break;
                 }
             }
@@ -153,18 +153,18 @@ public class PayPalServiceImpl implements PayPalService {
             ResponseEntity<String> response = restTemplate.postForEntity(url, entity, String.class);
             JsonNode json = objectMapper.readTree(response.getBody());
 
-            String status = json.path("status").asString(null);
+            String status = json.path("status").asText(null);
 
             JsonNode purchaseUnits = json.path("purchase_units");
             String captureId = null;
             if (purchaseUnits.isArray() && purchaseUnits.size() > 0) {
                 JsonNode captures = purchaseUnits.get(0).path("payments").path("captures");
                 if (captures.isArray() && captures.size() > 0) {
-                    captureId = captures.get(0).path("id").asString(null);
+                    captureId = captures.get(0).path("id").asText(null);
                 }
             }
 
-            String payerEmail = json.path("payer").path("email_address").asString(null);
+            String payerEmail = json.path("payer").path("email_address").asText(null);
 
             Map<String, String> result = new HashMap<>();
             result.put("status", status);

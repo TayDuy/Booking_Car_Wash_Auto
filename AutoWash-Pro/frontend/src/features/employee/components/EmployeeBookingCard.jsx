@@ -234,7 +234,13 @@ function EmployeeBookingCard({
 
             <div>
               <span>Tổng tiền</span>
-              <strong>{formatCurrency(booking.totalAmount)}</strong>
+              <strong>
+                {formatCurrency(
+                    booking.finalAmount != null && booking.finalAmount > 0
+                        ? booking.finalAmount
+                        : booking.totalAmount
+                )}
+              </strong>
             </div>
           </div>
 

@@ -1,23 +1,30 @@
 package com.autowash.backend.customer.service.impl;
 
+import com.autowash.backend.auditlog.service.AuditLogService;
+import com.autowash.backend.common.exception.BusinessException;
 import com.autowash.backend.customer.dto.AdminCreateCustomerRequestDTO;
 import com.autowash.backend.customer.dto.AdminCreateCustomerResponseDTO;
 import com.autowash.backend.customer.dto.CustomerProfileResponse;
 import com.autowash.backend.customer.dto.CustomerUpdateRequest;
-import com.autowash.backend.common.exception.BusinessException;
 import com.autowash.backend.customer.entity.Customer;
 import com.autowash.backend.customer.repository.CustomerRepository;
 import com.autowash.backend.customer.service.CustomerService;
 import com.autowash.backend.user.entity.User;
 import com.autowash.backend.user.repository.UserRepository;
-import org.springframework.http.HttpStatus;
+import com.autowash.backend.vehicle.dto.VehicleBriefResponse;
+import com.autowash.backend.vehicle.entity.Vehicle;
+import com.autowash.backend.vehicle.repository.VehicleRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
-import com.autowash.backend.auditlog.service.AuditLogService;
+import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class CustomerServiceImpl implements CustomerService {
@@ -29,6 +36,7 @@ public class CustomerServiceImpl implements CustomerService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final AuditLogService auditLogService;
+    private final VehicleRepository vehicleRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -66,12 +74,24 @@ public class CustomerServiceImpl implements CustomerService {
     @Override
     @Transactional(readOnly = true)
     public List<CustomerProfileResponse> getAllCustomers() {
-        // findAllWithUser() dùng JOIN FETCH nên chỉ tốn 1 query thay vì
-        // 1 (findAll) + N (mỗi customer lazy-load user riêng khi mapToResponse
-        // đọc customer.getUser()...).
-        return customerRepository.findAllWithUser()
-                .stream()
-                .map(this::mapToResponse)
+        List<Customer> customers = customerRepository.findAllWithUser();
+
+        Map<Integer, List<VehicleBriefResponse>> vehiclesByCustomer = Collections.emptyMap();
+        if (!customers.isEmpty()) {
+            List<Integer> customerIds = customers.stream()
+                    .map(Customer::getCustomerId)
+                    .toList();
+            List<Vehicle> vehicles = vehicleRepository.findByCustomer_CustomerIdIn(customerIds);
+            vehiclesByCustomer = vehicles.stream()
+                    .collect(Collectors.groupingBy(
+                            v -> v.getCustomer().getCustomerId(),
+                            Collectors.mapping(this::toVehicleBrief, Collectors.toList())
+                    ));
+        }
+
+        Map<Integer, List<VehicleBriefResponse>> finalMap = vehiclesByCustomer;
+        return customers.stream()
+                .map(c -> mapToResponse(c, finalMap.getOrDefault(c.getCustomerId(), List.of())))
                 .toList();
     }
 
@@ -141,6 +161,10 @@ public class CustomerServiceImpl implements CustomerService {
     }
 
     private CustomerProfileResponse mapToResponse(Customer customer) {
+        return mapToResponse(customer, List.of());
+    }
+
+    private CustomerProfileResponse mapToResponse(Customer customer, List<VehicleBriefResponse> vehicles) {
         return CustomerProfileResponse.builder()
                 .customerId(customer.getCustomerId())
                 .username(customer.getUser() != null ? customer.getUser().getUsername() : null)
@@ -154,6 +178,26 @@ public class CustomerServiceImpl implements CustomerService {
                 .totalSpending(customer.getTotalSpending())
                 .tierId(customer.getTierId())
                 .joinedAt(customer.getJoinedAt())
+                .vehicles(vehicles)
+                .build();
+    }
+
+    private VehicleBriefResponse toVehicleBrief(Vehicle vehicle) {
+        String vt;
+        if (vehicle.getVehicleType() == Vehicle.VehicleType.FOUR_SEATS) {
+            vt = "car";
+        } else if (vehicle.getVehicleType() == Vehicle.VehicleType.SEVEN_SEATS) {
+            vt = "suv";
+        } else {
+            vt = "car";
+        }
+        return VehicleBriefResponse.builder()
+                .vehicleId(vehicle.getVehicleId())
+                .licensePlate(vehicle.getLicensePlate())
+                .brand(vehicle.getBrand())
+                .model(vehicle.getModel())
+                .vehicleType(vt)
+                .isActive(vehicle.getIsActive())
                 .build();
     }
     private String translateGenderToEnglish(String gender) {

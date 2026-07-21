@@ -1,11 +1,11 @@
 package com.autowash.backend.support.service;
 
 import com.autowash.backend.support.dto.SupportChatRequestDTO;
-import tools.jackson.databind.JsonNode;
-import tools.jackson.databind.ObjectMapper;
-import tools.jackson.databind.json.JsonMapper;
-import tools.jackson.databind.node.ArrayNode;
-import tools.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.json.JsonMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -211,7 +211,7 @@ public class SupportChatService {
             StringBuilder result = new StringBuilder();
             for (JsonNode part : parts) {
                 if (part.has("text")) {
-                    result.append(part.path("text").asString());
+                    result.append(part.path("text").asText());
                 }
             }
 

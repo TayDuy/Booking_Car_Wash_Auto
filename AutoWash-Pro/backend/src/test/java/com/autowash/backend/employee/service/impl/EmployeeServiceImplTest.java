@@ -7,13 +7,17 @@ import com.autowash.backend.booking.repository.BookingDetailRepository;
 import com.autowash.backend.booking.repository.BookingRepository;
 import com.autowash.backend.branch.entity.Branch;
 import com.autowash.backend.common.exception.BusinessException;
+import com.autowash.backend.common.exception.ResourceNotFoundException;
 import com.autowash.backend.customer.entity.Customer;
 import com.autowash.backend.customer.repository.CustomerRepository;
 import com.autowash.backend.employee.dto.EmployeeBookingCreateRequestDTO;
+import com.autowash.backend.employee.dto.EmployeeProfileResponseDTO;
+import com.autowash.backend.employee.dto.EmployeeQueueBookingResponseDTO;
 import com.autowash.backend.employee.entity.Employee;
 import com.autowash.backend.employee.mapper.EmployeeMapper;
 import com.autowash.backend.employee.repository.EmployeeRepository;
 import com.autowash.backend.loyaltytier.service.LoyaltyTierEvaluationService;
+import com.autowash.backend.loyaltytransaction.dto.LoyaltyTransactionResponseDTO;
 import com.autowash.backend.loyaltytransaction.service.LoyaltyTransactionService;
 import com.autowash.backend.servicepackage.entity.ServicePackage;
 import com.autowash.backend.servicepackage.repository.ServicePackageRepository;
@@ -23,6 +27,7 @@ import com.autowash.backend.user.entity.User;
 import com.autowash.backend.user.repository.UserRepository;
 import com.autowash.backend.vehicle.entity.Vehicle;
 import com.autowash.backend.vehicle.repository.VehicleRepository;
+import com.autowash.backend.washbay.entity.WashBay;
 import com.autowash.backend.washbay.repository.WashBayRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -41,12 +46,14 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -172,7 +179,7 @@ class EmployeeServiceImplTest {
             assertEquals("51A-99999", savedVehicle.getLicensePlate());
             assertEquals(customer.getCustomerId(),
                     savedVehicle.getCustomer().getCustomerId());
-            assertEquals(Vehicle.VehicleType.car,
+            assertEquals(Vehicle.VehicleType.FOUR_SEATS,
                     savedVehicle.getVehicleType());
             assertEquals("Toyota", savedVehicle.getBrand());
             assertTrue(savedVehicle.getIsActive());
@@ -401,6 +408,706 @@ class EmployeeServiceImplTest {
         }
     }
 
+    @Nested
+    class ConfirmBooking {
+
+        private Booking booking;
+
+        @BeforeEach
+        void setUp() {
+            booking = Booking.builder()
+                    .bookingId(500)
+                    .bookingCode("BK-TEST-500")
+                    .branch(branch)
+                    .customer(customer)
+                    .status(BookingStatus.pending)
+                    .build();
+        }
+
+        @Test
+        void shouldConfirmPendingBooking() {
+            mockActiveEmployee();
+
+            when(bookingRepository.findEmployeeBookingById(500, 1))
+                    .thenReturn(Optional.of(booking));
+            when(bookingRepository.save(booking))
+                    .thenReturn(booking);
+            when(employeeMapper.toQueueResponse(booking, List.of()))
+                    .thenReturn(new EmployeeQueueBookingResponseDTO());
+
+            EmployeeQueueBookingResponseDTO result =
+                    employeeService.confirmBooking(1, 500);
+
+            assertNotNull(result);
+            assertEquals(BookingStatus.confirmed, booking.getStatus());
+            verify(bookingRepository).save(booking);
+        }
+
+        @Test
+        void shouldRejectConfirmWhenStatusIsNotPending() {
+            booking.setStatus(BookingStatus.confirmed);
+            mockActiveEmployee();
+
+            when(bookingRepository.findEmployeeBookingById(500, 1))
+                    .thenReturn(Optional.of(booking));
+
+            BusinessException exception = assertThrows(
+                    BusinessException.class,
+                    () -> employeeService.confirmBooking(1, 500)
+            );
+
+            assertTrue(exception.getMessage().contains("xác nhận"));
+            verify(bookingRepository, never()).save(any(Booking.class));
+        }
+    }
+
+    @Nested
+    class CheckInBooking {
+
+        private Booking booking;
+
+        @BeforeEach
+        void setUp() {
+            booking = Booking.builder()
+                    .bookingId(500)
+                    .bookingCode("BK-TEST-500")
+                    .branch(branch)
+                    .customer(customer)
+                    .status(BookingStatus.confirmed)
+                    .build();
+        }
+
+        @Test
+        void shouldCheckInConfirmedBooking() {
+            mockActiveEmployee();
+
+            when(bookingRepository.findEmployeeBookingById(500, 1))
+                    .thenReturn(Optional.of(booking));
+            when(bookingRepository.save(booking))
+                    .thenReturn(booking);
+            when(employeeMapper.toQueueResponse(booking, List.of()))
+                    .thenReturn(new EmployeeQueueBookingResponseDTO());
+
+            EmployeeQueueBookingResponseDTO result =
+                    employeeService.checkInBooking(1, 500);
+
+            assertNotNull(result);
+            assertEquals(BookingStatus.checked_in, booking.getStatus());
+            assertNotNull(booking.getCheckInAt());
+            verify(bookingRepository).save(booking);
+        }
+
+        @Test
+        void shouldRejectCheckInWhenStatusIsNotConfirmed() {
+            booking.setStatus(BookingStatus.checked_in);
+            mockActiveEmployee();
+
+            when(bookingRepository.findEmployeeBookingById(500, 1))
+                    .thenReturn(Optional.of(booking));
+
+            BusinessException exception = assertThrows(
+                    BusinessException.class,
+                    () -> employeeService.checkInBooking(1, 500)
+            );
+
+            assertTrue(exception.getMessage().contains("check-in"));
+            verify(bookingRepository, never()).save(any(Booking.class));
+        }
+    }
+
+    @Nested
+    class StartWash {
+
+        private Booking booking;
+        private WashBay washBay;
+
+        @BeforeEach
+        void setUp() {
+            washBay = WashBay.builder()
+                    .bayId(20)
+                    .bayName("Khu rửa số 1")
+                    .branch(branch)
+                    .status(WashBay.BayStatus.available)
+                    .build();
+
+            booking = Booking.builder()
+                    .bookingId(500)
+                    .bookingCode("BK-TEST-500")
+                    .branch(branch)
+                    .customer(customer)
+                    .status(BookingStatus.checked_in)
+                    .build();
+        }
+
+        @Test
+        void shouldStartWashWithValidBayId() {
+            mockActiveEmployee();
+
+            when(bookingRepository.findEmployeeBookingById(500, 1))
+                    .thenReturn(Optional.of(booking));
+            when(washBayRepository.findById(20))
+                    .thenReturn(Optional.of(washBay));
+            when(bookingRepository.save(booking))
+                    .thenReturn(booking);
+            when(employeeMapper.toQueueResponse(booking, List.of()))
+                    .thenReturn(new EmployeeQueueBookingResponseDTO());
+
+            EmployeeQueueBookingResponseDTO result =
+                    employeeService.startWash(1, 500, 20);
+
+            assertNotNull(result);
+            assertEquals(BookingStatus.in_progress, booking.getStatus());
+            assertEquals(WashBay.BayStatus.occupied, washBay.getStatus());
+            assertNotNull(booking.getAssignedStaff());
+            assertEquals(10, booking.getAssignedStaff().getEmployeeId());
+            verify(bookingRepository).save(booking);
+        }
+
+        @Test
+        void shouldRejectStartWashWhenBayIsNotAvailable() {
+            washBay.setStatus(WashBay.BayStatus.occupied);
+            mockActiveEmployee();
+
+            when(bookingRepository.findEmployeeBookingById(500, 1))
+                    .thenReturn(Optional.of(booking));
+            when(washBayRepository.findById(20))
+                    .thenReturn(Optional.of(washBay));
+
+            BusinessException exception = assertThrows(
+                    BusinessException.class,
+                    () -> employeeService.startWash(1, 500, 20)
+            );
+
+            assertTrue(exception.getMessage().contains("không khả dụng"));
+            verify(bookingRepository, never()).save(any(Booking.class));
+        }
+
+        @Test
+        void shouldRejectStartWashWhenBookingIsNotCheckedIn() {
+            booking.setStatus(BookingStatus.in_progress);
+            mockActiveEmployee();
+
+            when(bookingRepository.findEmployeeBookingById(500, 1))
+                    .thenReturn(Optional.of(booking));
+
+            BusinessException exception = assertThrows(
+                    BusinessException.class,
+                    () -> employeeService.startWash(1, 500, 20)
+            );
+
+            assertTrue(exception.getMessage().contains("bắt đầu rửa"));
+            verify(bookingRepository, never()).save(any(Booking.class));
+        }
+
+        @Test
+        void shouldRejectStartWashWhenWashBayNotFound() {
+            mockActiveEmployee();
+
+            when(bookingRepository.findEmployeeBookingById(500, 1))
+                    .thenReturn(Optional.of(booking));
+            when(washBayRepository.findById(999))
+                    .thenReturn(Optional.empty());
+
+            assertThrows(
+                    ResourceNotFoundException.class,
+                    () -> employeeService.startWash(1, 500, 999)
+            );
+
+            verify(bookingRepository, never()).save(any(Booking.class));
+        }
+
+        @Test
+        void shouldRejectStartWashWhenBayBelongsToDifferentBranch() {
+            Branch otherBranch = Branch.builder()
+                    .branchId(99)
+                    .branchName("Chi nhánh khác")
+                    .build();
+            washBay.setBranch(otherBranch);
+            mockActiveEmployee();
+
+            when(bookingRepository.findEmployeeBookingById(500, 1))
+                    .thenReturn(Optional.of(booking));
+            when(washBayRepository.findById(20))
+                    .thenReturn(Optional.of(washBay));
+
+            BusinessException exception = assertThrows(
+                    BusinessException.class,
+                    () -> employeeService.startWash(1, 500, 20)
+            );
+
+            assertTrue(exception.getMessage().contains("không thuộc chi nhánh"));
+            verify(bookingRepository, never()).save(any(Booking.class));
+        }
+    }
+
+    @Nested
+    class CompleteWash {
+
+        private Booking booking;
+        private WashBay washBay;
+        private TimeSlot slot;
+
+        @BeforeEach
+        void setUp() {
+            washBay = WashBay.builder()
+                    .bayId(20)
+                    .bayName("Khu rửa số 1")
+                    .branch(branch)
+                    .status(WashBay.BayStatus.occupied)
+                    .build();
+
+            slot = TimeSlot.builder()
+                    .slotId(1)
+                    .branch(branch)
+                    .washBay(washBay)
+                    .slotDate(LocalDate.now())
+                    .startTime(LocalTime.of(10, 0))
+                    .endTime(LocalTime.of(11, 0))
+                    .maxCapacity(5)
+                    .currentBookings(0)
+                    .status(TimeSlot.SlotStatus.open)
+                    .build();
+
+            booking = Booking.builder()
+                    .bookingId(500)
+                    .bookingCode("BK-TEST-500")
+                    .branch(branch)
+                    .customer(customer)
+                    .assignedStaff(employee)
+                    .status(BookingStatus.in_progress)
+                    .build();
+            booking.setSlot(slot);
+        }
+
+        @Test
+        void shouldCompleteInProgressBooking() {
+            mockActiveEmployee();
+            when(bookingRepository.findEmployeeBookingById(500, 1))
+                    .thenReturn(Optional.of(booking));
+            when(bookingRepository.save(booking))
+                    .thenReturn(booking);
+            when(washBayRepository.save(washBay))
+                    .thenReturn(washBay);
+            BookingDetail detail = BookingDetail.builder()
+                    .subTotal(new BigDecimal("100000"))
+                    .build();
+            when(bookingDetailRepository.findByBooking(booking))
+                    .thenReturn(List.of(detail));
+            when(customerRepository.findByIdForUpdate(100))
+                    .thenReturn(Optional.of(customer));
+            when(loyaltyTransactionService.earnPointsFromCompleteBooking(
+                    booking, new BigDecimal("100000")
+            )).thenReturn(new LoyaltyTransactionResponseDTO());
+            when(employeeMapper.toQueueResponse(booking, List.of(detail)))
+                    .thenReturn(new EmployeeQueueBookingResponseDTO());
+
+            EmployeeQueueBookingResponseDTO result =
+                    employeeService.completeWash(1, 500);
+
+            assertNotNull(result);
+            assertEquals(BookingStatus.completed, booking.getStatus());
+            assertEquals(WashBay.BayStatus.available, washBay.getStatus());
+            assertNotNull(booking.getCompleteAt());
+            verify(bookingRepository, times(2)).save(booking);
+        }
+
+        @Test
+        void shouldRejectCompleteWhenStatusIsNotInProgress() {
+            booking.setStatus(BookingStatus.completed);
+            mockActiveEmployee();
+
+            when(bookingRepository.findEmployeeBookingById(500, 1))
+                    .thenReturn(Optional.of(booking));
+
+            BusinessException exception = assertThrows(
+                    BusinessException.class,
+                    () -> employeeService.completeWash(1, 500)
+            );
+
+            assertTrue(exception.getMessage().contains("hoàn thành"));
+            verify(bookingRepository, never()).save(any(Booking.class));
+        }
+
+        @Test
+        void shouldRejectCompleteWhenWashBayIsNotOccupied() {
+            washBay.setStatus(WashBay.BayStatus.available);
+            mockActiveEmployee();
+
+            when(bookingRepository.findEmployeeBookingById(500, 1))
+                    .thenReturn(Optional.of(booking));
+
+            BusinessException exception = assertThrows(
+                    BusinessException.class,
+                    () -> employeeService.completeWash(1, 500)
+            );
+
+            assertTrue(exception.getMessage().contains("Không thể hoàn thành"));
+            verify(bookingRepository, never()).save(any(Booking.class));
+        }
+    }
+
+    @Nested
+    class GetMyProfile {
+
+        @Test
+        void shouldReturnProfileForActiveEmployee() {
+            User user = User.builder()
+                    .id(1)
+                    .username("employee01")
+                    .build();
+            employee.setUser(user);
+
+            mockActiveEmployee();
+
+            EmployeeProfileResponseDTO expected =
+                    new EmployeeProfileResponseDTO();
+            when(employeeMapper.toProfileResponse(employee))
+                    .thenReturn(expected);
+
+            EmployeeProfileResponseDTO result =
+                    employeeService.getMyProfile(1);
+
+            assertNotNull(result);
+            verify(employeeMapper).toProfileResponse(employee);
+        }
+
+        @Test
+        void shouldThrowWhenUserIdIsNull() {
+            assertThrows(
+                    BusinessException.class,
+                    () -> employeeService.getMyProfile(null)
+            );
+        }
+
+        @Test
+        void shouldThrowWhenEmployeeNotFound() {
+            when(employeeRepository.findByUser_IdAndStatus(
+                    1, Employee.StaffStatus.active
+            )).thenReturn(Optional.empty());
+
+            BusinessException exception = assertThrows(
+                    BusinessException.class,
+                    () -> employeeService.getMyProfile(1)
+            );
+
+            assertTrue(exception.getMessage().contains(
+                    "Không tìm thấy hồ sơ nhân viên"
+            ));
+        }
+
+        @Test
+        void shouldThrowWhenEmployeeHasNoLinkedUser() {
+            mockActiveEmployee();
+
+            BusinessException exception = assertThrows(
+                    BusinessException.class,
+                    () -> employeeService.getMyProfile(1)
+            );
+
+            assertTrue(exception.getMessage().contains(
+                    "chưa được liên kết"
+            ));
+        }
+
+        @Test
+        void shouldThrowWhenEmployeeHasNoBranch() {
+            User user = User.builder()
+                    .id(1)
+                    .username("employee01")
+                    .build();
+            employee.setUser(user);
+            employee.setBranch(null);
+
+            mockActiveEmployee();
+
+            BusinessException exception = assertThrows(
+                    BusinessException.class,
+                    () -> employeeService.getMyProfile(1)
+            );
+
+            assertTrue(exception.getMessage().contains(
+                    "chưa được phân công chi nhánh"
+            ));
+        }
+    }
+
+    @Nested
+    class GetMyBranchQueue {
+
+        @Test
+        void shouldReturnQueueForTodayWithDefaultStatuses() {
+            Booking booking = Booking.builder()
+                    .bookingId(500)
+                    .bookingCode("BK-TEST-500")
+                    .branch(branch)
+                    .customer(customer)
+                    .status(BookingStatus.pending)
+                    .build();
+
+            mockActiveEmployee();
+
+            when(bookingRepository.findEmployeeQueue(
+                    any(), any(), anyList()
+            )).thenReturn(List.of(booking));
+
+            when(bookingDetailRepository.findByBooking_BookingIdIn(
+                    List.of(500)
+            )).thenReturn(List.of());
+
+            when(employeeMapper.toQueueResponse(booking, List.of()))
+                    .thenReturn(new EmployeeQueueBookingResponseDTO());
+
+            List<EmployeeQueueBookingResponseDTO> result =
+                    employeeService.getMyBranchQueue(1, null, null);
+
+            assertNotNull(result);
+            assertEquals(1, result.size());
+            verify(bookingRepository).findEmployeeQueue(
+                    any(), any(), anyList()
+            );
+        }
+
+        @Test
+        void shouldReturnQueueForSpecificDateAndStatus() {
+            Booking booking = Booking.builder()
+                    .bookingId(500)
+                    .bookingCode("BK-TEST-500")
+                    .branch(branch)
+                    .customer(customer)
+                    .status(BookingStatus.confirmed)
+                    .build();
+
+            mockActiveEmployee();
+
+            when(bookingRepository.findEmployeeQueue(
+                    any(), any(), anyList()
+            )).thenReturn(List.of(booking));
+
+            when(bookingDetailRepository.findByBooking_BookingIdIn(
+                    List.of(500)
+            )).thenReturn(List.of());
+
+            when(employeeMapper.toQueueResponse(booking, List.of()))
+                    .thenReturn(new EmployeeQueueBookingResponseDTO());
+
+            List<EmployeeQueueBookingResponseDTO> result =
+                    employeeService.getMyBranchQueue(
+                            1,
+                            LocalDate.of(2026, 7, 21),
+                            BookingStatus.confirmed
+                    );
+
+            assertNotNull(result);
+            assertEquals(1, result.size());
+        }
+
+        @Test
+        void shouldReturnEmptyListWhenNoBookings() {
+            mockActiveEmployee();
+
+            when(bookingRepository.findEmployeeQueue(
+                    any(), any(), anyList()
+            )).thenReturn(List.of());
+
+            List<EmployeeQueueBookingResponseDTO> result =
+                    employeeService.getMyBranchQueue(1, null, null);
+
+            assertNotNull(result);
+            assertTrue(result.isEmpty());
+            verify(bookingDetailRepository, never())
+                    .findByBooking_BookingIdIn(anyList());
+        }
+
+        @Test
+        void shouldThrowWhenUserIdIsNull() {
+            assertThrows(
+                    BusinessException.class,
+                    () -> employeeService.getMyBranchQueue(
+                            null, null, null
+                    )
+            );
+        }
+    }
+
+    @Nested
+    class GetMyBranchBookingById {
+
+        private Booking booking;
+
+        @BeforeEach
+        void setUp() {
+            booking = Booking.builder()
+                    .bookingId(500)
+                    .bookingCode("BK-TEST-500")
+                    .branch(branch)
+                    .customer(customer)
+                    .status(BookingStatus.pending)
+                    .build();
+        }
+
+        @Test
+        void shouldReturnBookingDetail() {
+            mockActiveEmployee();
+
+            when(bookingRepository.findEmployeeBookingById(500, 1))
+                    .thenReturn(Optional.of(booking));
+            when(bookingDetailRepository.findByBooking(booking))
+                    .thenReturn(List.of());
+            when(employeeMapper.toQueueResponse(booking, List.of()))
+                    .thenReturn(new EmployeeQueueBookingResponseDTO());
+
+            EmployeeQueueBookingResponseDTO result =
+                    employeeService.getMyBranchBookingById(1, 500);
+
+            assertNotNull(result);
+            verify(bookingRepository).findEmployeeBookingById(500, 1);
+        }
+
+        @Test
+        void shouldThrowWhenBookingNotFound() {
+            mockActiveEmployee();
+
+            when(bookingRepository.findEmployeeBookingById(500, 1))
+                    .thenReturn(Optional.empty());
+
+            BusinessException exception = assertThrows(
+                    BusinessException.class,
+                    () -> employeeService.getMyBranchBookingById(1, 500)
+            );
+
+            assertTrue(exception.getMessage().contains(
+                    "Không tìm thấy booking"
+            ));
+        }
+
+        @Test
+        void shouldThrowWhenBookingIdIsNull() {
+            mockActiveEmployee();
+
+            BusinessException exception = assertThrows(
+                    BusinessException.class,
+                    () -> employeeService.getMyBranchBookingById(1, null)
+            );
+
+            assertTrue(exception.getMessage().contains(
+                    "Booking ID không được để trống"
+            ));
+        }
+    }
+
+    @Nested
+    class FindMyBranchBookingByCode {
+
+        private Booking booking;
+
+        @BeforeEach
+        void setUp() {
+            booking = Booking.builder()
+                    .bookingId(500)
+                    .bookingCode("BK-TEST-500")
+                    .branch(branch)
+                    .customer(customer)
+                    .status(BookingStatus.pending)
+                    .build();
+        }
+
+        @Test
+        void shouldFindBookingByCode() {
+            mockActiveEmployee();
+
+            when(bookingRepository.findEmployeeBookingByCode(
+                    "BK-TEST-500", 1
+            )).thenReturn(Optional.of(booking));
+            when(bookingDetailRepository.findByBooking(booking))
+                    .thenReturn(List.of());
+            when(employeeMapper.toQueueResponse(booking, List.of()))
+                    .thenReturn(new EmployeeQueueBookingResponseDTO());
+
+            EmployeeQueueBookingResponseDTO result =
+                    employeeService.findMyBranchBookingByCode(
+                            1, "BK-TEST-500"
+                    );
+
+            assertNotNull(result);
+            verify(bookingRepository).findEmployeeBookingByCode(
+                    "BK-TEST-500", 1
+            );
+        }
+
+        @Test
+        void shouldNormalizeBookingCode() {
+            mockActiveEmployee();
+
+            when(bookingRepository.findEmployeeBookingByCode(
+                    "BK-TEST-500", 1
+            )).thenReturn(Optional.of(booking));
+            when(bookingDetailRepository.findByBooking(booking))
+                    .thenReturn(List.of());
+            when(employeeMapper.toQueueResponse(booking, List.of()))
+                    .thenReturn(new EmployeeQueueBookingResponseDTO());
+
+            employeeService.findMyBranchBookingByCode(
+                    1, "  bk-test-500  "
+            );
+
+            verify(bookingRepository).findEmployeeBookingByCode(
+                    "BK-TEST-500", 1
+            );
+        }
+
+        @Test
+        void shouldThrowWhenBookingNotFound() {
+            mockActiveEmployee();
+
+            when(bookingRepository.findEmployeeBookingByCode(
+                    "BK-INVALID", 1
+            )).thenReturn(Optional.empty());
+
+            BusinessException exception = assertThrows(
+                    BusinessException.class,
+                    () -> employeeService.findMyBranchBookingByCode(
+                            1, "BK-INVALID"
+                    )
+            );
+
+            assertTrue(exception.getMessage().contains(
+                    "Không tìm thấy booking"
+            ));
+        }
+
+        @Test
+        void shouldThrowWhenCodeIsNull() {
+            mockActiveEmployee();
+
+            BusinessException exception = assertThrows(
+                    BusinessException.class,
+                    () -> employeeService.findMyBranchBookingByCode(
+                            1, null
+                    )
+            );
+
+            assertTrue(exception.getMessage().contains(
+                    "Mã booking không được để trống"
+            ));
+        }
+
+        @Test
+        void shouldThrowWhenCodeIsBlank() {
+            mockActiveEmployee();
+
+            BusinessException exception = assertThrows(
+                    BusinessException.class,
+                    () -> employeeService.findMyBranchBookingByCode(
+                            1, "   "
+                    )
+            );
+
+            assertTrue(exception.getMessage().contains(
+                    "Mã booking không được để trống"
+            ));
+        }
+    }
+
     private void mockActiveEmployee() {
         when(employeeRepository.findByUser_IdAndStatus(
                 1,
@@ -473,7 +1180,7 @@ class EmployeeServiceImplTest {
                 .licensePlate(licensePlate)
                 .brand("Toyota")
                 .model("Vios")
-                .vehicleType(Vehicle.VehicleType.car)
+                .vehicleType(Vehicle.VehicleType.FOUR_SEATS)
                 .isActive(true)
                 .build();
     }

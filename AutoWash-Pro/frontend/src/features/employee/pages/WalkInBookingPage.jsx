@@ -11,6 +11,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
+import customerApi from "../../../api/customerApi";
 import employeeApi from "../../../api/employeeApi";
 import servicePackageApi from "../../../api/servicePackageApi";
 import { getAvailableSlots } from "../../../api/timeSlotService";
@@ -149,6 +150,10 @@ function WalkInBookingPage() {
   const [profile, setProfile] = useState(null);
   const [services, setServices] = useState([]);
   const [slots, setSlots] = useState([]);
+  const [customers, setCustomers] = useState([]);
+  const [customerSearchOpen, setCustomerSearchOpen] = useState(false);
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [selectedVehicle, setSelectedVehicle] = useState(null);
 
   const [initialLoading, setInitialLoading] = useState(true);
   const [slotsLoading, setSlotsLoading] = useState(false);
@@ -163,16 +168,19 @@ function WalkInBookingPage() {
         setInitialLoading(true);
         setError("");
 
-        const [profileResponse, servicesResponse] = await Promise.all([
+        const [profileResponse, servicesResponse, customersResponse] = await Promise.all([
           employeeApi.getProfile(),
           servicePackageApi.active(),
+          customerApi.list(),
         ]);
 
         const profileData = unwrapResponse(profileResponse);
         const servicesData = unwrapResponse(servicesResponse);
+        const customersData = unwrapResponse(customersResponse);
 
         setProfile(profileData ?? null);
         setServices(Array.isArray(servicesData) ? servicesData : []);
+        setCustomers(Array.isArray(customersData) ? customersData : []);
       } catch (requestError) {
         setError(getErrorMessage(requestError));
       } finally {
@@ -252,6 +260,81 @@ function WalkInBookingPage() {
     );
   }, [selectedServices]);
 
+  const filteredCustomers = useMemo(() => {
+    if (!customers.length) return [];
+
+    const keyword = form.guestPhone.trim().toLowerCase();
+
+    if (!keyword) return [];
+
+    return customers.filter((customer) => {
+      const phone = (customer.phone || "").replace(/\s/g, "").toLowerCase();
+      const name = (customer.fullName || "").toLowerCase();
+      return phone.includes(keyword) || name.includes(keyword);
+    }).slice(0, 10);
+  }, [customers, form.guestPhone]);
+
+  const handleSearchFocus = () => {
+    setCustomerSearchOpen(true);
+  };
+
+  const getFirstVehicle = (customer) => {
+    if (!customer.vehicles || customer.vehicles.length === 0) return null;
+    const active = customer.vehicles.filter((v) => v.isActive !== false);
+    return active.length > 0 ? active[0] : customer.vehicles[0];
+  };
+
+  const handleSelectCustomer = (customer) => {
+    const vehicle = getFirstVehicle(customer);
+
+    setSelectedCustomer(customer);
+    setSelectedVehicle(vehicle);
+    setCustomerSearchOpen(false);
+    setForm((currentForm) => ({
+      ...currentForm,
+      customerId: customer.customerId,
+      guestName: customer.fullName || "",
+      guestPhone: customer.phone || "",
+      guestEmail: customer.email || "",
+      initialPassword: "",
+      licensePlate: vehicle?.licensePlate || "",
+      brand: vehicle?.brand || "",
+      model: vehicle?.model || "",
+      vehicleType: vehicle?.vehicleType || "car",
+    }));
+    setError("");
+  };
+
+  const handleSelectVehicle = (vehicle) => {
+    setSelectedVehicle(vehicle);
+    setForm((currentForm) => ({
+      ...currentForm,
+      licensePlate: vehicle.licensePlate || "",
+      brand: vehicle.brand || "",
+      model: vehicle.model || "",
+      vehicleType: vehicle.vehicleType || "car",
+    }));
+    setError("");
+  };
+
+  const handleClearCustomer = () => {
+    setSelectedCustomer(null);
+    setSelectedVehicle(null);
+    setForm((currentForm) => ({
+      ...currentForm,
+      customerId: null,
+      guestName: "",
+      guestPhone: "",
+      guestEmail: "",
+      initialPassword: "",
+      licensePlate: "",
+      brand: "",
+      model: "",
+      vehicleType: "car",
+    }));
+    setError("");
+  };
+
   const handleChange = (event) => {
     const { name, value } = event.target;
 
@@ -287,36 +370,38 @@ function WalkInBookingPage() {
   };
 
   const validateForm = () => {
-    if (!form.guestName.trim()) {
-      return "Vui lòng nhập tên khách hàng.";
-    }
+    if (!selectedCustomer) {
+      if (!form.guestName.trim()) {
+        return "Vui lòng nhập tên khách hàng.";
+      }
 
-    if (!form.guestPhone.trim()) {
-      return "Vui lòng nhập số điện thoại khách hàng.";
-    }
+      if (!form.guestPhone.trim()) {
+        return "Vui lòng nhập số điện thoại khách hàng.";
+      }
 
-    if (!/^0\d{9}$/.test(form.guestPhone.trim())) {
-      return "Số điện thoại phải gồm 10 chữ số và bắt đầu bằng 0.";
-    }
+      if (!/^(0|\+84)[0-9]{9,10}$/.test(form.guestPhone.trim())) {
+        return "Số điện thoại không hợp lệ (phải bắt đầu bằng 0 hoặc +84, gồm 10-11 số).";
+      }
 
-    if (
-        form.guestEmail.trim() &&
-        !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
-            form.guestEmail.trim()
-        )
-    ) {
-      return "Email khách hàng không hợp lệ.";
-    }
+      if (
+          form.guestEmail.trim() &&
+          !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
+              form.guestEmail.trim()
+          )
+      ) {
+        return "Email khách hàng không hợp lệ.";
+      }
 
-    if (!form.initialPassword) {
-      return "Vui lòng nhập mật khẩu ban đầu cho tài khoản khách hàng.";
-    }
+      if (!form.initialPassword) {
+        return "Vui lòng nhập mật khẩu ban đầu cho tài khoản khách hàng.";
+      }
 
-    if (
-        form.initialPassword.length < 6 ||
-        form.initialPassword.length > 72
-    ) {
-      return "Mật khẩu ban đầu phải từ 6 đến 72 ký tự.";
+      if (
+          form.initialPassword.length < 6 ||
+          form.initialPassword.length > 72
+      ) {
+        return "Mật khẩu ban đầu phải từ 6 đến 72 ký tự.";
+      }
     }
 
     if (!form.licensePlate.trim()) {
@@ -353,11 +438,21 @@ function WalkInBookingPage() {
     }
 
     const payload = {
-      customerId: null,
-      guestName: form.guestName.trim(),
-      guestPhone: form.guestPhone.trim(),
-      guestEmail: form.guestEmail.trim() || null,
-      initialPassword: form.initialPassword,
+      customerId: selectedCustomer
+          ? selectedCustomer.customerId
+          : null,
+      guestName: selectedCustomer
+          ? null
+          : form.guestName.trim(),
+      guestPhone: selectedCustomer
+          ? null
+          : form.guestPhone.trim(),
+      guestEmail: selectedCustomer
+          ? null
+          : form.guestEmail.trim() || null,
+      initialPassword: selectedCustomer
+          ? null
+          : form.initialPassword,
       licensePlate: form.licensePlate
           .trim()
           .toUpperCase(),
@@ -383,6 +478,8 @@ function WalkInBookingPage() {
       const booking = unwrapResponse(response);
 
       setSuccessBooking(booking);
+
+      setSelectedCustomer(null);
 
       setForm({
         ...INITIAL_FORM,
@@ -482,75 +579,137 @@ function WalkInBookingPage() {
               <div>
                 <h2>Thông tin khách hàng</h2>
                 <p>
-                  Thông tin liên hệ và tài khoản đăng nhập của khách.
+                  Tìm kiếm khách hàng cũ hoặc nhập thông tin khách mới.
                 </p>
               </div>
             </div>
 
-            <div className="walk-in-booking-form__grid">
-              <label>
+            {selectedCustomer ? (
+                <div className="walk-in-customer-selected">
+                  <div className="walk-in-customer-selected__info">
+                    <strong>
+                      {selectedCustomer.fullName || "Chưa có tên"}
+                    </strong>
+
+                    <span>
+                      {selectedCustomer.phone || "Chưa có SĐT"}
+                    </span>
+
+                    {selectedCustomer.email && (
+                        <small>{selectedCustomer.email}</small>
+                    )}
+                  </div>
+
+                  <button
+                      type="button"
+                      className="walk-in-customer-selected__clear"
+                      onClick={handleClearCustomer}
+                  >
+                    Bỏ chọn
+                  </button>
+                </div>
+            ) : (
+                <div className="walk-in-booking-form__grid">
+                  <label className="walk-in-booking-form__customer-search">
+              <span>
+                Số điện thoại hoặc tên khách hàng <b>*</b>
+              </span>
+
+                    <input
+                        type="text"
+                        name="guestPhone"
+                        value={form.guestPhone}
+                        onChange={handleChange}
+                        onFocus={handleSearchFocus}
+                        onBlur={() =>
+                            setTimeout(
+                                () => setCustomerSearchOpen(false),
+                                200
+                            )
+                        }
+                        placeholder="0912345678"
+                        maxLength={50}
+                        autoComplete="off"
+                    />
+
+                    {customerSearchOpen &&
+                        filteredCustomers.length > 0 && (
+                            <ul className="walk-in-customer-dropdown">
+                              {filteredCustomers.map((customer) => (
+                                  <li
+                                      key={customer.customerId}
+                                      className="walk-in-customer-dropdown__item"
+                                      onMouseDown={() =>
+                                          handleSelectCustomer(
+                                              customer
+                                          )
+                                      }
+                                  >
+                                    <strong>
+                                      {customer.fullName ||
+                                          "Chưa có tên"}
+                                    </strong>
+
+                                    <span>
+                                      {customer.phone ||
+                                          "Chưa có SĐT"}
+                                    </span>
+                                  </li>
+                              ))}
+                            </ul>
+                        )}
+                  </label>
+
+                  <label>
               <span>
                 Họ và tên <b>*</b>
               </span>
 
-                <input
-                    type="text"
-                    name="guestName"
-                    value={form.guestName}
-                    onChange={handleChange}
-                    placeholder="Nguyễn Văn A"
-                    maxLength={100}
-                />
-              </label>
+                    <input
+                        type="text"
+                        name="guestName"
+                        value={form.guestName}
+                        onChange={handleChange}
+                        placeholder="Nguyễn Văn A"
+                        maxLength={100}
+                    />
+                  </label>
 
-              <label>
-              <span>
-                Số điện thoại <b>*</b>
-              </span>
+                  <label className="walk-in-booking-form__full">
+                    <span>Email</span>
 
-                <input
-                    type="tel"
-                    name="guestPhone"
-                    value={form.guestPhone}
-                    onChange={handleChange}
-                    placeholder="0912345678"
-                    maxLength={10}
-                />
-              </label>
+                    <input
+                        type="email"
+                        name="guestEmail"
+                        value={form.guestEmail}
+                        onChange={handleChange}
+                        placeholder="customer@example.com"
+                        autoComplete="email"
+                    />
+                  </label>
 
-              <label className="walk-in-booking-form__full">
-                <span>Email</span>
-
-                <input
-                    type="email"
-                    name="guestEmail"
-                    value={form.guestEmail}
-                    onChange={handleChange}
-                    placeholder="customer@example.com"
-                />
-              </label>
-
-              <label className="walk-in-booking-form__full">
+                  <label className="walk-in-booking-form__full">
               <span>
                 Mật khẩu ban đầu <b>*</b>
               </span>
 
-                <input
-                    type="password"
-                    name="initialPassword"
-                    value={form.initialPassword}
-                    onChange={handleChange}
-                    placeholder="Từ 6 ký tự"
-                    minLength={6}
-                    maxLength={72}
-                    autoComplete="new-password"
-                />
+                    <input
+                        type="password"
+                        name="initialPassword"
+                        value={form.initialPassword}
+                        onChange={handleChange}
+                        placeholder="Từ 6 ký tự"
+                        minLength={6}
+                        maxLength={72}
+                        autoComplete="new-password"
+                    />
 
-                <small>
-                  Khách dùng số điện thoại và mật khẩu này để đăng nhập lần sau.
-                </small>
-              </label>
-            </div>
+                    <small>
+                      Khách dùng số điện thoại và mật khẩu này để đăng nhập lần sau.
+                    </small>
+                  </label>
+                </div>
+            )}
           </section>
 
           <section className="walk-in-booking-form__section">
@@ -564,6 +723,34 @@ function WalkInBookingPage() {
             </div>
 
             <div className="walk-in-booking-form__grid">
+              {selectedCustomer && selectedCustomer.vehicles?.length > 0 && (
+                <label className="walk-in-booking-form__full">
+                  <span>Chọn xe của khách</span>
+
+                  <select
+                      value={selectedVehicle?.vehicleId || ""}
+                      onChange={(e) => {
+                        const vehicle = selectedCustomer.vehicles.find(
+                            (v) => v.vehicleId === Number(e.target.value)
+                        );
+                        if (vehicle) handleSelectVehicle(vehicle);
+                      }}
+                  >
+                    {selectedCustomer.vehicles.map((v) => (
+                        <option
+                            key={v.vehicleId}
+                            value={v.vehicleId}
+                        >
+                          {v.licensePlate}
+                          {" - "}
+                          {v.brand}
+                          {v.model ? ` ${v.model}` : ""}
+                        </option>
+                    ))}
+                  </select>
+                </label>
+              )}
+
               <label>
               <span>
                 Biển số xe <b>*</b>
@@ -574,6 +761,7 @@ function WalkInBookingPage() {
                     name="licensePlate"
                     value={form.licensePlate}
                     onChange={handleChange}
+                    disabled={!!selectedVehicle}
                     placeholder="51A-12345"
                     maxLength={20}
                 />
@@ -588,6 +776,7 @@ function WalkInBookingPage() {
                     name="vehicleType"
                     value={form.vehicleType}
                     onChange={handleChange}
+                    disabled={!!selectedVehicle}
                 >
                   <option value="car">Xe 4 chỗ</option>
                   <option value="suv">Xe 7 chỗ</option>
@@ -604,6 +793,7 @@ function WalkInBookingPage() {
                     name="brand"
                     value={form.brand}
                     onChange={handleChange}
+                    disabled={!!selectedVehicle}
                     placeholder="Toyota"
                     maxLength={50}
                 />
@@ -617,6 +807,7 @@ function WalkInBookingPage() {
                     name="model"
                     value={form.model}
                     onChange={handleChange}
+                    disabled={!!selectedVehicle}
                     placeholder="Vios"
                 />
               </label>

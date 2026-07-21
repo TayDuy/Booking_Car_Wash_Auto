@@ -1,7 +1,7 @@
 package com.autowash.backend.config;
 
 import com.github.benmanes.caffeine.cache.Caffeine;
-import org.springframework.boot.cache.autoconfigure.CacheManagerCustomizer;
+import org.springframework.boot.autoconfigure.cache.CacheManagerCustomizer;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.cache.caffeine.CaffeineCacheManager;
 import org.springframework.context.annotation.Bean;

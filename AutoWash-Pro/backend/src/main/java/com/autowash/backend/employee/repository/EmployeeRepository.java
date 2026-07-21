@@ -1,6 +1,7 @@
 package com.autowash.backend.employee.repository;
 
 import com.autowash.backend.employee.entity.Employee;
+import com.autowash.backend.employee.entity.Employee.EmployeePosition;
 import com.autowash.backend.employee.entity.Employee.StaffRole;
 import com.autowash.backend.employee.entity.Employee.StaffStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -51,4 +52,13 @@ public interface EmployeeRepository extends JpaRepository<Employee, Integer> {
     boolean existsByEmailIgnoreCase(String email);
 
     boolean existsByUser_Id(Integer userId);
+
+    /**
+     * Tìm nhân viên theo chức vụ và trạng thái hoạt động.
+     * Dùng để thông báo cho toàn bộ admin đang active.
+     */
+    List<Employee> findByPositionAndStatus(
+            EmployeePosition position,
+            StaffStatus status
+    );
 }

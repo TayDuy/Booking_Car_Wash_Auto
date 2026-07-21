@@ -145,6 +145,15 @@ public class EmployeeMapper {
                 .serviceNames(resolveServiceNames(safeDetails))
                 .totalAmount(calculateTotalAmount(safeDetails))
 
+                // Payment
+                .paymentId(booking.getPayment() != null ? booking.getPayment().getPaymentId() : null)
+                .paymentMethod(booking.getPayment() != null && booking.getPayment().getPaymentMethod() != null ? booking.getPayment().getPaymentMethod().name() : null)
+                .paymentStatus(booking.getPayment() != null && booking.getPayment().getPaymentStatus() != null ? booking.getPayment().getPaymentStatus().name() : null)
+                .discountAmount(booking.getPayment() != null && booking.getPayment().getDiscountAmount() != null ? booking.getPayment().getDiscountAmount() : BigDecimal.ZERO)
+                .finalAmount(booking.getPayment() != null && booking.getPayment().getFinalAmount() != null ? booking.getPayment().getFinalAmount() : calculateTotalAmount(safeDetails))
+                .paidAt(booking.getPayment() != null ? booking.getPayment().getPaidAt() : null)
+                .paid(booking.getPayment() != null && com.autowash.backend.payment.entity.Payment.PaymentStatus.paid.equals(booking.getPayment().getPaymentStatus()))
+
                 // Slot
                 .slotId(
                         slot != null
