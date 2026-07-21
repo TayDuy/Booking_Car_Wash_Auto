@@ -53,7 +53,6 @@ public class AuthServiceImpl implements AuthService {
     private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(AuthServiceImpl.class);
     private static final java.security.SecureRandom secureRandom = new java.security.SecureRandom();
 
-
     @org.springframework.beans.factory.annotation.Value("${supabase.url}")
     private String supabaseUrl;
 
@@ -61,15 +60,15 @@ public class AuthServiceImpl implements AuthService {
     private String supabaseAnonKey;
 
     public AuthServiceImpl(AuthenticationManager authenticationManager,
-                           UserRepository userRepository,
-                           PasswordEncoder passwordEncoder,
-                           JwtTokenProvider jwtTokenProvider,
-                           CustomerRepository customerRepository,
-                           OtpService otpService,
-                           LoyaltyTierRepository loyaltyTierRepository,
-                           RefreshTokenService refreshTokenService,
-                           MailService mailService,
-                           GoogleUserCreatorService googleUserCreatorService) {
+            UserRepository userRepository,
+            PasswordEncoder passwordEncoder,
+            JwtTokenProvider jwtTokenProvider,
+            CustomerRepository customerRepository,
+            OtpService otpService,
+            LoyaltyTierRepository loyaltyTierRepository,
+            RefreshTokenService refreshTokenService,
+            MailService mailService,
+            GoogleUserCreatorService googleUserCreatorService) {
         this.authenticationManager = authenticationManager;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
@@ -96,9 +95,7 @@ public class AuthServiceImpl implements AuthService {
             Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(
                             request.getUsername().trim().toLowerCase(),
-                            request.getPassword()
-                    )
-            );
+                            request.getPassword()));
 
             SecurityContextHolder.getContext().setAuthentication(authentication);
 
@@ -131,12 +128,13 @@ public class AuthServiceImpl implements AuthService {
         ZonedDateTime lockoutEnd = user.getLockoutEndTime().atZone(zone);
         if (lockoutEnd.isAfter(now)) {
             long seconds = java.time.Duration.between(now, lockoutEnd).getSeconds();
-            if (seconds < 0) seconds = 0;
+            if (seconds < 0)
+                seconds = 0;
             String formatted = String.format("%02d:%02d", seconds / 60, seconds % 60);
             throw new BusinessException(
-                    "Tài khoản đã bị tạm khóa do nhập sai mật khẩu quá 5 lần. Vui lòng thử lại sau " + formatted + " phút.",
-                    HttpStatus.BAD_REQUEST
-            );
+                    "Tài khoản đã bị tạm khóa do nhập sai mật khẩu quá 5 lần. Vui lòng thử lại sau " + formatted
+                            + " phút.",
+                    HttpStatus.BAD_REQUEST);
         } else {
             user.setFailedAttempts(0);
             user.setLockoutEndTime(null);
@@ -156,9 +154,9 @@ public class AuthServiceImpl implements AuthService {
             long seconds = 300;
             String formatted = String.format("%02d:%02d", seconds / 60, seconds % 60);
             throw new BusinessException(
-                    "Tài khoản đã bị tạm khóa do nhập sai mật khẩu quá 5 lần. Vui lòng thử lại sau " + formatted + " phút.",
-                    HttpStatus.BAD_REQUEST
-            );
+                    "Tài khoản đã bị tạm khóa do nhập sai mật khẩu quá 5 lần. Vui lòng thử lại sau " + formatted
+                            + " phút.",
+                    HttpStatus.BAD_REQUEST);
         } else {
             userRepository.save(user);
         }
@@ -223,8 +221,7 @@ public class AuthServiceImpl implements AuthService {
     // frontend (/auth/google) treo mãi không bao giờ trả lời.
     // Factory này set connectTimeout/readTimeout 5s để luôn có phản hồi.
     private RestTemplate buildSupabaseRestTemplate() {
-        org.springframework.http.client.SimpleClientHttpRequestFactory factory =
-                new org.springframework.http.client.SimpleClientHttpRequestFactory();
+        org.springframework.http.client.SimpleClientHttpRequestFactory factory = new org.springframework.http.client.SimpleClientHttpRequestFactory();
         factory.setConnectTimeout(5000);
         factory.setReadTimeout(5000);
         return new RestTemplate(factory);
@@ -246,13 +243,14 @@ public class AuthServiceImpl implements AuthService {
                     supabaseUrl + "/auth/v1/user",
                     HttpMethod.GET,
                     entity,
-                    new ParameterizedTypeReference<Map<String, Object>>() {}
-            );
+                    new ParameterizedTypeReference<Map<String, Object>>() {
+                    });
             body = supabaseResponse.getBody();
         } catch (org.springframework.web.client.ResourceAccessException e) {
             // Timeout hoặc không kết nối được tới Supabase (mạng chậm/nghẽn, DNS...)
             log.error("Khong ket noi duoc Supabase de xac thuc Google: {}", e.getMessage());
-            throw new BusinessException("Khong the ket noi Supabase de dang nhap Google. Vui long thu lai.", HttpStatus.GATEWAY_TIMEOUT);
+            throw new BusinessException("Khong the ket noi Supabase de dang nhap Google. Vui long thu lai.",
+                    HttpStatus.GATEWAY_TIMEOUT);
         } catch (Exception e) {
             throw new BusinessException("Token Google khong hop le hoac da bi chinh sua", HttpStatus.UNAUTHORIZED);
         }
@@ -272,7 +270,8 @@ public class AuthServiceImpl implements AuthService {
         if (user == null) {
             // Gọi qua bean riêng (không phải this) để Spring AOP proxy hoạt động đúng.
             // Nếu gọi this.findOrCreateGoogleUser(), @Transactional(REQUIRES_NEW) bị bypass
-            // → cả 2 method chạy chung 1 transaction → khi có DataIntegrityViolationException
+            // → cả 2 method chạy chung 1 transaction → khi có
+            // DataIntegrityViolationException
             // (2 request đồng thời tạo cùng 1 email), transaction chính bị abort
             // → mọi query sau đó fail → server 500 → frontend treo.
             user = googleUserCreatorService.findOrCreateGoogleUser(email, fullName);
@@ -316,7 +315,8 @@ public class AuthServiceImpl implements AuthService {
         if (userExists) {
             otpService.sendOtp(normalizedEmail, OtpService.PURPOSE_PASSWORD_RESET, requestIp);
         } else {
-            // Chống Timing-based email enumeration bằng cách giả lập thời gian xử lý (DB queries + gửi email)
+            // Chống Timing-based email enumeration bằng cách giả lập thời gian xử lý (DB
+            // queries + gửi email)
             long elapsed = System.currentTimeMillis() - startTime;
             long targetDelay = 1500L + secureRandom.nextInt(2000); // 1500ms - 3500ms
 
@@ -355,7 +355,6 @@ public class AuthServiceImpl implements AuthService {
             mailService.sendPasswordChangedEmail(user.getEmail(), user.getUsername());
         }
     }
-
 
     private LoginResponseDTO buildLoginResponse(String token, User user) {
         String fullName = "Unknown";

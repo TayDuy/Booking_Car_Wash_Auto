@@ -34,16 +34,17 @@ public class AuthController {
     private final UserRepository userRepository;
     private final CookieUtil cookieUtil;
 
-    // Thời hạn sống của refreshToken (giây) - khớp với thời hạn tạo trong RefreshTokenServiceImpl (7 ngày)
+    // Thời hạn sống của refreshToken (giây) - khớp với thời hạn tạo trong
+    // RefreshTokenServiceImpl (7 ngày)
     private static final long REFRESH_TOKEN_MAX_AGE_SECONDS = 7 * 24 * 60 * 60L;
 
     public AuthController(AuthService authService,
-                          OtpService otpService,
-                          RefreshTokenService refreshTokenService,
-                          JwtTokenProvider tokenProvider,
-                          SseTicketService sseTicketService,
-                          UserRepository userRepository,
-                          CookieUtil cookieUtil) {
+            OtpService otpService,
+            RefreshTokenService refreshTokenService,
+            JwtTokenProvider tokenProvider,
+            SseTicketService sseTicketService,
+            UserRepository userRepository,
+            CookieUtil cookieUtil) {
         this.authService = authService;
         this.otpService = otpService;
         this.refreshTokenService = refreshTokenService;
@@ -55,7 +56,8 @@ public class AuthController {
 
     /**
      * Đưa refreshToken vào HttpOnly cookie và xóa khỏi response body,
-     * để JS phía client không bao giờ đọc được refreshToken (chống XSS đánh cắp token dài hạn).
+     * để JS phía client không bao giờ đọc được refreshToken (chống XSS đánh cắp
+     * token dài hạn).
      */
     private LoginResponseDTO withRefreshTokenAsCookie(LoginResponseDTO response, HttpServletResponse httpResponse) {
         if (response != null && StringUtils.hasText(response.getRefreshToken())) {
@@ -118,8 +120,7 @@ public class AuthController {
      */
     @GetMapping("/me")
     public ResponseEntity<ApiResponse<String>> getCurrentUser(
-            @AuthenticationPrincipal
-            org.springframework.security.core.userdetails.UserDetails userDetails) {
+            @AuthenticationPrincipal org.springframework.security.core.userdetails.UserDetails userDetails) {
 
         return ResponseEntity.ok(
                 ApiResponse.success("Token hợp lệ", userDetails.getUsername()));
@@ -127,13 +128,13 @@ public class AuthController {
 
     @PostMapping("/send-otp")
     public ResponseEntity<ApiResponse<Void>> sendOtp(@Valid @RequestBody OtpRequestDTO request,
-                                                     HttpServletRequest httpRequest){
+            HttpServletRequest httpRequest) {
         otpService.sendOtp(request.getEmail(), OtpService.PURPOSE_GENERAL, getClientIp(httpRequest));
         return ResponseEntity.ok(ApiResponse.success("Mã OTP đã được gửi", null));
     }
 
     @PostMapping("/verify-otp")
-    public ResponseEntity<ApiResponse<Void>> verifyOtp(@Valid@RequestBody OtpVerifyDTO request){
+    public ResponseEntity<ApiResponse<Void>> verifyOtp(@Valid @RequestBody OtpVerifyDTO request) {
         String purpose = request.getPurpose();
         if (purpose == null || purpose.trim().isEmpty()) {
             purpose = com.autowash.backend.auth.service.OtpService.PURPOSE_GENERAL;
@@ -150,13 +151,11 @@ public class AuthController {
     @PostMapping("/refresh")
     public ResponseEntity<ApiResponse<TokenRefreshResponseDTO>> refreshJwtToken(
             @CookieValue(name = CookieUtil.REFRESH_TOKEN_COOKIE_NAME, required = false) String requestRefreshToken,
-            HttpServletResponse httpResponse
-    ){
+            HttpServletResponse httpResponse) {
         if (!StringUtils.hasText(requestRefreshToken)) {
             throw new com.autowash.backend.common.exception.BusinessException(
                     "Không tìm thấy refresh token, vui lòng đăng nhập lại",
-                    HttpStatus.UNAUTHORIZED
-            );
+                    HttpStatus.UNAUTHORIZED);
         }
 
         RefreshToken refreshToken = refreshTokenService.findByToken(requestRefreshToken);
@@ -186,12 +185,11 @@ public class AuthController {
     @PostMapping("/google")
     public ResponseEntity<ApiResponse<LoginResponseDTO>> googleLogin(
             @Valid @RequestBody GoogleLoginRequestDTO request,
-            HttpServletResponse httpResponse
-    ){
+            HttpServletResponse httpResponse) {
         LoginResponseDTO response = authService.loginWithGoogle(request.getSupabaseToken());
         response = withRefreshTokenAsCookie(response, httpResponse);
 
-        return ResponseEntity.ok(ApiResponse.success("Đăng nhập Google thành công!!!",response));
+        return ResponseEntity.ok(ApiResponse.success("Đăng nhập Google thành công!!!", response));
     }
 
     @PutMapping("/change-password")
@@ -223,8 +221,7 @@ public class AuthController {
         if (userDetails == null) {
             throw new com.autowash.backend.common.exception.BusinessException(
                     "Chưa đăng nhập hoặc phiên làm việc đã hết hạn",
-                    HttpStatus.UNAUTHORIZED
-            );
+                    HttpStatus.UNAUTHORIZED);
         }
 
         Integer userId;
@@ -235,8 +232,7 @@ public class AuthController {
                     .or(() -> userRepository.findByUsernameIgnoreCase(userDetails.getUsername()))
                     .orElseThrow(() -> new com.autowash.backend.common.exception.BusinessException(
                             "Không tìm thấy người dùng",
-                            HttpStatus.NOT_FOUND
-                    ));
+                            HttpStatus.NOT_FOUND));
             userId = user.getId();
         }
 
