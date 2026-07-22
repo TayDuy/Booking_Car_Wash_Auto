@@ -1,131 +1,314 @@
-.booking-success-empty {
-    padding: 48px 32px;
-    text-align: center;
-    color: var(--color-text-muted);
+/* ==========================================================================
+   Booking Success Page — theme "WashFlow Pro"
+   ========================================================================== */
+:root {
+    --wf-blue: #1d4fd8;
+    --wf-blue-dark: #1e3a8a;
+    --wf-blue-light: #eef4ff;
+    --wf-text: #101828;
+    --wf-muted: #667085;
+    --wf-border: #e5e7eb;
+    --wf-bg: #f8fafc;
+    --wf-green: #16a34a;
+    --wf-green-light: #dcfce7;
 }
 
-.booking-success-card {
-    max-width: 640px;
+.pay-success-page {
+    background: var(--wf-bg);
+    min-height: 100vh;
+    padding: 56px 20px 64px;
+}
+
+.pay-success-inner {
+    max-width: 980px;
     margin: 0 auto;
-    padding: 40px 36px;
     text-align: center;
 }
 
-.booking-success-icon {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 76px;
-    height: 76px;
-    margin: 0 auto 16px;
-    border-radius: 50%;
-    background: #dcfce7;
-    color: var(--color-success);
-}
-
-.booking-success-title {
-    margin: 0 0 8px;
-    font-size: 28px;
-    font-weight: 800;
-}
-
-.booking-success-subtitle {
+.pay-success-empty {
     max-width: 480px;
-    margin: 0 auto 24px;
+    margin: 120px auto 0;
+    color: var(--wf-muted);
+    font-size: 15px;
 }
 
-.booking-code-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 18px;
-    border-radius: 999px;
-    background: var(--color-primary-light);
-    color: var(--color-primary);
-    font-weight: 700;
-}
-
-.booking-code-chip span {
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--color-text-muted);
-}
-
-.booking-code-chip button {
-    display: inline-flex;
+.pay-success-icon {
+    width: 84px;
+    height: 84px;
+    margin: 0 auto 20px;
+    border-radius: 50%;
+    background: linear-gradient(180deg, #e0f2fe 0%, #bae6fd 100%);
+    color: var(--wf-blue-dark);
+    display: flex;
     align-items: center;
     justify-content: center;
-    border: none;
-    background: transparent;
-    color: var(--color-primary);
-    cursor: pointer;
 }
 
-.booking-success-divider {
-    height: 1px;
-    margin: 24px 0;
-    background: var(--color-border);
+.pay-success-inner h1 {
+    color: var(--wf-blue-dark);
+    font-size: 34px;
+    font-weight: 800;
+    margin: 0 0 10px;
 }
 
-.booking-success-grid {
+.pay-success-subtitle {
+    color: var(--wf-muted);
+    max-width: 520px;
+    margin: 0 auto;
+    font-size: 15px;
+    line-height: 1.6;
+}
+
+/* ---------- Layout ---------- */
+.pay-success-layout {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 16px;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    margin-top: 36px;
     text-align: left;
 }
 
-.booking-success-grid > div {
+@media (max-width: 820px) {
+    .pay-success-layout {
+        grid-template-columns: 1fr;
+    }
+}
+
+.pay-success-card,
+.next-steps-card {
+    background: #fff;
+    border: 1px solid var(--wf-border);
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 1px 3px rgba(16, 24, 40, 0.06);
+}
+
+.pay-success-card h3,
+.next-steps-card h3 {
+    margin: 0 0 4px;
+    font-size: 18px;
+    color: var(--wf-blue-dark);
+    font-weight: 700;
+}
+
+.pay-success-card-hint {
+    margin: 0 0 18px;
+    font-size: 13px;
+    color: var(--wf-muted);
+}
+
+/* ---------- QR box ---------- */
+.qr-box {
+    display: flex;
+    justify-content: center;
+    padding: 18px;
+    border: 2px solid var(--wf-blue);
+    border-radius: 16px;
+    background: var(--wf-blue-light);
+    margin-bottom: 18px;
+}
+
+.qr-box-inner {
+    background: #fff;
+    border-radius: 10px;
+    padding: 10px;
+    display: flex;
+}
+
+.qr-box-inner img {
+    width: 180px;
+    height: 180px;
+    display: block;
+}
+
+.booking-code-chip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--wf-bg);
+    border: 1px solid var(--wf-border);
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 13px;
+    color: var(--wf-muted);
+    letter-spacing: 0.3px;
+}
+
+.booking-code-chip strong {
+    color: var(--wf-blue-dark);
+    font-size: 16px;
+}
+
+.booking-code-chip button {
+    margin-left: auto;
+    border: none;
+    background: transparent;
+    color: var(--wf-blue);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    padding: 4px;
+    border-radius: 6px;
+}
+
+.booking-code-chip button:hover {
+    background: var(--wf-blue-light);
+}
+
+.pay-success-divider {
+    height: 1px;
+    margin: 18px 0;
+    border-top: 1px dashed var(--wf-border);
+}
+
+.booking-summary-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 14px;
+}
+
+.booking-summary-row:last-child {
+    margin-bottom: 0;
+}
+
+.booking-summary-row > div {
     display: flex;
     flex-direction: column;
     gap: 4px;
 }
 
-.booking-success-grid span {
-    font-size: 13px;
-    color: var(--color-text-muted);
+.booking-summary-row span {
+    font-size: 12px;
+    color: var(--wf-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
 }
 
-.booking-success-grid strong {
-    font-size: 15px;
-    font-weight: 700;
-}
-
-.booking-success-table {
-    width: 100%;
-    border-collapse: collapse;
-    text-align: left;
+.booking-summary-row strong {
     font-size: 14px;
+    color: var(--wf-text);
 }
 
-.booking-success-table th {
-    padding: 8px 4px;
-    color: var(--color-text-muted);
-    font-weight: 600;
-    border-bottom: 1px solid var(--color-border);
+/* ---------- Next steps ---------- */
+.pay-success-side {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
 }
 
-.booking-success-table td {
-    padding: 10px 4px;
-    border-bottom: 1px solid var(--color-border);
+.next-step {
+    display: flex;
+    gap: 12px;
+    margin-top: 18px;
 }
 
-.booking-success-total {
+.next-step-num {
+    flex: none;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--wf-blue);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 700;
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    margin-top: 14px;
-    font-size: 16px;
-}
-
-.booking-success-total strong {
-    color: var(--color-primary);
-    font-size: 20px;
-}
-
-.booking-success-actions {
-    display: flex;
     justify-content: center;
-    gap: 12px;
-    margin-top: 32px;
-    flex-wrap: wrap;
+}
+
+.next-step strong {
+    display: block;
+    font-size: 14px;
+    color: var(--wf-text);
+    margin-bottom: 2px;
+}
+
+.next-step p {
+    margin: 0;
+    font-size: 13px;
+    color: var(--wf-muted);
+    line-height: 1.5;
+}
+
+/* ---------- Buttons ---------- */
+.pay-success-btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 13px 16px;
+    border-radius: 12px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: opacity 0.15s ease, background 0.15s ease;
+}
+
+.pay-success-btn.primary {
+    background: var(--wf-blue);
+    color: #fff;
+}
+
+.pay-success-btn.primary:hover {
+    opacity: 0.92;
+}
+
+.pay-success-btn.secondary {
+    background: #fff;
+    color: var(--wf-blue-dark);
+    border-color: var(--wf-border);
+}
+
+.pay-success-btn.secondary:hover {
+    background: var(--wf-blue-light);
+}
+
+.pay-success-location {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--wf-green-light);
+    color: #166534;
+    border-radius: 10px;
+    padding: 12px 14px;
+    font-size: 13px;
+}
+
+/* ---------- Footer ---------- */
+.pay-success-footer {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 40px;
+    color: var(--wf-muted);
+    font-size: 13px;
+}
+
+.pay-success-footer button {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: none;
+    border: none;
+    color: var(--wf-muted);
+    cursor: pointer;
+    font-size: 13px;
+}
+
+.pay-success-footer button:hover {
+    color: var(--wf-blue);
+}
+
+.pay-success-footer-sep {
+    color: var(--wf-border);
+}
+
+.pay-success-footer-text {
+    display: flex;
+    align-items: center;
+    gap: 6px;
 }

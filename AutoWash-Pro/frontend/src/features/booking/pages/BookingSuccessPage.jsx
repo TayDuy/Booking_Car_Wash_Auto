@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { CheckCircle2, ListChecks, Home } from "lucide-react";
 import bookingApi from "../../../api/bookingApi";
+import "./BookingSuccessPage.css";
 
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" }) : "-";
 const fmtTime = (t) => t ? new Date(`2000-01-01T${t}`).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }) : null;
