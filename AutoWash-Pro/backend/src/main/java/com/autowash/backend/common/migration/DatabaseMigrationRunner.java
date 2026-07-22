@@ -41,6 +41,7 @@ public class DatabaseMigrationRunner implements CommandLineRunner {
             jdbcTemplate.update("UPDATE loyalty_tier SET booking_window_days = 30 WHERE tier_id = 4 OR LOWER(tier_name) LIKE '%bạch kim%' OR LOWER(tier_name) LIKE '%platinum%'");
 
             seedTestUser10Bookings();
+            cleanupExpiredPastBookings();
 
             log.info("[Migration] Bắt đầu đánh giá lại hạng thành viên cho tất cả khách hàng...");
             loyaltyTierEvaluationService.evaluateAllCustomers();
@@ -150,5 +151,45 @@ public class DatabaseMigrationRunner implements CommandLineRunner {
         int gold = jdbcTemplate.update(sql, "Voucher chào mừng hạng Vàng", BigDecimal.valueOf(100000.00), 3, 3);
         int platinum = jdbcTemplate.update(sql, "Voucher chào mừng hạng Bạch Kim", BigDecimal.valueOf(150000.00), 4, 4);
         log.info("[Migration] Seed welcome rewards — Silver: {}, Gold: {}, Platinum: {}", silver, gold, platinum);
+    }
+
+    private void cleanupExpiredPastBookings() {
+        try {
+            int cancelledUnpaid = jdbcTemplate.update("""
+                UPDATE booking b
+                SET status = 'cancelled', updated_at = NOW()
+                FROM time_slot ts, payment p
+                WHERE b.slot_id = ts.slot_id
+                AND b.booking_id = p.booking_id
+                AND b.status IN ('pending', 'confirmed')
+                AND p.payment_status <> 'paid'
+                AND ts.slot_date < CURRENT_DATE
+            """);
+
+            int noShowPaid = jdbcTemplate.update("""
+                UPDATE booking b
+                SET status = 'no_show', updated_at = NOW()
+                FROM time_slot ts, payment p
+                WHERE b.slot_id = ts.slot_id
+                AND b.booking_id = p.booking_id
+                AND b.status IN ('pending', 'confirmed')
+                AND p.payment_status = 'paid'
+                AND ts.slot_date < CURRENT_DATE
+            """);
+
+            int cancelledOthers = jdbcTemplate.update("""
+                UPDATE booking b
+                SET status = 'cancelled', updated_at = NOW()
+                FROM time_slot ts
+                WHERE b.slot_id = ts.slot_id
+                AND b.status IN ('pending', 'confirmed')
+                AND ts.slot_date < CURRENT_DATE
+            """);
+
+            log.info("[Migration] Dọn dẹp booking quá hạn: Hủy {} đơn chưa thanh toán, chuyển {} đơn sang no-show, dọn {} đơn khác.",
+                    cancelledUnpaid, noShowPaid, cancelledOthers);
+        } catch (Exception e) {
+            log.error("[Migration] Lỗi dọn dẹp booking quá hạn: {}", e.getMessage(), e);
+        }
     }
 }
