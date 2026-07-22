@@ -188,14 +188,31 @@ function PromotionListPage() {
     }
   }
 
+  const [appliedCode, setAppliedCode] = useState(
+    localStorage.getItem("selectedPromotionCode") || localStorage.getItem("selectedVoucherCode") || ""
+  );
+
   function handleUsePromotion(promotion) {
     if (promotion.status !== "available") {
       return;
     }
 
+    if (appliedCode === promotion.code) {
+      localStorage.removeItem("selectedPromotionId");
+      localStorage.removeItem("selectedPromotionDiscount");
+      localStorage.removeItem("selectedPromotionCode");
+      setAppliedCode("");
+      return;
+    }
+
+    localStorage.removeItem("selectedRewardId");
+    localStorage.removeItem("selectedVoucherCode");
+    localStorage.removeItem("selectedVoucherValue");
+
     localStorage.setItem("selectedPromotionId", promotion.id);
     localStorage.setItem("selectedPromotionDiscount", promotion.discount);
     localStorage.setItem("selectedPromotionCode", promotion.code);
+    setAppliedCode(promotion.code);
 
     navigate("/customer/booking");
   }
@@ -205,9 +222,22 @@ function PromotionListPage() {
       return;
     }
 
+    if (appliedCode === voucher.voucherCode) {
+      localStorage.removeItem("selectedRewardId");
+      localStorage.removeItem("selectedVoucherCode");
+      localStorage.removeItem("selectedVoucherValue");
+      setAppliedCode("");
+      return;
+    }
+
+    localStorage.removeItem("selectedPromotionId");
+    localStorage.removeItem("selectedPromotionDiscount");
+    localStorage.removeItem("selectedPromotionCode");
+
     localStorage.setItem("selectedRewardId", voucher.rewardId);
     localStorage.setItem("selectedVoucherCode", voucher.voucherCode);
     localStorage.setItem("selectedVoucherValue", voucher.discountValue || 0);
+    setAppliedCode(voucher.voucherCode);
 
     navigate("/customer/booking");
   }
@@ -636,9 +666,11 @@ function PromotionListPage() {
                   <button
                     type="button"
                     className={
-                      promotion.status === "available" && isPromotionApplicableForUser(promotion)
-                        ? "offer-card-btn"
-                        : "offer-card-btn disabled"
+                      promotion.status !== "available" || !isPromotionApplicableForUser(promotion)
+                        ? "offer-card-btn disabled"
+                        : appliedCode === promotion.code
+                        ? "offer-card-btn applied"
+                        : "offer-card-btn"
                     }
                     disabled={promotion.status !== "available" || !isPromotionApplicableForUser(promotion)}
                     onClick={() => handleUsePromotion(promotion)}
@@ -647,6 +679,8 @@ function PromotionListPage() {
                       ? "Đã hết hạn"
                       : !isPromotionApplicableForUser(promotion)
                       ? `Yêu cầu Hạng ${promotion.targetTierName}`
+                      : appliedCode === promotion.code
+                      ? "Đã áp dụng ✓"
                       : "Dùng ngay"}
                   </button>
                 </article>
@@ -801,15 +835,23 @@ function PromotionListPage() {
 
                     <button
                       type="button"
-                      className="offer-card-btn"
+                      className={
+                        voucher.status !== "UNUSED"
+                          ? "offer-card-btn disabled"
+                          : appliedCode === voucher.voucherCode
+                          ? "offer-card-btn applied"
+                          : "offer-card-btn"
+                      }
                       disabled={voucher.status !== "UNUSED"}
                       onClick={() => handleUseVoucher(voucher)}
                     >
-                      {voucher.status === "UNUSED"
-                        ? "Áp dụng khi đặt lịch"
-                        : voucher.status === "USED"
+                      {voucher.status === "USED"
                         ? "Đã sử dụng"
-                        : "Hết hạn"}
+                        : voucher.status === "EXPIRED"
+                        ? "Đã hết hạn"
+                        : appliedCode === voucher.voucherCode
+                        ? "Đã áp dụng ✓"
+                        : "Áp dụng khi đặt lịch"}
                     </button>
                   </div>
                 </article>

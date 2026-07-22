@@ -690,6 +690,17 @@
   transform: none;
 }
 
+.offer-card-btn.applied {
+  background: #10b981 !important;
+  color: #ffffff !important;
+  border: 1px solid #059669;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
+}
+
+.offer-card-btn.applied:hover {
+  background: #059669 !important;
+}
+
 /* Reward cards */
 .reward-grid {
   display: grid;
