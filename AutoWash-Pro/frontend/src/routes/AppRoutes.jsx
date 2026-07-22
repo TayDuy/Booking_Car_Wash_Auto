@@ -28,8 +28,6 @@ const ServicesPage = lazy(() => import("../features/services/pages/ServicesPage"
 
 const PrivacyPolicyPage = lazy(() => import("../features/legal/pages/PrivacyPolicyPage"));
 const TermsOfServicePage = lazy(() => import("../features/legal/pages/TermsOfServicePage"));
-const ContactPage = lazy(() => import("../features/legal/pages/ContactPage"));
-const LandingSupportPage = lazy(() => import("../features/legal/pages/SupportPage"));
 const BookingPage = lazy(() => import("../features/booking/pages/BookingPage"));
 const BookingSuccessPage = lazy(() => import("../features/booking/pages/BookingSuccessPage"));
 const BookingDetailPage = lazy(() => import("../features/booking/pages/BookingDetailPage"));
@@ -93,8 +91,8 @@ function AppRoutes() {
                 <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
                 <Route path="/terms-of-service" element={<TermsOfServicePage />} />
                 <Route path="/unauthorized" element={<UnauthorizedPage />} />
-                <Route path="/contact" element={<ContactPage />} />
-                <Route path="/support" element={<LandingSupportPage />} />
+                <Route path="/contact" element={<Navigate to="/customer/support" replace />} />
+                <Route path="/support" element={<Navigate to="/customer/support" replace />} />
 
                 {/* Authentication */}
                 <Route path="/auth" element={<AuthLayout />}>
