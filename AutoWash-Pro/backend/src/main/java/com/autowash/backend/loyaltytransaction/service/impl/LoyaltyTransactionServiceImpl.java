@@ -28,6 +28,7 @@ public class LoyaltyTransactionServiceImpl implements LoyaltyTransactionService 
     private final LoyaltyTransactionRepository loyaltyTransactionRepository;
     private final LoyaltyTransactionMapper loyaltyTransactionMapper;
     private final CustomerRepository customerRepository;
+    private final com.autowash.backend.auditlog.service.AuditLogService auditLogService;
 
     @Override
     public LoyaltyTransactionResponseDTO earnPointsFromCompleteBooking(
@@ -56,9 +57,21 @@ public class LoyaltyTransactionServiceImpl implements LoyaltyTransactionService 
                 .note("Cộng điểm từ booking " + booking.getBookingCode())
                 .build();
 
-        return loyaltyTransactionMapper.toResponse(
-                loyaltyTransactionRepository.save(transaction)
-        );
+        LoyaltyTransaction saved = loyaltyTransactionRepository.save(transaction);
+
+        Integer targetUserId = (booking.getCustomer() != null && booking.getCustomer().getUser() != null)
+                ? booking.getCustomer().getUser().getId()
+                : null;
+        if (targetUserId != null) {
+            auditLogService.log(
+                    "POINTS_EARNED",
+                    "SYSTEM",
+                    targetUserId,
+                    "Cộng " + earnedPoints + " điểm thưởng từ booking #" + booking.getBookingCode()
+            );
+        }
+
+        return loyaltyTransactionMapper.toResponse(saved);
     }
 
     private Integer calculateEarnedPoints(BigDecimal bookingAmount) {

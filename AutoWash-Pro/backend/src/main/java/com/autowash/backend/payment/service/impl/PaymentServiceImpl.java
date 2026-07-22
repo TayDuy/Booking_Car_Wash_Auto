@@ -72,6 +72,7 @@ public class PaymentServiceImpl implements PaymentService {
     private final PayPalService                payPalService;
     private final MailService                  mailService;
     private final NotificationService          notificationService;
+    private final com.autowash.backend.auditlog.service.AuditLogService auditLogService;
 
     // Tỉ lệ tích điểm: cứ 10,000 VND = 1 điểm
     private static final BigDecimal POINTS_PER_VND = BigDecimal.valueOf(10_000);
@@ -816,8 +817,19 @@ public class PaymentServiceImpl implements PaymentService {
                 .points(pointsEarned)
                 .balanceBefore(currentBalance)
                 .balanceAfter(currentBalance + pointsEarned)
+                .expiredAt(LocalDateTime.now().plusMonths(12))
                 .note("Tích điểm từ thanh toán #" + payment.getPaymentId())
                 .build());
+
+        Integer targetUserId = customer.getUser() != null ? customer.getUser().getId() : null;
+        if (targetUserId != null) {
+            auditLogService.log(
+                    "POINTS_EARNED",
+                    "SYSTEM",
+                    targetUserId,
+                    "Cộng " + pointsEarned + " điểm thưởng từ thanh toán #" + payment.getPaymentId()
+            );
+        }
 
         log.info("Loyalty earned: customerId={}, points={}, lifetimePoints={}, currentBalance={}",
                 customer.getCustomerId(), pointsEarned, customer.getTotalPoints(), currentBalance + pointsEarned);

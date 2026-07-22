@@ -269,6 +269,22 @@ public class BookingServiceImpl implements BookingService {
         details.forEach(d -> d.setBooking(savedBooking));
         bookingDetailRepository.saveAll(details);
 
+        // ── BR-101: TỰ ĐỘNG KHỞI TẠO PAYMENT RECORD KHI TẠO BOOKING MỚI ───────────
+        BigDecimal totalAmount = details.stream()
+                .map(BookingDetail::getSubTotal)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        Payment payment = Payment.builder()
+                .booking(savedBooking)
+                .originalAmount(totalAmount)
+                .discountAmount(BigDecimal.ZERO)
+                .finalAmount(totalAmount)
+                .paymentMethod(Payment.PaymentMethod.cash)
+                .paymentStatus(Payment.PaymentStatus.unpaid)
+                .createdAt(LocalDateTime.now())
+                .build();
+        paymentRepository.save(payment);
+
         // Gửi email xác nhận đặt lịch — chỉ gửi khi thanh toán offline (tại trạm)
         // Online payment → email sẽ được gửi sau khi thanh toán thành công ở PaymentServiceImpl
         boolean isOffline = request.getPaymentMethod() == null
@@ -616,6 +632,9 @@ public class BookingServiceImpl implements BookingService {
             throw new BusinessException("Bạn không có quyền sửa lịch đặt này", HttpStatus.FORBIDDEN);
         }
 
+        // BR-14: Kiểm tra mốc 1 tiếng trước khi đổi lịch
+        validateOneHourWindow(booking);
+
         if (!BookingStatus.pending.equals(booking.getStatus())) {
             throw new BusinessException(
                     "Chỉ có thể thay đổi lịch đặt ở trạng thái pending. Hiện tại: " + booking.getStatus(),
@@ -650,15 +669,7 @@ public class BookingServiceImpl implements BookingService {
 
     /**
      * Hủy booking — giải phóng slot để người khác có thể đặt.
-     *
-     * FIX (chế độ hủy lịch): trước đây hàm này KHÔNG kiểm tra trạng thái hiện tại
-     * của booking trước khi hủy — dù entity Booking đã có sẵn isCancellable()
-     * (chỉ cho phép hủy khi đang pending/confirmed) nhưng service không hề gọi nó.
-     * Hậu quả: có thể hủy 1 booking đã completed/cancelled/in_progress, và nếu hủy
-     * trùng nhiều lần sẽ gọi decrementBookings() nhiều lần → sai lệch số chỗ trống
-     * thật của slot so với dữ liệu.
-     *
-     * Dùng cho STAFF/ADMIN (hủy bất kỳ booking nào, không cần là chủ sở hữu).
+     * Dùng cho STAFF/ADMIN (hủy bất kỳ booking nào, không cần là chủ sở hữu và không giới hạn 1 tiếng).
      */
     @Override
     @Transactional
@@ -668,12 +679,7 @@ public class BookingServiceImpl implements BookingService {
     }
 
     /**
-     * CUSTOMER hủy booking của chính mình.
-     *
-     * FIX (chế độ hủy lịch): trước đây endpoint hủy của customer chỉ check
-     * hasRole('CUSTOMER') mà KHÔNG kiểm tra bookingId đó có thuộc về khách
-     * đang đăng nhập hay không → bất kỳ khách nào cũng có thể hủy lịch của
-     * người khác nếu biết/đoán được bookingId. Giờ bắt buộc phải khớp customer.
+     * CUSTOMER hủy booking của chính mình (Phải hủy trước mốc 1 tiếng theo BR-14).
      */
     @Override
     @Transactional
@@ -687,7 +693,24 @@ public class BookingServiceImpl implements BookingService {
             throw new BusinessException("Bạn không có quyền hủy lịch đặt này", HttpStatus.FORBIDDEN);
         }
 
+        // BR-14: Kiểm tra mốc 1 tiếng trước khi hủy
+        validateOneHourWindow(booking);
+
         return doCancel(booking);
+    }
+
+    /** Helper BR-14: Kiểm tra lịch hẹn có cách mốc hiện tại tối thiểu 1 tiếng hay không. */
+    private void validateOneHourWindow(Booking booking) {
+        if (booking.getSlot() == null || booking.getSlot().getSlotDate() == null || booking.getSlot().getStartTime() == null) {
+            return;
+        }
+        LocalDateTime bookingStartTime = LocalDateTime.of(booking.getSlot().getSlotDate(), booking.getSlot().getStartTime());
+        if (LocalDateTime.now().isAfter(bookingStartTime.minusHours(1))) {
+            throw new BusinessException(
+                    "Chỉ được phép hủy hoặc đổi lịch trước tối thiểu 1 tiếng so với giờ hẹn (" +
+                            booking.getSlot().getStartTime() + ")",
+                    HttpStatus.BAD_REQUEST);
+        }
     }
 
     /** Logic hủy dùng chung cho cả 2 luồng — validate trạng thái trước khi hủy. */

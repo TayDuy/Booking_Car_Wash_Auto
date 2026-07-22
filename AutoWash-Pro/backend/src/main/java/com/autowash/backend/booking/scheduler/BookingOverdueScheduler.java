@@ -49,7 +49,7 @@ public class BookingOverdueScheduler {
                 AND b.booking_id = p.booking_id
                 AND b.status IN ('pending', 'confirmed')
                 AND p.payment_status <> 'paid'
-                AND (ts.slot_date < CURRENT_DATE OR (ts.slot_date = CURRENT_DATE AND ts.start_time < CURRENT_TIME - INTERVAL '30 minutes'))
+                AND (ts.slot_date < CURRENT_DATE OR (ts.slot_date = CURRENT_DATE AND ts.start_time < CURRENT_TIME - INTERVAL '15 minutes'))
             """);
 
             int noShowPaid = jdbcTemplate.update("""
@@ -60,7 +60,7 @@ public class BookingOverdueScheduler {
                 AND b.booking_id = p.booking_id
                 AND b.status IN ('pending', 'confirmed')
                 AND p.payment_status = 'paid'
-                AND (ts.slot_date < CURRENT_DATE OR (ts.slot_date = CURRENT_DATE AND ts.start_time < CURRENT_TIME - INTERVAL '30 minutes'))
+                AND (ts.slot_date < CURRENT_DATE OR (ts.slot_date = CURRENT_DATE AND ts.start_time < CURRENT_TIME - INTERVAL '15 minutes'))
             """);
 
             int cancelledNoPaymentRecord = jdbcTemplate.update("""
@@ -69,7 +69,7 @@ public class BookingOverdueScheduler {
                 FROM time_slot ts
                 WHERE b.slot_id = ts.slot_id
                 AND b.status IN ('pending', 'confirmed')
-                AND (ts.slot_date < CURRENT_DATE OR (ts.slot_date = CURRENT_DATE AND ts.start_time < CURRENT_TIME - INTERVAL '30 minutes'))
+                AND (ts.slot_date < CURRENT_DATE OR (ts.slot_date = CURRENT_DATE AND ts.start_time < CURRENT_TIME - INTERVAL '15 minutes'))
             """);
 
             if (cancelledUnpaid > 0 || noShowPaid > 0 || cancelledNoPaymentRecord > 0) {
