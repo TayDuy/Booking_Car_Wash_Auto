@@ -85,14 +85,23 @@ function AppRoutes() {
     return (
         <Suspense fallback={<PageFallback />}>
             <Routes>
-                {/* Public */}
+                {/* Public Base Routes */}
                 <Route path="/" element={<LandingPage />} />
                 <Route path="/services" element={<ServicesPage />} />
-                <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
-                <Route path="/terms-of-service" element={<TermsOfServicePage />} />
                 <Route path="/unauthorized" element={<UnauthorizedPage />} />
-                <Route path="/contact" element={<Navigate to="/customer/support" replace />} />
-                <Route path="/support" element={<Navigate to="/customer/support" replace />} />
+
+                {/* Public Customer Pages (Accessible to everyone - Guests & Logged-in Users) */}
+                <Route element={<CustomerLayout />}>
+                    <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
+                    <Route path="/terms-of-service" element={<TermsOfServicePage />} />
+                    <Route path="/support" element={<SupportPage />} />
+                    <Route path="/contact" element={<Navigate to="/support" replace />} />
+                    
+                    <Route path="/customer/privacy-policy" element={<PrivacyPolicyPage />} />
+                    <Route path="/customer/terms-of-service" element={<TermsOfServicePage />} />
+                    <Route path="/customer/support" element={<SupportPage />} />
+                    <Route path="/customer/contact" element={<Navigate to="/customer/support" replace />} />
+                </Route>
 
                 {/* Authentication */}
                 <Route path="/auth" element={<AuthLayout />}>
@@ -102,7 +111,7 @@ function AppRoutes() {
                     <Route path="forgot-password" element={<ForgotPasswordPage />} />
                 </Route>
 
-                {/* Customer */}
+                {/* Customer Protected Routes */}
                 <Route
                     path="/customer"
                     element={
@@ -125,11 +134,6 @@ function AppRoutes() {
 
                     <Route path="profile" element={<ProfilePage />} />
                     <Route path="notifications" element={<CustomerNotificationPage />} />
-                    <Route path="support" element={<SupportPage />} />
-
-                    <Route path="privacy-policy" element={<PrivacyPolicyPage />} />
-                    <Route path="terms-of-service" element={<TermsOfServicePage />} />
-                    <Route path="contact" element={<Navigate to="/customer/support" replace />} />
 
                     <Route path="payment" element={<PaymentPage />} />
                     <Route path="payment/success" element={<PaymentSuccessPage />} />
