@@ -1,17 +1,13 @@
 import React, { useState, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { X, Send, Bot, User, Loader2 } from "lucide-react";
-import { askSupportChat } from "../api/supportChatService";   // 1 cấp, không phải 2
-import "./Supportchatwidget.css";                              // đúng casing file thật
+import { askSupportChat } from "../api/supportChatService";
+import { useAppDialog } from "../contexts/DialogContext";
+import "./Supportchatwidget.css";
 
-/**
- * Khung chat AI nổi cho trang Trợ giúp.
- *
- * Mở qua state `open` điều khiển từ component cha (Helpcenter.jsx).
- * Nếu `initialMessage` được truyền vào và thay đổi, widget sẽ tự gửi
- * câu hỏi đó ngay khi mở — dùng cho trường hợp người dùng gõ vào ô
- * "Tìm kiếm trợ giúp..." rồi nhấn Enter.
- */
 export default function SupportChatWidget({ open, onClose, initialMessage }) {
+    const navigate = useNavigate();
+    const { showConfirm } = useAppDialog();
     const [messages, setMessages] = useState([
         { role: "assistant", content: "Xin chào! Mình là trợ lý ảo của WashFlow Pro. Bạn cần hỗ trợ gì hôm nay?" },
     ]);
@@ -36,6 +32,22 @@ export default function SupportChatWidget({ open, onClose, initialMessage }) {
     }, [open, initialMessage]);
 
     async function sendMessage(text) {
+        const token = localStorage.getItem("token") || localStorage.getItem("accessToken");
+        if (!token) {
+            if (onClose) onClose();
+            const confirmed = await showConfirm({
+                title: "Yêu cầu đăng nhập",
+                message: "Bạn cần đăng nhập để trò chuyện và nhận tư vấn từ Trợ lý AI WashFlow Pro. Bạn có muốn chuyển tới trang Đăng nhập ngay không?",
+                confirmText: "Đăng nhập ngay",
+                cancelText: "Để sau",
+                variant: "warning",
+            });
+            if (confirmed) {
+                navigate(`/auth/login?redirect=${encodeURIComponent(window.location.pathname)}`);
+            }
+            return;
+        }
+
         const content = (text ?? input).trim();
         if (!content || sending) return;
 

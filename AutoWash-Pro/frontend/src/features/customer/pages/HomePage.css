@@ -4,9 +4,15 @@
 
 .home-hero {
   padding: 86px 0 72px;
+  overflow: hidden;
   background:
     radial-gradient(circle at top right, rgba(0, 193, 253, 0.18), transparent 30%),
     linear-gradient(180deg, #f8f9ff 0%, #eff4ff 100%);
+}
+
+.home-hero img {
+  max-width: 100%;
+  height: auto;
 }
 
 .home-hero-inner {

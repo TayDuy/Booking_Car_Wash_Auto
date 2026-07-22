@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import SupportChatWidget from "../../../supportchatwidget/Supportchatwidget";
 import {
   Search,
@@ -136,7 +137,8 @@ function ContactCard({ icon: Icon, iconBg, title, subtitle, cta, variant, onClic
 }
 
 export default function HelpCenter() {
-  const { showMessage } = useAppDialog();
+  const navigate = useNavigate();
+  const { showMessage, showConfirm } = useAppDialog();
   const [isChatOpen, setIsChatOpen] = useState(false);
 
   return (
@@ -214,7 +216,23 @@ export default function HelpCenter() {
           <div className="wf-contact-grid">
             <ContactCard 
               {...CONTACT_OPTIONS[0]} 
-              onClick={() => setIsChatOpen(true)}
+              onClick={async () => {
+                const token = localStorage.getItem("token") || localStorage.getItem("accessToken");
+                if (!token) {
+                  const confirmed = await showConfirm({
+                    title: "Yêu cầu đăng nhập",
+                    message: "Bạn cần đăng nhập để trò chuyện và nhận tư vấn trực tiếp từ Trợ lý AI WashFlow Pro. Bạn có muốn chuyển tới trang Đăng nhập ngay không?",
+                    confirmText: "Đăng nhập ngay",
+                    cancelText: "Để sau",
+                    variant: "warning",
+                  });
+                  if (confirmed) {
+                    navigate(`/auth/login?redirect=${encodeURIComponent(window.location.pathname)}`);
+                  }
+                  return;
+                }
+                setIsChatOpen(true);
+              }}
             />
             <ContactCard 
               {...CONTACT_OPTIONS[1]} 
