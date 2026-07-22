@@ -222,6 +222,12 @@ export default function SiteHeader() {
                                     console.error("Lỗi đánh dấu đã đọc:", err);
                                   }
                                   setIsOpenNotification(false);
+                                  const notiType = (noti.type || "").toUpperCase();
+                                  const titleLower = (noti.title || "").toLowerCase();
+                                  if (notiType === 'TIER_UPGRADED' || notiType === 'REWARD' || notiType === 'VOUCHER' || titleLower.includes('hạng') || titleLower.includes('voucher')) {
+                                    navigate('/customer/rewards');
+                                    return;
+                                  }
                                   if (noti.referenceType === 'payment') {
                                     try {
                                       const { default: axiosClient } = await import("../../api/axiosClient");
