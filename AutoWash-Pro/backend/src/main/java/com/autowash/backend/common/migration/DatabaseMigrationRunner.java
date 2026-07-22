@@ -34,6 +34,12 @@ public class DatabaseMigrationRunner implements CommandLineRunner {
 
             seedWelcomeRewards();
 
+            // BR-24 -> 27: Cập nhật booking_window_days cho các hạng thành viên (Member 7d, Silver 10d, Gold 14d, Platinum 30d)
+            jdbcTemplate.update("UPDATE loyalty_tier SET booking_window_days = 7 WHERE tier_id = 1 OR LOWER(tier_name) LIKE '%member%' OR LOWER(tier_name) LIKE '%đồng%'");
+            jdbcTemplate.update("UPDATE loyalty_tier SET booking_window_days = 10 WHERE tier_id = 2 OR LOWER(tier_name) LIKE '%bạc%' OR LOWER(tier_name) LIKE '%silver%'");
+            jdbcTemplate.update("UPDATE loyalty_tier SET booking_window_days = 14 WHERE tier_id = 3 OR LOWER(tier_name) LIKE '%vàng%' OR LOWER(tier_name) LIKE '%gold%'");
+            jdbcTemplate.update("UPDATE loyalty_tier SET booking_window_days = 30 WHERE tier_id = 4 OR LOWER(tier_name) LIKE '%bạch kim%' OR LOWER(tier_name) LIKE '%platinum%'");
+
             log.info("[Migration] Bắt đầu đánh giá lại hạng thành viên cho tất cả khách hàng...");
             loyaltyTierEvaluationService.evaluateAllCustomers();
             log.info("[Migration] Đánh giá lại hạng thành viên thành công.");
