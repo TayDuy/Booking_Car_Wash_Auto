@@ -68,6 +68,9 @@ public class RefundServiceImpl implements RefundService {
         if (payment.getPaymentStatus() != PaymentStatus.paid) {
             eligible = false;
             ineligibleReason = "Giao dịch chưa thanh toán hoặc đã ở trạng thái khác 'paid', không thể hoàn tiền.";
+        } else if (booking.getStatus() == BookingStatus.completed) {
+            eligible = false;
+            ineligibleReason = "Đơn đặt lịch đã hoàn thành dịch vụ (completed), không thể gửi yêu cầu hoàn tiền.";
         } else if (refundRepository.findOpenRefundByPaymentId(payment.getPaymentId()).isPresent()) {
             eligible = false;
             ineligibleReason = "Giao dịch này đã có yêu cầu hoàn tiền đang xử lý.";
@@ -96,6 +99,13 @@ public class RefundServiceImpl implements RefundService {
         if (payment.getPaymentStatus() != PaymentStatus.paid) {
             throw new BusinessException(
                     "Chỉ có thể tạo yêu cầu hoàn tiền cho giao dịch đã thanh toán (paid).",
+                    HttpStatus.BAD_REQUEST);
+        }
+
+        Booking booking = payment.getBooking();
+        if (booking != null && booking.getStatus() == BookingStatus.completed) {
+            throw new BusinessException(
+                    "Đơn đặt lịch đã hoàn thành dịch vụ. Không thể tạo yêu cầu hoàn tiền cho đơn đã hoàn thành.",
                     HttpStatus.BAD_REQUEST);
         }
 
@@ -174,6 +184,12 @@ public class RefundServiceImpl implements RefundService {
         if (payment.getPaymentStatus() != PaymentStatus.paid) {
             throw new BusinessException(
                     "Chỉ có thể yêu cầu hoàn tiền cho giao dịch đã thanh toán (paid).",
+                    HttpStatus.BAD_REQUEST);
+        }
+
+        if (booking.getStatus() == BookingStatus.completed) {
+            throw new BusinessException(
+                    "Đơn đặt lịch đã hoàn thành dịch vụ. Không thể gửi yêu cầu hoàn tiền cho đơn đã hoàn thành.",
                     HttpStatus.BAD_REQUEST);
         }
 

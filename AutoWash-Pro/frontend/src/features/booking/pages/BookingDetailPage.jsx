@@ -105,8 +105,8 @@ function BookingDetailPage() {
 
   const statusConfig = STATUS_MAP[booking.status] || STATUS_MAP.pending;
 
-  // Điều kiện được yêu cầu hoàn tiền: đã thanh toán + chưa gửi yêu cầu nào
-  const canRequestRefund = booking.paymentStatus?.toLowerCase() === "paid" && !refundSent;
+  // Điều kiện được yêu cầu hoàn tiền: đã thanh toán + CHƯA HOÀN THÀNH (chưa completed) + chưa gửi yêu cầu nào
+  const canRequestRefund = booking.paymentStatus?.toLowerCase() === "paid" && booking.status !== "completed" && !refundSent;
 
   const openRefundModal = () => {
     setRefundForm({
