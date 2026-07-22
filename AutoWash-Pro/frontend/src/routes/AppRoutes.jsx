@@ -129,7 +129,7 @@ function AppRoutes() {
 
                     <Route path="privacy-policy" element={<PrivacyPolicyPage />} />
                     <Route path="terms-of-service" element={<TermsOfServicePage />} />
-                    <Route path="contact" element={<ContactPage />} />
+                    <Route path="contact" element={<Navigate to="/customer/support" replace />} />
 
                     <Route path="payment" element={<PaymentPage />} />
                     <Route path="payment/success" element={<PaymentSuccessPage />} />
