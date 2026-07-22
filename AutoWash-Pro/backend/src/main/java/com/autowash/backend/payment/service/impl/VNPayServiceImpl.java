@@ -67,9 +67,9 @@ public class VNPayServiceImpl implements VNPayService {
             String fieldValue = vnp_Params.get(fieldName);
             if (fieldValue != null && fieldValue.length() > 0) {
                 hashData.append(fieldName).append('=')
-                        .append(URLEncoder.encode(fieldValue, StandardCharsets.US_ASCII.toString()));
-                query.append(URLEncoder.encode(fieldName, StandardCharsets.US_ASCII.toString())).append('=')
-                        .append(URLEncoder.encode(fieldValue, StandardCharsets.US_ASCII.toString()));
+                        .append(URLEncoder.encode(fieldValue, StandardCharsets.UTF_8.toString()));
+                query.append(URLEncoder.encode(fieldName, StandardCharsets.UTF_8.toString())).append('=')
+                        .append(URLEncoder.encode(fieldValue, StandardCharsets.UTF_8.toString()));
                 if (itr.hasNext()) {
                     query.append('&');
                     hashData.append('&');
@@ -97,6 +97,9 @@ public class VNPayServiceImpl implements VNPayService {
             throws UnsupportedEncodingException {
 
         Map<String, String> sortedFields = new TreeMap<>(fields);
+        sortedFields.remove("vnp_SecureHashType");
+        sortedFields.remove("vnp_SecureHash");
+
         StringBuilder hashData = new StringBuilder();
         Iterator<String> itr = sortedFields.keySet().iterator();
         while (itr.hasNext()) {
@@ -104,7 +107,7 @@ public class VNPayServiceImpl implements VNPayService {
             String fieldValue = sortedFields.get(fieldName);
             if (fieldValue != null && fieldValue.length() > 0) {
                 hashData.append(fieldName).append('=')
-                        .append(URLEncoder.encode(fieldValue, StandardCharsets.US_ASCII.toString()));
+                        .append(URLEncoder.encode(fieldValue, StandardCharsets.UTF_8.toString()));
                 if (itr.hasNext()) {
                     hashData.append('&');
                 }
@@ -117,9 +120,9 @@ public class VNPayServiceImpl implements VNPayService {
     private String hmacSHA512(String key, String data) {
         try {
             Mac hmac512 = Mac.getInstance("HmacSHA512");
-            SecretKeySpec secretKey = new SecretKeySpec(key.getBytes(), "HmacSHA512");
+            SecretKeySpec secretKey = new SecretKeySpec(key.getBytes(StandardCharsets.UTF_8), "HmacSHA512");
             hmac512.init(secretKey);
-            byte[] result = hmac512.doFinal(data.getBytes());
+            byte[] result = hmac512.doFinal(data.getBytes(StandardCharsets.UTF_8));
             StringBuilder sb = new StringBuilder();
             for (byte b : result) {
                 sb.append(String.format("%02x", b));
@@ -132,6 +135,21 @@ public class VNPayServiceImpl implements VNPayService {
 
     private String getIpAddress(HttpServletRequest request) {
         String ip = request.getHeader("X-FORWARDED-FOR");
-        return (ip == null || ip.isEmpty()) ? request.getRemoteAddr() : ip;
+        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+            ip = request.getHeader("Proxy-Client-IP");
+        }
+        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+            ip = request.getHeader("WL-Proxy-Client-IP");
+        }
+        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+            ip = request.getRemoteAddr();
+        }
+        if (ip != null && ip.contains(",")) {
+            ip = ip.split(",")[0].trim();
+        }
+        if (ip == null || ip.isEmpty() || "0:0:0:0:0:0:0:1".equals(ip) || ip.contains(":")) {
+            ip = "127.0.0.1";
+        }
+        return ip;
     }
 }
