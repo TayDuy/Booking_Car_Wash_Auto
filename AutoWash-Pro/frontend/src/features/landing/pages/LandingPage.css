@@ -308,10 +308,15 @@
 /* Hero Visual */
 .landing-hero-visual {
   position: relative;
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .image-frame {
   position: relative;
+  width: 100%;
+  max-width: 100%;
   border-radius: 20px;
   overflow: hidden;
   box-shadow: var(--shadow-md);
@@ -320,7 +325,8 @@
 
 .image-frame img {
   width: 100%;
-  height: 400px;
+  max-width: 100%;
+  height: 380px;
   object-fit: cover;
   display: block;
 }
