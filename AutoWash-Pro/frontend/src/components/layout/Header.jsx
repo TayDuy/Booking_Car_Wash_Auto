@@ -4,6 +4,7 @@ import useAuth from "../../hooks/useAuth";
 import { logoutFromServer } from "../../api/authService";
 import { countUnread } from "../../api/notificationService";
 import LogoutConfirmModal from "../common/LogoutConfirmModal";
+import { useAppDialog } from "../../contexts/DialogContext";
 
 import {
   Bell,
@@ -88,6 +89,7 @@ const adminPages = [
 ];
 
 export default function Header({ onToggleSidebar }) {
+  const { showMessage } = useAppDialog();
   const auth = useAuth();
   const navigate = useNavigate();
   const profileRef = useRef(null);
@@ -250,10 +252,11 @@ export default function Header({ onToggleSidebar }) {
     });
 
     if (!matchedPage) {
-      alert(
-          `Không tìm thấy trang quản trị phù hợp với "${searchValue}".`
-      );
-
+      showMessage({
+        title: "Tìm kiếm trang",
+        message: `Không tìm thấy trang quản trị phù hợp với "${searchValue}".`,
+        variant: "warning",
+      });
       return;
     }
 

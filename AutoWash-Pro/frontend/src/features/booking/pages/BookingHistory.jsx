@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+import { useAppDialog } from '../../../contexts/DialogContext.jsx';
 import bookingApi from '../../../api/bookingApi';
 import ratingApi from '../../../api/ratingApi';
 import refundApi from '../../../api/refundApi';
@@ -55,6 +56,7 @@ const fmtTime = (t) => (t ? t.substring(0, 5) : '');
 // ══════════════════════════════════════════════════════════════
 export default function BookingHistory() {
   const navigate = useNavigate();
+  const { showMessage } = useAppDialog();
 
   const [loading, setLoading] = useState(true);
   const [bookings, setBookings] = useState([]);
@@ -184,7 +186,7 @@ export default function BookingHistory() {
       setCancelTarget(null);
     } catch (err) {
       console.error('Lỗi hủy lịch:', err);
-      alert('Hủy lịch không thành công. Vui lòng thử lại.');
+      await showMessage({ title: "Thông báo", message: 'Hủy lịch không thành công. Vui lòng thử lại.', variant: "danger" });
     } finally {
       setCancelling(false);
     }
@@ -204,9 +206,9 @@ export default function BookingHistory() {
       });
       setRatingsMap(prev => ({ ...prev, [ratingModalTarget.bookingId]: res.data }));
       setRatingModalTarget(null);
-      alert('Cảm ơn bạn đã đánh giá dịch vụ!');
+      await showMessage({ title: "Thông báo", message: 'Cảm ơn bạn đã đánh giá dịch vụ!', variant: "success" });
     } catch (err) {
-      alert(err.response?.data?.message || 'Không thể tạo đánh giá. Vui lòng thử lại.');
+      await showMessage({ title: "Thông báo", message: err.response?.data?.message || 'Không thể tạo đánh giá. Vui lòng thử lại.', variant: "danger" });
     } finally {
       setSubmittingRating(false);
     }

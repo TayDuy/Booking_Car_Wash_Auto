@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import './ProfilePage.css';
 import { useNavigate } from 'react-router-dom';
+import { useAppDialog } from '../../../contexts/DialogContext.jsx';
 import customerApi from '../../../api/customerApi';
 import vehicleApi from '../../../api/vehicleApi';
 import bookingApi from '../../../api/bookingApi';
@@ -11,6 +12,7 @@ import useAuth from '../../../hooks/useAuth';
 const ProfilePage = () => {
   const navigate = useNavigate();
   const auth = useAuth();
+  const { showMessage, confirmAction } = useAppDialog();
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [showAddVehicleModal, setShowAddVehicleModal] = useState(false);
@@ -185,10 +187,10 @@ const ProfilePage = () => {
       await customerApi.updateProfile(editForm);
       setUser(prev => ({ ...prev, ...editForm }));
       setIsEditing(false);
-      alert('Cập nhật hồ sơ thành công!');
+      await showMessage({ title: "Thông báo", message: 'Cập nhật hồ sơ thành công!', variant: "success" });
     } catch (err) {
       console.error('Lỗi cập nhật hồ sơ:', err);
-      alert('Cập nhật thất bại. Vui lòng thử lại.');
+      await showMessage({ title: "Thông báo", message: 'Cập nhật thất bại. Vui lòng thử lại.', variant: "danger" });
     }
   };
 
@@ -232,7 +234,7 @@ const ProfilePage = () => {
           color: '',
           nickname: ''
         });
-        alert('Thêm xe thành công!');
+        await showMessage({ title: "Thông báo", message: 'Thêm xe thành công!', variant: "success" });
       }
     } catch (err) {
       console.error('Lỗi thêm xe mới:', err);
@@ -243,19 +245,22 @@ const ProfilePage = () => {
   // Toggle Vehicle Active Status Handler
   const handleToggleActive = async (vehicleId, currentIsActive) => {
     const actionText = currentIsActive ? 'ngừng hoạt động' : 'kích hoạt lại';
-    if (!window.confirm(`Bạn có chắc chắn muốn ${actionText} phương tiện này?`)) {
-      return;
-    }
+    const confirmed = await confirmAction({
+      title: "Xác nhận phương tiện",
+      message: `Bạn có chắc chắn muốn ${actionText} phương tiện này?`,
+      variant: "warning",
+    });
+    if (!confirmed) return;
 
     try {
       const response = await vehicleApi.toggleActive(vehicleId);
       if (response.data) {
         setVehicles(prev => prev.map(v => v.vehicleId === vehicleId ? response.data : v));
-        alert(`Đã ${actionText} phương tiện thành công.`);
+        await showMessage({ title: "Thông báo", message: `Đã ${actionText} phương tiện thành công.`, variant: "success" });
       }
     } catch (err) {
       console.error('Lỗi khi thay đổi trạng thái xe:', err);
-      alert(err.response?.data?.message || `Không thể ${actionText} phương tiện. Vui lòng thử lại.`);
+      await showMessage({ title: "Thông báo", message: err.response?.data?.message || `Không thể ${actionText} phương tiện. Vui lòng thử lại.`, variant: "danger" });
     }
   };
 
@@ -267,11 +272,11 @@ const ProfilePage = () => {
     const trimmedPlate = (editingVehicle.licensePlate || '').trim().toUpperCase();
     const platePattern = /^[0-9]{2}[A-Z]{1,2}-[0-9]{3,5}(\.[0-9]{1,2})?$/;
     if (!platePattern.test(trimmedPlate)) {
-      alert('Biển số xe phải đúng định dạng (VD: 51A-12345, 29AB-12345)');
+      await showMessage({ title: "Thông báo", message: 'Biển số xe phải đúng định dạng (VD: 51A-12345, 29AB-12345)', variant: "warning" });
       return;
     }
     if (!editingVehicle.brand?.trim() || !editingVehicle.model?.trim()) {
-      alert('Hãng xe và dòng xe không được để trống.');
+      await showMessage({ title: "Thông báo", message: 'Hãng xe và dòng xe không được để trống.', variant: "warning" });
       return;
     }
     try {
@@ -286,10 +291,10 @@ const ProfilePage = () => {
       if (res.data) {
         setVehicles(prev => prev.map(v => v.vehicleId === editingVehicle.vehicleId ? res.data : v));
         setEditingVehicle(null);
-        alert('Cập nhật xe thành công!');
+        await showMessage({ title: "Thông báo", message: 'Cập nhật xe thành công!', variant: "success" });
       }
     } catch (err) {
-      alert(err.response?.data?.message || 'Cập nhật xe thất bại.');
+      await showMessage({ title: "Thông báo", message: err.response?.data?.message || 'Cập nhật xe thất bại.', variant: "danger" });
     }
   };
 

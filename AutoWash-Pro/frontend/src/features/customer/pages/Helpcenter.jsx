@@ -12,6 +12,7 @@ import {
   Eye,
   ArrowRight,
 } from "lucide-react";
+import { useAppDialog } from "../../../contexts/DialogContext.jsx";
 import "./Helpcenter.css";
 
 const FEATURED_ARTICLES = [
@@ -135,6 +136,7 @@ function ContactCard({ icon: Icon, iconBg, title, subtitle, cta, variant, onClic
 }
 
 export default function HelpCenter() {
+  const { showMessage } = useAppDialog();
   const [isChatOpen, setIsChatOpen] = useState(false);
 
   return (
@@ -220,7 +222,7 @@ export default function HelpCenter() {
             />
             <ContactCard 
               {...CONTACT_OPTIONS[2]} 
-              onClick={() => alert("Tổng đài hỗ trợ 24/7: 1900 8888. Vui lòng gọi trực tiếp để được tư vấn viên hỗ trợ nhanh nhất.")}
+              onClick={async () => { await showMessage({ title: "Tổng đài hỗ trợ 24/7", message: "1900 8888. Vui lòng gọi trực tiếp để được tư vấn viên hỗ trợ nhanh nhất.", variant: "info" }); }}
             />
           </div>
         </section>

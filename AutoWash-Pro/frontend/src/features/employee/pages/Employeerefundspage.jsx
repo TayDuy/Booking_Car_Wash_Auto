@@ -9,6 +9,7 @@ import {
     Undo2,
 } from "lucide-react";
 
+import { useAppDialog } from "../../../contexts/DialogContext.jsx";
 import refundApi from "../../../api/refundApi";
 
 import "./EmployeeRefundsPage.css";
@@ -108,6 +109,7 @@ function getStatusClass(status) {
 }
 
 export default function EmployeeRefundsPage() {
+    const { showMessage, confirmAction } = useAppDialog();
     const [bookingCode, setBookingCode] = useState("");
     const [lookupResult, setLookupResult] = useState(null);
     const [lookupLoading, setLookupLoading] = useState(false);
@@ -148,7 +150,7 @@ export default function EmployeeRefundsPage() {
         event.preventDefault();
 
         if (!bookingCode.trim()) {
-            alert("Vui lòng nhập mã booking.");
+            await showMessage({ title: "Thông báo", message: "Vui lòng nhập mã booking.", variant: "warning" });
             return;
         }
 
@@ -171,10 +173,7 @@ export default function EmployeeRefundsPage() {
         } catch (error) {
             console.error("Lookup refund failed:", error);
 
-            alert(
-                error.response?.data?.message ||
-                "Không tìm thấy giao dịch với mã booking này."
-            );
+            await showMessage({ title: "Thông báo", message: error.response?.data?.message || "Không tìm thấy giao dịch với mã booking này.", variant: "danger" });
         } finally {
             setLookupLoading(false);
         }
@@ -208,17 +207,17 @@ export default function EmployeeRefundsPage() {
         event.preventDefault();
 
         if (!lookupResult?.eligible) {
-            alert("Giao dịch chưa đủ điều kiện để tạo yêu cầu hoàn tiền.");
+            await showMessage({ title: "Thông báo", message: "Giao dịch chưa đủ điều kiện để tạo yêu cầu hoàn tiền.", variant: "warning" });
             return;
         }
 
         if (amountError) {
-            alert(amountError);
+            await showMessage({ title: "Thông báo", message: amountError, variant: "warning" });
             return;
         }
 
         if (!form.reason.trim()) {
-            alert("Vui lòng nhập lý do hoàn tiền.");
+            await showMessage({ title: "Thông báo", message: "Vui lòng nhập lý do hoàn tiền.", variant: "warning" });
             return;
         }
 
@@ -228,7 +227,7 @@ export default function EmployeeRefundsPage() {
                 !form.bankAccountNumber.trim() ||
                 !form.bankAccountName.trim())
         ) {
-            alert("Vui lòng nhập đầy đủ thông tin ngân hàng.");
+            await showMessage({ title: "Thông báo", message: "Vui lòng nhập đầy đủ thông tin ngân hàng.", variant: "warning" });
             return;
         }
 
@@ -249,7 +248,7 @@ export default function EmployeeRefundsPage() {
 
             await refundApi.create(payload);
 
-            alert("Đã tạo yêu cầu hoàn tiền thành công. Vui lòng chờ admin duyệt.");
+            await showMessage({ title: "Thông báo", message: "Đã tạo yêu cầu hoàn tiền thành công. Vui lòng chờ admin duyệt.", variant: "success" });
 
             setBookingCode("");
             setLookupResult(null);
@@ -259,21 +258,19 @@ export default function EmployeeRefundsPage() {
         } catch (error) {
             console.error("Create refund failed:", error);
 
-            alert(
-                error.response?.data?.message ||
-                "Không thể tạo yêu cầu hoàn tiền."
-            );
+            await showMessage({ title: "Thông báo", message: error.response?.data?.message || "Không thể tạo yêu cầu hoàn tiền.", variant: "danger" });
         } finally {
             setSubmitting(false);
         }
     }
 
     async function handleCompleteTransfer(refund) {
-        if (!window.confirm(
-            `Xác nhận đã chuyển ${formatMoney(refund.amount)} đ cho yêu cầu #${refund.refundId}? Thao tác này sẽ đánh dấu "Đã hoàn tiền".`
-        )) {
-            return;
-        }
+        const confirmed = await confirmAction({
+            title: "Xác nhận hoàn tiền",
+            message: `Xác nhận đã chuyển ${formatMoney(refund.amount)} đ cho yêu cầu #${refund.refundId}? Thao tác này sẽ đánh dấu "Đã hoàn tiền".`,
+            variant: "warning",
+        });
+        if (!confirmed) return;
 
         setCompletingId(refund.refundId);
 
@@ -283,10 +280,7 @@ export default function EmployeeRefundsPage() {
         } catch (error) {
             console.error("Complete refund transfer failed:", error);
 
-            alert(
-                error.response?.data?.message ||
-                "Không thể xác nhận hoàn tất chuyển tiền."
-            );
+            await showMessage({ title: "Thông báo", message: error.response?.data?.message || "Không thể xác nhận hoàn tất chuyển tiền.", variant: "danger" });
         } finally {
             setCompletingId(null);
         }

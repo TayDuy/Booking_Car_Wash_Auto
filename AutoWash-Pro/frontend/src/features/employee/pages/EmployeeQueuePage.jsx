@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { AlertCircle, CheckCircle2, ClipboardList, Droplets, X } from "lucide-react";
+import { useAppDialog } from "../../../contexts/DialogContext.jsx";
 
 import employeeApi from "../../../api/employeeApi";
 import * as washBayService from "../../../api/washBayService";
@@ -63,6 +64,7 @@ const ACTION_CONFIRMATIONS = {
 };
 
 function EmployeeQueuePage() {
+  const { showMessage, confirmAction } = useAppDialog();
   const [selectedDate, setSelectedDate] = useState(getTodayInputValue);
   const [selectedStatus, setSelectedStatus] = useState("");
 
@@ -286,11 +288,13 @@ function EmployeeQueuePage() {
 
     const confirmationMessage = ACTION_CONFIRMATIONS[action];
 
-    if (
-        confirmationMessage &&
-        !window.confirm(confirmationMessage)
-    ) {
-      return;
+    if (confirmationMessage) {
+      const confirmed = await confirmAction({
+        title: "Xác nhận thao tác",
+        message: confirmationMessage,
+        variant: "warning",
+      });
+      if (!confirmed) return;
     }
 
     try {

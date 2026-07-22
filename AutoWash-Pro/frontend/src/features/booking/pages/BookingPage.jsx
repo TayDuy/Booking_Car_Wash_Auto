@@ -10,6 +10,7 @@ import {
   MdDirectionsCar,
   MdAirportShuttle
 } from "react-icons/md";
+import { useAppDialog } from "../../../contexts/DialogContext.jsx";
 import bookingApi from "../../../api/bookingApi";
 import customerApi from "../../../api/customerApi";
 import vehicleApi from "../../../api/vehicleApi";
@@ -53,6 +54,7 @@ const DEFAULT_SERVICES = [
 export default function BookingPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { showMessage } = useAppDialog();
 
 
   const [services, setServices] = useState([]);
@@ -403,17 +405,17 @@ export default function BookingPage() {
   };
 
   const handleBooking = async () => {
-    if (!selectedPackageId) { alert("Vui lòng chọn gói dịch vụ!"); return; }
-    if (!agreeTerms) { alert("Vui lòng xác nhận thông tin dịch vụ và điều khoản dịch vụ để tiếp tục!"); return; }
+    if (!selectedPackageId) { await showMessage({ title: "Thông báo", message: "Vui lòng chọn gói dịch vụ!", variant: "warning" }); return; }
+    if (!agreeTerms) { await showMessage({ title: "Thông báo", message: "Vui lòng xác nhận thông tin dịch vụ và điều khoản dịch vụ để tiếp tục!", variant: "warning" }); return; }
 
     const customerIdRaw = localStorage.getItem("customerId");
-    if (!customerIdRaw) { alert("Không tìm thấy thông tin khách hàng. Vui lòng đăng nhập lại!"); return; }
-    if (!fullName.trim()) { alert("Vui lòng nhập họ và tên!"); return; }
-    if (!phone.trim()) { alert("Vui lòng nhập số điện thoại!"); return; }
-    if (!licensePlate.trim()) { alert("Vui lòng nhập biển số xe!"); return; }
-    if (!brand.trim()) { alert("Vui lòng nhập hãng xe!"); return; }
-    if (!selectedTime) { alert("Vui lòng chọn khung giờ!"); return; }
-    if (!selectedBranch) { alert("Vui lòng chọn chi nhánh!"); return; }
+    if (!customerIdRaw) { await showMessage({ title: "Thông báo", message: "Không tìm thấy thông tin khách hàng. Vui lòng đăng nhập lại!", variant: "warning" }); return; }
+    if (!fullName.trim()) { await showMessage({ title: "Thông báo", message: "Vui lòng nhập họ và tên!", variant: "warning" }); return; }
+    if (!phone.trim()) { await showMessage({ title: "Thông báo", message: "Vui lòng nhập số điện thoại!", variant: "warning" }); return; }
+    if (!licensePlate.trim()) { await showMessage({ title: "Thông báo", message: "Vui lòng nhập biển số xe!", variant: "warning" }); return; }
+    if (!brand.trim()) { await showMessage({ title: "Thông báo", message: "Vui lòng nhập hãng xe!", variant: "warning" }); return; }
+    if (!selectedTime) { await showMessage({ title: "Thông báo", message: "Vui lòng chọn khung giờ!", variant: "warning" }); return; }
+    if (!selectedBranch) { await showMessage({ title: "Thông báo", message: "Vui lòng chọn chi nhánh!", variant: "warning" }); return; }
 
     if (depositRequired) setPaymentMethod("online");
 
@@ -449,7 +451,7 @@ export default function BookingPage() {
         },
       });
     } catch (error) {
-      alert(error.response?.data?.message || "Đặt lịch thất bại. Vui lòng thử lại!");
+      await showMessage({ title: "Thông báo", message: error.response?.data?.message || "Đặt lịch thất bại. Vui lòng thử lại!", variant: "danger" });
     }
   };
 

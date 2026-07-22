@@ -11,6 +11,7 @@ import {
     XCircle,
 } from "lucide-react";
 
+import { useAppDialog } from "../../../contexts/DialogContext.jsx";
 import refundApi from "../../../api/refundApi";
 
 import "./RefundsPage.css";
@@ -125,6 +126,7 @@ function getMethodLabel(method) {
 }
 
 export default function RefundsPage() {
+    const { showMessage, confirmAction } = useAppDialog();
     const [refunds, setRefunds] = useState([]);
     const [loading, setLoading] = useState(true);
 
@@ -164,10 +166,7 @@ export default function RefundsPage() {
 
             setRefunds([]);
 
-            alert(
-                error.response?.data?.message ||
-                "Không tải được danh sách yêu cầu hoàn tiền."
-            );
+            await showMessage({ title: "Thông báo", message: error.response?.data?.message || "Không tải được danh sách yêu cầu hoàn tiền.", variant: "danger" });
         } finally {
             setLoading(false);
         }
@@ -267,21 +266,19 @@ export default function RefundsPage() {
         } catch (error) {
             console.error("Mark processing failed:", error);
 
-            alert(
-                error.response?.data?.message ||
-                "Không thể chuyển sang trạng thái đang xử lý."
-            );
+            await showMessage({ title: "Thông báo", message: error.response?.data?.message || "Không thể chuyển sang trạng thái đang xử lý.", variant: "danger" });
         } finally {
             setActionLoading(false);
         }
     }
 
     async function handleApprove(refund) {
-        if (!window.confirm(
-            `Xác nhận duyệt hoàn tiền ${formatMoney(refund.amount)} đ cho yêu cầu #${refund.refundId}?`
-        )) {
-            return;
-        }
+        const confirmed = await confirmAction({
+            title: "Xác nhận duyệt",
+            message: `Xác nhận duyệt hoàn tiền ${formatMoney(refund.amount)} đ cho yêu cầu #${refund.refundId}?`,
+            variant: "warning",
+        });
+        if (!confirmed) return;
 
         setActionLoading(true);
 
@@ -293,10 +290,7 @@ export default function RefundsPage() {
         } catch (error) {
             console.error("Approve refund failed:", error);
 
-            alert(
-                error.response?.data?.message ||
-                "Không thể duyệt yêu cầu hoàn tiền."
-            );
+            await showMessage({ title: "Thông báo", message: error.response?.data?.message || "Không thể duyệt yêu cầu hoàn tiền.", variant: "danger" });
         } finally {
             setActionLoading(false);
         }
@@ -304,13 +298,16 @@ export default function RefundsPage() {
 
     async function handleReject(refund) {
         if (!adminNote.trim()) {
-            alert("Vui lòng nhập lý do từ chối.");
+            await showMessage({ title: "Thông báo", message: "Vui lòng nhập lý do từ chối.", variant: "warning" });
             return;
         }
 
-        if (!window.confirm(`Xác nhận từ chối yêu cầu hoàn tiền #${refund.refundId}?`)) {
-            return;
-        }
+        const confirmed = await confirmAction({
+            title: "Xác nhận từ chối",
+            message: `Xác nhận từ chối yêu cầu hoàn tiền #${refund.refundId}?`,
+            variant: "warning",
+        });
+        if (!confirmed) return;
 
         setActionLoading(true);
 
@@ -322,21 +319,19 @@ export default function RefundsPage() {
         } catch (error) {
             console.error("Reject refund failed:", error);
 
-            alert(
-                error.response?.data?.message ||
-                "Không thể từ chối yêu cầu hoàn tiền."
-            );
+            await showMessage({ title: "Thông báo", message: error.response?.data?.message || "Không thể từ chối yêu cầu hoàn tiền.", variant: "danger" });
         } finally {
             setActionLoading(false);
         }
     }
 
     async function handleComplete(refund) {
-        if (!window.confirm(
-            `Xác nhận đã chuyển ${formatMoney(refund.amount)} đ cho yêu cầu #${refund.refundId}? Thao tác này sẽ đánh dấu "Đã hoàn tiền".`
-        )) {
-            return;
-        }
+        const confirmed = await confirmAction({
+            title: "Xác nhận hoàn tiền",
+            message: `Xác nhận đã chuyển ${formatMoney(refund.amount)} đ cho yêu cầu #${refund.refundId}? Thao tác này sẽ đánh dấu "Đã hoàn tiền".`,
+            variant: "warning",
+        });
+        if (!confirmed) return;
 
         setActionLoading(true);
 
@@ -348,10 +343,7 @@ export default function RefundsPage() {
         } catch (error) {
             console.error("Complete refund failed:", error);
 
-            alert(
-                error.response?.data?.message ||
-                "Không thể xác nhận hoàn tất chuyển tiền."
-            );
+            await showMessage({ title: "Thông báo", message: error.response?.data?.message || "Không thể xác nhận hoàn tất chuyển tiền.", variant: "danger" });
         } finally {
             setActionLoading(false);
         }

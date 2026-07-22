@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './SubscriptionPage.css';
+import { useAppDialog } from '../contexts/DialogContext.jsx';
 import customerApi from '../api/customerApi';
 import bookingApi from '../api/bookingApi';
 import { getActiveServices } from '../api/servicePackageService';
@@ -37,6 +38,7 @@ const currency = (value) =>
 
 const SubscriptionPage = () => {
     const navigate = useNavigate();
+    const { showMessage, confirmAction } = useAppDialog();
 
     const [loading, setLoading] = useState(true);
     const [user, setUser] = useState({
@@ -96,11 +98,11 @@ const SubscriptionPage = () => {
         setPendingTierId(tierId);
     };
 
-    const confirmTierChange = () => {
+    const confirmTierChange = async () => {
         if (!pendingTierId) return;
         setUser((prev) => ({ ...prev, tierId: pendingTierId }));
         setPendingTierId(null);
-        alert('Yêu cầu thay đổi gói đã được ghi nhận. Đội ngũ AutoWash-Pro sẽ kích hoạt trong giây lát.');
+        await showMessage({ title: "Thông báo", message: 'Yêu cầu thay đổi gói đã được ghi nhận. Đội ngũ AutoWash-Pro sẽ kích hoạt trong giây lát.', variant: "success" });
     };
 
     if (loading) {
@@ -211,7 +213,7 @@ const SubscriptionPage = () => {
                             >
                                 Nâng cấp gói
                             </button>
-                            <button className="btn-outline-danger" onClick={() => window.confirm('Bạn có chắc muốn hủy gói đăng ký hiện tại?')}>
+                            <button className="btn-outline-danger" onClick={async () => { await confirmAction({ title: "Xác nhận hủy", message: 'Bạn có chắc muốn hủy gói đăng ký hiện tại?', variant: "warning" }); }}>
                                 Hủy đăng ký
                             </button>
                         </div>

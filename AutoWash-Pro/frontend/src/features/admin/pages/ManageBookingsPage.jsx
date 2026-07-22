@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Eye, Search, XCircle, CheckCircle, PlayCircle, Plus, Pencil, Trash2, } from "lucide-react";
+import { useAppDialog } from "../../../contexts/DialogContext.jsx";
 import bookingApi from "../../../api/bookingApi";
 import customerApi from "../../../api/customerApi";
 import vehicleApi from "../../../api/vehicleApi";
@@ -118,6 +119,7 @@ function getPaginationItems(currentPage, totalPages) {
 }
 
 export default function ManageBookingsPage() {
+  const { showMessage, confirmAction } = useAppDialog();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [keyword, setKeyword] = useState("");
@@ -304,28 +306,26 @@ export default function ManageBookingsPage() {
     const bookingId = booking.bookingId || booking.id;
 
     if (!bookingId) {
-      alert("Không tìm thấy bookingId.");
+      await showMessage({ title: "Thông báo", message: "Không tìm thấy bookingId.", variant: "warning" });
       return;
     }
 
-    const confirmCancel = window.confirm(
-        "Bạn có chắc muốn hủy đơn đặt lịch này không?"
-    );
-
-    if (!confirmCancel) return;
+    const confirmed = await confirmAction({
+      title: "Xác nhận hủy",
+      message: "Bạn có chắc muốn hủy đơn đặt lịch này không?",
+      variant: "warning",
+    });
+    if (!confirmed) return;
 
     try {
       await bookingApi.adminCancel(bookingId);
 
-      alert("Hủy booking thành công.");
+      await showMessage({ title: "Thông báo", message: "Hủy booking thành công.", variant: "success" });
       await loadBookings();
     } catch (error) {
       console.error("Cancel booking failed:", error);
 
-      alert(
-          error.response?.data?.message ||
-          "Hủy booking thất bại."
-      );
+      await showMessage({ title: "Thông báo", message: error.response?.data?.message || "Hủy booking thất bại.", variant: "danger" });
     }
   }
 
@@ -360,7 +360,7 @@ export default function ManageBookingsPage() {
     const bookingId = booking.bookingId || booking.id;
 
     if (!bookingId) {
-      alert("Không tìm thấy bookingId.");
+      await showMessage({ title: "Thông báo", message: "Không tìm thấy bookingId.", variant: "warning" });
       return;
     }
 
@@ -371,7 +371,7 @@ export default function ManageBookingsPage() {
       setSelectedBooking(response.data?.data || response.data);
     } catch (error) {
       console.error("Load booking detail failed:", error);
-      alert("Không tải được chi tiết booking.");
+      await showMessage({ title: "Thông báo", message: "Không tải được chi tiết booking.", variant: "danger" });
     } finally {
       setDetailLoading(false);
     }
@@ -381,56 +381,52 @@ export default function ManageBookingsPage() {
     const bookingId = booking.bookingId || booking.id;
 
     if (!bookingId) {
-      alert("Không tìm thấy bookingId.");
+      await showMessage({ title: "Thông báo", message: "Không tìm thấy bookingId.", variant: "warning" });
       return;
     }
 
-    const ok = window.confirm(
-        "Bạn có chắc muốn xác nhận booking này không?"
-    );
-
-    if (!ok) return;
+    const confirmed = await confirmAction({
+      title: "Xác nhận booking",
+      message: "Bạn có chắc muốn xác nhận booking này không?",
+      variant: "warning",
+    });
+    if (!confirmed) return;
 
     try {
       await bookingApi.adminConfirm(bookingId);
 
-      alert("Xác nhận booking thành công.");
+      await showMessage({ title: "Thông báo", message: "Xác nhận booking thành công.", variant: "success" });
       await loadBookings();
     } catch (error) {
       console.error("Confirm booking failed:", error);
 
-      alert(
-          error.response?.data?.message ||
-          "Xác nhận booking thất bại."
-      );
+      await showMessage({ title: "Thông báo", message: error.response?.data?.message || "Xác nhận booking thất bại.", variant: "danger" });
     }
   }
   async function handleCheckInBooking(booking) {
     const bookingId = booking.bookingId || booking.id;
 
     if (!bookingId) {
-      alert("Không tìm thấy bookingId.");
+      await showMessage({ title: "Thông báo", message: "Không tìm thấy bookingId.", variant: "warning" });
       return;
     }
 
-    const ok = window.confirm(
-        "Bạn có chắc khách hàng đã đến và muốn check-in booking này không?"
-    );
-
-    if (!ok) return;
+    const confirmed = await confirmAction({
+      title: "Xác nhận check-in",
+      message: "Bạn có chắc khách hàng đã đến và muốn check-in booking này không?",
+      variant: "warning",
+    });
+    if (!confirmed) return;
 
     try {
       await bookingApi.adminCheckIn(bookingId);
 
-      alert("Check-in booking thành công.");
+      await showMessage({ title: "Thông báo", message: "Check-in booking thành công.", variant: "success" });
       await loadBookings();
     } catch (error) {
       console.error("Check-in booking failed:", error);
 
-      alert(
-          error.response?.data?.message ||
-          "Check-in booking thất bại."
-      );
+      await showMessage({ title: "Thông báo", message: error.response?.data?.message || "Check-in booking thất bại.", variant: "danger" });
     }
   }
 
@@ -438,28 +434,26 @@ export default function ManageBookingsPage() {
     const bookingId = booking.bookingId || booking.id;
 
     if (!bookingId) {
-      alert("Không tìm thấy bookingId.");
+      await showMessage({ title: "Thông báo", message: "Không tìm thấy bookingId.", variant: "warning" });
       return;
     }
 
-    const ok = window.confirm(
-        "Bạn có chắc muốn bắt đầu thực hiện dịch vụ cho booking này không?"
-    );
-
-    if (!ok) return;
+    const confirmed = await confirmAction({
+      title: "Xác nhận bắt đầu",
+      message: "Bạn có chắc muốn bắt đầu thực hiện dịch vụ cho booking này không?",
+      variant: "warning",
+    });
+    if (!confirmed) return;
 
     try {
       await bookingApi.adminStartWash(bookingId);
 
-      alert("Đã bắt đầu thực hiện dịch vụ.");
+      await showMessage({ title: "Thông báo", message: "Đã bắt đầu thực hiện dịch vụ.", variant: "success" });
       await loadBookings();
     } catch (error) {
       console.error("Start wash booking failed:", error);
 
-      alert(
-          error.response?.data?.message ||
-          "Không thể bắt đầu thực hiện dịch vụ."
-      );
+      await showMessage({ title: "Thông báo", message: error.response?.data?.message || "Không thể bắt đầu thực hiện dịch vụ.", variant: "danger" });
     }
   }
 
@@ -467,28 +461,26 @@ export default function ManageBookingsPage() {
     const bookingId = booking.bookingId || booking.id;
 
     if (!bookingId) {
-      alert("Không tìm thấy bookingId.");
+      await showMessage({ title: "Thông báo", message: "Không tìm thấy bookingId.", variant: "warning" });
       return;
     }
 
-    const ok = window.confirm(
-        "Bạn có chắc muốn hoàn thành booking này không?"
-    );
-
-    if (!ok) return;
+    const confirmed = await confirmAction({
+      title: "Xác nhận hoàn thành",
+      message: "Bạn có chắc muốn hoàn thành booking này không?",
+      variant: "warning",
+    });
+    if (!confirmed) return;
 
     try {
       await bookingApi.adminComplete(bookingId);
 
-      alert("Hoàn thành booking thành công.");
+      await showMessage({ title: "Thông báo", message: "Hoàn thành booking thành công.", variant: "success" });
       await loadBookings();
     } catch (error) {
       console.error("Complete booking failed:", error);
 
-      alert(
-          error.response?.data?.message ||
-          "Hoàn thành booking thất bại."
-      );
+      await showMessage({ title: "Thông báo", message: error.response?.data?.message || "Hoàn thành booking thất bại.", variant: "danger" });
     }
   }
 
@@ -539,10 +531,7 @@ export default function ManageBookingsPage() {
     } catch (error) {
       console.error("Load create booking options failed:", error);
 
-      alert(
-          error.response?.data?.message ||
-          "Không tải được dữ liệu để tạo booking."
-      );
+      await showMessage({ title: "Thông báo", message: error.response?.data?.message || "Không tải được dữ liệu để tạo booking.", variant: "danger" });
     } finally {
       setCreateOptionsLoading(false);
     }
@@ -689,7 +678,7 @@ export default function ManageBookingsPage() {
                 Number(item.quantity) < 1
         )
     ) {
-      alert("Vui lòng nhập đầy đủ các trường bắt buộc.");
+      await showMessage({ title: "Thông báo", message: "Vui lòng nhập đầy đủ các trường bắt buộc.", variant: "warning" });
       return;
     }
 
@@ -712,13 +701,13 @@ export default function ManageBookingsPage() {
     setCreating(true);
     try {
       await bookingApi.adminCreate(payload);
-      alert("Tạo booking thành công.");
+      await showMessage({ title: "Thông báo", message: "Tạo booking thành công.", variant: "success" });
       setShowCreateModal(false);
       setCurrentPage(1);
       await loadBookings();
     } catch (error) {
       console.error("Create booking failed:", error);
-      alert(error.response?.data?.message || "Tạo booking thất bại.");
+      await showMessage({ title: "Thông báo", message: error.response?.data?.message || "Tạo booking thất bại.", variant: "danger" });
     } finally {
       setCreating(false);
     }
@@ -728,7 +717,7 @@ export default function ManageBookingsPage() {
     const bookingId = booking.bookingId || booking.id;
 
     if (!bookingId) {
-      alert("Không tìm thấy bookingId.");
+      await showMessage({ title: "Thông báo", message: "Không tìm thấy bookingId.", variant: "warning" });
       return;
     }
 
@@ -774,10 +763,7 @@ export default function ManageBookingsPage() {
     } catch (error) {
       console.error("Load booking for edit failed:", error);
 
-      alert(
-          error.response?.data?.message ||
-          "Không tải được dữ liệu phân công nhân viên."
-      );
+      await showMessage({ title: "Thông báo", message: error.response?.data?.message || "Không tải được dữ liệu phân công nhân viên.", variant: "danger" });
     } finally {
       setStaffLoading(false);
     }
@@ -788,7 +774,7 @@ export default function ManageBookingsPage() {
 
     const bookingId = editingBooking?.bookingId || editingBooking?.id;
     if (!bookingId) {
-      alert("Không tìm thấy bookingId.");
+      await showMessage({ title: "Thông báo", message: "Không tìm thấy bookingId.", variant: "warning" });
       return;
     }
 
@@ -803,12 +789,12 @@ export default function ManageBookingsPage() {
     setUpdating(true);
     try {
       await bookingApi.adminUpdate(bookingId, payload);
-      alert("Cập nhật booking thành công.");
+      await showMessage({ title: "Thông báo", message: "Cập nhật booking thành công.", variant: "success" });
       setEditingBooking(null);
       await loadBookings();
     } catch (error) {
       console.error("Update booking failed:", error);
-      alert(error.response?.data?.message || "Cập nhật booking thất bại.");
+      await showMessage({ title: "Thông báo", message: error.response?.data?.message || "Cập nhật booking thất bại.", variant: "danger" });
     } finally {
       setUpdating(false);
     }

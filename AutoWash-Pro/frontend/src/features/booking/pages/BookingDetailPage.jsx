@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
+import { useAppDialog } from "../../../contexts/DialogContext.jsx";
 import bookingApi from "../../../api/bookingApi";
 import refundApi from "../../../api/refundApi";
 import "./BookingHistory.css";
@@ -29,6 +30,7 @@ const fmtTime = (t) => (t ? t.substring(0, 5) : "");
 function BookingDetailPage() {
   const { bookingId } = useParams();
   const navigate = useNavigate();
+  const { showMessage } = useAppDialog();
   const [booking, setBooking] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -119,14 +121,14 @@ function BookingDetailPage() {
 
   const handleRefundSubmit = async () => {
     if (!refundForm.reason.trim()) {
-      alert("Vui lòng nhập lý do hoàn tiền.");
+      await showMessage({ title: "Thông báo", message: "Vui lòng nhập lý do hoàn tiền.", variant: "warning" });
       return;
     }
     if (
         refundForm.refundMethod === "bank_transfer" &&
         (!refundForm.bankName.trim() || !refundForm.bankAccountNumber.trim() || !refundForm.bankAccountName.trim())
     ) {
-      alert("Vui lòng nhập đầy đủ thông tin ngân hàng.");
+      await showMessage({ title: "Thông báo", message: "Vui lòng nhập đầy đủ thông tin ngân hàng.", variant: "warning" });
       return;
     }
 
@@ -145,7 +147,7 @@ function BookingDetailPage() {
       setShowRefundSuccess(true);
     } catch (err) {
       console.error("Lỗi gửi yêu cầu hoàn tiền:", err);
-      alert(err.response?.data?.message || "Gửi yêu cầu hoàn tiền không thành công. Vui lòng thử lại.");
+      await showMessage({ title: "Thông báo", message: err.response?.data?.message || "Gửi yêu cầu hoàn tiền không thành công. Vui lòng thử lại.", variant: "danger" });
     } finally {
       setSubmittingRefund(false);
     }
