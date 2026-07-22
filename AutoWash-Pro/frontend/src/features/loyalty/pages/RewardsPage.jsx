@@ -110,10 +110,9 @@ function RewardsPage() {
       nextTierName = "Platinum";
       missingVisits = Math.max(0, 60 - totalVisits);
       missingSpending = Math.max(0, 15000000 - totalSpending);
-      // Tính progress dựa trên tiêu chí nào gần đạt hơn (Shopee Style - OR)
       const visitPercent = Math.min(100, (totalVisits / 60) * 100);
       const spendPercent = Math.min(100, (totalSpending / 15000000) * 100);
-      progressPercent = Math.max(visitPercent, spendPercent);
+      progressPercent = Math.min(visitPercent, spendPercent);
       visualProgressPercent = 66.66 + (progressPercent * 33.34 / 100);
     } else if (currentTierName === "Silver") {
       tierClass = "tier-silver";
@@ -122,7 +121,7 @@ function RewardsPage() {
       missingSpending = Math.max(0, 5000000 - totalSpending);
       const visitPercent = Math.min(100, (totalVisits / 25) * 100);
       const spendPercent = Math.min(100, (totalSpending / 5000000) * 100);
-      progressPercent = Math.max(visitPercent, spendPercent);
+      progressPercent = Math.min(visitPercent, spendPercent);
       visualProgressPercent = 33.33 + (progressPercent * 33.33 / 100);
     } else {
       tierClass = "tier-member";
@@ -131,7 +130,7 @@ function RewardsPage() {
       missingSpending = Math.max(0, 2000000 - totalSpending);
       const visitPercent = Math.min(100, (totalVisits / 10) * 100);
       const spendPercent = Math.min(100, (totalSpending / 2000000) * 100);
-      progressPercent = Math.max(visitPercent, spendPercent);
+      progressPercent = Math.min(visitPercent, spendPercent);
       visualProgressPercent = progressPercent * 33.33 / 100;
     }
 
@@ -277,9 +276,19 @@ function RewardsPage() {
             <p className="progress-tip">
               {tierInfo.nextName === "Hạng cao nhất" ? (
                 "🎉 Tuyệt vời! Bạn đang ở hạng thành viên cao nhất với mọi đặc quyền tối thượng."
+              ) : tierInfo.missingSpending <= 0 && tierInfo.missingVisits > 0 ? (
+                <>
+                  🎉 Đã đủ chỉ tiêu chi tiêu! Đạt thêm <strong>{tierInfo.missingVisits} lượt rửa</strong> để thăng hạng{" "}
+                  <strong className="next-tier-highlight">{tierInfo.nextName}</strong>.
+                </>
+              ) : tierInfo.missingVisits <= 0 && tierInfo.missingSpending > 0 ? (
+                <>
+                  🎉 Đã đủ số lượt rửa! Tích lũy thêm <strong>{formatMoney(tierInfo.missingSpending)}</strong> để thăng hạng{" "}
+                  <strong className="next-tier-highlight">{tierInfo.nextName}</strong>.
+                </>
               ) : (
                 <>
-                  Đạt thêm <strong>{tierInfo.missingVisits} lượt rửa</strong> hoặc{" "}
+                  Đạt thêm <strong>{tierInfo.missingVisits} lượt rửa</strong> và{" "}
                   <strong>{formatMoney(tierInfo.missingSpending)}</strong> để thăng hạng{" "}
                   <strong className="next-tier-highlight">{tierInfo.nextName}</strong>.
                 </>
