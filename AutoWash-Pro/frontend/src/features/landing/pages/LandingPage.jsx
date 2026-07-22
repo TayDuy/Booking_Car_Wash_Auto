@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { getActiveServices } from "../../../api/servicePackageService";
+import PublicHeader from "../../../components/layout/PublicHeader";
 import PublicFooter from "../../../components/layout/PublicFooter";
 import "./LandingPage.css";
 
@@ -54,32 +55,7 @@ function LandingPage() {
   return (
     <div className="landing-page-tech">
       {/* ================= HEADER ================= */}
-      <header className="landing-header">
-        <div className="app-container landing-header-inner">
-          <Link to="/" className="landing-logo">
-            <div className="logo-icon-wrapper">
-              <img src="/logo.png" alt="AutoWash Logo" />
-            </div>
-            <span className="logo-text">AutoWash<span className="logo-highlight">PRO</span></span>
-          </Link>
-
-          <nav className="landing-nav">
-            <Link to="/services">Dịch vụ</Link>
-            <a href="#process">Quy trình</a>
-            <a href="#why-us">Ưu điểm</a>
-            <a href="#membership">Hội viên</a>
-          </nav>
-
-          <div className="landing-actions">
-            <Link to="/auth/login" className="btn-login-link">
-              Đăng nhập
-            </Link>
-            <Link to="/auth/register" className="btn-register-pill">
-              Đăng ký 
-            </Link>
-          </div>
-        </div>
-      </header>
+      <PublicHeader />
 
       <main>
         {/* ================= HERO SECTION ================= */}

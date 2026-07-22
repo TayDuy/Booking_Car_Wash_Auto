@@ -22,7 +22,6 @@ const SECTIONS = [
 function TermsOfServicePage() {
   return (
     <div className="legal-page">
-      <PublicHeader />
 
       <section className="legal-hero">
         <div className="app-container">
@@ -246,8 +245,6 @@ function TermsOfServicePage() {
           </article>
         </div>
       </section>
-
-      <PublicFooter />
     </div>
   );
 }

@@ -18,7 +18,6 @@ const SECTIONS = [
 function PrivacyPolicyPage() {
   return (
     <div className="legal-page">
-      <PublicHeader />
 
       <section className="legal-hero">
         <div className="app-container">
@@ -203,8 +202,6 @@ function PrivacyPolicyPage() {
           </article>
         </div>
       </section>
-
-      <PublicFooter />
     </div>
   );
 }
