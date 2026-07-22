@@ -129,6 +129,10 @@ function AppRoutes() {
                     <Route path="notifications" element={<CustomerNotificationPage />} />
                     <Route path="support" element={<SupportPage />} />
 
+                    <Route path="privacy-policy" element={<PrivacyPolicyPage />} />
+                    <Route path="terms-of-service" element={<TermsOfServicePage />} />
+                    <Route path="contact" element={<ContactPage />} />
+
                     <Route path="payment" element={<PaymentPage />} />
                     <Route path="payment/success" element={<PaymentSuccessPage />} />
                     <Route path="refunds" element={<CustomerRefundsPage />} />

@@ -402,8 +402,15 @@ function RegisterPage() {
                         onChange={(e) => setAgreeTerms(e.target.checked)}
                       />
                       <span>
-                        Tôi đồng ý với <strong>Điều khoản dịch vụ</strong> và{" "}
-                        <strong>Chính sách bảo mật</strong> của WashFlow Pro.
+                        Tôi đồng ý với{" "}
+                        <Link to="/terms-of-service" target="_blank" style={{ color: "#004aad", textDecoration: "underline" }}>
+                          Điều khoản dịch vụ
+                        </Link>{" "}
+                        và{" "}
+                        <Link to="/privacy-policy" target="_blank" style={{ color: "#004aad", textDecoration: "underline" }}>
+                          Chính sách bảo mật
+                        </Link>{" "}
+                        của WashFlow Pro.
                       </span>
                     </label>
 

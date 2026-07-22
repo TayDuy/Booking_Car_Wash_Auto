@@ -1,4 +1,4 @@
-import { Outlet } from "react-router-dom";
+import { Link, Outlet } from "react-router-dom";
 import SiteHeader from "../components/layout/SiteHeader";
 import "./CustomerLayout.css";
 
@@ -17,10 +17,10 @@ function CustomerLayout() {
           <p>© 2026 WashFlow Pro Automation. Tất cả quyền được bảo lưu.</p>
         </div>
         <div className="footer-nav-links">
-          <a href="#">Liên hệ</a>
-          <a href="#">Chính sách bảo mật</a>
-          <a href="#">Điều khoản dịch vụ</a>
-          <a href="#">Hỗ trợ</a>
+          <Link to="/customer/contact">Liên hệ</Link>
+          <Link to="/customer/privacy-policy">Chính sách bảo mật</Link>
+          <Link to="/customer/terms-of-service">Điều khoản dịch vụ</Link>
+          <Link to="/customer/support">Hỗ trợ</Link>
         </div>
       </footer>
     </div>
