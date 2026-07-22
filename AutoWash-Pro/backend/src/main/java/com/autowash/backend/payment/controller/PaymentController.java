@@ -77,7 +77,7 @@ public class PaymentController {
         PaymentResponseDTO payment = paymentService.getById(id);
 
         String txnRef = "PAY" + payment.getPaymentId();
-        String orderInfo = "Thanh toan don hang #" + payment.getPaymentId();
+        String orderInfo = "Thanh toan don hang " + payment.getPaymentId();
         long amount = payment.getFinalAmount().longValue();
 
         String paymentUrl = vnPayService.createPaymentUrl(request, amount, orderInfo, txnRef);

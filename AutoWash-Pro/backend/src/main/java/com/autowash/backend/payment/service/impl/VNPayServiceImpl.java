@@ -37,6 +37,7 @@ public class VNPayServiceImpl implements VNPayService {
 
         long vnp_Amount = amount * 100; // VNPAY yêu cầu nhân 100
         String vnp_IpAddr = getIpAddress(request);
+        String cleanOrderInfo = orderInfo != null ? orderInfo.replaceAll("[^a-zA-Z0-9 _-]", "").trim() : "Thanh toan";
 
         Map<String, String> vnp_Params = new TreeMap<>();
         vnp_Params.put("vnp_Version", VNPayConfig.vnp_Version);
@@ -45,7 +46,7 @@ public class VNPayServiceImpl implements VNPayService {
         vnp_Params.put("vnp_Amount", String.valueOf(vnp_Amount));
         vnp_Params.put("vnp_CurrCode", "VND");
         vnp_Params.put("vnp_TxnRef", txnRef);
-        vnp_Params.put("vnp_OrderInfo", orderInfo);
+        vnp_Params.put("vnp_OrderInfo", cleanOrderInfo);
         vnp_Params.put("vnp_OrderType", "other");
         vnp_Params.put("vnp_Locale", "vn");
         vnp_Params.put("vnp_ReturnUrl", vnPayConfig.getVnp_ReturnUrl());
