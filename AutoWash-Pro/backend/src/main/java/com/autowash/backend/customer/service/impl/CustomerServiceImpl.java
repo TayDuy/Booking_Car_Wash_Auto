@@ -229,6 +229,9 @@ public class CustomerServiceImpl implements CustomerService {
         customer.setFullName(request.getFullName());
         customer.setDateOfBirth(request.getDateOfBirth());
         customer.setGender(translateGenderToEnglish(request.getGender()));
+        if (request.getAllowDataSharing() != null) {
+            customer.setAllowDataSharing(request.getAllowDataSharing());
+        }
 
         if (customer.getUser() != null) {
             customer.getUser().setPhone(request.getPhone());
