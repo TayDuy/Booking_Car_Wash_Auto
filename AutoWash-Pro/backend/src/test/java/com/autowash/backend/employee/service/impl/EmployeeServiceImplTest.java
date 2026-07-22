@@ -51,8 +51,10 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -1134,8 +1136,9 @@ class EmployeeServiceImplTest {
                 .thenAnswer(invocation -> invocation.getArgument(0));
         when(bookingDetailRepository.saveAll(anyList()))
                 .thenAnswer(invocation -> invocation.getArgument(0));
-        when(employeeMapper.toQueueResponse(any(Booking.class), anyList()))
-                .thenReturn(null);
+        when(employeeMapper.toQueueResponse(
+                any(Booking.class), anyList(), isNull(), anyBoolean()
+        )).thenReturn(null);
     }
 
     private EmployeeBookingCreateRequestDTO createGuestRequest(

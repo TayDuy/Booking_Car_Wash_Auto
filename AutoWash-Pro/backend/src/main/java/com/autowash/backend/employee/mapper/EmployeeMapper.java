@@ -90,6 +90,15 @@ public class EmployeeMapper {
             List<BookingDetail> details,
             com.autowash.backend.payment.entity.Payment payment
     ) {
+        return toQueueResponse(booking, details, payment, false);
+    }
+
+    public EmployeeQueueBookingResponseDTO toQueueResponse(
+            Booking booking,
+            List<BookingDetail> details,
+            com.autowash.backend.payment.entity.Payment payment,
+            boolean accountCreated
+    ) {
         if (booking == null) {
             return null;
         }
@@ -227,6 +236,7 @@ public class EmployeeMapper {
                                 ? assignedEmployee.getFullName()
                                 : null
                 )
+                .accountCreated(accountCreated)
                 .build();
     }
 

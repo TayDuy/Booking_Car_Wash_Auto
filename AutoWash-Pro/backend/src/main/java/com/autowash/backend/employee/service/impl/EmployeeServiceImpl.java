@@ -190,7 +190,10 @@ public class EmployeeServiceImpl implements EmployeeService {
          * - Khách đã có customerId.
          * - Khách vãng lai chưa có tài khoản.
          */
-        Customer customer = resolveBookingCustomer(request, branch);
+        CustomerResolution resolution =
+                resolveBookingCustomer(request, branch);
+        Customer customer = resolution.customer();
+        boolean accountCreated = resolution.accountCreated();
 
         /*
          * Tái sử dụng xe cũ của Customer nếu trùng biển số.
@@ -288,7 +291,9 @@ public class EmployeeServiceImpl implements EmployeeService {
 
         return employeeMapper.toQueueResponse(
                 savedBooking,
-                savedDetails
+                savedDetails,
+                null,
+                accountCreated
         );
     }
 
@@ -650,7 +655,7 @@ public class EmployeeServiceImpl implements EmployeeService {
 // CREATE BOOKING HELPERS
 // =========================================================
 
-    private Customer resolveBookingCustomer(
+    private CustomerResolution resolveBookingCustomer(
             EmployeeBookingCreateRequestDTO request,
             Branch branch
     ) {
@@ -658,15 +663,18 @@ public class EmployeeServiceImpl implements EmployeeService {
          * Khách đã tồn tại trong hệ thống.
          */
         if (request.hasExistingCustomer()) {
-            return customerRepository
-                    .findById(request.getCustomerId())
-                    .orElseThrow(() ->
-                            new ResourceNotFoundException(
-                                    "Customer",
-                                    "id",
-                                    request.getCustomerId()
-                            )
-                    );
+            return new CustomerResolution(
+                    customerRepository
+                            .findById(request.getCustomerId())
+                            .orElseThrow(() ->
+                                    new ResourceNotFoundException(
+                                            "Customer",
+                                            "id",
+                                            request.getCustomerId()
+                                    )
+                            ),
+                    false
+            );
         }
 
         /* Khách vãng lai phải đủ dữ liệu để tạo tài khoản đăng nhập. */
@@ -693,21 +701,24 @@ public class EmployeeServiceImpl implements EmployeeService {
                     .orElse(null);
 
             if (existingCustomer != null) {
-                return existingCustomer;
+                return new CustomerResolution(existingCustomer, false);
             }
 
-            return customerRepository.save(
-                    Customer.builder()
-                            .user(user)
-                            .fullName(guestName)
-                            .phone(guestPhone)
-                            .email(guestEmail)
-                            .brandId(branch.getBranchId())
-                            .tierId(1)
-                            .totalPoints(0)
-                            .totalVisits(0)
-                            .totalSpending(BigDecimal.ZERO)
-                            .build()
+            return new CustomerResolution(
+                    customerRepository.save(
+                            Customer.builder()
+                                    .user(user)
+                                    .fullName(guestName)
+                                    .phone(guestPhone)
+                                    .email(guestEmail)
+                                    .brandId(branch.getBranchId())
+                                    .tierId(1)
+                                    .totalPoints(0)
+                                    .totalVisits(0)
+                                    .totalSpending(BigDecimal.ZERO)
+                                    .build()
+                    ),
+                    true
             );
         }
 
@@ -741,18 +752,21 @@ public class EmployeeServiceImpl implements EmployeeService {
                         .build()
         );
 
-        return customerRepository.save(
-                Customer.builder()
-                        .user(savedUser)
-                        .fullName(guestName)
-                        .phone(guestPhone)
-                        .email(guestEmail)
-                        .brandId(branch.getBranchId())
-                        .tierId(1)
-                        .totalPoints(0)
-                        .totalVisits(0)
-                        .totalSpending(BigDecimal.ZERO)
-                        .build()
+        return new CustomerResolution(
+                customerRepository.save(
+                        Customer.builder()
+                                .user(savedUser)
+                                .fullName(guestName)
+                                .phone(guestPhone)
+                                .email(guestEmail)
+                                .brandId(branch.getBranchId())
+                                .tierId(1)
+                                .totalPoints(0)
+                                .totalVisits(0)
+                                .totalSpending(BigDecimal.ZERO)
+                                .build()
+                ),
+                true
         );
     }
 
@@ -1360,4 +1374,6 @@ public class EmployeeServiceImpl implements EmployeeService {
                 ))
                 .toList();
     }
+
+    private record CustomerResolution(Customer customer, boolean accountCreated) {}
 }

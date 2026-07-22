@@ -394,18 +394,17 @@ export default function CreateBookingPage() {
 
     // ---------- Mẫu thiết lập ----------
     function handleSaveTemplate() {
-        const name = window.prompt("Đặt tên cho mẫu thiết lập này:");
-        if (!name) return;
+        const autoName = `Mẫu thiết lập ${new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })} (${selectedDates.length} ngày)`;
         const template = {
-            name,
+            name: autoName,
             note,
             dates: selectedDates.map(formatDateLocal),
             draftSlots,
         };
         const next = saveTemplateToStorage(branchId, template);
         setTemplates(next);
-        setSelectedTemplateName(name);
-        setFeedback({ type: "success", text: `Đã lưu mẫu "${name}".` });
+        setSelectedTemplateName(autoName);
+        setFeedback({ type: "success", text: `Đã lưu mẫu "${autoName}".` });
     }
 
     function handleApplyTemplate(name) {
