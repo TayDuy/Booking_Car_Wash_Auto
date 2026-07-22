@@ -55,13 +55,13 @@ function PaymentPage() {
         ? "/employee/queue"
         : "/customer/home";
     
-    const bookingIdFromBookingPage = location.state?.bookingId;
+    const bookingIdFromBookingPage = location.state?.bookingId || location.state?.bookingDetail?.bookingId;
     const bookingIdFromQuery = searchParams.get("bookingId");
     const paymentIdFromQuery = searchParams.get("paymentId");
     const paymentFailedFromQuery = searchParams.get("paymentFailed");
     const failReasonFromQuery = searchParams.get("reason");
     
-    const bookingId = bookingIdFromBookingPage
+    const rawBookingId = bookingIdFromBookingPage
         ? String(bookingIdFromBookingPage)
         : (bookingIdFromQuery || "");
 
@@ -93,6 +93,8 @@ function PaymentPage() {
     const [bookingDetail, setBookingDetail] = useState(
         location.state?.bookingDetail || null
     );
+
+    const bookingId = rawBookingId || (bookingDetail?.bookingId ? String(bookingDetail.bookingId) : "");
     const [qrImageUrl, setQrImageUrl] = useState(null);
     const [qrLoading, setQrLoading] = useState(false);
     const [isCheckingStatus, setIsCheckingStatus] = useState(false);

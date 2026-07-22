@@ -371,7 +371,7 @@ class EmployeeServiceImplTest {
                     .thenReturn(booking);
             when(bookingDetailRepository.findByBooking(booking))
                     .thenReturn(List.of());
-            when(employeeMapper.toQueueResponse(booking, List.of()))
+            when(employeeMapper.toQueueResponse(booking, List.of(), null))
                     .thenReturn(null);
 
             employeeService.markNoShow(1, 500);
@@ -435,7 +435,7 @@ class EmployeeServiceImplTest {
                     .thenReturn(Optional.of(booking));
             when(bookingRepository.save(booking))
                     .thenReturn(booking);
-            when(employeeMapper.toQueueResponse(booking, List.of()))
+            when(employeeMapper.toQueueResponse(booking, List.of(), null))
                     .thenReturn(new EmployeeQueueBookingResponseDTO());
 
             EmployeeQueueBookingResponseDTO result =
@@ -488,7 +488,7 @@ class EmployeeServiceImplTest {
                     .thenReturn(Optional.of(booking));
             when(bookingRepository.save(booking))
                     .thenReturn(booking);
-            when(employeeMapper.toQueueResponse(booking, List.of()))
+            when(employeeMapper.toQueueResponse(booking, List.of(), null))
                     .thenReturn(new EmployeeQueueBookingResponseDTO());
 
             EmployeeQueueBookingResponseDTO result =
@@ -552,7 +552,7 @@ class EmployeeServiceImplTest {
                     .thenReturn(Optional.of(washBay));
             when(bookingRepository.save(booking))
                     .thenReturn(booking);
-            when(employeeMapper.toQueueResponse(booking, List.of()))
+            when(employeeMapper.toQueueResponse(booking, List.of(), null))
                     .thenReturn(new EmployeeQueueBookingResponseDTO());
 
             EmployeeQueueBookingResponseDTO result =
@@ -701,7 +701,7 @@ class EmployeeServiceImplTest {
             when(loyaltyTransactionService.earnPointsFromCompleteBooking(
                     booking, new BigDecimal("100000")
             )).thenReturn(new LoyaltyTransactionResponseDTO());
-            when(employeeMapper.toQueueResponse(booking, List.of(detail)))
+            when(employeeMapper.toQueueResponse(booking, List.of(detail), null))
                     .thenReturn(new EmployeeQueueBookingResponseDTO());
 
             EmployeeQueueBookingResponseDTO result =
@@ -857,7 +857,7 @@ class EmployeeServiceImplTest {
                     List.of(500)
             )).thenReturn(List.of());
 
-            when(employeeMapper.toQueueResponse(booking, List.of()))
+            when(employeeMapper.toQueueResponse(booking, List.of(), null))
                     .thenReturn(new EmployeeQueueBookingResponseDTO());
 
             List<EmployeeQueueBookingResponseDTO> result =
@@ -890,7 +890,7 @@ class EmployeeServiceImplTest {
                     List.of(500)
             )).thenReturn(List.of());
 
-            when(employeeMapper.toQueueResponse(booking, List.of()))
+            when(employeeMapper.toQueueResponse(booking, List.of(), null))
                     .thenReturn(new EmployeeQueueBookingResponseDTO());
 
             List<EmployeeQueueBookingResponseDTO> result =
@@ -956,7 +956,7 @@ class EmployeeServiceImplTest {
                     .thenReturn(Optional.of(booking));
             when(bookingDetailRepository.findByBooking(booking))
                     .thenReturn(List.of());
-            when(employeeMapper.toQueueResponse(booking, List.of()))
+            when(employeeMapper.toQueueResponse(booking, List.of(), null))
                     .thenReturn(new EmployeeQueueBookingResponseDTO());
 
             EmployeeQueueBookingResponseDTO result =
@@ -1023,7 +1023,7 @@ class EmployeeServiceImplTest {
             )).thenReturn(Optional.of(booking));
             when(bookingDetailRepository.findByBooking(booking))
                     .thenReturn(List.of());
-            when(employeeMapper.toQueueResponse(booking, List.of()))
+            when(employeeMapper.toQueueResponse(booking, List.of(), null))
                     .thenReturn(new EmployeeQueueBookingResponseDTO());
 
             EmployeeQueueBookingResponseDTO result =
@@ -1046,7 +1046,7 @@ class EmployeeServiceImplTest {
             )).thenReturn(Optional.of(booking));
             when(bookingDetailRepository.findByBooking(booking))
                     .thenReturn(List.of());
-            when(employeeMapper.toQueueResponse(booking, List.of()))
+            when(employeeMapper.toQueueResponse(booking, List.of(), null))
                     .thenReturn(new EmployeeQueueBookingResponseDTO());
 
             employeeService.findMyBranchBookingByCode(

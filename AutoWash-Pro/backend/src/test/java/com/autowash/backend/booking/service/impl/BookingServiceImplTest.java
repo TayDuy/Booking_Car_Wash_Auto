@@ -15,6 +15,8 @@ import com.autowash.backend.customer.entity.Customer;
 import com.autowash.backend.customer.repository.CustomerRepository;
 import com.autowash.backend.customerreward.repository.CustomerRewardRepository;
 import com.autowash.backend.employee.repository.EmployeeRepository;
+import com.autowash.backend.loyaltytier.entity.LoyaltyTier;
+import com.autowash.backend.loyaltytier.repository.LoyaltyTierRepository;
 import com.autowash.backend.mail.service.MailService;
 import com.autowash.backend.notification.service.NotificationService;
 import com.autowash.backend.payment.repository.PaymentRepository;
@@ -75,6 +77,8 @@ class BookingServiceImplTest {
     private PaymentRepository paymentRepository;
     @Mock
     private PromotionUseRepository promotionUseRepository;
+    @Mock
+    private LoyaltyTierRepository loyaltyTierRepository;
 
     @InjectMocks
     private BookingServiceImpl bookingService;
@@ -197,6 +201,110 @@ class BookingServiceImplTest {
         BusinessException exception = assertThrows(BusinessException.class,
                 () -> bookingService.createBooking(request, null));
         assertTrue(exception.getMessage().contains("Không thể đặt lịch cho khung giờ đã qua"));
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getHttpStatus());
+    }
+
+    @Test
+    void testCreateBookingOverlappingSlot_ThrowsConflict() {
+        BookingCreateRequestDTO request = new BookingCreateRequestDTO();
+        request.setCustomerId(10);
+        request.setLicensePlate("51A-999.99");
+        request.setVehicleType("car");
+        request.setSlotId(100);
+        request.setBranchId(1);
+        request.setBrand("Ford");
+
+        Customer customer = Customer.builder()
+                .customerId(10)
+                .fullName("Test Customer")
+                .build();
+
+        Vehicle vehicle = Vehicle.builder()
+                .vehicleId(2)
+                .customer(customer)
+                .licensePlate("51A-999.99")
+                .vehicleType(Vehicle.VehicleType.FOUR_SEATS)
+                .isActive(true)
+                .build();
+
+        WashBay washBay = new WashBay();
+        washBay.setStatus(WashBay.BayStatus.available);
+
+        TimeSlot slot = TimeSlot.builder()
+                .slotId(100)
+                .slotDate(LocalDate.now().plusDays(1))
+                .startTime(LocalTime.of(10, 0))
+                .endTime(LocalTime.of(11, 0))
+                .washBay(washBay)
+                .maxCapacity(2)
+                .currentBookings(0)
+                .status(TimeSlot.SlotStatus.open)
+                .build();
+
+        when(customerRepository.findById(10)).thenReturn(Optional.of(customer));
+        when(vehicleRepository.findByLicensePlate("51A-999.99")).thenReturn(Optional.of(vehicle));
+        when(timeSlotRepository.findByIdForUpdate(100)).thenReturn(Optional.of(slot));
+        when(bookingRepository.existsOverlappingBookingForCustomer(
+                anyInt(), any(), any(), any(), anyList()
+        )).thenReturn(true);
+
+        BusinessException exception = assertThrows(BusinessException.class,
+                () -> bookingService.createBooking(request, null));
+        assertEquals(HttpStatus.CONFLICT, exception.getHttpStatus());
+    }
+
+    @Test
+    void testCreateBooking_ExceedsBookingWindow_ThrowsBadRequest() {
+        BookingCreateRequestDTO request = new BookingCreateRequestDTO();
+        request.setCustomerId(10);
+        request.setLicensePlate("51A-999.99");
+        request.setVehicleType("car");
+        request.setSlotId(100);
+        request.setBranchId(1);
+        request.setBrand("Ford");
+
+        Customer customer = Customer.builder()
+                .customerId(10)
+                .tierId(1)
+                .fullName("Test Customer")
+                .build();
+
+        LoyaltyTier tier = LoyaltyTier.builder()
+                .tierId(1)
+                .tierName("Member")
+                .bookingWindowDays(7)
+                .build();
+
+        Vehicle vehicle = Vehicle.builder()
+                .vehicleId(2)
+                .customer(customer)
+                .licensePlate("51A-999.99")
+                .vehicleType(Vehicle.VehicleType.FOUR_SEATS)
+                .isActive(true)
+                .build();
+
+        WashBay washBay = new WashBay();
+        washBay.setStatus(WashBay.BayStatus.available);
+
+        TimeSlot slot = TimeSlot.builder()
+                .slotId(100)
+                .slotDate(LocalDate.now().plusDays(14))
+                .startTime(LocalTime.of(10, 0))
+                .endTime(LocalTime.of(11, 0))
+                .washBay(washBay)
+                .maxCapacity(2)
+                .currentBookings(0)
+                .status(TimeSlot.SlotStatus.open)
+                .build();
+
+        when(customerRepository.findById(10)).thenReturn(Optional.of(customer));
+        when(vehicleRepository.findByLicensePlate("51A-999.99")).thenReturn(Optional.of(vehicle));
+        when(timeSlotRepository.findByIdForUpdate(100)).thenReturn(Optional.of(slot));
+        when(loyaltyTierRepository.findById(1)).thenReturn(Optional.of(tier));
+
+        BusinessException exception = assertThrows(BusinessException.class,
+                () -> bookingService.createBooking(request, null));
+        assertTrue(exception.getMessage().contains("chỉ được phép đặt lịch trước tối đa"));
         assertEquals(HttpStatus.BAD_REQUEST, exception.getHttpStatus());
     }
 

@@ -137,4 +137,31 @@ class CustomerServiceImplTest {
         assertEquals("Staff Cust", response.getCustomer().getFullName());
         assertNull(response.getGeneratedPassword());
     }
+
+    @Test
+    void testUpdateCustomer_UpdatesAllowDataSharing() {
+        Customer customer = Customer.builder()
+                .customerId(10)
+                .fullName("Old Name")
+                .gender("male")
+                .allowDataSharing(false)
+                .build();
+
+        CustomerUpdateRequest request = new CustomerUpdateRequest();
+        request.setFullName("New Name");
+        request.setGender("Nam");
+        request.setPhone("0987654321");
+        request.setEmail("new@gmail.com");
+        request.setAllowDataSharing(true);
+
+        when(customerRepository.findById(10)).thenReturn(Optional.of(customer));
+        when(customerRepository.save(any(Customer.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        CustomerProfileResponse response = customerService.updateCustomer(10, request);
+
+        assertNotNull(response);
+        assertTrue(customer.getAllowDataSharing());
+        assertEquals("New Name", customer.getFullName());
+        verify(auditLogService, times(1)).log(anyString(), anyString(), anyInt(), anyString());
+    }
 }
