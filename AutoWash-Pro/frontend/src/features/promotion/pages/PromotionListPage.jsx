@@ -305,22 +305,7 @@ function PromotionListPage() {
     const visits = getCurrentVisits();
     const spending = getTotalSpending();
 
-    const tiers = [
-      {
-        name: "Member",
-        displayName: "Thành viên",
-        minVisits: 0,
-        minSpending: 0,
-      },
-      {
-        name: "Silver",
-        displayName: "Thành viên Bạc",
-        minVisits: 10,
-        minSpending: 2000000,
-      },
-      {
-        name: "Gold",
-    const currentTierName = loyaltyInfo?.tierName || "Member";
+    const currentTierName = loyaltyInfo?.tierName || user?.tierName || "Member";
     if (currentTierName === "Platinum" || (loyaltyInfo?.tierId && loyaltyInfo.tierId >= 4)) {
       return {
         nextName: "Hạng cao nhất",
