@@ -221,6 +221,11 @@ function EmployeeBookingDetailModal({ open, bookingId, onClose }) {
                                 : booking.totalAmount
                         )}
                       </strong>
+                      {booking.discountAmount > 0 && (
+                        <small style={{ color: "#16a34a", display: "block", fontSize: "11px", marginTop: "2px" }}>
+                          (Đã giảm {formatMoney(booking.discountAmount)})
+                        </small>
+                      )}
                     </div>
                   </div>
 

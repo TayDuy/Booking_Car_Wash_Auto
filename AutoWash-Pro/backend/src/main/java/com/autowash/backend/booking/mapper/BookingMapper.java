@@ -111,7 +111,7 @@ public class BookingMapper {
                 .paymentId(payment != null ? payment.getPaymentId() : null)
                 .originalAmount(payment != null ? payment.getOriginalAmount() : null)
                 .discountAmount(payment != null ? payment.getDiscountAmount() : null)
-                .finalAmount(payment != null ? payment.getFinalAmount() : null)
+                .finalAmount(payment != null && payment.getFinalAmount() != null ? payment.getFinalAmount() : sumTotal(details))
                 .vnpayBankCode(payment != null ? payment.getVnpayBankCode() : null)
                 .build();
     }
@@ -138,7 +138,7 @@ public class BookingMapper {
                 .totalAmount(sumTotal(details))
                 .paymentStatus(pStatus)
                 .paymentMethod(pMethod)
-                .finalAmount(payment != null ? payment.getFinalAmount() : null)
+                .finalAmount(payment != null && payment.getFinalAmount() != null ? payment.getFinalAmount() : sumTotal(details))
                 .build();
     }
 

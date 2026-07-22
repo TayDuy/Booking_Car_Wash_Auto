@@ -33,11 +33,12 @@ public interface BookingRepository extends JpaRepository<Booking, Integer> {
      */
     @Query(
         value = """
-            SELECT b FROM Booking b
+            SELECT DISTINCT b FROM Booking b
             LEFT JOIN FETCH b.customer
             LEFT JOIN FETCH b.vehicle
             LEFT JOIN FETCH b.branch
             LEFT JOIN FETCH b.slot
+            LEFT JOIN FETCH b.payment
             ORDER BY b.bookingDate DESC
             """,
         countQuery = """
@@ -50,11 +51,12 @@ public interface BookingRepository extends JpaRepository<Booking, Integer> {
      */
     @Query(
         value = """
-            SELECT b FROM Booking b
+            SELECT DISTINCT b FROM Booking b
             LEFT JOIN FETCH b.customer
             LEFT JOIN FETCH b.vehicle
             LEFT JOIN FETCH b.branch
             LEFT JOIN FETCH b.slot
+            LEFT JOIN FETCH b.payment
             WHERE b.status IN :statuses
             ORDER BY b.bookingDate DESC
             """,
@@ -82,11 +84,12 @@ public interface BookingRepository extends JpaRepository<Booking, Integer> {
      */
     @Query(
         value = """
-            SELECT b FROM Booking b
+            SELECT DISTINCT b FROM Booking b
             LEFT JOIN FETCH b.customer
             LEFT JOIN FETCH b.vehicle
             LEFT JOIN FETCH b.branch
             LEFT JOIN FETCH b.slot
+            LEFT JOIN FETCH b.payment
             ORDER BY b.priorityScore DESC, b.bookingDate ASC
             """,
         countQuery = """
@@ -100,6 +103,7 @@ public interface BookingRepository extends JpaRepository<Booking, Integer> {
             LEFT JOIN FETCH b.vehicle
             LEFT JOIN FETCH b.branch
             LEFT JOIN FETCH b.slot
+            LEFT JOIN FETCH b.payment
             WHERE b.customer.customerId = :customerId
             ORDER BY b.bookingDate DESC
             """)
@@ -127,6 +131,7 @@ public interface BookingRepository extends JpaRepository<Booking, Integer> {
             LEFT JOIN FETCH b.vehicle
             LEFT JOIN FETCH b.branch
             LEFT JOIN FETCH b.slot
+            LEFT JOIN FETCH b.payment
             WHERE b.customer.customerId = :customerId
               AND b.status = :status
             ORDER BY b.bookingDate DESC
@@ -136,9 +141,12 @@ public interface BookingRepository extends JpaRepository<Booking, Integer> {
             @Param("status") BookingStatus status);
 
     @Query("""
-            SELECT b FROM Booking b
+            SELECT DISTINCT b FROM Booking b
             LEFT JOIN FETCH b.vehicle
             LEFT JOIN FETCH b.customer
+            LEFT JOIN FETCH b.branch
+            LEFT JOIN FETCH b.slot
+            LEFT JOIN FETCH b.payment
             WHERE b.bookingId = :bookingId
             """)
     Optional<Booking> findByIdWithAssociations(@Param("bookingId") Integer bookingId);
@@ -155,6 +163,7 @@ public interface BookingRepository extends JpaRepository<Booking, Integer> {
             LEFT JOIN FETCH b.slot s
             LEFT JOIN FETCH s.washBay
             LEFT JOIN FETCH b.assignedStaff
+            LEFT JOIN FETCH b.payment
             WHERE b.branch.branchId = :branchId
               AND s.slotDate = :slotDate
               AND b.status IN :statuses
@@ -173,6 +182,7 @@ public interface BookingRepository extends JpaRepository<Booking, Integer> {
         LEFT JOIN FETCH b.slot s
         LEFT JOIN FETCH s.washBay
         LEFT JOIN FETCH b.assignedStaff
+        LEFT JOIN FETCH b.payment
         WHERE b.branch.branchId = :branchId
           AND s.slotDate = :slotDate
           AND b.status IN :statuses
@@ -201,6 +211,7 @@ public interface BookingRepository extends JpaRepository<Booking, Integer> {
             LEFT JOIN FETCH b.slot s
             LEFT JOIN FETCH s.washBay
             LEFT JOIN FETCH b.assignedStaff
+            LEFT JOIN FETCH b.payment
             WHERE UPPER(b.bookingCode) = UPPER(:bookingCode)
               AND b.branch.branchId = :branchId
             """)
@@ -216,6 +227,7 @@ public interface BookingRepository extends JpaRepository<Booking, Integer> {
             LEFT JOIN FETCH b.slot s
             LEFT JOIN FETCH s.washBay
             LEFT JOIN FETCH b.assignedStaff
+            LEFT JOIN FETCH b.payment
             WHERE b.bookingId = :bookingId
               AND b.branch.branchId = :branchId
             """)

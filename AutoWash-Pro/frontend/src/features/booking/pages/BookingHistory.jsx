@@ -577,7 +577,12 @@ export default function BookingHistory() {
                                 </tbody>
                               </table>
                               <div className="bh-services-total">
-                                <span className="bh-services-total-label">Tổng cộng</span>
+                                {detailModal.discountAmount > 0 && (
+                                  <div style={{ fontSize: '13px', color: '#16a34a', marginRight: '12px', fontWeight: '500' }}>
+                                    (Giảm giá: -{fmt.format(detailModal.discountAmount)})
+                                  </div>
+                                )}
+                                <span className="bh-services-total-label">Tổng cộng:</span>
                                 <span className="bh-services-total-value">{fmt.format(detailModal.finalAmount || detailModal.totalAmount || 0)}</span>
                               </div>
                               <div style={{ marginTop: '12px', display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
