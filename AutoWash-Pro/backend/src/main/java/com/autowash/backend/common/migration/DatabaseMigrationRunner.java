@@ -40,11 +40,94 @@ public class DatabaseMigrationRunner implements CommandLineRunner {
             jdbcTemplate.update("UPDATE loyalty_tier SET booking_window_days = 14 WHERE tier_id = 3 OR LOWER(tier_name) LIKE '%vàng%' OR LOWER(tier_name) LIKE '%gold%'");
             jdbcTemplate.update("UPDATE loyalty_tier SET booking_window_days = 30 WHERE tier_id = 4 OR LOWER(tier_name) LIKE '%bạch kim%' OR LOWER(tier_name) LIKE '%platinum%'");
 
+            seedTestUser10Bookings();
+
             log.info("[Migration] Bắt đầu đánh giá lại hạng thành viên cho tất cả khách hàng...");
             loyaltyTierEvaluationService.evaluateAllCustomers();
             log.info("[Migration] Đánh giá lại hạng thành viên thành công.");
         } catch (Exception e) {
             log.error("[Migration] Đồng bộ/Đánh giá thất bại: {}", e.getMessage(), e);
+        }
+    }
+
+    private void seedTestUser10Bookings() {
+        try {
+            String email = "01q6kkoin0@yzcalo.com";
+            // 1. Cập nhật các booking hiện có của user sang 'completed'
+            jdbcTemplate.update("""
+                UPDATE booking 
+                SET status = 'completed' 
+                WHERE customer_id IN (
+                    SELECT c.customer_id FROM customer c 
+                    JOIN account a ON c.user_id = a.user_id 
+                    WHERE a.email = ?
+                )
+            """, email);
+
+            // 2. Cập nhật payment tương ứng sang 'paid'
+            jdbcTemplate.update("""
+                UPDATE payment 
+                SET payment_status = 'paid' 
+                WHERE booking_id IN (
+                    SELECT b.booking_id FROM booking b 
+                    JOIN customer c ON b.customer_id = c.customer_id 
+                    JOIN account a ON c.user_id = a.user_id 
+                    WHERE a.email = ?
+                )
+            """, email);
+
+            // 3. Đếm số booking hiện có của user
+            Integer currentCount = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*) FROM booking b 
+                JOIN customer c ON b.customer_id = c.customer_id 
+                JOIN account a ON c.user_id = a.user_id 
+                WHERE a.email = ?
+            """, Integer.class, email);
+
+            Integer customerId = jdbcTemplate.queryForObject("""
+                SELECT c.customer_id FROM customer c 
+                JOIN account a ON c.user_id = a.user_id 
+                WHERE a.email = ?
+            """, Integer.class, email);
+
+            if (customerId != null && currentCount != null && currentCount < 10) {
+                Integer branchId = jdbcTemplate.queryForObject("SELECT branch_id FROM branch LIMIT 1", Integer.class);
+                Integer timeSlotId = jdbcTemplate.queryForObject("SELECT slot_id FROM time_slot LIMIT 1", Integer.class);
+                
+                var vehicles = jdbcTemplate.queryForList("SELECT vehicle_id FROM vehicle WHERE customer_id = ?", Integer.class, customerId);
+                Integer vehicleId = !vehicles.isEmpty() ? vehicles.get(0) : jdbcTemplate.queryForObject("SELECT vehicle_id FROM vehicle LIMIT 1", Integer.class);
+
+                int needed = 10 - currentCount;
+                for (int i = 1; i <= needed; i++) {
+                    String bookingCode = "BK-SEED-" + String.format("%05d", (int)(Math.random() * 100000));
+                    Integer bookingId = jdbcTemplate.queryForObject("""
+                        INSERT INTO booking (booking_code, customer_id, branch_id, vehicle_id, slot_id, booking_date, status, priority_score, total_amount, final_amount, created_at, updated_at)
+                        VALUES (?, ?, ?, ?, ?, CURRENT_DATE - INTERVAL '1 day' * ?, 'completed', 1, 300000.00, 300000.00, NOW(), NOW())
+                        RETURNING booking_id
+                    """, Integer.class, bookingCode, customerId, branchId, vehicleId, timeSlotId, i);
+
+                    jdbcTemplate.update("""
+                        INSERT INTO payment (booking_id, payment_method, payment_status, total_amount, final_amount, created_at)
+                        VALUES (?, 'Cash', 'paid', 300000.00, 300000.00, NOW())
+                    """, bookingId);
+                }
+            }
+
+            // Đồng bộ lại total_visits và total_spending cho customer này
+            jdbcTemplate.update("""
+                UPDATE customer c
+                SET total_visits = (
+                    SELECT COUNT(*) FROM booking b WHERE b.customer_id = c.customer_id AND b.status = 'completed'
+                ),
+                total_spending = (
+                    SELECT COALESCE(SUM(p.final_amount), 0) FROM payment p JOIN booking b ON p.booking_id = b.booking_id WHERE b.customer_id = c.customer_id AND p.payment_status = 'paid'
+                )
+                WHERE c.user_id IN (SELECT user_id FROM account WHERE email = ?)
+            """, email);
+
+            log.info("[Migration] Seeded 10 completed bookings for user {}", email);
+        } catch (Exception e) {
+            log.error("[Migration] Lỗi seed 10 bookings cho test user: {}", e.getMessage(), e);
         }
     }
 
