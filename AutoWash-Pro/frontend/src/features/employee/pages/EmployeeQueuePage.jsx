@@ -205,9 +205,21 @@ function EmployeeQueuePage() {
           (bay) => bay.status === "available"
       );
 
-      setPendingWashBooking({ bookingId, branchId });
-      setAvailableBays(bays); // Store all bays to show full status
-      setSelectedBayId(available.length > 0 ? available[0].bayId : null);
+      // Ưu tiên chọn khoang rửa mà khách đã đặt lịch (nếu khả dụng)
+      const bookedBay = bays.find((b) => b.bayId === booking?.bayId);
+      const defaultBayId =
+          bookedBay && bookedBay.status === "available"
+              ? bookedBay.bayId
+              : (available.length > 0 ? available[0].bayId : (bookedBay?.bayId ?? null));
+
+      setPendingWashBooking({
+        bookingId,
+        branchId,
+        bookingCode: booking?.bookingCode,
+        bookedBayName: booking?.bayName,
+      });
+      setAvailableBays(bays);
+      setSelectedBayId(defaultBayId);
       setShowBayModal(true);
     } catch (error) {
       setQueueError("Không thể tải danh sách khu vực rửa.");
@@ -485,12 +497,22 @@ function EmployeeQueuePage() {
                 <div className="employee-queue-page__bay-modal-body">
                   {pendingWashBooking && (
                       <div className="employee-queue-page__bay-booking-info">
-                        <span>Booking:</span>
-                        <strong>
-                          {bookings.find(
-                              (b) => b.bookingId === pendingWashBooking.bookingId
-                          )?.bookingCode || `#${pendingWashBooking.bookingId}`}
-                        </strong>
+                        <div>
+                          <span>Booking:</span>
+                          <strong>
+                            {pendingWashBooking.bookingCode ||
+                                bookings.find(
+                                    (b) => b.bookingId === pendingWashBooking.bookingId
+                                )?.bookingCode ||
+                                `#${pendingWashBooking.bookingId}`}
+                          </strong>
+                        </div>
+                        {pendingWashBooking.bookedBayName && (
+                            <div style={{ marginLeft: "auto" }}>
+                              <span>Đã đặt:</span>
+                              <strong>{pendingWashBooking.bookedBayName}</strong>
+                            </div>
+                        )}
                       </div>
                   )}
 
