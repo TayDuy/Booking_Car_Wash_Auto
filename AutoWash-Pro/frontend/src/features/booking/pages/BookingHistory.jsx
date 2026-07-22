@@ -339,7 +339,7 @@ export default function BookingHistory() {
                           </div>
 
                           <div className="bh-card-status-amount">
-                            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                            <div className="bh-card-status-badges">
                               <div className={`bh-status-badge ${statusCfg.badge}`}>
                                 <span className="bh-status-dot" />
                                 {statusCfg.label}
