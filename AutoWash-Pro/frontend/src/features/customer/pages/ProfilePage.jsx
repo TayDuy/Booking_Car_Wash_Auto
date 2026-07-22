@@ -527,8 +527,8 @@ const ProfilePage = () => {
                               <div className="progress-track">
                                 <div className="progress-fill" style={{ width: `${Math.min((getCurrentSpending() || 0) / getNextTierTarget(user.tierId) * 100, 100)}%` }}></div>
                               </div>
-                              {getPointsNeeded(user.tierId, getCurrentSpending()) > 0 ? (
-                                  <p className="points-hint">Cần thêm {getPointsNeeded(user.tierId, getCurrentSpending()).toLocaleString("vi-VN")}₫ để lên hạng {getNextTierName(user.tierId)}</p>
+                              {(user.tierId < 4 && getCurrentTierName() !== 'Platinum') ? (
+                                  <p className="points-hint">Cần thêm {getPointsNeeded(user.tierId, getCurrentSpending()).toLocaleString("vi-VN")}₫ chi tiêu để nâng cấp lên hạng {getNextTierName(user.tierId)}</p>
                               ) : (
                                   <p className="points-hint">Đã đạt hạng thành viên cao nhất 🎉</p>
                               )}
@@ -554,9 +554,9 @@ const ProfilePage = () => {
                               width: `${Math.min((getCurrentSpending() || 0) / getNextTierTarget(user.tierId) * 100, 100)}%`
                             }}></div>
                           </div>
-                          {getPointsNeeded(user.tierId, getCurrentSpending()) > 0 ? (
+                          {(user.tierId < 4 && getCurrentTierName() !== 'Platinum') ? (
                               <p className="points-hint" style={{ color: '#64748b', marginTop: '6px', fontSize: '12px', margin: '6px 0 0' }}>
-                                Bạn cần tích lũy thêm <strong>{getPointsNeeded(user.tierId, getCurrentSpending()).toLocaleString("vi-VN")}₫</strong> để nâng cấp lên hạng <strong>{getNextTierName(user.tierId)}</strong>.
+                                Bạn cần tích lũy thêm <strong>{getPointsNeeded(user.tierId, getCurrentSpending()).toLocaleString("vi-VN")}₫</strong> chi tiêu để nâng cấp lên hạng <strong>{getNextTierName(user.tierId)}</strong>.
                               </p>
                           ) : (
                               <p className="points-hint" style={{ color: 'var(--color-success)', marginTop: '6px', fontSize: '12px', margin: '6px 0 0', fontWeight: '600' }}>

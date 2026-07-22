@@ -320,24 +320,8 @@ function PromotionListPage() {
       },
       {
         name: "Gold",
-        displayName: "Thành viên Vàng",
-        minVisits: 25,
-        minSpending: 5000000,
-      },
-      {
-        name: "Platinum",
-        displayName: "Thành viên Kim Cương",
-        minVisits: 60,
-        minSpending: 15000000,
-      },
-    ];
-
-    // Hạng tiếp theo là hạng đầu tiên mà cả số lượt rửa và số tiền chi tiêu đều chưa đạt ngưỡng
-    const nextTier = tiers.find(
-      (tier) => visits < tier.minVisits && spending < tier.minSpending
-    );
-
-    if (!nextTier) {
+    const currentTierName = loyaltyInfo?.tierName || "Member";
+    if (currentTierName === "Platinum" || (loyaltyInfo?.tierId && loyaltyInfo.tierId >= 4)) {
       return {
         nextName: "Hạng cao nhất",
         progressPercent: 100,
@@ -346,32 +330,31 @@ function PromotionListPage() {
       };
     }
 
-    const previousTierIndex = Math.max(
-      0,
-      tiers.findIndex((tier) => tier.name === nextTier.name) - 1
-    );
+    let targetVisits = 60;
+    let targetSpending = 15000000;
+    let nextName = "Platinum";
 
-    const previousTier = tiers[previousTierIndex];
+    if (currentTierName === "Member") {
+      targetVisits = 10;
+      targetSpending = 2000000;
+      nextName = "Silver";
+    } else if (currentTierName === "Silver") {
+      targetVisits = 25;
+      targetSpending = 5000000;
+      nextName = "Gold";
+    }
 
-    const visitRange = nextTier.minVisits - previousTier.minVisits || 1;
-    const visitProgress =
-      ((visits - previousTier.minVisits) / visitRange) * 100;
-
-    const spendingRange = nextTier.minSpending - previousTier.minSpending || 1;
-    const spendingProgress =
-      ((spending - previousTier.minSpending) / spendingRange) * 100;
-
-    // Do áp dụng điều kiện thăng hạng OR nên tiến trình lấy giá trị max
-    const progressPercent = Math.max(
-      0,
-      Math.min(100, Math.floor(Math.max(visitProgress, spendingProgress)))
-    );
+    const missingVisits = Math.max(0, targetVisits - visits);
+    const missingSpending = Math.max(0, targetSpending - spending);
+    const visitPercent = Math.min(100, (visits / targetVisits) * 100);
+    const spendPercent = Math.min(100, (spending / targetSpending) * 100);
+    const progressPercent = Math.min(visitPercent, spendPercent);
 
     return {
-      nextName: nextTier.displayName,
-      progressPercent,
-      missingVisits: Math.max(0, nextTier.minVisits - visits),
-      missingSpending: Math.max(0, nextTier.minSpending - spending),
+      nextName,
+      progressPercent: Math.round(progressPercent),
+      missingVisits,
+      missingSpending,
     };
   }
 
@@ -498,10 +481,20 @@ function PromotionListPage() {
 
             <p className="member-progress-text">
               {getNextTierInfo().nextName === "Hạng cao nhất" ? (
-                "Bạn đã đạt hạng thành viên cao nhất!"
+                "🎉 Bạn đã đạt hạng thành viên cao nhất!"
+              ) : getNextTierInfo().missingSpending <= 0 && getNextTierInfo().missingVisits > 0 ? (
+                <>
+                  🎉 Đã đủ chỉ tiêu chi tiêu! Còn <strong>{getNextTierInfo().missingVisits} lượt rửa</strong> để đạt{" "}
+                  <strong>{getNextTierInfo().nextName}</strong>.
+                </>
+              ) : getNextTierInfo().missingVisits <= 0 && getNextTierInfo().missingSpending > 0 ? (
+                <>
+                  🎉 Đã đủ số lượt rửa! Còn <strong>{formatMoney(getNextTierInfo().missingSpending)}</strong> chi tiêu để đạt{" "}
+                  <strong>{getNextTierInfo().nextName}</strong>.
+                </>
               ) : (
                 <>
-                  Còn <strong>{getNextTierInfo().missingVisits} lượt rửa</strong> hoặc{" "}
+                  Còn <strong>{getNextTierInfo().missingVisits} lượt rửa</strong> và{" "}
                   <strong>{formatMoney(getNextTierInfo().missingSpending)}</strong> chi tiêu để đạt{" "}
                   <strong>{getNextTierInfo().nextName}</strong>.
                 </>
