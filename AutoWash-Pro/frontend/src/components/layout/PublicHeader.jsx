@@ -20,9 +20,8 @@ export default function PublicHeader() {
         <nav className="public-nav">
           <Link to="/" className={isActive("/") ? "nav-active" : ""}>Trang chủ</Link>
           <Link to="/services" className={isActive("/services") ? "nav-active" : ""}>Dịch vụ</Link>
-          <a href={isActive("/") ? "#process" : "/#process"}>Đặt lịch</a>
-          <a href={isActive("/") ? "#pricing" : "/#pricing"}>Bảng giá</a>
-          <a href={isActive("/") ? "#contact" : "/#contact"}>Liên hệ</a>
+          <Link to="/customer/booking" className={isActive("/customer/booking") ? "nav-active" : ""}>Đặt lịch</Link>
+          <Link to="/support" className={isActive("/support") || isActive("/customer/support") ? "nav-active" : ""}>Hỗ trợ & Liên hệ</Link>
         </nav>
 
         <div className="public-actions">

@@ -336,3 +336,37 @@
 .popover-footer-action:hover {
     background: #eff6ff;
 }
+
+/* Guest Action Buttons */
+.site-login-btn {
+    color: #003b8f;
+    font-size: 14px;
+    font-weight: 700;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 8px 16px;
+    transition: color 0.2s;
+}
+
+.site-login-btn:hover {
+    color: #004aad;
+}
+
+.site-register-btn {
+    padding: 8px 20px;
+    border-radius: 8px;
+    background: #003b8f;
+    color: #ffffff;
+    font-size: 14px;
+    font-weight: 700;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(0, 59, 143, 0.2);
+    transition: background 0.2s, transform 0.2s;
+}
+
+.site-register-btn:hover {
+    background: #002f73;
+    transform: translateY(-1px);
+}
