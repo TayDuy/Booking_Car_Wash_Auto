@@ -33,6 +33,9 @@ import com.autowash.backend.loyaltytransaction.dto.LoyaltyTransactionResponseDTO
 import com.autowash.backend.loyaltytransaction.service.LoyaltyTransactionService;
 import com.autowash.backend.loyaltytier.service.LoyaltyTierEvaluationService;
 
+import com.autowash.backend.payment.entity.Payment;
+import com.autowash.backend.payment.repository.PaymentRepository;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -64,6 +67,7 @@ public class EmployeeServiceImpl implements EmployeeService {
     private final EmployeeRepository employeeRepository;
     private final BookingRepository bookingRepository;
     private final BookingDetailRepository bookingDetailRepository;
+    private final PaymentRepository paymentRepository;
     private final EmployeeMapper employeeMapper;
 
     private final CustomerRepository customerRepository;
@@ -1301,9 +1305,14 @@ public class EmployeeServiceImpl implements EmployeeService {
         List<BookingDetail> details =
                 bookingDetailRepository.findByBooking(booking);
 
+        Payment payment = booking.getPayment() != null
+                ? booking.getPayment()
+                : paymentRepository.findByBooking_BookingId(booking.getBookingId()).orElse(null);
+
         return employeeMapper.toQueueResponse(
                 booking,
-                details
+                details,
+                payment
         );
     }
 
@@ -1329,13 +1338,25 @@ public class EmployeeServiceImpl implements EmployeeService {
                                 detail -> detail.getBooking().getBookingId()
                         ));
 
+        List<Payment> payments =
+                paymentRepository.findByBooking_BookingIdIn(bookingIds);
+
+        Map<Integer, Payment> paymentByBooking =
+                payments.stream()
+                        .collect(Collectors.toMap(
+                                p -> p.getBooking().getBookingId(),
+                                p -> p,
+                                (a, b) -> a
+                        ));
+
         return bookings.stream()
                 .map(booking -> employeeMapper.toQueueResponse(
                         booking,
                         detailsByBooking.getOrDefault(
                                 booking.getBookingId(),
                                 Collections.emptyList()
-                        )
+                        ),
+                        paymentByBooking.get(booking.getBookingId())
                 ))
                 .toList();
     }

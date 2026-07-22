@@ -92,7 +92,7 @@ function BookingSuccessPage() {
                 </div>
                 <div>
                   <span>Tổng tiền</span>
-                  <strong>{(bookingDetail.totalAmount || 0).toLocaleString()}đ</strong>
+                  <strong>{((bookingDetail.finalAmount || bookingDetail.totalAmount) || 0).toLocaleString()}đ</strong>
                 </div>
               </div>
             )}

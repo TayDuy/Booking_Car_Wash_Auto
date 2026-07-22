@@ -67,7 +67,7 @@ const SubscriptionPage = () => {
             if (profile.customerId) {
                 try {
                     const bookingsRes = await bookingApi.myBookings(profile.customerId);
-                    const paidBookings = (bookingsRes.data || []).filter((b) => b.totalAmount > 0);
+                    const paidBookings = (bookingsRes.data || []).filter((b) => (b.finalAmount || b.totalAmount) > 0);
                     setBillingHistory(paidBookings);
                 } catch (err) {
                     console.error('Lỗi tải lịch sử thanh toán:', err);
@@ -316,7 +316,7 @@ const SubscriptionPage = () => {
                                             <tr key={booking.bookingId}>
                                                 <td>{dateString}</td>
                                                 <td>{booking.branchName ? `Rửa xe tại ${booking.branchName}` : `Đặt lịch #${booking.bookingCode}`}</td>
-                                                <td className="text-right font-bold text-dark">{currency(booking.totalAmount)}</td>
+                                                <td className="text-right font-bold text-dark">{currency(booking.finalAmount || booking.totalAmount)}</td>
                                                 <td>
                             <span className={`status-badge ${badgeClass}`}>
                               <span className={`dot ${dotClass}`}></span> {textViet}

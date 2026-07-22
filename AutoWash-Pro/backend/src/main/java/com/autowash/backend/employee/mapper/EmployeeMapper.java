@@ -82,9 +82,20 @@ public class EmployeeMapper {
             Booking booking,
             List<BookingDetail> details
     ) {
+        return toQueueResponse(booking, details, null);
+    }
+
+    public EmployeeQueueBookingResponseDTO toQueueResponse(
+            Booking booking,
+            List<BookingDetail> details,
+            com.autowash.backend.payment.entity.Payment payment
+    ) {
         if (booking == null) {
             return null;
         }
+
+        com.autowash.backend.payment.entity.Payment resolvedPayment =
+                payment != null ? payment : booking.getPayment();
 
         List<BookingDetail> safeDetails =
                 details != null ? details : Collections.emptyList();
@@ -146,13 +157,13 @@ public class EmployeeMapper {
                 .totalAmount(calculateTotalAmount(safeDetails))
 
                 // Payment
-                .paymentId(booking.getPayment() != null ? booking.getPayment().getPaymentId() : null)
-                .paymentMethod(booking.getPayment() != null && booking.getPayment().getPaymentMethod() != null ? booking.getPayment().getPaymentMethod().name() : null)
-                .paymentStatus(booking.getPayment() != null && booking.getPayment().getPaymentStatus() != null ? booking.getPayment().getPaymentStatus().name() : null)
-                .discountAmount(booking.getPayment() != null && booking.getPayment().getDiscountAmount() != null ? booking.getPayment().getDiscountAmount() : BigDecimal.ZERO)
-                .finalAmount(booking.getPayment() != null && booking.getPayment().getFinalAmount() != null ? booking.getPayment().getFinalAmount() : calculateTotalAmount(safeDetails))
-                .paidAt(booking.getPayment() != null ? booking.getPayment().getPaidAt() : null)
-                .paid(booking.getPayment() != null && com.autowash.backend.payment.entity.Payment.PaymentStatus.paid.equals(booking.getPayment().getPaymentStatus()))
+                .paymentId(resolvedPayment != null ? resolvedPayment.getPaymentId() : null)
+                .paymentMethod(resolvedPayment != null && resolvedPayment.getPaymentMethod() != null ? resolvedPayment.getPaymentMethod().name() : null)
+                .paymentStatus(resolvedPayment != null && resolvedPayment.getPaymentStatus() != null ? resolvedPayment.getPaymentStatus().name() : null)
+                .discountAmount(resolvedPayment != null && resolvedPayment.getDiscountAmount() != null ? resolvedPayment.getDiscountAmount() : BigDecimal.ZERO)
+                .finalAmount(resolvedPayment != null && resolvedPayment.getFinalAmount() != null ? resolvedPayment.getFinalAmount() : calculateTotalAmount(safeDetails))
+                .paidAt(resolvedPayment != null ? resolvedPayment.getPaidAt() : null)
+                .paid(resolvedPayment != null && com.autowash.backend.payment.entity.Payment.PaymentStatus.paid.equals(resolvedPayment.getPaymentStatus()))
 
                 // Slot
                 .slotId(

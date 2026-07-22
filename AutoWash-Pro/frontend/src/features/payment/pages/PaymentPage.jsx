@@ -449,6 +449,7 @@ function PaymentPage() {
 
     const originalAmount = Number(
         paymentResult?.originalAmount ??
+        bookingDetail?.finalAmount ??
         bookingDetail?.totalAmount ??
         (subtotal + tax)
     );
