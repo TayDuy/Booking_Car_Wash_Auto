@@ -97,26 +97,19 @@ function HomePage() {
           </div>
 
           <div className="home-hero-card">
-            <div className="hero-car-showcase-card">
-              <div className="hero-car-image-wrapper">
-                <img
-                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuBusDZKiAjWUqpYE8kcZ72qmfpiP3P_caQTtotdytOVOvkN4LLwnCgTIixQcgdtUYx0eoRH0pTJUahz2YC84oIvP-GQi5JrrRJhNK4NR3M62uHISS3Re-sN8VCgtxfdmu4jXAslkBQznhMXlefCt4jwQ8G4079R_cEd0vGQ3Bp_hyg6t9PqI8MMMIRBlPvSYeetNUXtWo20JfU0Q0qHYGhREDNZy5nikIHI1Tj5tE_-_RqeCLCJsY3NlZoRA0zB0uHTHEhIBCtVjyRd"
-                  alt="WashFlow Pro Smart Detailing"
-                  className="hero-car-img"
-                />
-                <div className="hero-car-overlay" />
-              </div>
+            <div className="quick-booking-card">
+              <div className="quick-booking-icon">🚘</div>
 
-              <div className="quick-booking-floating-info">
-                <div className="quick-info-header">
-                  <span className="live-dot" />
-                  <span className="quick-info-title">Đặt lịch rửa xe giữ chỗ 30s</span>
-                </div>
-                <p className="quick-info-sub">Công nghệ rửa xe không chạm 4.0 tự động 100%</p>
-                <Link to="/customer/booking" className="hero-booking-btn">
-                  Bắt đầu đặt lịch ngay →
-                </Link>
-              </div>
+              <h3>Đặt lịch nhanh</h3>
+
+              <p>
+                Chỉ cần chọn chi nhánh, dịch vụ và thời gian. Hệ thống sẽ giúp
+                bạn giữ lịch rửa xe.
+              </p>
+
+              <Link to="/customer/booking" className="primary-button">
+                Bắt đầu đặt lịch
+              </Link>
             </div>
           </div>
         </div>
