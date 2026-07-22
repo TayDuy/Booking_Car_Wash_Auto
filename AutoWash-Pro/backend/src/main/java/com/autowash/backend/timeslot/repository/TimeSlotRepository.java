@@ -68,6 +68,10 @@ public interface TimeSlotRepository extends JpaRepository<TimeSlot, Integer> {
             Integer bayId, LocalDate slotDate, java.time.LocalTime startTime
     );
 
+    Optional<TimeSlot> findByWashBay_BayIdAndSlotDateAndStartTime(
+            Integer bayId, LocalDate slotDate, java.time.LocalTime startTime
+    );
+
     /**
      * Tìm các slot của cùng 1 bay, cùng ngày, có khung giờ CHỒNG LẤN với
      * [startTime, endTime) đang xét — chặn trường hợp start_time khác nhau

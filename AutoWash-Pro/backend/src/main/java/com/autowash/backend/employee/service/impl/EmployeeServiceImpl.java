@@ -530,11 +530,36 @@ public class EmployeeServiceImpl implements EmployeeService {
             }
 
             TimeSlot slot = booking.getSlot();
-            if (slot != null && !washBay.getBayId().equals(
-                    slot.getWashBay() != null
-                            ? slot.getWashBay().getBayId() : null)) {
-                slot.setWashBay(washBay);
-                timeSlotRepository.save(slot);
+            if (slot != null && slot.getWashBay() != null && !washBay.getBayId().equals(slot.getWashBay().getBayId())) {
+                java.util.Optional<TimeSlot> targetSlotOpt = timeSlotRepository.findByWashBay_BayIdAndSlotDateAndStartTime(
+                        washBay.getBayId(), slot.getSlotDate(), slot.getStartTime()
+                );
+                if (targetSlotOpt.isPresent()) {
+                    TimeSlot targetSlot = targetSlotOpt.get();
+                    slot.decrementBookings();
+                    timeSlotRepository.save(slot);
+
+                    targetSlot.incrementBookings();
+                    timeSlotRepository.save(targetSlot);
+
+                    booking.setSlot(targetSlot);
+                } else {
+                    TimeSlot newSlot = TimeSlot.builder()
+                            .branch(branch)
+                            .washBay(washBay)
+                            .slotDate(slot.getSlotDate())
+                            .startTime(slot.getStartTime())
+                            .endTime(slot.getEndTime())
+                            .maxCapacity(slot.getMaxCapacity() != null ? slot.getMaxCapacity() : 1)
+                            .currentBookings(1)
+                            .status(com.autowash.backend.timeslot.entity.TimeSlot.SlotStatus.open)
+                            .build();
+                    slot.decrementBookings();
+                    timeSlotRepository.save(slot);
+
+                    TimeSlot savedNewSlot = timeSlotRepository.save(newSlot);
+                    booking.setSlot(savedNewSlot);
+                }
             }
         } else {
             washBay = requireWashBay(booking);
