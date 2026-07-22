@@ -25,6 +25,7 @@ public class CustomerProfileResponse {
     private BigDecimal totalSpending;
     private Integer tierId;
     private String tierName;
+    private Boolean allowDataSharing;
     private LocalDateTime joinedAt;
     private List<VehicleBriefResponse> vehicles;
 }

@@ -81,7 +81,8 @@ const ProfilePage = () => {
           phone: userData.phone || '',
           email: userData.email || '',
           gender: userData.gender || '',
-          dateOfBirth: userData.dateOfBirth || ''
+          dateOfBirth: userData.dateOfBirth || '',
+          allowDataSharing: userData.allowDataSharing || false
         });
 
         // Load vehicles (endpoint automatically checks current logged in user)
@@ -417,6 +418,17 @@ const ProfilePage = () => {
                         <div className="edit-form-group">
                           <label>Ngày sinh</label>
                           <input type="date" name="dateOfBirth" value={editForm.dateOfBirth} onChange={handleInputChange} />
+                        </div>
+                        <div className="edit-form-group" style={{ gridColumn: 'span 2', marginTop: '8px' }}>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', color: '#334155' }}>
+                            <input
+                              type="checkbox"
+                              name="allowDataSharing"
+                              checked={!!editForm.allowDataSharing}
+                              onChange={(e) => setEditForm(prev => ({ ...prev, allowDataSharing: e.target.checked }))}
+                            />
+                            <span>Đồng ý chia sẻ dữ liệu cá nhân với các đối tác liên kết (BR-66)</span>
+                          </label>
                         </div>
                       </div>
                   ) : (

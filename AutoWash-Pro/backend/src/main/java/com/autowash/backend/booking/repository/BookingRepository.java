@@ -12,6 +12,7 @@ import org.springframework.stereotype.Repository;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -21,6 +22,23 @@ public interface BookingRepository extends JpaRepository<Booking, Integer> {
     Optional<Booking> findByBookingCode(String bookingCode);
 
     boolean existsByBookingCode(String bookingCode);
+
+    @Query("""
+            SELECT COUNT(b) > 0 FROM Booking b
+            JOIN b.slot s
+            WHERE b.customer.customerId = :customerId
+              AND b.status IN :activeStatuses
+              AND s.slotDate = :slotDate
+              AND s.startTime < :requestedEndTime
+              AND s.endTime > :requestedStartTime
+            """)
+    boolean existsOverlappingBookingForCustomer(
+            @Param("customerId") Integer customerId,
+            @Param("slotDate") LocalDate slotDate,
+            @Param("requestedStartTime") LocalTime requestedStartTime,
+            @Param("requestedEndTime") LocalTime requestedEndTime,
+            @Param("activeStatuses") List<BookingStatus> activeStatuses
+    );
 
     List<Booking> findByCustomer_CustomerIdOrderByBookingDateDesc(Integer customerId);
     List<Booking> findByBookingDateGreaterThanEqualAndBookingDateLessThan(

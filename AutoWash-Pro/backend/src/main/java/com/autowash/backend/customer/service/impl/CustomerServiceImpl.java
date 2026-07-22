@@ -55,6 +55,9 @@ public class CustomerServiceImpl implements CustomerService {
         customer.setFullName(request.getFullName());
         customer.setDateOfBirth(request.getDateOfBirth());
         customer.setGender(translateGenderToEnglish(request.getGender()));
+        if (request.getAllowDataSharing() != null) {
+            customer.setAllowDataSharing(request.getAllowDataSharing());
+        }
 
         // Cập nhật số điện thoại và email của User liên kết
         if (customer.getUser() != null) {
@@ -177,6 +180,7 @@ public class CustomerServiceImpl implements CustomerService {
                 .totalVisits(customer.getTotalVisits())
                 .totalSpending(customer.getTotalSpending())
                 .tierId(customer.getTierId())
+                .allowDataSharing(customer.getAllowDataSharing() != null ? customer.getAllowDataSharing() : false)
                 .joinedAt(customer.getJoinedAt())
                 .vehicles(vehicles)
                 .build();

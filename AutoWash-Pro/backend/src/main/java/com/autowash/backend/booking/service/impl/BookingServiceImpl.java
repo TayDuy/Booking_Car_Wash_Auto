@@ -33,6 +33,8 @@ import com.autowash.backend.customerreward.repository.CustomerRewardRepository;
 import com.autowash.backend.payment.entity.Payment;
 import com.autowash.backend.payment.repository.PaymentRepository;
 import com.autowash.backend.promotion.repository.PromotionUseRepository;
+import com.autowash.backend.loyaltytier.entity.LoyaltyTier;
+import com.autowash.backend.loyaltytier.repository.LoyaltyTierRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -71,6 +73,7 @@ public class BookingServiceImpl implements BookingService {
     private final CustomerRewardRepository customerRewardRepository;
     private final PaymentRepository paymentRepository;
     private final PromotionUseRepository promotionUseRepository;
+    private final LoyaltyTierRepository loyaltyTierRepository;
 
 
     // ── CREATE ──────────────────────────────────────────────────────────────
@@ -181,6 +184,42 @@ public class BookingServiceImpl implements BookingService {
 
         if (!slot.hasCapacity()) {
             throw new BusinessException("Slot đã đầy, vui lòng chọn khung giờ khác", HttpStatus.CONFLICT);
+        }
+
+        // ── CHECK BR-24..27: GIỚI HẠN SỐ NGÀY ĐẶT TRƯỚC THEO TIER KHÁCH HÀNG ──────
+        LoyaltyTier customerTier = customer.getTier();
+        if (customerTier == null && customer.getTierId() != null) {
+            customerTier = loyaltyTierRepository.findById(customer.getTierId()).orElse(null);
+        }
+        int maxWindowDays = (customerTier != null && customerTier.getBookingWindowDays() != null)
+                ? customerTier.getBookingWindowDays()
+                : 7; // Fallback 7 ngày nếu DB chưa set
+        long daysInAdvance = java.time.temporal.ChronoUnit.DAYS.between(java.time.LocalDate.now(), slot.getSlotDate());
+        if (daysInAdvance > maxWindowDays) {
+            String tierName = customerTier != null ? customerTier.getTierName() : "Thành viên";
+            throw new BusinessException(
+                    "Hạng " + tierName + " chỉ được phép đặt lịch trước tối đa " + maxWindowDays + " ngày.",
+                    HttpStatus.BAD_REQUEST);
+        }
+
+        // ── CHECK BR-11: KHÔNG CHO TẠO 2 BOOKING TRÙNG KHUNG GIỜ CÙNG KHÁCH ──────
+        List<BookingStatus> activeStatuses = List.of(
+                BookingStatus.pending,
+                BookingStatus.confirmed,
+                BookingStatus.checked_in,
+                BookingStatus.in_progress
+        );
+        boolean hasOverlappingBooking = bookingRepository.existsOverlappingBookingForCustomer(
+                customer.getCustomerId(),
+                slot.getSlotDate(),
+                slot.getStartTime(),
+                slot.getEndTime(),
+                activeStatuses
+        );
+        if (hasOverlappingBooking) {
+            throw new BusinessException(
+                    "Bạn đã có một lịch đặt xe khác trùng khung giờ này (" + slot.getStartTime() + " - " + slot.getEndTime() + ").",
+                    HttpStatus.CONFLICT);
         }
 
         if (slot.getWashBay().getStatus() == WashBay.BayStatus.maintenance) {

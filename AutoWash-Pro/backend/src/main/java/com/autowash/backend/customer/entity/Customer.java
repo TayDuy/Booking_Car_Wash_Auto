@@ -60,6 +60,14 @@ public class Customer {
     @Column(name = "tier_id")
     private Integer tierId;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "tier_id", insertable = false, updatable = false)
+    private LoyaltyTier tier;
+
+    @Column(name = "allow_data_sharing")
+    @Builder.Default
+    private Boolean allowDataSharing = false;
+
     @Column(name = "total_points", nullable = false)
     @Builder.Default
     private Integer totalPoints = 0;

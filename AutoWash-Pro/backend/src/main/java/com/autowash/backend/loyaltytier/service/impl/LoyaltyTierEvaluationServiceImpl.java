@@ -53,6 +53,14 @@ import java.util.UUID;
  *     findByCustomer_CustomerIdOrderByRedeemedAtDesc trong CustomerRewardRepository,
  *     không cần thêm method mới.
  */
+import com.autowash.backend.loyaltytier.entity.CustomerTierHistory;
+import com.autowash.backend.loyaltytier.repository.CustomerTierHistoryRepository;
+import com.autowash.backend.notification.dto.NotificationCreateDTO;
+import com.autowash.backend.notification.entity.Notification;
+import com.autowash.backend.notification.service.NotificationService;
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -64,6 +72,8 @@ public class LoyaltyTierEvaluationServiceImpl implements LoyaltyTierEvaluationSe
     private final LoyaltyTierMapper loyaltyTierMapper;
     private final com.autowash.backend.reward.repository.RewardRepository rewardRepository;
     private final com.autowash.backend.customerreward.repository.CustomerRewardRepository customerRewardRepository;
+    private final CustomerTierHistoryRepository customerTierHistoryRepository;
+    private final NotificationService notificationService;
 
     @Override
     @Transactional(readOnly = true)
@@ -223,6 +233,37 @@ public class LoyaltyTierEvaluationServiceImpl implements LoyaltyTierEvaluationSe
         customerRepository.save(customer);
 
         boolean tierChanged = !Objects.equals(previousTierId, matchedTier.getTierId());
+
+        if (tierChanged) {
+            // BR-23: Lưu lịch sử thay đổi tier
+            try {
+                CustomerTierHistory history = CustomerTierHistory.builder()
+                        .customer(customer)
+                        .oldTierId(previousTierId)
+                        .newTierId(matchedTier.getTierId())
+                        .reason("Hệ thống tự động cập nhật hạng thành viên")
+                        .build();
+                customerTierHistoryRepository.save(history);
+            } catch (Exception e) {
+                log.error("Lỗi khi lưu CustomerTierHistory cho customerId={}: {}", customerId, e.getMessage());
+            }
+
+            // BR-32: Gửi notification khi thay đổi tier
+            if (customer.getUser() != null) {
+                try {
+                    String oldName = previousTierName != null ? previousTierName : "Chưa có";
+                    NotificationCreateDTO notificationDTO = NotificationCreateDTO.builder()
+                            .userId(customer.getUser().getId())
+                            .title("Cập nhật hạng thành viên AutoWash!")
+                            .body("Hạng thành viên của bạn đã thay đổi từ [" + oldName + "] sang [" + matchedTier.getTierName() + "].")
+                            .type(Notification.NotificationType.TIER_UPGRADED)
+                            .build();
+                    notificationService.create(notificationDTO);
+                } catch (Exception e) {
+                    log.warn("Không thể gửi notification đổi tier cho userId={}: {}", customer.getUser().getId(), e.getMessage());
+                }
+            }
+        }
 
         int previousPriorityLevel = activeTiers.stream()
                 .filter(t -> Objects.equals(t.getTierId(), previousTierId))

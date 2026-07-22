@@ -17,6 +17,7 @@ import com.autowash.backend.employee.entity.Employee;
 import com.autowash.backend.employee.mapper.EmployeeMapper;
 import com.autowash.backend.employee.repository.EmployeeRepository;
 import com.autowash.backend.loyaltytier.service.LoyaltyTierEvaluationService;
+import com.autowash.backend.payment.repository.PaymentRepository;
 import com.autowash.backend.loyaltytransaction.dto.LoyaltyTransactionResponseDTO;
 import com.autowash.backend.loyaltytransaction.service.LoyaltyTransactionService;
 import com.autowash.backend.servicepackage.entity.ServicePackage;
@@ -71,6 +72,7 @@ class EmployeeServiceImplTest {
     @Mock private WashBayRepository washBayRepository;
     @Mock private UserRepository userRepository;
     @Mock private PasswordEncoder passwordEncoder;
+    @Mock private PaymentRepository paymentRepository;
     @Mock private LoyaltyTransactionService loyaltyTransactionService;
     @Mock private LoyaltyTierEvaluationService loyaltyTierEvaluationService;
 
@@ -89,6 +91,7 @@ class EmployeeServiceImplTest {
                 employeeRepository,
                 bookingRepository,
                 bookingDetailRepository,
+                paymentRepository,
                 employeeMapper,
                 customerRepository,
                 vehicleRepository,
