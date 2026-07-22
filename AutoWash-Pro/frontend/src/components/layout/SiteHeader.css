@@ -110,16 +110,33 @@
 }
 
 /* USER AVATAR THÀNH VIÊN TRÒN */
+.user-avatar-circle,
+.profile-user-avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #e2e8f0;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.user-avatar-circle img,
 .profile-user-avatar img {
-    width: 34px;
-    height: 34px;
+    width: 100%;
+    height: 100%;
+    max-width: 100%;
+    max-height: 100%;
     border-radius: 50%;
     object-fit: cover;
-    border: 1px solid #e2e8f0;
     display: block;
     transition: all 0.2s ease;
 }
 
+.user-avatar-circle:hover img,
 .profile-user-avatar.avatar-active img {
     box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.25);
     border-color: #2563eb;
