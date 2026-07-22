@@ -17,10 +17,9 @@ function CustomerLayout() {
           <p>© 2026 WashFlow Pro Automation. Tất cả quyền được bảo lưu.</p>
         </div>
         <div className="footer-nav-links">
-          <Link to="/customer/contact">Liên hệ</Link>
           <Link to="/customer/privacy-policy">Chính sách bảo mật</Link>
           <Link to="/customer/terms-of-service">Điều khoản dịch vụ</Link>
-          <Link to="/customer/support">Hỗ trợ</Link>
+          <Link to="/customer/support">Hỗ trợ & Liên hệ</Link>
         </div>
       </footer>
     </div>

@@ -1,12 +1,42 @@
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
 import "./SupportPage.css";
+import "./ContactPage.css";
+import { useAppDialog } from "../../../contexts/DialogContext.jsx";
 
 export default function SupportPage() {
+  const { showMessage } = useAppDialog();
   const [activeFaq, setActiveFaq] = useState(null);
+
+  const [formData, setFormData] = useState({
+    fullName: localStorage.getItem("fullName") || localStorage.getItem("username") || "",
+    email: localStorage.getItem("email") || "",
+    phone: localStorage.getItem("phone") || "",
+    subject: "Hỗ trợ đặt lịch",
+    message: "",
+  });
 
   const toggleFaq = (index) => {
     setActiveFaq(activeFaq === index ? null : index);
+  };
+
+  const handleContactSubmit = async (e) => {
+    e.preventDefault();
+    if (!formData.message.trim()) {
+      await showMessage({
+        title: "Thông báo",
+        message: "Vui lòng nhập nội dung tin nhắn cần hỗ trợ.",
+        variant: "warning",
+      });
+      return;
+    }
+
+    await showMessage({
+      title: "Gửi yêu cầu thành công",
+      message: `Cảm ơn ${formData.fullName || "bạn"} đã gửi liên hệ! Đội ngũ tư vấn WashFlow Pro đã ghi nhận yêu cầu "${formData.subject}" và sẽ phản hồi qua email/SĐT của bạn trong 24h làm việc.`,
+      variant: "success",
+    });
+
+    setFormData((prev) => ({ ...prev, message: "" }));
   };
 
   const faqList = [
@@ -36,7 +66,7 @@ export default function SupportPage() {
           <div className="support-hero-card">
             <div className="support-hero-content">
               <h1>
-                Trung tâm Hỗ trợ - <br />
+                Trung tâm Hỗ trợ & Liên hệ <br />
                 WashFlow Pro
               </h1>
               
@@ -49,11 +79,11 @@ export default function SupportPage() {
               </div>
 
               <div className="popular-tags">
-                <span className="tag-label">Tag các tin tức popular nhất:</span>
+                <span className="tag-label">Từ khóa phổ biến:</span>
                 <div className="tags-list">
                   <span className="tag-item">Đặt lịch</span>
                   <span className="tag-item">Thanh toán</span>
-                  <span className="tag-item">Sự cố</span>
+                  <span className="tag-item">Hoàn tiền</span>
                   <span className="tag-item">Bảo hành</span>
                 </div>
               </div>
@@ -69,99 +99,112 @@ export default function SupportPage() {
         </div>
       </section>
 
-      {/* CHỦ ĐỀ HỖ TRỢ */}
-      <section className="support-topics-section">
+      {/* FORM GỬI YÊU CẦU & THÔNG TIN LIÊN HỆ */}
+      <section className="contact-main-section" style={{ paddingTop: 30 }}>
         <div className="app-container">
-          <div className="section-header-center">
-            <h2>Chủ đề hỗ trợ</h2>
-            <p>Chúng tôi luôn ở đây để hỗ trợ bạn tại các trạm WashFlow Pro.</p>
-          </div>
+          <div className="contact-grid-layout">
+            {/* CỘT TRÁI: 3 THẺ THÔNG TIN LIÊN HỆ */}
+            <div className="contact-info-col">
+              <div className="info-card">
+                <div className="info-icon-box">📍</div>
+                <div className="info-details">
+                  <h3>Văn phòng chính</h3>
+                  <p>Số 123 Đường Song Hành, Thảo Điền, Quận 2, TP. Hồ Chí Minh, Việt Nam</p>
+                </div>
+              </div>
 
-          <div className="topics-grid">
-            <div className="topic-card">
-              <div className="topic-icon-box">📖</div>
-              <h3>Hướng dẫn sử dụng</h3>
-              <p>
-                Hướng dẫn sử dụng các thao tác tự động hóa tiện lợi của chúng tôi
-                được áp dụng.
-              </p>
-              <button className="btn-topic-action">Xem chi tiết →</button>
+              <div className="info-card">
+                <div className="info-icon-box">📞</div>
+                <div className="info-details">
+                  <h3>Hotline hỗ trợ</h3>
+                  <p className="highlight-text">1900 8888 66</p>
+                  <span className="sub-note">Phục vụ 24/7 cho mọi yêu cầu cấp bách.</span>
+                </div>
+              </div>
+
+              <div className="info-card">
+                <div className="info-icon-box">✉️</div>
+                <div className="info-details">
+                  <h3>Email doanh nghiệp</h3>
+                  <p>support@washflowpro.vn</p>
+                  <p>partnership@washflowpro.vn</p>
+                </div>
+              </div>
             </div>
 
-            <div className="topic-card">
-              <div className="topic-icon-box">🛠️</div>
-              <h3>Xử lý sự cố</h3>
-              <p>
-                Xử lý sự cố khi hệ thống tự động gặp phải tình huống trục trặc
-                về sự cố.
+            {/* CỘT PHẢI: FORM GỬI TIN NHẮN */}
+            <div className="contact-form-card">
+              <h2>Gửi tin nhắn liên hệ & Hỗ trợ</h2>
+              <p className="form-subtitle">
+                Vui lòng điền thông tin bên dưới, chuyên viên của chúng tôi sẽ phản hồi trong vòng 24 giờ làm việc.
               </p>
-              <button className="btn-topic-action">Xem chi tiết →</button>
-            </div>
 
-            <div className="topic-card">
-              <div className="topic-icon-box">💳</div>
-              <h3>Thanh toán & Hóa đơn</h3>
-              <p>
-                Thanh toán & Hóa đơn của tôi thanh toán & lịch sử/xuất/hướng dẫn
-                Hóa đơn.
-              </p>
-              <button className="btn-topic-action">Xem chi tiết →</button>
-            </div>
+              <form onSubmit={handleContactSubmit} className="contact-form">
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>Họ và Tên</label>
+                    <input
+                      type="text"
+                      placeholder="Nguyễn Văn A"
+                      required
+                      value={formData.fullName}
+                      onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                    />
+                  </div>
 
-            <div className="topic-card">
-              <div className="topic-icon-box">🛡️</div>
-              <h3>Chính sách bảo hành</h3>
-              <p>
-                Sửa chữa sản phẩm hóa chất chuyên dụng làm tròn rửa quy mô lớn nhất
-                thị trường của WashFlow Pro.
-              </p>
-              <button className="btn-topic-action">Xem chi tiết →</button>
-            </div>
-          </div>
-        </div>
-      </section>
+                  <div className="form-group">
+                    <label>Email</label>
+                    <input
+                      type="email"
+                      placeholder="example@gmail.com"
+                      required
+                      value={formData.email}
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    />
+                  </div>
+                </div>
 
-      {/* LIÊN HỆ HỖ TRỢ */}
-      <section className="direct-support-section">
-        <div className="app-container">
-          <div className="section-header-center">
-            <h2>Liên hệ hỗ trợ</h2>
-            <p>
-              Chúng tôi cung cấp các giải pháp tối ưu cho mọi loại hình doanh
-              nghiệp trong ngành dịch vụ vận tải và chăm sóc xe.
-            </p>
-          </div>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>Số điện thoại</label>
+                    <input
+                      type="tel"
+                      placeholder="090 123 4567"
+                      required
+                      value={formData.phone}
+                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    />
+                  </div>
 
-          <div className="direct-grid">
-            <div className="direct-card">
-              <div className="direct-icon-box">💬</div>
-              <h3>Chat trực tuyến</h3>
-              <p>
-                Chat trực tuyến và ngay lập tức hỗ trợ bạn giải quyết mọi câu
-                hỏi thắc mắc.
-              </p>
-              <button className="btn-direct-blue">Bắt đầu chat</button>
-            </div>
+                  <div className="form-group">
+                    <label>Chủ đề cần hỗ trợ</label>
+                    <select
+                      value={formData.subject}
+                      onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
+                    >
+                      <option value="Hỗ trợ đặt lịch">Hỗ trợ đặt lịch</option>
+                      <option value="Tư vấn dịch vụ">Tư vấn dịch vụ</option>
+                      <option value="Góp ý phản hồi">Góp ý phản hồi</option>
+                      <option value="Hợp tác doanh nghiệp">Hợp tác doanh nghiệp</option>
+                    </select>
+                  </div>
+                </div>
 
-            <div className="direct-card">
-              <div className="direct-icon-box">✉️</div>
-              <h3>Gửi yêu cầu</h3>
-              <p>
-                Tạo yêu cầu mới cần xác nhận, tải file video hỗ trợ thắc mắc
-                nào.
-              </p>
-              <button className="btn-direct-blue">Tạo yêu cầu mới</button>
-            </div>
+                <div className="form-group full-width">
+                  <label>Nội dung tin nhắn</label>
+                  <textarea
+                    rows="4"
+                    placeholder="Tôi muốn câu hỏi / hỗ trợ về..."
+                    required
+                    value={formData.message}
+                    onChange={(e) => setFormData({ ...formData, message: e.target.value })}
+                  ></textarea>
+                </div>
 
-            <div className="direct-card">
-              <div className="direct-icon-box">📞</div>
-              <h3>Hotline hỗ trợ 24/7</h3>
-              <p>
-                Hotline hỗ trợ 24/7 Hotline tư vấn của WashFlow Pro hỗ trợ.
-              </p>
-              <a href="tel:19008888" className="btn-direct-blue btn-hotline">
-                1900 8888
-              </a>
+                <button type="submit" className="btn-send-request">
+                  Gửi yêu cầu hỗ trợ ngay ►
+                </button>
+              </form>
             </div>
           </div>
         </div>
@@ -172,7 +215,7 @@ export default function SupportPage() {
         <div className="app-container">
           <div className="section-header-center">
             <h2>Câu hỏi thường gặp (FAQ)</h2>
-            <p>Đội ngũ chuyên viên sẵn sàng trả lời câu hỏi thường gặp (FAQ)</p>
+            <p>Đội ngũ chuyên viên sẵn sàng trả lời câu hỏi thường gặp</p>
           </div>
 
           <div className="faq-list">

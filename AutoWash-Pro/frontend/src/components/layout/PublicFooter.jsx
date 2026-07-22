@@ -13,16 +13,11 @@ export default function PublicFooter() {
           </p>
         </div>
 
-        {/* Cột giữa: Đường dẫn Liên hệ & Hỗ trợ */}
-        <div className="footer-nav-col">
-          <Link to="/contact">Liên hệ</Link>
-          <Link to="/support">Hỗ trợ</Link>
-        </div>
-
-        {/* Cột phải: Đường dẫn Điều khoản & Chính sách */}
+        {/* Cột phải: Đường dẫn Điều khoản, Chính sách & Hỗ trợ */}
         <div className="footer-nav-col">
           <Link to="/privacy-policy">Chính sách bảo mật</Link>
           <Link to="/terms-of-service">Điều khoản dịch vụ</Link>
+          <Link to="/support">Hỗ trợ & Liên hệ</Link>
         </div>
       </div>
     </footer>
