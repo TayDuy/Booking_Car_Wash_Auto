@@ -658,7 +658,7 @@ export default function ManageOrdersPage() {
 
                       <td>
                         <strong>
-                          {formatMoney(order.totalAmount)} đ
+                          {formatMoney(order.finalAmount || order.totalAmount)} đ
                         </strong>
                       </td>
 
@@ -974,11 +974,11 @@ export default function ManageOrdersPage() {
                   )}
 
                   <div className="orders-total-row">
-                    <span>Tổng giá trị dịch vụ</span>
+                    <span>Thành tiền thanh toán</span>
 
                     <strong>
                       {formatMoney(
-                        selectedOrder.totalAmount
+                        selectedOrder.finalAmount || selectedOrder.totalAmount
                       )}{" "}
                       đ
                     </strong>

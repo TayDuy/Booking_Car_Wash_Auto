@@ -1153,7 +1153,7 @@ export default function ManageBookingsPage() {
                       <p><strong>Ghi chú:</strong> {selectedBooking.note || "Không có"}</p>
                       <p>
                         <strong>Tổng tiền:</strong>{" "}
-                        {Number(selectedBooking.totalAmount || 0).toLocaleString("vi-VN")} đ
+                        {Number(selectedBooking.finalAmount || selectedBooking.totalAmount || 0).toLocaleString("vi-VN")} đ
                       </p>
                     </div>
                 )}
