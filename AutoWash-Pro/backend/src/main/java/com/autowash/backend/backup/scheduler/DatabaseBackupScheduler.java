@@ -86,6 +86,9 @@ public class DatabaseBackupScheduler {
                 log.info("Native pg_dump backup created: {}", outputFile.getAbsolutePath());
                 return true;
             }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.warn("pg_dump interrupted: {}", e.getMessage());
         } catch (Exception e) {
             log.warn("pg_dump execution failed: {}", e.getMessage());
         }
@@ -129,8 +132,12 @@ public class DatabaseBackupScheduler {
             if (files != null) {
                 for (File file : files) {
                     if (file.isFile() && file.lastModified() < cutoff.atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()) {
-                        file.delete();
-                        log.info("Cleaned up old backup file: {}", file.getName());
+                        boolean deleted = file.delete();
+                        if (deleted) {
+                            log.info("Cleaned up old backup file: {}", file.getName());
+                        } else {
+                            log.warn("Failed to delete old backup file: {}", file.getName());
+                        }
                     }
                 }
             }

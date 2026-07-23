@@ -1,14 +1,22 @@
 .custom-app-header {
-    height: 64px;
+    height: 70px;
     background-color: #ffffff;
     border-bottom: 1px solid #e2e8f0;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0 32px;
     position: sticky;
     top: 0;
     z-index: 1000;
+    box-sizing: border-box;
+}
+
+.custom-app-header-inner {
+    width: 100%;
+    max-width: 1240px;
+    margin: 0 auto;
+    padding: 0 24px;
+    height: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     box-sizing: border-box;
 }
 

@@ -49,7 +49,7 @@ public class VNPayServiceImpl implements VNPayService {
         vnp_Params.put("vnp_OrderInfo", cleanOrderInfo);
         vnp_Params.put("vnp_OrderType", "other");
         vnp_Params.put("vnp_Locale", "vn");
-        vnp_Params.put("vnp_ReturnUrl", vnPayConfig.getVnp_ReturnUrl());
+        vnp_Params.put("vnp_ReturnUrl", resolveReturnUrl(request));
         vnp_Params.put("vnp_IpAddr", vnp_IpAddr);
 
         TimeZone vietnamTz = TimeZone.getTimeZone("Asia/Ho_Chi_Minh");
@@ -87,7 +87,12 @@ public class VNPayServiceImpl implements VNPayService {
     @Override
     public byte[] generateQRCode(String text, int width, int height) throws WriterException, IOException {
         QRCodeWriter qrCodeWriter = new QRCodeWriter();
-        BitMatrix bitMatrix = qrCodeWriter.encode(text, BarcodeFormat.QR_CODE, width, height);
+        java.util.Map<com.google.zxing.EncodeHintType, Object> hints = new java.util.HashMap<>();
+        hints.put(com.google.zxing.EncodeHintType.CHARACTER_SET, "UTF-8");
+        hints.put(com.google.zxing.EncodeHintType.ERROR_CORRECTION, com.google.zxing.qrcode.decoder.ErrorCorrectionLevel.M);
+        hints.put(com.google.zxing.EncodeHintType.MARGIN, 2); // Bắt buộc thêm lề trắng (Quiet Zone) để camera scanner đọc được góc định vị QR
+
+        BitMatrix bitMatrix = qrCodeWriter.encode(text, BarcodeFormat.QR_CODE, width, height, hints);
         ByteArrayOutputStream pngOutputStream = new ByteArrayOutputStream();
         MatrixToImageWriter.writeToStream(bitMatrix, "PNG", pngOutputStream);
         return pngOutputStream.toByteArray();
@@ -152,5 +157,56 @@ public class VNPayServiceImpl implements VNPayService {
             ip = "127.0.0.1";
         }
         return ip;
+    }
+
+    private String resolveReturnUrl(HttpServletRequest request) {
+        String configuredUrl = vnPayConfig.getVnp_ReturnUrl();
+        String productionHost = extractHostFromUrl(configuredUrl);
+        if (productionHost != null && !isLocalhost(productionHost)) {
+            return configuredUrl;
+        }
+
+        String proto = request.getHeader("X-Forwarded-Proto") != null ? request.getHeader("X-Forwarded-Proto") : request.getScheme();
+        String hostHeader = request.getHeader("X-Forwarded-Host") != null ? request.getHeader("X-Forwarded-Host") : request.getHeader("Host");
+
+        if (hostHeader != null && !hostHeader.isBlank()) {
+            String hostOnly = extractHost(hostHeader);
+            if (hostOnly != null && isTrustedDevHost(hostOnly)) {
+                return proto + "://" + hostHeader + "/api/v1/payments/vnpay-return";
+            }
+        }
+
+        return configuredUrl;
+    }
+
+    private String extractHost(String hostHeader) {
+        if (hostHeader == null) return null;
+        String trimmed = hostHeader.trim().toLowerCase();
+        int colonIdx = trimmed.lastIndexOf(':');
+        if (colonIdx > 0) {
+            trimmed = trimmed.substring(0, colonIdx);
+        }
+        return trimmed;
+    }
+
+    private String extractHostFromUrl(String url) {
+        if (url == null) return null;
+        try {
+            return java.net.URI.create(url).getHost();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private boolean isLocalhost(String host) {
+        return "localhost".equals(host) || "127.0.0.1".equals(host) || "::1".equals(host);
+    }
+
+    private boolean isTrustedDevHost(String host) {
+        if (host == null) return false;
+        if (isLocalhost(host)) return true;
+        if (host.equals("booking-car-wash-auto.vercel.app")) return true;
+        if (host.endsWith(".trycloudflare.com") || host.endsWith(".ngrok-free.app")) return true;
+        return false;
     }
 }

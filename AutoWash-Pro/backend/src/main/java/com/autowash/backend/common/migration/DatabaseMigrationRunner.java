@@ -34,6 +34,16 @@ public class DatabaseMigrationRunner implements CommandLineRunner {
 
             seedWelcomeRewards();
 
+            // BR-19: Cho phép transaction_type='expired' trong check constraint
+            try {
+                jdbcTemplate.update("ALTER TABLE loyalty_transaction DROP CONSTRAINT IF EXISTS loyalty_transaction_transaction_type_check");
+                jdbcTemplate.update("ALTER TABLE loyalty_transaction ADD CONSTRAINT loyalty_transaction_transaction_type_check " +
+                        "CHECK (transaction_type IN ('earn', 'redeem', 'adjust', 'expired'))");
+                log.info("[Migration] Đã cập nhật check constraint loyalty_transaction_transaction_type_check — bổ sung 'expired'");
+            } catch (Exception e) {
+                log.warn("[Migration] Không thể cập nhật check constraint loyalty_transaction (có thể đã tồn tại hoặc không cần): {}", e.getMessage());
+            }
+
             // BR-24 -> 27: Cập nhật booking_window_days cho các hạng thành viên (Member 7d, Silver 10d, Gold 14d, Platinum 30d)
             jdbcTemplate.update("UPDATE loyalty_tier SET booking_window_days = 7 WHERE tier_id = 1 OR LOWER(tier_name) LIKE '%member%' OR LOWER(tier_name) LIKE '%đồng%'");
             jdbcTemplate.update("UPDATE loyalty_tier SET booking_window_days = 10 WHERE tier_id = 2 OR LOWER(tier_name) LIKE '%bạc%' OR LOWER(tier_name) LIKE '%silver%'");
@@ -42,6 +52,27 @@ public class DatabaseMigrationRunner implements CommandLineRunner {
 
             seedTestUser10Bookings();
             cleanupExpiredPastBookings();
+
+            // Đồng bộ lại các giao dịch cộng điểm cũ từ booking theo tỉ lệ 10.000 VNĐ = 1 điểm
+            try {
+                jdbcTemplate.update("""
+                    UPDATE loyalty_transaction 
+                    SET points = CASE WHEN points >= 10 THEN points / 10 ELSE points END
+                    WHERE note LIKE 'Cộng điểm từ booking%' AND points >= 100
+                """);
+                jdbcTemplate.update("""
+                    UPDATE customer c
+                    SET total_points = COALESCE((
+                        SELECT SUM(points) FROM loyalty_transaction lt WHERE lt.customer_id = c.customer_id
+                    ), 0)
+                """);
+                // Chặn triệt để điểm âm trong DB — quy định điểm tích lũy tối thiểu là 0
+                jdbcTemplate.update("UPDATE customer SET total_points = GREATEST(0, total_points) WHERE total_points < 0");
+                jdbcTemplate.update("UPDATE loyalty_transaction SET balance_after = GREATEST(0, balance_after), balance_before = GREATEST(0, balance_before) WHERE balance_after < 0 OR balance_before < 0");
+                log.info("[Migration] Đã đồng bộ điểm tích lũy cũ về tỉ lệ 10.000 VNĐ = 1 điểm và xử lý triệt để điểm âm.");
+            } catch (Exception e) {
+                log.warn("[Migration] Không thể cập nhật điểm tích lũy cũ: {}", e.getMessage());
+            }
 
             log.info("[Migration] Bắt đầu đánh giá lại hạng thành viên cho tất cả khách hàng...");
             loyaltyTierEvaluationService.evaluateAllCustomers();
@@ -102,8 +133,8 @@ public class DatabaseMigrationRunner implements CommandLineRunner {
                 for (int i = 1; i <= needed; i++) {
                     String bookingCode = "BK-SEED-" + String.format("%05d", (int)(Math.random() * 100000));
                     Integer bookingId = jdbcTemplate.queryForObject("""
-                        INSERT INTO booking (booking_code, customer_id, branch_id, vehicle_id, slot_id, booking_date, status, priority_score, total_amount, final_amount, created_at, updated_at)
-                        VALUES (?, ?, ?, ?, ?, CURRENT_DATE - INTERVAL '1 day' * ?, 'completed', 1, 300000.00, 300000.00, NOW(), NOW())
+                        INSERT INTO booking (booking_code, customer_id, branch_id, vehicle_id, slot_id, booking_date, status, priority_score, created_at, updated_at)
+                        VALUES (?, ?, ?, ?, ?, CURRENT_DATE - INTERVAL '1 day' * ?, 'completed', 1, NOW(), NOW())
                         RETURNING booking_id
                     """, Integer.class, bookingCode, customerId, branchId, vehicleId, timeSlotId, i);
 

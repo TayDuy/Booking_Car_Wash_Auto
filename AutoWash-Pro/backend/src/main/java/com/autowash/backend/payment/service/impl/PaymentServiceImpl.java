@@ -134,9 +134,6 @@ public class PaymentServiceImpl implements PaymentService {
         }
 
         BigDecimal subtotal = serviceTotal.add(surcharge);
-        BigDecimal tax = subtotal.multiply(BigDecimal.valueOf(0.08))
-                .setScale(0, RoundingMode.HALF_UP);
-        BigDecimal originalAmount = subtotal.add(tax);
 
         boolean isOnline = request.getPaymentMethod() == Payment.PaymentMethod.bank_transfer
                 || request.getPaymentMethod() == Payment.PaymentMethod.paypal;
@@ -257,6 +254,15 @@ public class PaymentServiceImpl implements PaymentService {
                 log.warn("Voucher {} không thuộc customer {}, bỏ qua.", appliedVoucher.getVoucherCode(), booking.getCustomer().getCustomerId());
                 appliedVoucher = null;
             } else {
+                Reward r = appliedVoucher.getReward();
+                if (r != null) {
+                    String rName = r.getRewardName() != null ? r.getRewardName().toLowerCase() : "";
+                    if ((rName.contains("cao cấp") || rName.contains("premium")) && subtotal.compareTo(BigDecimal.valueOf(200000)) < 0) {
+                        throw new BusinessException(
+                                "Voucher '" + r.getRewardName() + "' chỉ áp dụng cho các gói dịch vụ ô tô cao cấp (giá trị dịch vụ tối thiểu 200.000đ).",
+                                HttpStatus.BAD_REQUEST);
+                    }
+                }
                 voucherDiscount = appliedVoucher.getDiscountValue() != null ? appliedVoucher.getDiscountValue() : BigDecimal.ZERO;
             }
         }
@@ -268,10 +274,8 @@ public class PaymentServiceImpl implements PaymentService {
         if (appliedVoucher != null && voucherDiscount.compareTo(BigDecimal.ZERO) > 0) {
             discountAmount = discountAmount.add(voucherDiscount);
 
-            // Cập nhật trạng thái Voucher thành USED
-            appliedVoucher.setStatus("USED");
+            // Gắn voucher vào bookingId để liên kết. Giữ status là UNUSED cho tới khi giao dịch chuyển sang PAID
             appliedVoucher.setUsedBookingId(booking.getBookingId());
-            appliedVoucher.setUsedAt(LocalDateTime.now());
             customerRewardRepository.save(appliedVoucher);
 
             // Gắn reward template vào payment để phục vụ hiển thị/báo cáo
@@ -286,12 +290,9 @@ public class PaymentServiceImpl implements PaymentService {
         }
 
         // 4. Tier-based discount từ hạng thành viên (Silver 5%, Gold 10%, Platinum 15%)
-        //    Chỉ áp dụng nếu promotion hiện tại không target đúng hạng này (tránh double discount)
+        //    Cho phép áp dụng tối đa 1 Voucher + 1 Chiết khấu Hạng thành viên (BR-41)
         BigDecimal tierDiscount = BigDecimal.ZERO;
-        boolean promotionCoversTier = promotion != null
-                && promotion.getTargetTier() != null
-                && promotion.getTargetTier().getTierId().equals(customer.getTierId());
-        if (!promotionCoversTier && customer.getTierId() != null) {
+        if (customer.getTierId() != null) {
             BigDecimal tierPercent;
             if (customer.getTierId() == 2) {
                 tierPercent = BigDecimal.valueOf(5);
@@ -303,24 +304,33 @@ public class PaymentServiceImpl implements PaymentService {
                 tierPercent = BigDecimal.ZERO;
             }
             if (tierPercent.compareTo(BigDecimal.ZERO) > 0) {
-                tierDiscount = subtotal.multiply(tierPercent)
-                        .divide(BigDecimal.valueOf(100), 0, RoundingMode.HALF_UP);
-                discountAmount = discountAmount.add(tierDiscount);
-                log.info("Tier discount applied: tierId={}, rate={}%, amount={}",
-                        customer.getTierId(), tierPercent, tierDiscount);
+                boolean promoSameTier = promotion != null && promotion.getTargetTier() != null
+                        && promotion.getTargetTier().getTierId().equals(customer.getTierId());
+                if (!promoSameTier) {
+                    tierDiscount = subtotal.multiply(tierPercent)
+                            .divide(BigDecimal.valueOf(100), 0, RoundingMode.HALF_UP);
+                    discountAmount = discountAmount.add(tierDiscount);
+                    log.info("Tier discount applied: tierId={}, rate={}%, amount={}",
+                            customer.getTierId(), tierPercent, tierDiscount);
+                }
             }
-        } else if (promotionCoversTier) {
-            log.info("Tier discount skipped — promotion {} already targets tierId={}",
-                    promotion.getPromotionName(), customer.getTierId());
         }
 
-        // Chặn discount vượt quá 80% giá trị đơn hàng — tránh stack additive abuse
-        BigDecimal maxDiscount = originalAmount.multiply(BigDecimal.valueOf(0.8))
-                .setScale(0, RoundingMode.HALF_UP);
-        BigDecimal cappedDiscount = discountAmount.min(maxDiscount);
+        // 5. Tính Thuế GTGT 8% dựa trên giá trị dịch vụ thực tế sau khi giảm giá (Chuẩn Luật Thuế GTGT Việt Nam)
+        BigDecimal maxAllowedDiscount;
+        if (appliedVoucher != null || reward != null) {
+            maxAllowedDiscount = subtotal;
+        } else {
+            maxAllowedDiscount = subtotal.multiply(BigDecimal.valueOf(0.8))
+                    .setScale(0, RoundingMode.HALF_UP);
+        }
+        BigDecimal cappedDiscount = discountAmount.min(maxAllowedDiscount);
+        BigDecimal netServiceSubtotal = subtotal.subtract(cappedDiscount).max(BigDecimal.ZERO);
 
-        BigDecimal finalAmount = originalAmount.subtract(cappedDiscount)
-                .max(BigDecimal.ZERO)
+        BigDecimal tax = netServiceSubtotal.multiply(BigDecimal.valueOf(0.08))
+                .setScale(0, RoundingMode.HALF_UP);
+        BigDecimal originalAmount = subtotal.add(subtotal.multiply(BigDecimal.valueOf(0.08)).setScale(0, RoundingMode.HALF_UP));
+        BigDecimal finalAmount = netServiceSubtotal.add(tax)
                 .setScale(2, RoundingMode.HALF_UP);
 
         Payment payment;
@@ -329,7 +339,7 @@ public class PaymentServiceImpl implements PaymentService {
             payment.setPromotion(promotion);
             payment.setReward(reward);
             payment.setOriginalAmount(originalAmount);
-            payment.setDiscountAmount(discountAmount.setScale(2, RoundingMode.HALF_UP));
+            payment.setDiscountAmount(cappedDiscount.setScale(2, RoundingMode.HALF_UP));
             payment.setFinalAmount(finalAmount);
             payment.setPaymentMethod(request.getPaymentMethod());
             payment.setPaymentStatus(PaymentStatus.unpaid);
@@ -339,7 +349,7 @@ public class PaymentServiceImpl implements PaymentService {
                     .promotion(promotion)
                     .reward(reward)
                     .originalAmount(originalAmount)
-                    .discountAmount(discountAmount.setScale(2, RoundingMode.HALF_UP))
+                    .discountAmount(cappedDiscount.setScale(2, RoundingMode.HALF_UP))
                     .finalAmount(finalAmount)
                     .paymentMethod(request.getPaymentMethod())
                     .paymentStatus(PaymentStatus.unpaid)
@@ -375,6 +385,9 @@ public class PaymentServiceImpl implements PaymentService {
         Payment payment = findPaymentOrThrowForUpdate(paymentId);
 
         if (!PaymentStatus.unpaid.equals(payment.getPaymentStatus())) {
+            if (PaymentStatus.paid.equals(payment.getPaymentStatus())) {
+                return paymentMapper.toResponse(payment);
+            }
             throw new BusinessException(
                     "Payment phải ở trạng thái unpaid, hiện tại: " + payment.getPaymentStatus());
         }
@@ -475,6 +488,17 @@ public class PaymentServiceImpl implements PaymentService {
 
         payment.setPaymentStatus(PaymentStatus.failed);
         Payment saved = paymentRepository.save(payment);
+
+        if (saved.getBooking() != null) {
+            customerRewardRepository.findByUsedBookingId(saved.getBooking().getBookingId()).ifPresent(v -> {
+                v.setUsedBookingId(null);
+                v.setUsedAt(null);
+                v.setStatus("UNUSED");
+                customerRewardRepository.save(v);
+                log.info("[Payment] Released voucher {} due to failed payment #{}", v.getVoucherCode(), saved.getPaymentId());
+            });
+        }
+
         log.info("Payment {} marked failed (PayPal cancelled), orderId={}", saved.getPaymentId(), paypalOrderId);
         return paymentMapper.toResponse(saved);
     }
@@ -494,6 +518,18 @@ public class PaymentServiceImpl implements PaymentService {
         customer.setTotalSpending(customer.getTotalSpending().add(saved.getFinalAmount()));
         int currentVisits = customer.getTotalVisits() != null ? customer.getTotalVisits() : 0;
         customer.setTotalVisits(currentVisits + 1);
+
+        // Đánh dấu Voucher chính thức chuyển sang USED khi thanh toán hoàn tất (PAID)
+        if (saved.getBooking() != null) {
+            customerRewardRepository.findByUsedBookingId(saved.getBooking().getBookingId()).ifPresent(v -> {
+                if (!"USED".equals(v.getStatus())) {
+                    v.setStatus("USED");
+                    v.setUsedAt(LocalDateTime.now());
+                    customerRewardRepository.save(v);
+                    log.info("[Payment] Mark voucher {} USED for paid booking #{}", v.getVoucherCode(), saved.getBooking().getBookingId());
+                }
+            });
+        }
 
         // Đánh giá lại hạng thành viên dựa trên tổng điểm/chi tiêu/số lần
         updateCustomerTier(customer);
@@ -794,6 +830,12 @@ public class PaymentServiceImpl implements PaymentService {
     // ── PRIVATE — tích điểm loyalty (FR-7) ──────────────────────────────────
 
     private void earnLoyaltyPoints(Payment payment) {
+        Booking booking = payment.getBooking();
+        if (booking != null && Boolean.TRUE.equals(booking.getLoyaltyPointGranted())) {
+            log.info("Loyalty points already granted for booking #{}", booking.getBookingId());
+            return;
+        }
+
         int pointsEarned = payment.getFinalAmount()
                 .divide(POINTS_PER_VND, 0, RoundingMode.FLOOR)
                 .intValue();
@@ -820,6 +862,11 @@ public class PaymentServiceImpl implements PaymentService {
                 .expiredAt(LocalDateTime.now().plusMonths(12))
                 .note("Tích điểm từ thanh toán #" + payment.getPaymentId())
                 .build());
+
+        if (booking != null) {
+            booking.setLoyaltyPointGranted(true);
+            bookingRepository.save(booking);
+        }
 
         Integer targetUserId = customer.getUser() != null ? customer.getUser().getId() : null;
         if (targetUserId != null) {
@@ -851,26 +898,26 @@ public class PaymentServiceImpl implements PaymentService {
             int reqVisits = tier.getMinVisits() != null ? tier.getMinVisits() : 0;
             BigDecimal reqSpending = tier.getMinSpending() != null ? tier.getMinSpending() : BigDecimal.ZERO;
 
-            // Default tier (Member) always matches
-            if (reqVisits <= 0 && reqSpending.compareTo(BigDecimal.ZERO) <= 0) {
+            boolean meetsVisits = reqVisits <= 0 || visits >= reqVisits;
+            boolean meetsSpending = reqSpending.compareTo(BigDecimal.ZERO) <= 0 || spending.compareTo(reqSpending) >= 0;
+
+            // Quy tắc VÀ (AND): Bắt buộc đạt đủ số lượt rửa VÀ số tiền chi tiêu
+            if (meetsVisits && meetsSpending) {
                 if (!tier.getTierId().equals(customer.getTierId())) {
                     customer.setTierId(tier.getTierId());
-                }
-                return;
-            }
-
-            // Match logic: visits >= minVisits OR spending >= minSpending (align với LoyaltyTierEvaluationServiceImpl)
-            boolean meetsVisits = visits >= reqVisits;
-            boolean meetsSpending = spending.compareTo(reqSpending) >= 0;
-
-            if (meetsVisits || meetsSpending) {
-                if (!tier.getTierId().equals(customer.getTierId())) {
-                    customer.setTierId(tier.getTierId());
-                    log.info("Customer {} upgraded to tier {} (id={}) — visits={}, spending={}",
+                    log.info("Customer {} updated to tier {} (id={}) — visits={}, spending={}",
                             customer.getCustomerId(), tier.getTierName(), tier.getTierId(),
                             visits, spending);
                 }
                 return;
+            }
+        }
+
+        // Fallback về hạng thấp nhất (Member) nếu chưa đủ điều kiện lên hạng cao hơn
+        if (!tiers.isEmpty()) {
+            LoyaltyTier lowestTier = tiers.get(tiers.size() - 1);
+            if (!lowestTier.getTierId().equals(customer.getTierId())) {
+                customer.setTierId(lowestTier.getTierId());
             }
         }
     }

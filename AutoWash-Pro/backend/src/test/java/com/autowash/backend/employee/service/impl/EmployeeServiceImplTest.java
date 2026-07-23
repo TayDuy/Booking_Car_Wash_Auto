@@ -375,6 +375,8 @@ class EmployeeServiceImplTest {
                     .thenReturn(List.of());
             when(employeeMapper.toQueueResponse(booking, List.of(), null))
                     .thenReturn(null);
+            when(timeSlotRepository.findByIdForUpdate(1))
+                    .thenReturn(Optional.of(pastSlot));
 
             employeeService.markNoShow(1, 500);
 

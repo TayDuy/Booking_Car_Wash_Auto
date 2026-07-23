@@ -65,8 +65,12 @@ public class BookingMapper {
         String pStatus = payment != null ? payment.getPaymentStatus().name() : "unpaid";
         String pMethod = payment != null ? payment.getPaymentMethod().name() : "cash";
 
+        var customer = booking.getCustomer();
+        var vehicle = booking.getVehicle();
+        var slot = booking.getSlot();
+        var branch = booking.getBranch();
+
         return BookingResponseDTO.builder()
-                // Thông tin booking
                 .bookingId(booking.getBookingId())
                 .bookingCode(booking.getBookingCode())
                 .bookingDate(booking.getBookingDate())
@@ -80,27 +84,22 @@ public class BookingMapper {
                 .loyaltyPointGranted(booking.getLoyaltyPointGranted())
                 .updatedAt(booking.getUpdatedAt())
                 .totalAmount(sumTotal(details))
-                // Customer
-                .customerId(booking.getCustomer().getCustomerId())
-                .customerName(booking.getCustomer().getFullName())
-                .customerPhone(
-                        booking.getCustomer().getUser() != null
-                                ? booking.getCustomer().getUser().getPhone() : null
-                )
-                // Vehicle
-                .vehicleId(booking.getVehicle().getVehicleId())
-                .licensePlate(booking.getVehicle().getLicensePlate())
-                .vehicleType(booking.getVehicle().getVehicleType())
-                .vehicleNickname(booking.getVehicle().getNickname())
-                // TimeSlot — tách thành date + startTime + endTime
-                .slotId(booking.getSlot().getSlotId())
-                .slotDate(booking.getSlot().getSlotDate())
-                .slotStartTime(booking.getSlot().getStartTime())
-                .slotEndTime(booking.getSlot().getEndTime())
-                // Branch
-                .branchId(booking.getBranch().getBranchId())
-                .branchName(booking.getBranch().getBranchName())
-                // Staff — null nếu chưa phân công
+                .customerId(customer != null ? customer.getCustomerId() : null)
+                .customerName(customer != null ? customer.getFullName() : null)
+                .customerPhone(customer != null
+                        ? (customer.getPhone() != null ? customer.getPhone()
+                           : customer.getUser() != null ? customer.getUser().getPhone() : null)
+                        : null)
+                .vehicleId(vehicle != null ? vehicle.getVehicleId() : null)
+                .licensePlate(vehicle != null ? vehicle.getLicensePlate() : null)
+                .vehicleType(vehicle != null ? vehicle.getVehicleType() : null)
+                .vehicleNickname(vehicle != null ? vehicle.getNickname() : null)
+                .slotId(slot != null ? slot.getSlotId() : null)
+                .slotDate(slot != null ? slot.getSlotDate() : null)
+                .slotStartTime(slot != null ? slot.getStartTime() : null)
+                .slotEndTime(slot != null ? slot.getEndTime() : null)
+                .branchId(branch != null ? branch.getBranchId() : null)
+                .branchName(branch != null ? branch.getBranchName() : null)
                 .assignedStaffId(booking.getAssignedStaff() != null
                         ? booking.getAssignedStaff().getEmployeeId() : null)
                 .assignedStaffName(booking.getAssignedStaff() != null
@@ -120,6 +119,11 @@ public class BookingMapper {
         String pStatus = payment != null ? payment.getPaymentStatus().name() : "unpaid";
         String pMethod = payment != null ? payment.getPaymentMethod().name() : "cash";
 
+        var customer = booking.getCustomer();
+        var vehicle = booking.getVehicle();
+        var slot = booking.getSlot();
+        var branch = booking.getBranch();
+
         return BookingSummaryResponseDTO.builder()
                 .bookingId(booking.getBookingId())
                 .bookingCode(booking.getBookingCode())
@@ -129,12 +133,12 @@ public class BookingMapper {
                 .completedAt(booking.getCompleteAt())
                 .loyaltyPointGranted(booking.getLoyaltyPointGranted())
                 .priorityScore(booking.getPriorityScore())
-                .customerName(booking.getCustomer().getFullName())
-                .licensePlate(booking.getVehicle().getLicensePlate())
-                .vehicleNickname(booking.getVehicle().getNickname())
-                .branchName(booking.getBranch().getBranchName())
-                .slotDate(booking.getSlot().getSlotDate())
-                .slotStartTime(booking.getSlot().getStartTime())
+                .customerName(customer != null ? customer.getFullName() : null)
+                .licensePlate(vehicle != null ? vehicle.getLicensePlate() : null)
+                .vehicleNickname(vehicle != null ? vehicle.getNickname() : null)
+                .branchName(branch != null ? branch.getBranchName() : null)
+                .slotDate(slot != null ? slot.getSlotDate() : null)
+                .slotStartTime(slot != null ? slot.getStartTime() : null)
                 .totalAmount(sumTotal(details))
                 .paymentStatus(pStatus)
                 .paymentMethod(pMethod)

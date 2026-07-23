@@ -7,6 +7,8 @@ import com.autowash.backend.systemsetting.entity.SystemSetting;
 import com.autowash.backend.systemsetting.repository.SystemSettingRepository;
 import com.autowash.backend.systemsetting.service.SystemSettingService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,16 +21,18 @@ public class SystemSettingServiceImpl implements SystemSettingService {
     private final AuditLogService auditLogService;
 
     @Override
+    @Cacheable(value = "systemSettings", unless = "#result == null")
     public SystemSettingResponseDTO getSettings() {
         SystemSetting setting = repository.findAll()
                 .stream()
                 .findFirst()
                 .orElseGet(this::createDefault);
 
-        return toDTO(setting);
+        return toDTOSafe(setting);
     }
 
     @Override
+    @CacheEvict(value = "systemSettings", allEntries = true)
     public SystemSettingResponseDTO updateSettings(
             SystemSettingRequestDTO request
     ) {
@@ -73,6 +77,7 @@ public class SystemSettingServiceImpl implements SystemSettingService {
     }
 
     @Override
+    @CacheEvict(value = "systemSettings", allEntries = true)
     public SystemSettingResponseDTO resetSettings() {
         repository.deleteAll();
 
@@ -138,6 +143,45 @@ public class SystemSettingServiceImpl implements SystemSettingService {
                 );
             }
         }
+
+        if (request.getCancelBeforeHours() != null
+                && request.getCancelBeforeHours() < 1) {
+            throw new IllegalArgumentException(
+                    "cancelBeforeHours phải >= 1"
+            );
+        }
+
+        if (request.getMaxBookingDays() != null
+                && request.getMaxBookingDays() < 1) {
+            throw new IllegalArgumentException(
+                    "maxBookingDays phải >= 1"
+            );
+        }
+    }
+
+    private SystemSettingResponseDTO toDTOSafe(SystemSetting setting) {
+        return SystemSettingResponseDTO.builder()
+                .id(setting.getId())
+                .shopName(setting.getShopName())
+                .hotline(setting.getHotline())
+                .email(setting.getEmail())
+                .website(setting.getWebsite())
+                .address(setting.getAddress())
+                .openTime(setting.getOpenTime())
+                .closeTime(setting.getCloseTime())
+                .vat(setting.getVat())
+                .maxBookingDays(setting.getMaxBookingDays() != null
+                        ? setting.getMaxBookingDays() : 30)
+                .cancelBeforeHours(setting.getCancelBeforeHours() != null
+                        ? setting.getCancelBeforeHours() : 24)
+                .maxVehiclePerSlot(setting.getMaxVehiclePerSlot())
+                .silverBookings(setting.getSilverBookings())
+                .goldBookings(setting.getGoldBookings())
+                .vipBookings(setting.getVipBookings())
+                .emailNotification(setting.getEmailNotification())
+                .smsNotification(setting.getSmsNotification())
+                .pushNotification(setting.getPushNotification())
+                .build();
     }
 
     private SystemSettingResponseDTO toDTO(SystemSetting setting) {

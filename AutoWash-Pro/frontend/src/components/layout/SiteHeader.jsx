@@ -100,8 +100,9 @@ export default function SiteHeader() {
 
   return (
       <header className="custom-app-header">
-        <div
-            className="header-logo"
+        <div className="custom-app-header-inner">
+          <div
+              className="header-logo"
             onClick={() => navigate(isLoggedIn ? "/customer/home" : "/")}
             style={{
               display: "flex",
@@ -388,7 +389,12 @@ export default function SiteHeader() {
                         </div>
                         <div className="profile-dropdown-info">
                           <div className="profile-dropdown-name">
-                            {user?.fullName || user?.username || "Khách Hàng"}
+                            {(() => {
+                              const rawName = user?.fullName || user?.username || localStorage.getItem("fullName") || localStorage.getItem("username");
+                              return rawName && String(rawName).trim() && String(rawName).trim().toLowerCase() !== "unknown"
+                                ? String(rawName).trim()
+                                : "Khách Hàng";
+                            })()}
                           </div>
                           <div className="profile-dropdown-role">
                             {user?.role === "ADMIN" ? "Quản trị viên" : user?.role === "STAFF" ? "Nhân viên" : user?.role === "MANAGER" ? "Quản lý" : "Thành viên"}
@@ -487,6 +493,7 @@ export default function SiteHeader() {
               </div>
             </>
           )}
+        </div>
         </div>
 
         <LogoutConfirmModal

@@ -14,7 +14,7 @@ import { useAppDialog } from "../../../contexts/DialogContext.jsx";
 import bookingApi from "../../../api/bookingApi";
 import customerApi from "../../../api/customerApi";
 import vehicleApi from "../../../api/vehicleApi";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { getActiveServices } from "../../../api/servicePackageService";
 import { getBranches } from "../../../api/branchService";
 import { getSlotsByBranchAndDate } from "../../../api/timeSlotService";
@@ -78,6 +78,8 @@ export default function BookingPage() {
   const [phoneSuggestions, setPhoneSuggestions] = useState([]);
   const [showVehicleSuggest, setShowVehicleSuggest] = useState(false);
   const [showPhoneSuggest, setShowPhoneSuggest] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("online");
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -404,7 +406,7 @@ export default function BookingPage() {
     }
   };
 
-  const handleBooking = async () => {
+  const handleOpenConfirmModal = async () => {
     if (!selectedPackageId) { await showMessage({ title: "Thông báo", message: "Vui lòng chọn gói dịch vụ!", variant: "warning" }); return; }
     if (!agreeTerms) { await showMessage({ title: "Thông báo", message: "Vui lòng xác nhận thông tin dịch vụ và điều khoản dịch vụ để tiếp tục!", variant: "warning" }); return; }
 
@@ -419,9 +421,15 @@ export default function BookingPage() {
 
     if (depositRequired) setPaymentMethod("online");
 
+    setShowConfirmModal(true);
+  };
+
+  const handleConfirmSubmit = async () => {
+    setIsSubmitting(true);
     try {
       await syncProfileIfChanged();
 
+      const customerIdRaw = localStorage.getItem("customerId");
       const bookingData = {
         customerId: parseInt(customerIdRaw, 10),
         licensePlate: licensePlate.trim(),
@@ -439,6 +447,9 @@ export default function BookingPage() {
       const response = await bookingApi.create(bookingData);
       const result = response.data;
       const bookingId = result?.bookingId || result?.id || result?.data?.bookingId;
+
+      setShowConfirmModal(false);
+
       if (paymentMethod === "offline" && !depositRequired) {
         navigate("/customer/booking/success", {
           state: { bookingId, bookingDetail: result }
@@ -451,7 +462,10 @@ export default function BookingPage() {
         },
       });
     } catch (error) {
+      setShowConfirmModal(false);
       await showMessage({ title: "Thông báo", message: error.response?.data?.message || "Đặt lịch thất bại. Vui lòng thử lại!", variant: "danger" });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -885,14 +899,137 @@ export default function BookingPage() {
                 <span>Tôi xác nhận các thông tin dịch vụ, thời gian và biển số xe đã cung cấp là chính xác.</span>
               </label>
             </div>
-            <button className="execute-booking-btn" onClick={handleBooking}>
+            <button className="execute-booking-btn" onClick={handleOpenConfirmModal}>
               Xác nhận đặt lịch <span className="btn-icon">✓</span>
             </button>
             <p className="legal-policy-notice">
-              Bằng cách xác nhận, bạn đồng ý với <a href="#">Điều khoản Dịch vụ</a> của chúng tôi.
+              Bằng cách xác nhận, bạn đồng ý với <Link to="/terms-of-service" target="_blank" rel="noopener noreferrer">Điều khoản Dịch vụ</Link> của chúng tôi.
             </p>
           </div>
         </div>
+
+        {/* MODAL XÁC NHẬN ĐẶT LỊCH */}
+        {showConfirmModal && (
+          <div className="booking-modal-overlay" onClick={() => !isSubmitting && setShowConfirmModal(false)}>
+            <div className="booking-modal-card" onClick={(e) => e.stopPropagation()}>
+              <div className="bkm-header">
+                <div className="bkm-header-title">
+                  <div className="bkm-header-icon">
+                    <img src="/logo.png" alt="WashFlow Pro Logo" className="bkm-header-logo-img" />
+                  </div>
+                  <div>
+                    <h3>Xác nhận thông tin đặt lịch</h3>
+                    <p>Vui lòng kiểm tra lại thông tin chi tiết trước khi hoàn tất</p>
+                  </div>
+                </div>
+                <button 
+                  className="bkm-close-btn" 
+                  onClick={() => setShowConfirmModal(false)}
+                  disabled={isSubmitting}
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="bkm-body">
+                {/* THÔNG TIN KHÁCH HÀNG & XE */}
+                <div className="bkm-section">
+                  <div className="bkm-section-head">👤 Khách hàng & Phương tiện</div>
+                  <div className="bkm-grid-2">
+                    <div>
+                      <div className="bkm-item-label">Họ và tên</div>
+                      <div className="bkm-item-value">{fullName}</div>
+                    </div>
+                    <div>
+                      <div className="bkm-item-label">Số điện thoại</div>
+                      <div className="bkm-item-value">{phone}</div>
+                    </div>
+                    <div>
+                      <div className="bkm-item-label">Biển số xe</div>
+                      <div className="bkm-item-value highlight-plate">{licensePlate}</div>
+                    </div>
+                    <div>
+                      <div className="bkm-item-label">Loại & Hãng xe</div>
+                      <div className="bkm-item-value">{brand} ({vehicleType === "4_seats" ? "4 chỗ" : "7 chỗ"})</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* THỜI GIAN & ĐỊA ĐIỂM */}
+                <div className="bkm-section">
+                  <div className="bkm-section-head">📍 Địa điểm & Thời gian</div>
+                  <div className="bkm-grid-2">
+                    <div>
+                      <div className="bkm-item-label">Chi nhánh</div>
+                      <div className="bkm-item-value">
+                        {branches.find(b => (b.branchId || b.id) === Number(selectedBranch))?.branchName || 
+                         branches.find(b => (b.branchId || b.id) === Number(selectedBranch))?.name || "Chi nhánh đã chọn"}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="bkm-item-label">Khung giờ & Ngày</div>
+                      <div className="bkm-item-value">
+                        {selectedSlotData?.startTime ? `${selectedSlotData.startTime}` : "Khung giờ đã chọn"} • {selectedDate.getDate()} {monthNames[selectedDate.getMonth()]}, {selectedDate.getFullYear()}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* GÓI DỊCH VỤ */}
+                <div className="bkm-section">
+                  <div className="bkm-section-head">🧽 Dịch vụ đăng ký</div>
+                  <div className="bkm-services-list">
+                    <div className="bkm-service-row">
+                      <span className="bkm-service-name">{selectedPackage?.serviceName || "Gói dịch vụ"}</span>
+                      <span className="bkm-service-price">{packagePrice.toLocaleString()}đ</span>
+                    </div>
+                    {selectedAddons.map((addon) => (
+                      <div key={addon.serviceId} className="bkm-service-row addon">
+                        <span className="bkm-service-name">+ {addon.serviceName}</span>
+                        <span className="bkm-service-price">{(addon.basePrice || 0).toLocaleString()}đ</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* TỔNG TIỀN & PHƯƠNG THỨC */}
+                <div className="bkm-total-card">
+                  <div>
+                    <div className="bkm-total-label">Thanh toán: {paymentMethod === "online" ? "Online (Giảm 5%)" : "Tại trạm (Tiền mặt/Chuyển khoản)"}</div>
+                    <div className="bkm-total-sub">Cộng +{rewardPoints} điểm tích lũy sau khi hoàn thành</div>
+                  </div>
+                  <div className="bkm-total-amount">{total.toLocaleString()}đ</div>
+                </div>
+              </div>
+
+              <div className="bkm-footer">
+                <button 
+                  className="bkm-cancel-btn" 
+                  onClick={() => setShowConfirmModal(false)}
+                  disabled={isSubmitting}
+                >
+                  Chỉnh sửa lại
+                </button>
+                <button 
+                  className="bkm-submit-btn" 
+                  onClick={handleConfirmSubmit}
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <span className="bkm-spinner"></span>
+                      Đang xử lý...
+                    </>
+                  ) : (
+                    <>
+                      Xác nhận & Đặt lịch
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
   );
 }

@@ -433,12 +433,11 @@ public class LoyaltyTierEvaluationServiceImpl implements LoyaltyTierEvaluationSe
             return true;
         }
 
-        boolean enoughVisits = safeVisits >= requiredVisits;
-        boolean enoughPoints = safePoints >= requiredPoints;
-        boolean enoughSpending = safeSpending.compareTo(requiredSpending) >= 0;
+        boolean enoughVisits = requiredVisits <= 0 || safeVisits >= requiredVisits;
+        boolean enoughPoints = requiredPoints > 0 && safePoints >= requiredPoints;
+        boolean enoughSpending = requiredSpending.compareTo(BigDecimal.ZERO) <= 0 || safeSpending.compareTo(requiredSpending) >= 0;
 
-        // totalVisits >= minVisits
-        // AND (currentPoints >= minPoints OR totalSpending >= minSpending)
+        // Quy tắc VÀ (AND): Bắt buộc đạt đủ số lượt rửa VÀ (chi tiêu HOẶC điểm tích lũy)
         return enoughVisits && (enoughPoints || enoughSpending);
     }
 

@@ -458,16 +458,19 @@ public class EmployeeServiceImpl implements EmployeeService {
             );
         }
 
+        /*
+         * Lock slot với PESSIMISTIC_WRITE trước khi mutate capacity
+         * để tránh race condition với request no-show khác trên cùng slot.
+         */
+        TimeSlot lockedSlot = timeSlotRepository.findByIdForUpdate(slot.getSlotId())
+                .orElseThrow(() -> new ResourceNotFoundException("TimeSlot", "id", slot.getSlotId()));
+
         booking.setStatus(BookingStatus.no_show);
 
-        /*
-         * Booking không còn chiếm sức chứa của slot.
-         * decrementBookings() cũng tự mở lại slot nếu trước đó đã full.
-         */
-        slot.decrementBookings();
+        lockedSlot.decrementBookings();
 
         Booking savedBooking = bookingRepository.save(booking);
-        timeSlotRepository.save(slot);
+        timeSlotRepository.save(lockedSlot);
 
         log.info(
                 "[Employee] Employee #{} đánh dấu booking #{} ({}) là no_show",
@@ -529,15 +532,35 @@ public class EmployeeServiceImpl implements EmployeeService {
                 );
             }
 
+            /*
+             * Không ghi đè nhân viên đã được phân công trước đó.
+             */
+            if (booking.getAssignedStaff() != null
+                    && !booking.isAssignedTo(employee.getEmployeeId())) {
+                throw new BusinessException(
+                        "Booking đã được phân công cho nhân viên khác",
+                        HttpStatus.CONFLICT
+                );
+            }
+
             TimeSlot slot = booking.getSlot();
             if (slot != null && slot.getWashBay() != null && !washBay.getBayId().equals(slot.getWashBay().getBayId())) {
+                TimeSlot lockedSlot = timeSlotRepository.findByIdForUpdate(slot.getSlotId())
+                        .orElseThrow(() -> new ResourceNotFoundException("TimeSlot", "id", slot.getSlotId()));
+
                 java.util.Optional<TimeSlot> targetSlotOpt = timeSlotRepository.findByWashBay_BayIdAndSlotDateAndStartTime(
                         washBay.getBayId(), slot.getSlotDate(), slot.getStartTime()
                 );
                 if (targetSlotOpt.isPresent()) {
                     TimeSlot targetSlot = targetSlotOpt.get();
-                    slot.decrementBookings();
-                    timeSlotRepository.save(slot);
+                    if (!targetSlot.hasCapacity()) {
+                        throw new BusinessException(
+                                "Khung giờ của khu vực rửa xe mới đã đầy, vui lòng chọn khu vực khác",
+                                HttpStatus.CONFLICT
+                        );
+                    }
+                    lockedSlot.decrementBookings();
+                    timeSlotRepository.save(lockedSlot);
 
                     targetSlot.incrementBookings();
                     timeSlotRepository.save(targetSlot);
@@ -554,8 +577,8 @@ public class EmployeeServiceImpl implements EmployeeService {
                             .currentBookings(1)
                             .status(com.autowash.backend.timeslot.entity.TimeSlot.SlotStatus.open)
                             .build();
-                    slot.decrementBookings();
-                    timeSlotRepository.save(slot);
+                    lockedSlot.decrementBookings();
+                    timeSlotRepository.save(lockedSlot);
 
                     TimeSlot savedNewSlot = timeSlotRepository.save(newSlot);
                     booking.setSlot(savedNewSlot);
@@ -577,18 +600,6 @@ public class EmployeeServiceImpl implements EmployeeService {
                         HttpStatus.CONFLICT
                 );
             }
-        }
-
-        /*
-         * Không ghi đè nhân viên đã được phân công trước đó.
-         * Trường hợp này thường là dữ liệu không đồng bộ.
-         */
-        if (booking.getAssignedStaff() != null
-                && !booking.isAssignedTo(employee.getEmployeeId())) {
-            throw new BusinessException(
-                    "Booking đã được phân công cho nhân viên khác",
-                    HttpStatus.CONFLICT
-            );
         }
 
         booking.setAssignedStaff(employee);
@@ -1060,16 +1071,28 @@ public class EmployeeServiceImpl implements EmployeeService {
      * Toàn bộ thao tác chạy trong cùng transaction với completeWash().
      */
     private void grantLoyaltyForCompletedBooking(Booking booking) {
-        if (Boolean.TRUE.equals(booking.getLoyaltyPointGranted())) {
-            return;
-        }
-
         if (booking.getCustomer() == null
                 || booking.getCustomer().getCustomerId() == null) {
             throw new BusinessException(
                     "Booking chưa liên kết với khách hàng",
                     HttpStatus.CONFLICT
             );
+        }
+
+        /*
+         * Lock customer trước, sau đó kiểm tra loyaltyPointGranted
+         * để tránh TOCTOU race condition (2 request cùng check -> cùng grant).
+         */
+        Customer customer = customerRepository
+                .findByIdForUpdate(booking.getCustomer().getCustomerId())
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Customer",
+                        "id",
+                        booking.getCustomer().getCustomerId()
+                ));
+
+        if (Boolean.TRUE.equals(booking.getLoyaltyPointGranted())) {
+            return;
         }
 
         List<BookingDetail> details =
@@ -1086,14 +1109,6 @@ public class EmployeeServiceImpl implements EmployeeService {
                     HttpStatus.CONFLICT
             );
         }
-
-        Customer customer = customerRepository
-                .findByIdForUpdate(booking.getCustomer().getCustomerId())
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Customer",
-                        "id",
-                        booking.getCustomer().getCustomerId()
-                ));
 
         LoyaltyTransactionResponseDTO loyaltyTransaction =
                 loyaltyTransactionService.earnPointsFromCompleteBooking(

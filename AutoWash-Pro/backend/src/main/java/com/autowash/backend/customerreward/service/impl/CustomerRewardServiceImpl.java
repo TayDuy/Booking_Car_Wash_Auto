@@ -47,6 +47,7 @@ public class CustomerRewardServiceImpl implements CustomerRewardService {
     private final CustomerRewardMapper customerRewardMapper;
     private final com.autowash.backend.user.repository.UserRepository userRepository;
     private final LoyaltyTierRepository loyaltyTierRepository;
+    private final com.autowash.backend.auditlog.service.AuditLogService auditLogService;
 
     /**
      * Luồng đổi reward:
@@ -122,7 +123,11 @@ public class CustomerRewardServiceImpl implements CustomerRewardService {
                 .note("Đổi điểm lấy voucher: " + reward.getRewardName())
                 .build();
 
+        int newBalance = Math.max(0, currentPoints - reward.getRequiredPoints());
         loyaltyTransactionRepository.save(transaction);
+
+        customer.setTotalPoints(newBalance);
+        customerRepository.save(customer);
 
         CustomerReward customerReward = CustomerReward.builder()
                 .customer(customer)
@@ -137,6 +142,14 @@ public class CustomerRewardServiceImpl implements CustomerRewardService {
                 .build();
 
         CustomerReward saved = customerRewardRepository.save(customerReward);
+
+        auditLogService.log(
+                "VOUCHER_REDEEMED",
+                "SYSTEM",
+                customer.getUser() != null ? customer.getUser().getId() : null,
+                "Đổi voucher " + maskVoucherCode(saved.getVoucherCode())
+                        + " (" + reward.getRewardName() + ")"
+        );
 
         return customerRewardMapper.toResponse(saved, currentPoints - reward.getRequiredPoints());
     }
@@ -192,6 +205,14 @@ public class CustomerRewardServiceImpl implements CustomerRewardService {
             customerReward.setStatus("EXPIRED");
             customerRewardRepository.save(customerReward);
 
+            auditLogService.log(
+                    "VOUCHER_EXPIRED",
+                    "SYSTEM",
+                    customerReward.getCustomer().getUser() != null
+                            ? customerReward.getCustomer().getUser().getId() : null,
+                    "Voucher " + maskVoucherCode(customerReward.getVoucherCode()) + " đã hết hạn"
+            );
+
             throw new BusinessException("Voucher đã hết hạn", HttpStatus.BAD_REQUEST);
         }
 
@@ -209,6 +230,15 @@ public class CustomerRewardServiceImpl implements CustomerRewardService {
         customerReward.setUsedAt(LocalDateTime.now());
 
         CustomerReward saved = customerRewardRepository.save(customerReward);
+
+        auditLogService.log(
+                "VOUCHER_USED",
+                "SYSTEM",
+                customerReward.getCustomer().getUser() != null
+                        ? customerReward.getCustomer().getUser().getId() : null,
+                "Sử dụng voucher " + maskVoucherCode(saved.getVoucherCode())
+                        + " cho booking #" + bookingId
+        );
 
         LoyaltyBalanceResponseDTO balance =
                 loyaltyTransactionService.getCustomerBalance(voucherCustomerId);
@@ -257,6 +287,11 @@ public class CustomerRewardServiceImpl implements CustomerRewardService {
                 .toUpperCase();
 
         return "VW-" + random;
+    }
+
+    private String maskVoucherCode(String code) {
+        if (code == null || code.length() < 8) return "****";
+        return code.substring(0, 4) + "-****-" + code.substring(code.length() - 4);
     }
 
     private Integer getCustomerTierLevel(Integer customerId) {

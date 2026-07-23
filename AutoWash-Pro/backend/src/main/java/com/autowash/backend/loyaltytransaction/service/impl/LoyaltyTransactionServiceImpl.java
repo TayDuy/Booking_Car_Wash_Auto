@@ -23,7 +23,7 @@ import java.util.List;
 @Transactional(readOnly = true)
 public class LoyaltyTransactionServiceImpl implements LoyaltyTransactionService {
 
-    private static final BigDecimal POINT_RATE = BigDecimal.valueOf(1000);
+    private static final BigDecimal POINT_RATE = BigDecimal.valueOf(10000);
 
     private final LoyaltyTransactionRepository loyaltyTransactionRepository;
     private final LoyaltyTransactionMapper loyaltyTransactionMapper;

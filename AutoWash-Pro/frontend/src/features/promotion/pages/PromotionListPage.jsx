@@ -324,19 +324,21 @@ function PromotionListPage() {
   }
 
   function getCurrentTierName() {
-    return (
-      loyaltyInfo?.tierName ||
-        loyaltyInfo?.newTierName ||
-        getTierName()
-    );
+    const tid = Number(loyaltyInfo?.newTierId || loyaltyInfo?.tierId || localStorage.getItem("tierId") || 1);
+    switch (tid) {
+      case 4: return "Thành viên Kim Cương";
+      case 3: return "Thành viên Vàng";
+      case 2: return "Thành viên Bạc";
+      default: return "Thành viên Đồng";
+    }
   }
 
   function getNextTierInfo() {
     const visits = getCurrentVisits();
     const spending = getTotalSpending();
+    const tid = Number(loyaltyInfo?.newTierId || loyaltyInfo?.tierId || localStorage.getItem("tierId") || 1);
 
-    const currentTierName = loyaltyInfo?.tierName || user?.tierName || "Member";
-    if (currentTierName === "Platinum" || (loyaltyInfo?.tierId && loyaltyInfo.tierId >= 4)) {
+    if (tid >= 4) {
       return {
         nextName: "Hạng cao nhất",
         progressPercent: 100,
@@ -349,11 +351,11 @@ function PromotionListPage() {
     let targetSpending = 15000000;
     let nextName = "Platinum";
 
-    if (currentTierName === "Member") {
+    if (tid === 1) {
       targetVisits = 10;
       targetSpending = 2000000;
       nextName = "Silver";
-    } else if (currentTierName === "Silver") {
+    } else if (tid === 2) {
       targetVisits = 25;
       targetSpending = 5000000;
       nextName = "Gold";

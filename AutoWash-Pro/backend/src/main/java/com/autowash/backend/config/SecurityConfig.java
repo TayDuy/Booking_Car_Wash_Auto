@@ -148,6 +148,7 @@ public class SecurityConfig {
                                 "/api/v1/notifications/stream",
                                 "/api/v1/branches",
                                 "/api/v1/service-packages/active",
+                                "/api/v1/support/**",
 
                                 "/swagger-ui/**",
                                 "/v3/api-docs/**",

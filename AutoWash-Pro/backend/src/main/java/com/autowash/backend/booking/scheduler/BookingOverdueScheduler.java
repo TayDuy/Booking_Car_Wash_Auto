@@ -11,6 +11,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 
 /**
@@ -41,6 +42,10 @@ public class BookingOverdueScheduler {
     @Transactional
     public void autoCancelExpiredPastBookings() {
         try {
+            // Dùng Java LocalTime thay vì LOCALTIME của DB để tránh timezone mismatch
+            // (Supabase DB mặc định UTC, nhưng app lưu start_time theo timezone Asia/Bangkok)
+            LocalTime cutoffTime = LocalTime.now().minusMinutes(15);
+
             int cancelledUnpaid = jdbcTemplate.update("""
                 UPDATE booking b
                 SET status = 'cancelled', updated_at = NOW()
@@ -49,8 +54,8 @@ public class BookingOverdueScheduler {
                 AND b.booking_id = p.booking_id
                 AND b.status IN ('pending', 'confirmed')
                 AND p.payment_status <> 'paid'
-                AND (ts.slot_date < CURRENT_DATE OR (ts.slot_date = CURRENT_DATE AND ts.start_time < CURRENT_TIME - INTERVAL '15 minutes'))
-            """);
+                AND (ts.slot_date < CURRENT_DATE OR (ts.slot_date = CURRENT_DATE AND ts.start_time < ?))
+            """, cutoffTime);
 
             int noShowPaid = jdbcTemplate.update("""
                 UPDATE booking b
@@ -60,8 +65,8 @@ public class BookingOverdueScheduler {
                 AND b.booking_id = p.booking_id
                 AND b.status IN ('pending', 'confirmed')
                 AND p.payment_status = 'paid'
-                AND (ts.slot_date < CURRENT_DATE OR (ts.slot_date = CURRENT_DATE AND ts.start_time < CURRENT_TIME - INTERVAL '15 minutes'))
-            """);
+                AND (ts.slot_date < CURRENT_DATE OR (ts.slot_date = CURRENT_DATE AND ts.start_time < ?))
+            """, cutoffTime);
 
             int cancelledNoPaymentRecord = jdbcTemplate.update("""
                 UPDATE booking b
@@ -69,8 +74,8 @@ public class BookingOverdueScheduler {
                 FROM time_slot ts
                 WHERE b.slot_id = ts.slot_id
                 AND b.status IN ('pending', 'confirmed')
-                AND (ts.slot_date < CURRENT_DATE OR (ts.slot_date = CURRENT_DATE AND ts.start_time < CURRENT_TIME - INTERVAL '15 minutes'))
-            """);
+                AND (ts.slot_date < CURRENT_DATE OR (ts.slot_date = CURRENT_DATE AND ts.start_time < ?))
+            """, cutoffTime);
 
             if (cancelledUnpaid > 0 || noShowPaid > 0 || cancelledNoPaymentRecord > 0) {
                 log.info("[BookingOverdue] Đã tự động dọn dẹp booking quá hạn — Hủy {} đơn chưa thanh toán, chuyển {} đơn sang no-show, dọn {} đơn chưa có payment.",

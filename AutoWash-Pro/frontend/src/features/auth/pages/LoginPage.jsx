@@ -466,9 +466,9 @@ function LoginPage() {
               </div>
 
               <div className="login-footer-links">
-                <Link to="/">Dịch vụ</Link>
+                <Link to="/services">Dịch vụ</Link>
                 <Link to="/customer/support">Hỗ trợ</Link>
-                <Link to="/">Điều khoản</Link>
+                <Link to="/terms-of-service">Điều khoản</Link>
               </div>
             </div>
           </section>

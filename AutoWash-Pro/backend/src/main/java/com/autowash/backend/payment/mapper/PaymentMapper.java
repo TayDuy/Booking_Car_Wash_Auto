@@ -135,7 +135,6 @@ public class PaymentMapper {
             Integer tierId = payment.getBooking().getCustomer().getTierId();
             if (tierId == null) return BigDecimal.ZERO;
 
-            // Bỏ qua tier discount nếu promotion đã target đúng hạng này
             if (payment.getPromotion() != null
                     && payment.getPromotion().getTargetTier() != null
                     && payment.getPromotion().getTargetTier().getTierId().equals(tierId)) {

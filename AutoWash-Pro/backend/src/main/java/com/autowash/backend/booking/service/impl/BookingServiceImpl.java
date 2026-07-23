@@ -74,6 +74,7 @@ public class BookingServiceImpl implements BookingService {
     private final PaymentRepository paymentRepository;
     private final PromotionUseRepository promotionUseRepository;
     private final LoyaltyTierRepository loyaltyTierRepository;
+    private final com.autowash.backend.systemsetting.service.SystemSettingService systemSettingService;
 
 
     // ── CREATE ──────────────────────────────────────────────────────────────
@@ -187,13 +188,21 @@ public class BookingServiceImpl implements BookingService {
         }
 
         // ── CHECK BR-24..27: GIỚI HẠN SỐ NGÀY ĐẶT TRƯỚC THEO TIER KHÁCH HÀNG ──────
+        // Kết hợp với BR-147: Đọc maxBookingDays từ SystemSetting, fallback qua tier window days
         LoyaltyTier customerTier = customer.getTier();
         if (customerTier == null && customer.getTierId() != null) {
             customerTier = loyaltyTierRepository.findById(customer.getTierId()).orElse(null);
         }
-        int maxWindowDays = (customerTier != null && customerTier.getBookingWindowDays() != null)
+        int systemMaxDays;
+        try {
+            systemMaxDays = systemSettingService.getSettings().getMaxBookingDays();
+        } catch (Exception e) {
+            systemMaxDays = 30;
+        }
+        int tierWindowDays = (customerTier != null && customerTier.getBookingWindowDays() != null)
                 ? customerTier.getBookingWindowDays()
-                : 7; // Fallback 7 ngày nếu DB chưa set
+                : 7;
+        int maxWindowDays = Math.min(systemMaxDays, tierWindowDays);
         long daysInAdvance = java.time.temporal.ChronoUnit.DAYS.between(java.time.LocalDate.now(), slot.getSlotDate());
         if (daysInAdvance > maxWindowDays) {
             String tierName = customerTier != null ? customerTier.getTierName() : "Thành viên";
@@ -699,15 +708,21 @@ public class BookingServiceImpl implements BookingService {
         return doCancel(booking);
     }
 
-    /** Helper BR-14: Kiểm tra lịch hẹn có cách mốc hiện tại tối thiểu 1 tiếng hay không. */
+    /** Helper BR-14: Kiểm tra lịch hẹn có cách mốc hiện tại tối thiểu N tiếng hay không. */
     private void validateOneHourWindow(Booking booking) {
         if (booking.getSlot() == null || booking.getSlot().getSlotDate() == null || booking.getSlot().getStartTime() == null) {
             return;
         }
+        int cancelBeforeHours;
+        try {
+            cancelBeforeHours = systemSettingService.getSettings().getCancelBeforeHours();
+        } catch (Exception e) {
+            cancelBeforeHours = 24;
+        }
         LocalDateTime bookingStartTime = LocalDateTime.of(booking.getSlot().getSlotDate(), booking.getSlot().getStartTime());
-        if (LocalDateTime.now().isAfter(bookingStartTime.minusHours(1))) {
+        if (LocalDateTime.now().isAfter(bookingStartTime.minusHours(cancelBeforeHours))) {
             throw new BusinessException(
-                    "Chỉ được phép hủy hoặc đổi lịch trước tối thiểu 1 tiếng so với giờ hẹn (" +
+                    "Chỉ được phép hủy hoặc đổi lịch trước tối thiểu " + cancelBeforeHours + " tiếng so với giờ hẹn (" +
                             booking.getSlot().getStartTime() + ")",
                     HttpStatus.BAD_REQUEST);
         }

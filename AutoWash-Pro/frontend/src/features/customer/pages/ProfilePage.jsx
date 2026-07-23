@@ -327,12 +327,10 @@ const ProfilePage = () => {
   };
 
   function getCurrentTierName() {
+    const tid = loyaltyInfo?.newTierId || user?.tierId || 1;
     return (
-        loyaltyInfo?.currentTierName ||
         loyaltyInfo?.newTierName ||
-        loyaltyInfo?.tierName ||
-        user.tierName ||
-        getTierName(user.tierId)
+        getTierName(tid)
     );
   }
 

@@ -246,6 +246,45 @@ function PaymentPage() {
         }
     }
 
+    // Xác nhận hoàn tất đơn hàng 0đ khi người dùng bấm nút
+    async function handleConfirmZeroPayment() {
+        if (!bookingId) return;
+        setIsLoading(true);
+        setErrorMessage("");
+        try {
+            let pid = paymentId;
+            if (!pid) {
+                const data = {
+                    bookingId: Number(bookingId),
+                    paymentMethod: paymentMethod,
+                    promotionId: !isEmployeeFlow && promotionId ? Number(promotionId) : null,
+                    rewardId: !isEmployeeFlow && rewardId ? Number(rewardId) : null,
+                    voucherCode: !isEmployeeFlow ? voucherCode || null : null,
+                };
+                const res = await axiosClient.post("/payments", data);
+                const resData = res.data?.data || res.data;
+                pid = resData.paymentId;
+            }
+
+            const updateRes = await axiosClient.patch(`/payments/${pid}/status`, { paymentStatus: "paid" });
+            const updated = updateRes.data?.data || updateRes.data;
+            setPaymentResult(updated);
+
+            navigate(successPath, {
+                replace: true,
+                state: {
+                    paymentResult: updated,
+                    bookingDetail,
+                    source: isEmployeeFlow ? "employee" : "customer",
+                },
+            });
+        } catch (error) {
+            setErrorMessage(error.response?.data?.message || error.message || "Lỗi xác nhận hoàn tất đơn hàng");
+        } finally {
+            setIsLoading(false);
+        }
+    }
+
     // PayPal Order Flow
     async function handlePayPalPay() {
         setErrorMessage("");
@@ -447,15 +486,6 @@ function PaymentPage() {
             ? Math.max(0, Math.round(storedTotalAmount / 1.08) - surcharge)
             : 0);
     const subtotal = serviceTotal + surcharge;
-    const tax = Math.round(subtotal * 0.08);
-
-    const originalAmount = Number(
-        paymentResult?.originalAmount ??
-        bookingDetail?.finalAmount ??
-        bookingDetail?.totalAmount ??
-        (subtotal + tax)
-    );
-    
     // Giảm giá online 5% nếu chọn VNPAY/PayPal
     const isOnline = selectedMethod === "vnpay" || selectedMethod === "paypal";
     const tempOnlineDiscount = isOnline ? Math.round(subtotal * 0.05) : 0;
@@ -465,9 +495,20 @@ function PaymentPage() {
     const promoDiscount = Number(paymentResult?.promoDiscount || 0);
     const tierDiscount = Number(paymentResult?.tierDiscount || 0);
 
+    const totalDiscountsForTax = onlineDiscount + voucherDiscount + promoDiscount + tierDiscount;
+    const netSubtotalForTax = Math.max(0, subtotal - totalDiscountsForTax);
+    const tax = Math.round(netSubtotalForTax * 0.08);
+
+    const originalAmount = Number(
+        paymentResult?.originalAmount ??
+        bookingDetail?.finalAmount ??
+        bookingDetail?.totalAmount ??
+        (subtotal + Math.round(subtotal * 0.08))
+    );
+
     const finalAmountToShow = paymentResult 
         ? Number(paymentResult.finalAmount || 0) 
-        : Math.max(0, originalAmount - onlineDiscount - voucherDiscount - promoDiscount - tierDiscount);
+        : Math.max(0, netSubtotalForTax + tax);
 
     const effectiveMethod = paymentResult?.paymentMethod === "paypal" || selectedMethod === "paypal" ? "paypal" : "vnpay";
     const firstService = bookingDetails[0] || null;
@@ -851,8 +892,27 @@ function PaymentPage() {
                                 </div>
                             </div>
 
-                            {/* PayPal Action Button nếu chọn PayPal */}
-                            {selectedMethod === "paypal" && (
+                            {finalAmountToShow === 0 ? (
+                                <button
+                                    type="button"
+                                    className="paypal-pay-btn"
+                                    style={{ background: "linear-gradient(135deg, #10b981, #059669)" }}
+                                    onClick={handleConfirmZeroPayment}
+                                    disabled={isLoading || isBookingUnpayable || isPaid}
+                                >
+                                    {isLoading ? (
+                                        <>
+                                            <span className="spinner-inline" />
+                                            Đang hoàn tất đơn hàng 0đ...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <span>Xác nhận hoàn tất đơn (0đ)</span>
+                                            <span className="pay-arrow">✓</span>
+                                        </>
+                                    )}
+                                </button>
+                            ) : selectedMethod === "paypal" && (
                                 <button
                                     type="button"
                                     className="paypal-pay-btn"

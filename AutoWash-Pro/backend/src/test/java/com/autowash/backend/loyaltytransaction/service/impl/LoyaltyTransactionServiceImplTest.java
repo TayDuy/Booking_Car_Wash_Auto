@@ -55,14 +55,14 @@ class LoyaltyTransactionServiceImplTest {
         when(loyaltyTransactionRepository.save(any(LoyaltyTransaction.class))).thenReturn(savedTx);
 
         LoyaltyTransactionResponseDTO mockResponse = new LoyaltyTransactionResponseDTO();
-        mockResponse.setPoints(100);
+        mockResponse.setPoints(10);
         mockResponse.setTransactionType("earn");
         when(loyaltyTransactionMapper.toResponse(any())).thenReturn(mockResponse);
 
         LoyaltyTransactionResponseDTO response = loyaltyTransactionService.earnPointsFromCompleteBooking(booking, BigDecimal.valueOf(100000));
 
         assertNotNull(response);
-        assertEquals(100, response.getPoints());
+        assertEquals(10, response.getPoints());
         verify(loyaltyTransactionRepository, times(1)).save(any());
     }
 

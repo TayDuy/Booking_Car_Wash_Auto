@@ -21,11 +21,12 @@ public class CacheConfig {
 
     public static final String SERVICES_CACHE = "services";
     public static final String BRANCHES_CACHE = "branches";
+    public static final String SYSTEM_SETTINGS_CACHE = "systemSettings";
 
     @Bean
     public CacheManagerCustomizer<CaffeineCacheManager> caffeineCacheManagerCustomizer() {
         return cacheManager -> {
-            cacheManager.setCacheNames(List.of(SERVICES_CACHE, BRANCHES_CACHE));
+            cacheManager.setCacheNames(List.of(SERVICES_CACHE, BRANCHES_CACHE, SYSTEM_SETTINGS_CACHE));
             cacheManager.setCaffeine(
                     Caffeine.newBuilder()
                             .expireAfterWrite(10, TimeUnit.MINUTES)

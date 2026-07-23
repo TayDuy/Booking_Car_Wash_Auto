@@ -8,6 +8,7 @@ import lombok.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.ZoneId;
 
 @Entity
 @Table(name = "promotion")
@@ -105,7 +106,7 @@ public class Promotion {
 
     /** Promotion có đang trong thời hạn và active không. */
     public boolean isValid() {
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh"));
         return PromotionStatus.active.equals(this.status)
                 && !today.isBefore(this.startDate)
                 && !today.isAfter(this.endDate);
@@ -133,7 +134,7 @@ public class Promotion {
         if (!isValid()) return false;
         if (!isApplicableForTier(tierId)) return false;
         if (!isApplicableForVehicle(vehicleType)) return false;
-        if (this.minOrderValue != null && orderValue.compareTo(this.minOrderValue) < 0) return false;
+        if (this.minOrderValue != null && (orderValue == null || orderValue.compareTo(this.minOrderValue) < 0)) return false;
         return true;
     }
 }

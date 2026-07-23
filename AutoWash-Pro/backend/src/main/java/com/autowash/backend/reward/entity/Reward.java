@@ -111,7 +111,9 @@ public class Reward {
     }
 
     public boolean isApplicableForVehicleType(String vehicleType) {
-        return RewardVehicleType.BOTH.equals(this.vehicleType)
-                || this.vehicleType.getValue().equals(vehicleType);
+        if (RewardVehicleType.BOTH.equals(this.vehicleType)) return true;
+        if (vehicleType == null) return false;
+        RewardVehicleType inputType = RewardVehicleType.fromValue(vehicleType);
+        return this.vehicleType == inputType;
     }
 }
