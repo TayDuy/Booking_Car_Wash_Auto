@@ -15,6 +15,7 @@ import customerApi from "../../../api/customerApi";
 import employeeApi from "../../../api/employeeApi";
 import servicePackageApi from "../../../api/servicePackageApi";
 import { getAvailableSlots } from "../../../api/timeSlotService";
+import { isValidVietnameseLicensePlate, formatVietnameseLicensePlate } from "../../../utils/licensePlateUtils";
 
 import "./WalkInBookingPage.css";
 
@@ -407,6 +408,9 @@ function WalkInBookingPage() {
     if (!form.licensePlate.trim()) {
       return "Vui lòng nhập biển số xe.";
     }
+    if (!isValidVietnameseLicensePlate(form.licensePlate)) {
+      return "Biển số xe không đúng định dạng Việt Nam (Ví dụ: 30A-123.45 hoặc 51F-888.88).";
+    }
 
     if (!form.brand.trim()) {
       return "Vui lòng nhập hãng xe.";
@@ -453,9 +457,7 @@ function WalkInBookingPage() {
       initialPassword: selectedCustomer
           ? null
           : form.initialPassword,
-      licensePlate: form.licensePlate
-          .trim()
-          .toUpperCase(),
+      licensePlate: formatVietnameseLicensePlate(form.licensePlate),
       brand: form.brand.trim(),
       model: form.model.trim() || null,
       vehicleType: form.vehicleType,

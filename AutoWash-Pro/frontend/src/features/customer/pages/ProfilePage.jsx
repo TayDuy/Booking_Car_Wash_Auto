@@ -9,6 +9,7 @@ import { changePassword } from '../../../api/authService';
 import { getMyTier } from '../../../api/loyaltyApi';
 import { getMyPointBalance } from '../../../api/loyaltyTransactionApi';
 import useAuth from '../../../hooks/useAuth';
+import { isValidVietnameseLicensePlate, formatVietnameseLicensePlate } from '../../../utils/licensePlateUtils';
 const ProfilePage = () => {
   const navigate = useNavigate();
   const auth = useAuth();
@@ -203,12 +204,10 @@ const ProfilePage = () => {
     e.preventDefault();
     setVehicleError('');
 
-    const trimmedPlate = (vehicleForm.licensePlate || '').trim().toUpperCase();
+    const formattedPlate = formatVietnameseLicensePlate(vehicleForm.licensePlate);
 
-    // Validate license plate pattern e.g. 51A-12345 or 30A-1234 (optional dots allowed)
-    const platePattern = /^[0-9]{2}[A-Z]{1,2}-[0-9]{3,5}(\.[0-9]{1,2})?$/;
-    if (!platePattern.test(trimmedPlate)) {
-      setVehicleError('Biển số xe phải đúng định dạng (VD: 51A-12345, 29AB-12345).');
+    if (!isValidVietnameseLicensePlate(formattedPlate)) {
+      setVehicleError('Biển số xe phải đúng định dạng Việt Nam (VD: 30A-123.45, 51F-888.88).');
       return;
     }
 
@@ -220,7 +219,7 @@ const ProfilePage = () => {
     try {
       const response = await vehicleApi.create({
         ...vehicleForm,
-        licensePlate: trimmedPlate
+        licensePlate: formattedPlate
       });
       if (response.data) {
         setVehicles(prev => [...prev, response.data]);
@@ -634,7 +633,7 @@ const ProfilePage = () => {
                                     <h4 className="vehicle-name" style={{ fontSize: '15px', fontWeight: '600' }}>{vehicle.nickname || `${vehicle.brand} ${vehicle.model}`}</h4>
                                     <div className="vietnam-license-plate">
                                       <span className="plate-rivet"></span>
-                                      <span className="plate-text">{vehicle.licensePlate.toUpperCase()}</span>
+                                      <span className="plate-text">{formatVietnameseLicensePlate(vehicle.licensePlate)}</span>
                                     </div>
                                     <span style={{ fontSize: '12px', color: '#64748b', marginLeft: '8px' }}>
                                 ({vehicle.vehicleType === '7 chỗ' ? 'Xe 7 chỗ' : 'Xe 4 chỗ'})

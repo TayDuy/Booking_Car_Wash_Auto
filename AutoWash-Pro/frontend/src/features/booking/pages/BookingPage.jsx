@@ -20,6 +20,7 @@ import { getBranches } from "../../../api/branchService";
 import { getSlotsByBranchAndDate } from "../../../api/timeSlotService";
 import promotionApi from "../../../api/promotionApi";
 import { getMyRewards } from "../../../api/customerRewardApi";
+import { isValidVietnameseLicensePlate, formatVietnameseLicensePlate } from "../../../utils/licensePlateUtils";
 
 const DEFAULT_SERVICES = [
   {
@@ -148,7 +149,7 @@ export default function BookingPage() {
   const applyVehicle = (vehicle) => {
     if (!vehicle) return;
     setSelectedVehicleId(vehicle.vehicleId);
-    setLicensePlate(vehicle.licensePlate || "");
+    setLicensePlate(formatVietnameseLicensePlate(vehicle.licensePlate || ""));
     setBrand(vehicle.brand || "");
     setVehicleType(mapVehicleTypeToUi(vehicle.vehicleType));
     setShowVehicleSuggest(false);
@@ -415,6 +416,14 @@ export default function BookingPage() {
     if (!fullName.trim()) { await showMessage({ title: "Thông báo", message: "Vui lòng nhập họ và tên!", variant: "warning" }); return; }
     if (!phone.trim()) { await showMessage({ title: "Thông báo", message: "Vui lòng nhập số điện thoại!", variant: "warning" }); return; }
     if (!licensePlate.trim()) { await showMessage({ title: "Thông báo", message: "Vui lòng nhập biển số xe!", variant: "warning" }); return; }
+    if (!isValidVietnameseLicensePlate(licensePlate)) {
+      await showMessage({
+        title: "Biển số xe không hợp lệ",
+        message: "Vui lòng nhập đúng định dạng biển số xe Việt Nam (Ví dụ: 30A-123.45 hoặc 51F-888.88).",
+        variant: "warning"
+      });
+      return;
+    }
     if (!brand.trim()) { await showMessage({ title: "Thông báo", message: "Vui lòng nhập hãng xe!", variant: "warning" }); return; }
     if (!selectedTime) { await showMessage({ title: "Thông báo", message: "Vui lòng chọn khung giờ!", variant: "warning" }); return; }
     if (!selectedBranch) { await showMessage({ title: "Thông báo", message: "Vui lòng chọn chi nhánh!", variant: "warning" }); return; }
@@ -725,7 +734,7 @@ export default function BookingPage() {
                                 onClick={() => applyVehicle(v)}
                             >
                               <MdDirectionsCar className="suggest-item-icon" />
-                              {v.licensePlate}{v.nickname ? ` · ${v.nickname}` : v.brand ? ` · ${v.brand}` : ""}
+                              {formatVietnameseLicensePlate(v.licensePlate)}{v.nickname ? ` · ${v.nickname}` : v.brand ? ` · ${v.brand}` : ""}
                             </button>
                         ))}
                       </div>
@@ -735,9 +744,12 @@ export default function BookingPage() {
                         type="text"
                         placeholder="Ví dụ: 30A-123.45"
                         value={licensePlate}
-                        onChange={(e) => { setLicensePlate(e.target.value); setSelectedVehicleId(null); }}
+                        onChange={(e) => { setLicensePlate(e.target.value.toUpperCase()); setSelectedVehicleId(null); }}
                         onFocus={() => setShowVehicleSuggest(true)}
-                        onBlur={() => setTimeout(() => setShowVehicleSuggest(false), 150)}
+                        onBlur={() => {
+                          setLicensePlate(prev => formatVietnameseLicensePlate(prev));
+                          setTimeout(() => setShowVehicleSuggest(false), 150);
+                        }}
                     />
                     {showVehicleSuggest && savedVehicles.length > 0 && (
                         <div className="input-suggest-dropdown">
@@ -751,12 +763,17 @@ export default function BookingPage() {
                               >
                                 <MdDirectionsCar className="suggest-item-icon" />
                                 <span>{v.nickname || v.brand}</span>
-                                <span className="suggest-item-tag">{v.licensePlate}</span>
+                                <span className="suggest-item-tag">{formatVietnameseLicensePlate(v.licensePlate)}</span>
                               </button>
                           ))}
                         </div>
                     )}
                   </div>
+                  {licensePlate.trim() && !isValidVietnameseLicensePlate(licensePlate) && (
+                    <span style={{ color: "#ef4444", fontSize: "12px", marginTop: "4px", display: "block", fontWeight: "500" }}>
+                      ⚠️ Biển số xe chưa đúng định dạng VN (Ví dụ: 30A-123.45 hoặc 51F-888.88)
+                    </span>
+                  )}
                 </div>
                 <div className="form-field-group">
                   <label>Loại xe *</label>
