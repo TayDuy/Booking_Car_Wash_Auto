@@ -17,6 +17,9 @@ import {
   ShieldCheck,
   Settings,
   Undo2,
+  Gift,
+  Award,
+  Ticket,
 } from "lucide-react";
 import "./Sidebar.css";
 
@@ -42,9 +45,12 @@ const menuGroups = [
     ],
   },
   {
-    title: "Marketing",
+    title: "Marketing & Loyalty",
     items: [
       { label: "Khuyến mãi", path: "/admin/promotions", icon: Megaphone },
+      { label: "Quản lý Đổi điểm", path: "/admin/rewards", icon: Gift },
+      { label: "Quản lý Điểm & Hạng", path: "/admin/loyalty-points", icon: Award },
+      { label: "Voucher khách hàng", path: "/admin/customer-rewards", icon: Ticket },
     ],
   },
   {
