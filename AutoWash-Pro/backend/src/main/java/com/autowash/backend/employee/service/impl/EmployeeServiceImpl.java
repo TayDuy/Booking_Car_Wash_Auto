@@ -38,6 +38,7 @@ import com.autowash.backend.payment.repository.PaymentRepository;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -567,20 +568,9 @@ public class EmployeeServiceImpl implements EmployeeService {
 
                     booking.setSlot(targetSlot);
                 } else {
-                    TimeSlot newSlot = TimeSlot.builder()
-                            .branch(branch)
-                            .washBay(washBay)
-                            .slotDate(slot.getSlotDate())
-                            .startTime(slot.getStartTime())
-                            .endTime(slot.getEndTime())
-                            .maxCapacity(slot.getMaxCapacity() != null ? slot.getMaxCapacity() : 1)
-                            .currentBookings(1)
-                            .status(com.autowash.backend.timeslot.entity.TimeSlot.SlotStatus.open)
-                            .build();
-                    lockedSlot.decrementBookings();
-                    timeSlotRepository.save(lockedSlot);
-
-                    TimeSlot savedNewSlot = timeSlotRepository.save(newSlot);
+                    TimeSlot savedNewSlot = createSlotForBay(
+                            branch, washBay, slot, lockedSlot
+                    );
                     booking.setSlot(savedNewSlot);
                 }
             }
@@ -1316,6 +1306,55 @@ public class EmployeeServiceImpl implements EmployeeService {
                     "Wash bay không thuộc chi nhánh của nhân viên",
                     HttpStatus.CONFLICT
             );
+        }
+    }
+
+    private TimeSlot createSlotForBay(
+            Branch branch,
+            WashBay washBay,
+            TimeSlot slot,
+            TimeSlot lockedSlot
+    ) {
+        int retries = 3;
+        while (true) {
+            try {
+                TimeSlot newSlot = TimeSlot.builder()
+                        .branch(branch)
+                        .washBay(washBay)
+                        .slotDate(slot.getSlotDate())
+                        .startTime(slot.getStartTime())
+                        .endTime(slot.getEndTime())
+                        .maxCapacity(slot.getMaxCapacity() != null ? slot.getMaxCapacity() : 1)
+                        .currentBookings(1)
+                        .status(TimeSlot.SlotStatus.open)
+                        .build();
+                lockedSlot.decrementBookings();
+                timeSlotRepository.save(lockedSlot);
+                TimeSlot saved = timeSlotRepository.save(newSlot);
+                timeSlotRepository.flush();
+                return saved;
+            } catch (DataIntegrityViolationException e) {
+                if (--retries <= 0) throw e;
+                var existing = timeSlotRepository
+                        .findByWashBay_BayIdAndSlotDateAndStartTime(
+                                washBay.getBayId(),
+                                slot.getSlotDate(),
+                                slot.getStartTime()
+                        );
+                if (existing.isPresent()) {
+                    TimeSlot target = existing.get();
+                    if (!target.hasCapacity()) {
+                        throw new BusinessException(
+                                "Khung giờ của khu vực rửa xe mới đã đầy, vui lòng chọn khu vực khác",
+                                HttpStatus.CONFLICT
+                        );
+                    }
+                    lockedSlot.decrementBookings();
+                    timeSlotRepository.save(lockedSlot);
+                    target.incrementBookings();
+                    return timeSlotRepository.save(target);
+                }
+            }
         }
     }
 
