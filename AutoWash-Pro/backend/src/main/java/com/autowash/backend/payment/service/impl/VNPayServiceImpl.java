@@ -171,7 +171,7 @@ public class VNPayServiceImpl implements VNPayService {
 
         if (hostHeader != null && !hostHeader.isBlank()) {
             String hostOnly = extractHost(hostHeader);
-            if (hostOnly != null && isTrustedDevHost(hostOnly)) {
+            if (hostOnly != null && !isLocalhost(hostOnly)) {
                 return proto + "://" + hostHeader + "/api/v1/payments/vnpay-return";
             }
         }

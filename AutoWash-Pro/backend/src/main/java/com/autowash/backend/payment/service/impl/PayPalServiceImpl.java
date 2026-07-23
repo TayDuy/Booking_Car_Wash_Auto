@@ -5,6 +5,7 @@ import com.autowash.backend.payment.config.PayPalConfig;
 import com.autowash.backend.payment.service.PayPalService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.json.JsonMapper;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.*;
@@ -28,6 +29,7 @@ public class PayPalServiceImpl implements PayPalService {
 
     private final PayPalConfig paypalConfig;
     private final ExchangeRateService exchangeRateService;
+    private final HttpServletRequest request;
 
     private final RestTemplate restTemplate = new RestTemplate();
     private final JsonMapper objectMapper = JsonMapper.builder().build();
@@ -85,8 +87,8 @@ public class PayPalServiceImpl implements PayPalService {
         purchaseUnit.put("amount", amount);
 
         Map<String, Object> applicationContext = new HashMap<>();
-        applicationContext.put("return_url", paypalConfig.getReturnUrl());
-        applicationContext.put("cancel_url", paypalConfig.getCancelUrl());
+        applicationContext.put("return_url", resolveDynamicUrl("/api/v1/payments/paypal-return"));
+        applicationContext.put("cancel_url", resolveDynamicUrl("/api/v1/payments/paypal-cancel"));
         applicationContext.put("brand_name", "AutoWash Pro");
         applicationContext.put("user_action", "PAY_NOW");
         applicationContext.put("shipping_preference", "NO_SHIPPING");
@@ -187,5 +189,39 @@ public class PayPalServiceImpl implements PayPalService {
             log.error("Lỗi capture PayPal order {}: {}", orderId, e.getMessage());
             throw new BusinessException("Không xác nhận được thanh toán PayPal");
         }
+    }
+
+    private String resolveDynamicUrl(String path) {
+        try {
+            String configured = paypalConfig.getReturnUrl();
+            String configuredHost = configured != null
+                    ? java.net.URI.create(configured).getHost()
+                    : null;
+            if (configuredHost != null
+                    && !"localhost".equals(configuredHost)
+                    && !"127.0.0.1".equals(configuredHost)) {
+                return configured.startsWith("http")
+                        ? configured.replaceFirst("/api/v1/payments/paypal-return", path)
+                        : configured;
+            }
+        } catch (Exception ignored) {
+        }
+
+        String proto = request.getHeader("X-Forwarded-Proto");
+        if (proto == null || proto.isBlank()) proto = request.getScheme();
+        String host = request.getHeader("X-Forwarded-Host");
+        if (host == null || host.isBlank()) host = request.getHeader("Host");
+
+        if (host != null && !host.isBlank()) {
+            String hostOnly = host.contains(":")
+                    ? host.substring(0, host.lastIndexOf(':')).trim().toLowerCase()
+                    : host.trim().toLowerCase();
+            if (!"localhost".equals(hostOnly)
+                    && !"127.0.0.1".equals(hostOnly)
+                    && !"::1".equals(hostOnly)) {
+                return proto + "://" + host + path;
+            }
+        }
+        return paypalConfig.getReturnUrl().replaceFirst("/api/v1/payments/paypal-return", path);
     }
 }
