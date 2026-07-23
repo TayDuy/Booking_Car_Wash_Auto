@@ -53,4 +53,14 @@ public class User {
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    public Integer getId() { return id; }
+    public String getUsername() { return username; }
+    public String getEmail() { return email; }
+    public String getPassword() { return password; }
+    public String getPhone() { return phone; }
+    public String getStatus() { return status; }
+    public String getRole() { return role; }
+    public Integer getFailedAttempts() { return failedAttempts; }
+    public LocalDateTime getLockoutEndTime() { return lockoutEndTime; }
+    public LocalDateTime getCreatedAt() { return createdAt; }
 }
