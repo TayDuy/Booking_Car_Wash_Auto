@@ -1,0 +1,209 @@
+.alert-modal-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(6px);
+  z-index: 9999;
+  animation: alertModalFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+@keyframes alertModalFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes alertModalPopIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9) translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.alert-modal-container {
+  width: 100%;
+  max-width: 420px;
+  background: #ffffff;
+  border-radius: 20px;
+  padding: 32px 28px 28px;
+  text-align: center;
+  box-shadow: 0 25px 60px -15px rgba(15, 23, 42, 0.3);
+  animation: alertModalPopIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  box-sizing: border-box;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Top accent border bar */
+.alert-modal-container::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+}
+
+.alert-modal-container.warning::before {
+  background: linear-gradient(90deg, #f59e0b, #d97706);
+}
+
+.alert-modal-container.error::before {
+  background: linear-gradient(90deg, #ef4444, #dc2626);
+}
+
+.alert-modal-container.info::before {
+  background: linear-gradient(90deg, #3b82f6, #2563eb);
+}
+
+.alert-modal-container.success::before {
+  background: linear-gradient(90deg, #10b981, #059669);
+}
+
+/* Icon wrapper */
+.alert-modal-icon-wrapper {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  margin: 0 auto 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.alert-modal-icon-wrapper.warning {
+  background: #fffbeb;
+  border: 2px solid #fef3c7;
+}
+
+.alert-modal-icon-wrapper.error {
+  background: #fef2f2;
+  border: 2px solid #fee2e2;
+}
+
+.alert-modal-icon-wrapper.info {
+  background: #eff6ff;
+  border: 2px solid #dbeafe;
+}
+
+.alert-modal-icon-wrapper.success {
+  background: #ecfdf5;
+  border: 2px solid #d1fae5;
+}
+
+.alert-modal-icon {
+  font-size: 32px;
+}
+
+.alert-modal-icon.warning {
+  color: #d97706;
+}
+
+.alert-modal-icon.error {
+  color: #dc2626;
+}
+
+.alert-modal-icon.info {
+  color: #2563eb;
+}
+
+.alert-modal-icon.success {
+  color: #059669;
+}
+
+/* Typography */
+.alert-modal-title {
+  margin: 0 0 10px;
+  font-size: 20px;
+  font-weight: 700;
+  color: #0f172a;
+  letter-spacing: -0.02em;
+}
+
+.alert-modal-message {
+  margin: 0 0 24px;
+  font-size: 15px;
+  line-height: 1.6;
+  color: #475569;
+  font-weight: 450;
+  word-break: break-word;
+}
+
+/* Action button */
+.alert-modal-actions {
+  display: flex;
+  justify-content: center;
+}
+
+.alert-modal-btn {
+  width: 100%;
+  max-width: 200px;
+  padding: 13px 24px;
+  border-radius: 12px;
+  border: none;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  outline: none;
+}
+
+.alert-modal-btn.warning {
+  background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(217, 119, 6, 0.35);
+}
+
+.alert-modal-btn.warning:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(217, 119, 6, 0.45);
+}
+
+.alert-modal-btn.error {
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(220, 38, 38, 0.35);
+}
+
+.alert-modal-btn.error:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(220, 38, 38, 0.45);
+}
+
+.alert-modal-btn.info {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);
+}
+
+.alert-modal-btn.info:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(37, 99, 235, 0.45);
+}
+
+.alert-modal-btn.success {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(5, 150, 105, 0.35);
+}
+
+.alert-modal-btn.success:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(5, 150, 105, 0.45);
+}
+
+.alert-modal-btn:active {
+  transform: translateY(0);
+}

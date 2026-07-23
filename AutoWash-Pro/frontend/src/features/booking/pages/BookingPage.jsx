@@ -19,6 +19,7 @@ import { getBranches } from "../../../api/branchService";
 import { getSlotsByBranchAndDate } from "../../../api/timeSlotService";
 import promotionApi from "../../../api/promotionApi";
 import { getMyRewards } from "../../../api/customerRewardApi";
+import AlertModal from "../../../components/common/AlertModal";
 
 const DEFAULT_SERVICES = [
   {
@@ -82,6 +83,26 @@ export default function BookingPage() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [activeServiceTab, setActiveServiceTab] = useState("all");
 
+  const [alertModal, setAlertModal] = useState({
+    open: false,
+    title: "Thông báo",
+    message: "",
+    type: "warning"
+  });
+
+  const showAlert = (message, title = "Chú ý", type = "warning") => {
+    setAlertModal({
+      open: true,
+      title,
+      message,
+      type
+    });
+  };
+
+  const closeAlert = () => {
+    setAlertModal(prev => ({ ...prev, open: false }));
+  };
+
   const monthNames = [
     "Tháng 1", "Tháng 2", "Tháng 3", "Tháng 4", "Tháng 5", "Tháng 6",
     "Tháng 7", "Tháng 8", "Tháng 9", "Tháng 10", "Tháng 11", "Tháng 12"
@@ -141,6 +162,45 @@ export default function BookingPage() {
     return `${year}-${month}-${day}`;
   };
 
+  // Tự động format biển số xe theo chuẩn Việt Nam khi người dùng gõ.
+  // Hỗ trợ 2 dạng phổ biến: "30A-123.45" và "30A1-123.45" (seri mở rộng có thêm 1 số).
+  const formatLicensePlateInput = (raw) => {
+    let clean = raw.toUpperCase().replace(/[^A-Z0-9]/g, "");
+    clean = clean.slice(0, 9); // tối đa: 2 số tỉnh + 1 chữ + 1 số seri + 5 số
+
+    const province = clean.slice(0, 2).replace(/[^0-9]/g, "");
+    let rest = clean.slice(2);
+
+    let seriLetter = "";
+    if (rest.length > 0) {
+      seriLetter = rest[0].replace(/[^A-Z]/g, "");
+      rest = seriLetter ? rest.slice(1) : rest;
+    }
+
+    let seriDigit = "";
+    // Nếu còn nhiều hơn 5 ký tự số phía sau, ký tự đầu tiên là số seri mở rộng (ví dụ 30E1-...)
+    if (rest.length > 5 && /[0-9]/.test(rest[0])) {
+      seriDigit = rest[0];
+      rest = rest.slice(1);
+    }
+
+    const numberPart = rest.replace(/[^0-9]/g, "").slice(0, 5);
+
+    let formatted = province + seriLetter + seriDigit;
+    if (numberPart.length > 0) {
+      formatted += "-" + numberPart.slice(0, 3);
+      if (numberPart.length > 3) {
+        formatted += "." + numberPart.slice(3, 5);
+      }
+    }
+    return formatted;
+  };
+
+  // Kiểm tra biển số đã đúng định dạng chuẩn VN chưa (bắt buộc trước khi submit)
+  const isValidLicensePlate = (plate) => {
+    return /^\d{2}[A-Z]\d?-\d{3}\.\d{2}$/.test((plate || "").trim());
+  };
+
   const applyVehicle = (vehicle) => {
     if (!vehicle) return;
     setSelectedVehicleId(vehicle.vehicleId);
@@ -156,12 +216,12 @@ export default function BookingPage() {
         const res = await getActiveServices();
         const servicesList = res.data?.data || res.data;
         const merged = servicesList?.length > 0
-          ? servicesList.map(item => ({
+            ? servicesList.map(item => ({
               ...item,
               imageUrl: DEFAULT_SERVICES[0].imageUrl,
               isPopular: false
             }))
-          : DEFAULT_SERVICES;
+            : DEFAULT_SERVICES;
         setServices(merged);
         const preId = searchParams.get("serviceId");
         if (preId) {
@@ -289,8 +349,8 @@ export default function BookingPage() {
           // Nếu ngày đang xem là hôm nay → lọc bỏ các khung giờ đã qua
           const now = new Date();
           const isToday = selectedDate.getFullYear() === now.getFullYear()
-            && selectedDate.getMonth() === now.getMonth()
-            && selectedDate.getDate() === now.getDate();
+              && selectedDate.getMonth() === now.getMonth()
+              && selectedDate.getDate() === now.getDate();
           const currentHHMM = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
 
           const formattedSlots = Array.from(groupMap.values()).map(g => {
@@ -365,7 +425,7 @@ export default function BookingPage() {
 
   const toggleAddon = (serviceId) => {
     setSelectedAddonIds(prev =>
-      prev.includes(serviceId) ? prev.filter(id => id !== serviceId) : [...prev, serviceId]
+        prev.includes(serviceId) ? prev.filter(id => id !== serviceId) : [...prev, serviceId]
     );
   };
 
@@ -403,17 +463,18 @@ export default function BookingPage() {
   };
 
   const handleBooking = async () => {
-    if (!selectedPackageId) { alert("Vui lòng chọn gói dịch vụ!"); return; }
-    if (!agreeTerms) { alert("Vui lòng xác nhận thông tin dịch vụ và điều khoản dịch vụ để tiếp tục!"); return; }
+    if (!selectedPackageId) { showAlert("Vui lòng chọn gói dịch vụ!", "Chưa chọn dịch vụ", "warning"); return; }
+    if (!agreeTerms) { showAlert("Vui lòng xác nhận thông tin dịch vụ và điều khoản dịch vụ để tiếp tục!", "Điều khoản dịch vụ", "warning"); return; }
 
     const customerIdRaw = localStorage.getItem("customerId");
-    if (!customerIdRaw) { alert("Không tìm thấy thông tin khách hàng. Vui lòng đăng nhập lại!"); return; }
-    if (!fullName.trim()) { alert("Vui lòng nhập họ và tên!"); return; }
-    if (!phone.trim()) { alert("Vui lòng nhập số điện thoại!"); return; }
-    if (!licensePlate.trim()) { alert("Vui lòng nhập biển số xe!"); return; }
-    if (!brand.trim()) { alert("Vui lòng nhập hãng xe!"); return; }
-    if (!selectedTime) { alert("Vui lòng chọn khung giờ!"); return; }
-    if (!selectedBranch) { alert("Vui lòng chọn chi nhánh!"); return; }
+    if (!customerIdRaw) { showAlert("Không tìm thấy thông tin khách hàng. Vui lòng đăng nhập lại!", "Lỗi xác thực", "error"); return; }
+    if (!fullName.trim()) { showAlert("Vui lòng nhập họ và tên!", "Thiếu thông tin", "warning"); return; }
+    if (!phone.trim()) { showAlert("Vui lòng nhập số điện thoại!", "Thiếu thông tin", "warning"); return; }
+    if (!licensePlate.trim()) { showAlert("Vui lòng nhập biển số xe!", "Thiếu thông tin", "warning"); return; }
+    if (!isValidLicensePlate(licensePlate)) { showAlert("Biển số xe không đúng định dạng. Vui lòng nhập theo mẫu: 30A-123.45", "Biển số xe không đúng định dạng", "warning"); return; }
+    if (!brand.trim()) { showAlert("Vui lòng nhập hãng xe!", "Thiếu thông tin", "warning"); return; }
+    if (!selectedTime) { showAlert("Vui lòng chọn khung giờ!", "Thiếu thông tin", "warning"); return; }
+    if (!selectedBranch) { showAlert("Vui lòng chọn chi nhánh!", "Thiếu thông tin", "warning"); return; }
 
     if (depositRequired) setPaymentMethod("online");
 
@@ -449,7 +510,7 @@ export default function BookingPage() {
         },
       });
     } catch (error) {
-      alert(error.response?.data?.message || "Đặt lịch thất bại. Vui lòng thử lại!");
+      showAlert(error.response?.data?.message || "Đặt lịch thất bại. Vui lòng thử lại!", "Đặt lịch thất bại", "error");
     }
   };
 
@@ -472,74 +533,74 @@ export default function BookingPage() {
               {/* Category Tabs for Main Packages */}
               <div className="booking-service-tabs">
                 {SERVICE_TABS.map(tab => (
-                  <button
-                    key={tab.id}
-                    type="button"
-                    className={`booking-service-tab-btn ${activeServiceTab === tab.id ? "active" : ""}`}
-                    onClick={() => setActiveServiceTab(tab.id)}
-                  >
-                    {tab.label}
-                  </button>
+                    <button
+                        key={tab.id}
+                        type="button"
+                        className={`booking-service-tab-btn ${activeServiceTab === tab.id ? "active" : ""}`}
+                        onClick={() => setActiveServiceTab(tab.id)}
+                    >
+                      {tab.label}
+                    </button>
                 ))}
               </div>
 
               <div className="services-packages-row">
                 {filteredMainPackages.length === 0 ? (
-                  <div className="no-services-placeholder" style={{ gridColumn: 'span 3', textAlign: 'center', padding: '32px', color: 'var(--text-muted)' }}>
-                    Không có dịch vụ chính nào thuộc danh mục này.
-                  </div>
+                    <div className="no-services-placeholder" style={{ gridColumn: 'span 3', textAlign: 'center', padding: '32px', color: 'var(--text-muted)' }}>
+                      Không có dịch vụ chính nào thuộc danh mục này.
+                    </div>
                 ) : (
-                  filteredMainPackages.map(pkg => {
-                    const selected = selectedPackageId === pkg.serviceId;
-                    return (
-                      <div
-                        key={pkg.serviceId}
-                        className={`package-card ${selected ? "package-selected" : ""} ${pkg.isPopular ? "package-popular" : ""}`}
-                        onClick={() => setSelectedPackageId(pkg.serviceId)}
-                        role="radio"
-                        aria-checked={selected}
-                        tabIndex={0}
-                        onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSelectedPackageId(pkg.serviceId); } }}
-                      >
-                        {pkg.isPopular && <span className="popular-badge">PHỔ BIẾN</span>}
-                        <div className="package-body">
-                          <div className="package-header">
-                            <h4>{pkg.serviceName}</h4>
-                            <span className="package-price">{pkg.basePrice?.toLocaleString()}đ</span>
+                    filteredMainPackages.map(pkg => {
+                      const selected = selectedPackageId === pkg.serviceId;
+                      return (
+                          <div
+                              key={pkg.serviceId}
+                              className={`package-card ${selected ? "package-selected" : ""} ${pkg.isPopular ? "package-popular" : ""}`}
+                              onClick={() => setSelectedPackageId(pkg.serviceId)}
+                              role="radio"
+                              aria-checked={selected}
+                              tabIndex={0}
+                              onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSelectedPackageId(pkg.serviceId); } }}
+                          >
+                            {pkg.isPopular && <span className="popular-badge">PHỔ BIẾN</span>}
+                            <div className="package-body">
+                              <div className="package-header">
+                                <h4>{pkg.serviceName}</h4>
+                                <span className="package-price">{pkg.basePrice?.toLocaleString()}đ</span>
+                              </div>
+                              <p className="package-duration">⏱ {pkg.durationMinutes} phút</p>
+                              <p className="package-detail">{pkg.description || "Chi tiết gói dịch vụ"}</p>
+                            </div>
+                            <div className={`package-radio-indicator ${selected ? "radio-checked" : ""}`}>
+                              {selected && <span className="radio-dot" />}
+                            </div>
                           </div>
-                          <p className="package-duration">⏱ {pkg.durationMinutes} phút</p>
-                          <p className="package-detail">{pkg.description || "Chi tiết gói dịch vụ"}</p>
-                        </div>
-                        <div className={`package-radio-indicator ${selected ? "radio-checked" : ""}`}>
-                          {selected && <span className="radio-dot" />}
-                        </div>
-                      </div>
-                    );
-                  })
+                      );
+                    })
                 )}
               </div>
 
               {addonServices.length > 0 && (
-                <div className="addons-section">
-                  <h4 className="addons-title">Dịch vụ bổ sung (Tùy chọn thêm)</h4>
-                  <div className="addons-list">
-                    {addonServices.map(addon => {
-                      const checked = selectedAddonIds.includes(addon.serviceId);
-                      return (
-                        <label key={addon.serviceId} className={`addon-item ${checked ? "addon-checked" : ""}`}>
-                          <input
-                            type="checkbox"
-                            checked={checked}
-                            onChange={() => toggleAddon(addon.serviceId)}
-                          />
-                          <span className="addon-name">{addon.serviceName}</span>
-                          <span className="addon-price">+{addon.basePrice?.toLocaleString()}đ</span>
-                          <span className="addon-duration">{addon.durationMinutes}ph</span>
-                        </label>
-                      );
-                    })}
+                  <div className="addons-section">
+                    <h4 className="addons-title">Dịch vụ bổ sung (Tùy chọn thêm)</h4>
+                    <div className="addons-list">
+                      {addonServices.map(addon => {
+                        const checked = selectedAddonIds.includes(addon.serviceId);
+                        return (
+                            <label key={addon.serviceId} className={`addon-item ${checked ? "addon-checked" : ""}`}>
+                              <input
+                                  type="checkbox"
+                                  checked={checked}
+                                  onChange={() => toggleAddon(addon.serviceId)}
+                              />
+                              <span className="addon-name">{addon.serviceName}</span>
+                              <span className="addon-price">+{addon.basePrice?.toLocaleString()}đ</span>
+                              <span className="addon-duration">{addon.durationMinutes}ph</span>
+                            </label>
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
               )}
             </section>
 
@@ -719,7 +780,9 @@ export default function BookingPage() {
                         type="text"
                         placeholder="Ví dụ: 30A-123.45"
                         value={licensePlate}
-                        onChange={(e) => { setLicensePlate(e.target.value); setSelectedVehicleId(null); }}
+                        maxLength={11}
+                        autoCapitalize="characters"
+                        onChange={(e) => { setLicensePlate(formatLicensePlateInput(e.target.value)); setSelectedVehicleId(null); }}
                         onFocus={() => setShowVehicleSuggest(true)}
                         onBlur={() => setTimeout(() => setShowVehicleSuggest(false), 150)}
                     />
@@ -796,27 +859,27 @@ export default function BookingPage() {
             <h3>Tóm tắt đơn hàng</h3>
             <div className="summary-billing-breakdown">
               {selectedPackageId ? (
-                <>
-                  <div className="billing-row prime-service">
-                    <span className="service-title">{selectedPackage?.serviceName}</span>
-                    <span className="service-cost">{packagePrice.toLocaleString()}đ</span>
-                  </div>
-                  {selectedAddons.length > 0 && (
-                    <div className="addons-summary">
-                      <span className="addons-summary-title">Dịch vụ thêm:</span>
-                      {selectedAddons.map(a => (
-                        <div key={a.serviceId} className="billing-row addon-row">
-                          <span className="service-title">+ {a.serviceName}</span>
-                          <span className="service-cost">{(a.basePrice || 0).toLocaleString()}đ</span>
-                        </div>
-                      ))}
+                  <>
+                    <div className="billing-row prime-service">
+                      <span className="service-title">{selectedPackage?.serviceName}</span>
+                      <span className="service-cost">{packagePrice.toLocaleString()}đ</span>
                     </div>
-                  )}
-                </>
+                    {selectedAddons.length > 0 && (
+                        <div className="addons-summary">
+                          <span className="addons-summary-title">Dịch vụ thêm:</span>
+                          {selectedAddons.map(a => (
+                              <div key={a.serviceId} className="billing-row addon-row">
+                                <span className="service-title">+ {a.serviceName}</span>
+                                <span className="service-cost">{(a.basePrice || 0).toLocaleString()}đ</span>
+                              </div>
+                          ))}
+                        </div>
+                    )}
+                  </>
               ) : (
-                <div className="billing-row prime-service">
-                  <span className="service-title">Chưa chọn dịch vụ</span>
-                </div>
+                  <div className="billing-row prime-service">
+                    <span className="service-title">Chưa chọn dịch vụ</span>
+                  </div>
               )}
               <div className="selected-datetime-preview">
                 <p>{selectedDate.getDate()} {monthNames[selectedDate.getMonth()]}, {selectedDate.getFullYear()}{selectedSlotData && ` • ${selectedSlotData.startTime}`}</p>
@@ -853,9 +916,9 @@ export default function BookingPage() {
             <div className="payment-methods-selector">
               <h5>Phương thức thanh toán</h5>
               {depositRequired && (
-                <div className="deposit-notice">
-                  Đơn hàng trên {DEPOSIT_THRESHOLD.toLocaleString()}đ yêu cầu đặt cọc trước — vui lòng chọn thanh toán online.
-                </div>
+                  <div className="deposit-notice">
+                    Đơn hàng trên {DEPOSIT_THRESHOLD.toLocaleString()}đ yêu cầu đặt cọc trước — vui lòng chọn thanh toán online.
+                  </div>
               )}
               <label className={`method-option-card ${paymentMethod === "online" ? "method-active" : ""}`}>
                 <input type="radio" name="payment" value="online" checked={paymentMethod === "online"} onChange={() => setPaymentMethod("online")} />
@@ -891,6 +954,15 @@ export default function BookingPage() {
             </p>
           </div>
         </div>
+
+        {/* Alert Popup Modal */}
+        <AlertModal
+          open={alertModal.open}
+          title={alertModal.title}
+          message={alertModal.message}
+          type={alertModal.type}
+          onClose={closeAlert}
+        />
       </div>
   );
 }
