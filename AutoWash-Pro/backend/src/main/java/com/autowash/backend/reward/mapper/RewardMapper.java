@@ -38,6 +38,11 @@ public class RewardMapper {
                 .status(dto.getStatus() != null
                         ? dto.getStatus()
                         : Reward.RewardStatus.active)
+                .requiredTierLevel(
+                        dto.getRequiredTierLevel() != null
+                                ? dto.getRequiredTierLevel()
+                                : 1
+                )
                 .build();
     }
 
