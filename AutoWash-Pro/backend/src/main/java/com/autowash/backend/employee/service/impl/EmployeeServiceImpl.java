@@ -581,15 +581,6 @@ public class EmployeeServiceImpl implements EmployeeService {
                     washBay,
                     branch.getBranchId()
             );
-
-            if (!BayStatus.available.equals(washBay.getStatus())) {
-                throw new BusinessException(
-                        "Khu vực rửa xe '" + washBay.getBayName()
-                                + "' hiện không khả dụng. Trạng thái hiện tại: "
-                                + washBay.getStatus(),
-                        HttpStatus.CONFLICT
-                );
-            }
         }
 
         booking.setAssignedStaff(employee);
