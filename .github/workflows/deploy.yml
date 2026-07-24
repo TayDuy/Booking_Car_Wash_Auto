@@ -32,6 +32,11 @@ jobs:
             echo "Go to backend..."
             cd AutoWash-Pro/backend
 
+            echo "Building JAR..."
+            chmod +x mvnw
+            ./mvnw package -DskipTests -q
+            cp target/*.jar app.jar
+
             echo "Stopping old containers..."
             docker compose down || true
 
