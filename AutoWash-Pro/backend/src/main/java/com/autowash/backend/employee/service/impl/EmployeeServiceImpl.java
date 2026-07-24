@@ -524,7 +524,11 @@ public class EmployeeServiceImpl implements EmployeeService {
                     branch.getBranchId()
             );
 
-            if (!BayStatus.available.equals(washBay.getStatus())) {
+            TimeSlot slot = booking.getSlot();
+            boolean isSameBay = slot != null && slot.getWashBay() != null
+                    && washBay.getBayId().equals(slot.getWashBay().getBayId());
+
+            if (!isSameBay && !BayStatus.available.equals(washBay.getStatus())) {
                 throw new BusinessException(
                         "Khu vực rửa xe '" + washBay.getBayName()
                                 + "' hiện không khả dụng. Trạng thái hiện tại: "
@@ -544,7 +548,6 @@ public class EmployeeServiceImpl implements EmployeeService {
                 );
             }
 
-            TimeSlot slot = booking.getSlot();
             if (slot != null && slot.getWashBay() != null && !washBay.getBayId().equals(slot.getWashBay().getBayId())) {
                 TimeSlot lockedSlot = timeSlotRepository.findByIdForUpdate(slot.getSlotId())
                         .orElseThrow(() -> new ResourceNotFoundException("TimeSlot", "id", slot.getSlotId()));
