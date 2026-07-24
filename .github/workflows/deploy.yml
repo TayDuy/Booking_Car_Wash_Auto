@@ -27,7 +27,7 @@ jobs:
             echo "Updating source code..."
             git fetch origin
             git checkout main
-            git pull origin main
+            git reset --hard origin/main
 
             echo "Go to backend..."
             cd AutoWash-Pro/backend
