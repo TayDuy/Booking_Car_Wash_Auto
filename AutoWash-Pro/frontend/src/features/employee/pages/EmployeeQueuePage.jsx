@@ -207,12 +207,11 @@ function EmployeeQueuePage() {
           (bay) => bay.status === "available"
       );
 
-      // Ưu tiên chọn khoang rửa mà khách đã đặt lịch (nếu khả dụng)
       const bookedBay = bays.find((b) => b.bayId === booking?.bayId);
       const defaultBayId =
-          bookedBay && bookedBay.status === "available"
+          bookedBay
               ? bookedBay.bayId
-              : (available.length > 0 ? available[0].bayId : (bookedBay?.bayId ?? null));
+              : (available.length > 0 ? available[0].bayId : null);
 
       setPendingWashBooking({
         bookingId,
