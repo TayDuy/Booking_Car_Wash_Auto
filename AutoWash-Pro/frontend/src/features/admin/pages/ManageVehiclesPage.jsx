@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import vehicleApi from "../../../api/vehicleApi";
 import { useAppDialog } from "../../../contexts/DialogContext.jsx";
+import { isValidVietnameseLicensePlate, formatVietnameseLicensePlate } from "../../../utils/licensePlateUtils";
 import "./ManageVehiclesPage.css";
 
 const emptyForm = {
@@ -224,6 +225,20 @@ export default function ManageVehiclesPage() {
       return;
     }
 
+    if (!isValidVietnameseLicensePlate(formData.licensePlate)) {
+      await showMessage({
+        title: "Dữ liệu không hợp lệ",
+        message: "Vui lòng nhập đúng định dạng biển số xe Việt Nam (Ví dụ: 30A-123.45 hoặc 51F-888.88).",
+        variant: "warning",
+      });
+      return;
+    }
+
+    const payload = {
+      ...formData,
+      licensePlate: formatVietnameseLicensePlate(formData.licensePlate),
+    };
+
     try {
       const isEditing = Boolean(editingVehicle);
 
@@ -234,10 +249,10 @@ export default function ManageVehiclesPage() {
 
         await vehicleApi.update(
           vehicleId,
-          formData
+          payload
         );
       } else {
-        await vehicleApi.create(formData);
+        await vehicleApi.create(payload);
       }
 
       setShowForm(false);

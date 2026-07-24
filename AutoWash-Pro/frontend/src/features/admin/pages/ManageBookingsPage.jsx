@@ -7,6 +7,7 @@ import vehicleApi from "../../../api/vehicleApi";
 import servicePackageApi from "../../../api/servicePackageApi";
 import { getBranches } from "../../../api/branchService";
 import { getAvailableSlots } from "../../../api/timeSlotService";
+import { isValidVietnameseLicensePlate, formatVietnameseLicensePlate } from "../../../utils/licensePlateUtils";
 import "./ManageBookingsPage.css";
 
 const emptyCreateForm = {
@@ -682,9 +683,14 @@ export default function ManageBookingsPage() {
       return;
     }
 
+    if (!isValidVietnameseLicensePlate(createForm.licensePlate)) {
+      await showMessage({ title: "Thông báo", message: "Biển số xe không đúng định dạng Việt Nam (Ví dụ: 30A-123.45 hoặc 51F-888.88).", variant: "warning" });
+      return;
+    }
+
     const payload = {
       customerId: Number(createForm.customerId),
-      licensePlate: createForm.licensePlate.trim(),
+      licensePlate: formatVietnameseLicensePlate(createForm.licensePlate),
       brand: createForm.brand.trim(),
       model: createForm.model.trim() || null,
       vehicleType: createForm.vehicleType,
