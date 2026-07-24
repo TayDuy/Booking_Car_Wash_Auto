@@ -1315,47 +1315,53 @@ public class EmployeeServiceImpl implements EmployeeService {
             TimeSlot slot,
             TimeSlot lockedSlot
     ) {
-        int retries = 3;
-        while (true) {
-            try {
-                TimeSlot newSlot = TimeSlot.builder()
-                        .branch(branch)
-                        .washBay(washBay)
-                        .slotDate(slot.getSlotDate())
-                        .startTime(slot.getStartTime())
-                        .endTime(slot.getEndTime())
-                        .maxCapacity(slot.getMaxCapacity() != null ? slot.getMaxCapacity() : 1)
-                        .currentBookings(1)
-                        .status(TimeSlot.SlotStatus.open)
-                        .build();
-                lockedSlot.decrementBookings();
-                timeSlotRepository.save(lockedSlot);
-                TimeSlot saved = timeSlotRepository.save(newSlot);
-                timeSlotRepository.flush();
-                return saved;
-            } catch (DataIntegrityViolationException e) {
-                if (--retries <= 0) throw e;
-                var existing = timeSlotRepository
-                        .findByWashBay_BayIdAndSlotDateAndStartTime(
-                                washBay.getBayId(),
-                                slot.getSlotDate(),
-                                slot.getStartTime()
-                        );
-                if (existing.isPresent()) {
-                    TimeSlot target = existing.get();
-                    if (!target.hasCapacity()) {
-                        throw new BusinessException(
-                                "Khung giờ của khu vực rửa xe mới đã đầy, vui lòng chọn khu vực khác",
-                                HttpStatus.CONFLICT
-                        );
-                    }
-                    lockedSlot.decrementBookings();
-                    timeSlotRepository.save(lockedSlot);
-                    target.incrementBookings();
-                    return timeSlotRepository.save(target);
-                }
+        java.util.Optional<TimeSlot> existing = timeSlotRepository
+                .findByWashBay_BayIdAndSlotDateAndStartTime(
+                        washBay.getBayId(),
+                        slot.getSlotDate(),
+                        slot.getStartTime()
+                );
+
+        if (existing.isEmpty()) {
+            List<TimeSlot> overlapping = timeSlotRepository.findOverlapping(
+                    washBay.getBayId(),
+                    slot.getSlotDate(),
+                    slot.getStartTime(),
+                    slot.getEndTime(),
+                    null
+            );
+            if (overlapping != null && !overlapping.isEmpty()) {
+                existing = java.util.Optional.of(overlapping.get(0));
             }
         }
+
+        if (existing.isPresent()) {
+            TimeSlot target = existing.get();
+            if (!target.hasCapacity()) {
+                throw new BusinessException(
+                        "Khung giờ của khu vực rửa xe mới đã đầy, vui lòng chọn khu vực khác",
+                        HttpStatus.CONFLICT
+                );
+            }
+            lockedSlot.decrementBookings();
+            timeSlotRepository.save(lockedSlot);
+            target.incrementBookings();
+            return timeSlotRepository.save(target);
+        }
+
+        TimeSlot newSlot = TimeSlot.builder()
+                .branch(branch)
+                .washBay(washBay)
+                .slotDate(slot.getSlotDate())
+                .startTime(slot.getStartTime())
+                .endTime(slot.getEndTime())
+                .maxCapacity(slot.getMaxCapacity() != null ? slot.getMaxCapacity() : 1)
+                .currentBookings(1)
+                .status(TimeSlot.SlotStatus.open)
+                .build();
+        lockedSlot.decrementBookings();
+        timeSlotRepository.save(lockedSlot);
+        return timeSlotRepository.save(newSlot);
     }
 
     // =========================================================
