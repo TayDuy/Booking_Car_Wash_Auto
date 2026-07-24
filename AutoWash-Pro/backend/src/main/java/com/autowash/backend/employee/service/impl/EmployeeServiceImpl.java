@@ -552,9 +552,10 @@ public class EmployeeServiceImpl implements EmployeeService {
                 TimeSlot lockedSlot = timeSlotRepository.findByIdForUpdate(slot.getSlotId())
                         .orElseThrow(() -> new ResourceNotFoundException("TimeSlot", "id", slot.getSlotId()));
 
-                java.util.Optional<TimeSlot> targetSlotOpt = timeSlotRepository.findByWashBay_BayIdAndSlotDateAndStartTime(
-                        washBay.getBayId(), slot.getSlotDate(), slot.getStartTime()
-                );
+                java.util.Optional<TimeSlot> targetSlotOpt = timeSlotRepository
+                        .findByWashBay_BayIdAndSlotDateAndStartTime(
+                                washBay.getBayId(), slot.getSlotDate(), slot.getStartTime()
+                        );
                 if (targetSlotOpt.isPresent()) {
                     TimeSlot targetSlot = targetSlotOpt.get();
                     if (!targetSlot.hasCapacity()) {
@@ -565,16 +566,12 @@ public class EmployeeServiceImpl implements EmployeeService {
                     }
                     lockedSlot.decrementBookings();
                     timeSlotRepository.save(lockedSlot);
-
                     targetSlot.incrementBookings();
                     timeSlotRepository.save(targetSlot);
-
                     booking.setSlot(targetSlot);
                 } else {
-                    TimeSlot savedNewSlot = createSlotForBay(
-                            branch, washBay, slot, lockedSlot
-                    );
-                    booking.setSlot(savedNewSlot);
+                    lockedSlot.setWashBay(washBay);
+                    timeSlotRepository.save(lockedSlot);
                 }
             }
         } else {
